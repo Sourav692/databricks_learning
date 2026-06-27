@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 600" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="600" fill="#FAFAF9"/>
+  <text x="24" y="34" font-size="20" font-weight="700" fill="#1B3139">Topic 10 — FDE Field Playbooks: troubleshoot &amp; design on the three-path map</text>
+  <text x="24" y="54" font-size="12" fill="#6B7280">Every fault lands on one path. Read its black box, run one check. Root cause is almost always the customer's own VNet / DNS / firewall / RBAC.</text>
+
+  <!-- User -->
+  <rect x="30" y="250" width="128" height="58" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="94" y="276" text-anchor="middle" font-size="13" font-weight="600" fill="#2272B4">User / BI / REST</text>
+  <text x="94" y="294" text-anchor="middle" font-size="10" fill="#6B7280">browser · JDBC · CLI</text>
+
+  <!-- Databricks-owned subscription -->
+  <rect x="708" y="70" width="248" height="250" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="832" y="92" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Databricks-owned Azure subscription</text>
+
+  <rect x="730" y="106" width="204" height="80" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="832" y="132" text-anchor="middle" font-size="13" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="832" y="150" text-anchor="middle" font-size="10" fill="#4A5860">web app · REST · Unity Catalog</text>
+  <text x="832" y="164" text-anchor="middle" font-size="10" fill="#4A5860">SCC relay · metadata only</text>
+  <text x="832" y="178" text-anchor="middle" font-size="9.5" fill="#6B7280">① + ② terminate here</text>
+
+  <rect x="730" y="206" width="204" height="96" rx="8" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="832" y="230" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Serverless compute plane</text>
+  <text x="832" y="248" text-anchor="middle" font-size="10" fill="#4A5860">no public IPs · backbone only</text>
+  <text x="832" y="264" text-anchor="middle" font-size="10" fill="#4A5860">egress: NCC + network policies</text>
+  <text x="832" y="282" text-anchor="middle" font-size="9.5" fill="#a23a2a">10.3: NOT in your VNet — service tag / NCC PE</text>
+
+  <!-- Customer subscription -->
+  <rect x="200" y="120" width="470" height="430" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="435" y="142" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">YOUR Azure subscription</text>
+
+  <!-- Classic VNet -->
+  <rect x="222" y="158" width="426" height="158" rx="10" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="435" y="178" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Classic compute plane VNet (VNet injection)</text>
+  <rect x="240" y="194" width="150" height="104" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="315" y="216" text-anchor="middle" font-size="11" font-weight="600" fill="#1B3139">Host subnet</text>
+  <text x="315" y="232" text-anchor="middle" font-size="9.5" fill="#4A5860">delegated + NSG</text>
+  <text x="315" y="248" text-anchor="middle" font-size="9.5" fill="#4A5860">Microsoft.Storage SE</text>
+  <text x="315" y="270" text-anchor="middle" font-size="9" fill="#a23a2a">10.1-D: delegation</text>
+  <text x="315" y="284" text-anchor="middle" font-size="9" fill="#a23a2a">stripped → all fail</text>
+
+  <rect x="404" y="194" width="160" height="104" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="484" y="214" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet</text>
+  <text x="484" y="230" text-anchor="middle" font-size="9.5" fill="#4A5860">clusters · No Public IP</text>
+  <text x="484" y="244" text-anchor="middle" font-size="9.5" fill="#4A5860">2 IPs / node · −5 reserved</text>
+  <text x="484" y="266" text-anchor="middle" font-size="9" fill="#a23a2a">10.1-B: Available IPs</text>
+  <text x="484" y="280" text-anchor="middle" font-size="9" fill="#a23a2a">→ insufficient IPs</text>
+
+  <rect x="578" y="206" width="60" height="80" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="608" y="240" text-anchor="middle" font-size="10" font-weight="600" fill="#1B3139">NAT</text>
+  <text x="608" y="256" text-anchor="middle" font-size="9" fill="#4A5860">egress</text>
+
+  <!-- PE subnet + access connector row -->
+  <rect x="222" y="330" width="206" height="74" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="325" y="352" text-anchor="middle" font-size="11" font-weight="600" fill="#1B3139">/28 PE subnet</text>
+  <text x="325" y="368" text-anchor="middle" font-size="9.5" fill="#4A5860">dfs + blob PE pair · Approved</text>
+  <text x="325" y="386" text-anchor="middle" font-size="9" fill="#a23a2a">10.3: dfs without blob = half-fix</text>
+
+  <rect x="442" y="330" width="206" height="74" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="545" y="352" text-anchor="middle" font-size="11" font-weight="600" fill="#1B3139">Access Connector (managed identity)</text>
+  <text x="545" y="368" text-anchor="middle" font-size="9.5" fill="#4A5860">Storage Blob Data Contributor</text>
+  <text x="545" y="386" text-anchor="middle" font-size="9" fill="#a23a2a">10.3 gate 2: ...Reader = writes 403</text>
+
+  <!-- Storage with two gates -->
+  <rect x="222" y="418" width="426" height="118" rx="10" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="435" y="438" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">ADLS Gen2 (your data) — two gates</text>
+  <rect x="240" y="452" width="194" height="70" rx="8" fill="#fff" stroke="#FF3621" stroke-width="1.5"/>
+  <text x="337" y="474" text-anchor="middle" font-size="11" font-weight="700" fill="#FF3621">GATE 1 — NETWORK</text>
+  <text x="337" y="490" text-anchor="middle" font-size="9.5" fill="#4A5860">storage firewall</text>
+  <text x="337" y="506" text-anchor="middle" font-size="9" fill="#a23a2a">fail → AuthorizationFailure</text>
+  <rect x="446" y="452" width="186" height="70" rx="8" fill="#fff" stroke="#00A972" stroke-width="1.5"/>
+  <text x="539" y="474" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">GATE 2 — IDENTITY</text>
+  <text x="539" y="490" text-anchor="middle" font-size="9.5" fill="#4A5860">RBAC + Unity Catalog</text>
+  <text x="539" y="506" text-anchor="middle" font-size="9" fill="#a23a2a">fail → PermissionMismatch</text>
+  <line x1="434" y1="487" x2="446" y2="487" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Path 1: user -> control plane -->
+  <path d="M158 262 C 430 230, 540 150, 728 146" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="250" y="208" font-size="11" font-weight="600" fill="#1B3139">① user → Databricks (10.2)</text>
+  <text x="250" y="222" font-size="9.5" fill="#6B7280">443 · IP ACL / front-end PL · DNS-first</text>
+
+  <!-- Path 2: container subnet -> control plane (outbound) -->
+  <path d="M564 220 C 640 190, 660 165, 728 150" fill="none" stroke="#FF3621" stroke-width="2.5" marker-end="url(#aho)"/>
+  <text x="566" y="186" font-size="11" font-weight="700" fill="#FF3621">② OUTBOUND only (10.1/10.2)</text>
+  <text x="566" y="200" font-size="9.5" fill="#FF3621">SCC relay · 443 · back-end PL</text>
+
+  <!-- Path 2 serverless backbone -->
+  <path d="M730 254 C 700 254, 700 254, 670 254" fill="none" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="678" y="338" font-size="9.5" fill="#00A972" text-anchor="end">② serverless ↔ CP: backbone + TLS</text>
+
+  <!-- Path 3 classic: container subnet -> storage -->
+  <path d="M460 298 C 420 360, 380 400, 350 450" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="195" y="430" font-size="11" font-weight="600" fill="#1B3139">③ compute → storage (10.3)</text>
+  <text x="195" y="444" font-size="9.5" fill="#6B7280">SE / PE pair</text>
+
+  <!-- Path 3 serverless -> storage -->
+  <path d="M730 290 C 600 560, 480 540, 440 522" fill="none" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ahg)"/>
+  <text x="690" y="566" font-size="9.5" fill="#00A972" text-anchor="end">③ serverless → storage: service tag / NCC PE</text>
+
+  <!-- Decision-flow / diagnostics banner -->
+  <rect x="30" y="330" width="158" height="206" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="40" y="350" font-size="11" font-weight="700" fill="#1B3139">10.4 Decision flow</text>
+  <text x="40" y="368" font-size="9" fill="#4A5860">Managed security</text>
+  <text x="40" y="382" font-size="9" fill="#4A5860">↓ + audit/egress/PL</text>
+  <text x="40" y="396" font-size="9" fill="#4A5860">Hardened connectivity</text>
+  <text x="40" y="410" font-size="9" fill="#4A5860">↓ + all-private + FW</text>
+  <text x="40" y="424" font-size="9" fill="#4A5860">Isolated env (DEP)</text>
+  <text x="40" y="442" font-size="9" fill="#a23a2a">Pick LOWEST rung</text>
+  <text x="40" y="454" font-size="9" fill="#a23a2a">that meets the mandate</text>
+  <line x1="40" y1="466" x2="178" y2="466" stroke="#E5E7EB"/>
+  <text x="40" y="484" font-size="11" font-weight="700" fill="#1B3139">10.5 Black boxes</text>
+  <text x="40" y="500" font-size="9" fill="#4A5860">system.access.* (audit/net)</text>
+  <text x="40" y="514" font-size="9" fill="#4A5860">cluster event log · nslookup</text>
+  <text x="40" y="528" font-size="9" fill="#4A5860">VNet flow logs (DENY)</text>
+
+  <!-- Legend -->
+  <rect x="708" y="338" width="248" height="198" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="718" y="358" font-size="11" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="718" y1="372" x2="742" y2="372" stroke="#FF3621" stroke-width="2.5"/>
+  <text x="748" y="376" font-size="9.5" fill="#4A5860">② outbound-only (SCC relay)</text>
+  <line x1="718" y1="388" x2="742" y2="388" stroke="#6B7280" stroke-width="2"/>
+  <text x="748" y="392" font-size="9.5" fill="#4A5860">classic path (① / ③)</text>
+  <line x1="718" y1="404" x2="742" y2="404" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="748" y="408" font-size="9.5" fill="#4A5860">serverless (backbone)</text>
+  <text x="718" y="430" font-size="9.5" font-weight="700" fill="#a23a2a">Red labels = where each playbook bites</text>
+  <text x="718" y="448" font-size="9" fill="#4A5860">10.1 startup · 10.2 connectivity/DNS</text>
+  <text x="718" y="462" font-size="9" fill="#4A5860">10.3 storage 403 · two gates</text>
+  <text x="718" y="476" font-size="9" fill="#4A5860">10.4 design forwards · 10.5 evidence</text>
+  <text x="718" y="498" font-size="9" fill="#6B7280">Symptom → pick path → read box → one check.</text>
+  <text x="718" y="514" font-size="9" fill="#6B7280">Data never flows through the control plane.</text>
+  <text x="718" y="530" font-size="9" fill="#6B7280">Collect evidence first, theorise second.</text>
+</svg>

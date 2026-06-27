@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Tables & the Transaction Log · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}      /* comment */
+  pre.code .k{color:#ea7c3c}                          /* keyword */
+  pre.code .s{color:#86d9a6}                          /* string  */
+  pre.code .f{color:#69c0d0}                          /* func/ident */
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.92rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2);font-family:"Spline Sans",sans-serif}
+  .yes{color:#16707f;font-weight:600}.no{color:#b23a2e;font-weight:600}
+  /* diagram 1: superpowers (clickable) */
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pow{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff;cursor:pointer;transition:.18s;text-align:center}
+  .pow:hover{border-color:var(--brand-2)}
+  .pow.on{border-color:var(--teal);border-width:2px}
+  .pow .ic{font-size:1.5rem}
+  .pow .t{font-weight:600;font-size:.9rem;margin-top:2px}
+  .powdetail{margin-top:10px}
+  .powdetail .card{display:none}
+  .powdetail .card.on{display:block;animation:fade .25s ease}
+  /* diagram 2: commit timeline */
+  .vers{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin-top:6px}
+  .v{flex:1;min-width:120px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:10px;cursor:pointer;text-align:center;transition:.15s}
+  .v:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .v.on{border-color:var(--teal);border-width:2px}
+  .v .ver{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand)}
+  .varrow{display:flex;align-items:center;color:var(--brand);padding:0 4px}
+  .vdetail{margin-top:10px}
+  .vdetail .card{display:none}
+  .vdetail .card.on{display:block;animation:fade .25s ease}
+  /* diagram 3: OCC step-through */
+  .occ-stage{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px;box-shadow:var(--shadow);min-height:96px}
+  .occ-stage .step{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand)}
+  .occ-ctrl{display:flex;gap:8px;margin-top:10px}
+  .occ-ctrl button{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;transition:.15s}
+  .occ-ctrl button:hover{border-color:var(--teal);color:var(--teal)}
+  .occ-dots{display:flex;gap:6px;margin-left:auto;align-items:center}
+  .occ-dots span{width:9px;height:9px;border-radius:999px;background:var(--line)}
+  .occ-dots span.on{background:var(--teal)}
+  /* diagram 4: tabbed SQL/PySpark compare */
+  .tabs{display:flex;gap:6px;margin-bottom:8px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px 8px 0 0;padding:7px 14px;cursor:pointer}
+  .tab.on{border-color:var(--teal);border-bottom-color:#fff;color:var(--teal);font-weight:600}
+  .tabpane{display:none}.tabpane.on{display:block;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.grid{grid-template-columns:1fr}.varrow{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 2.1</p>
+  <h1>Delta Tables &amp; the <em>Transaction Log</em></h1>
+  <p class="lede">Delta Lake turns plain Parquet files into a reliable table by adding a file-based transaction log — the source of ACID, schema enforcement, fast scans, and version history. This deep dive walks each sub-topic with the mechanism and the code.</p>
+  <div class="pills">
+    <span class="pill">_delta_log</span>
+    <span class="pill">ACID on object storage</span>
+    <span class="pill">Optimistic concurrency</span>
+    <span class="pill">Data skipping</span>
+    <span class="pill">Time travel</span>
+  </div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Delta Lake</strong> = immutable Parquet data files + a <code>_delta_log</code> that records every change in order. <strong>The table <em>is</em> the log</strong>, not the files on disk. That log is what makes object-storage files behave like a reliable warehouse table. On Databricks, every table is Delta by default — no <code>USING DELTA</code> needed.</div>
+  <div class="card analogy" style="margin-top:10px">🏦 <strong>Analogy:</strong> the transaction log is a <strong>bank ledger</strong>. Parquet files are the cash in the vault; the ledger records every deposit/withdrawal in order — so the balance is always correct, auditable, and replayable, even with many tellers writing at once.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: three superpowers -->
+<section id="pow">
+  <h2>What the log gives you — click each</h2>
+  <p class="hint">▸ click a superpower</p>
+  <div class="grid">
+    <div class="pow on" data-p="acid"><div class="ic">🔒</div><div class="t">ACID</div></div>
+    <div class="pow" data-p="schema"><div class="ic">📐</div><div class="t">Schema enforcement</div></div>
+    <div class="pow" data-p="skip"><div class="ic">⚡</div><div class="t">Data skipping</div></div>
+    <div class="pow" data-p="history"><div class="ic">🕰️</div><div class="t">Version history</div></div>
+  </div>
+  <div class="powdetail">
+    <div class="card on" data-d="acid"><strong>ACID transactions.</strong> Commits are atomic (all-or-nothing) and isolated via optimistic concurrency — concurrent writers can't corrupt each other. The log's ordering protocol serializes commits.</div>
+    <div class="card" data-d="schema"><strong>Schema enforcement.</strong> Delta validates the DataFrame schema on write and rejects mismatches, protecting downstream consumers. (Evolution to add columns is a separate opt-in.)</div>
+    <div class="card" data-d="skip"><strong>Data skipping.</strong> Every file's min/max/nullCount stats live in the log, so filtered queries skip whole Parquet files without opening them.</div>
+    <div class="card" data-d="history"><strong>Version history.</strong> Each write is a new version recorded in the log — enabling time travel, audit, and one-command rollback.</div>
+  </div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>It's why cheap files in S3/ADLS/GCS behave like a warehouse table — reliable reads/writes, no corruption, full history, fast filtered scans.</li>
+    <li>The classic interview question — <em>"How does Delta give ACID on object storage that has no transactions?"</em> — answers itself: <strong>the transaction log + optimistic concurrency.</strong></li>
+  </ul>
+  <div class="card usecase">📦 <strong>Real-world use case:</strong> a streaming job and a nightly batch both write the same <code>orders</code> table; the log serializes their commits so neither reader sees a half-written result and the table is never corrupted.</div>
+</section>
+
+<!-- ===================== DEEP DIVE ===================== -->
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · Physical layout: Parquet + <code>_delta_log/</code></h3>
+  <p>A Delta table on disk is just data files + a log directory. Data files are <strong>immutable</strong> — an "update" writes new files and tombstones old ones in the log.</p>
+  <pre class="code"><span class="c">/orders/                                  # table root</span>
+├── part-00000-....snappy.parquet         <span class="c"># immutable Parquet data</span>
+├── part-00001-....snappy.parquet
+└── _delta_log/                           <span class="c"># the transaction log</span>
+    ├── 00000000000000000000.json         <span class="c"># commit 0 (atomic unit)</span>
+    ├── 00000000000000000001.json         <span class="c"># commit 1</span>
+    ├── 00000000000000000010.checkpoint.parquet  <span class="c"># written periodically</span>
+    └── _last_checkpoint                   <span class="c"># pointer to newest checkpoint</span></pre>
+  <p class="codecap">Inspect the log from SQL</p>
+  <pre class="code"><span class="k">DESCRIBE HISTORY</span> main.sales.orders;   <span class="c">-- one row per commit: version, op, user, metrics</span>
+<span class="k">DESCRIBE DETAIL</span>  main.sales.orders;   <span class="c">-- numFiles, sizeInBytes, location, format</span></pre>
+
+  <h3>2 · What lives inside a commit (the "actions")</h3>
+  <p>Each JSON commit is a list of <strong>actions</strong> — the diff applied at that version. The mental shift: <strong>a write is not an edit, it's a set of add/remove records appended to the log.</strong></p>
+  <table>
+    <tr><th>Action</th><th>Meaning</th></tr>
+    <tr><td><code>add</code></td><td>Data file added — with size + <strong>column stats</strong> (min/max/nullCount).</td></tr>
+    <tr><td><code>remove</code></td><td>File logically removed (tombstone; stays on disk until VACUUM).</td></tr>
+    <tr><td><code>metaData</code></td><td>Schema, partitioning, table properties.</td></tr>
+    <tr><td><code>protocol</code></td><td>Reader/writer protocol versions (which features are required).</td></tr>
+    <tr><td><code>commitInfo</code></td><td>Audit metadata: operation, timestamp, user, metrics.</td></tr>
+    <tr><td><code>txn</code></td><td>Idempotency marker for streaming (set-once per batch).</td></tr>
+  </table>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: commit timeline -->
+<section id="commits">
+  <h3>3 · Snapshot reconstruction — how a write becomes a version</h3>
+  <p>To read the table, Delta nets <code>add</code> minus <code>remove</code> across the log (starting from the newest checkpoint) to compute the exact live file list. Checkpoints (cadence set by <code>delta.checkpointInterval</code> — default is runtime-dependent: 100 on recent Databricks Runtimes, 10 in OSS Delta) keep this O(recent commits).</p>
+  <p class="hint">▸ click a version</p>
+  <div class="vers">
+    <div class="v on" data-v="0"><div class="ver">v0</div>CREATE</div>
+    <div class="varrow">▸</div>
+    <div class="v" data-v="1"><div class="ver">v1</div>INSERT</div>
+    <div class="varrow">▸</div>
+    <div class="v" data-v="2"><div class="ver">v2</div>MERGE</div>
+    <div class="varrow">▸</div>
+    <div class="v" data-v="3"><div class="ver">v3</div>DELETE</div>
+  </div>
+  <div class="vdetail">
+    <div class="card on" data-vd="0"><strong>v0 — table created.</strong> First commit <code>...0000.json</code> records the schema (<code>metaData</code>) + <code>protocol</code>.</div>
+    <div class="card" data-vd="1"><strong>v1 — rows inserted.</strong> Commit lists <code>add</code> actions for the new Parquet files. Readers now compute the v1 snapshot.</div>
+    <div class="card" data-vd="2"><strong>v2 — MERGE/upsert.</strong> Commit records <code>remove</code> + <code>add</code> atomically. No reader ever sees a half-applied merge.</div>
+    <div class="card" data-vd="3"><strong>v3 — delete.</strong> Files tombstoned via <code>remove</code>. Old files stay on disk until <code>VACUUM</code> — so you can still time-travel back to v2 until then.</div>
+  </div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 3: OCC step-through -->
+<section id="occ">
+  <h3>4 · ACID via atomic commits + optimistic concurrency (OCC)</h3>
+  <p>Writers don't lock. Each writer reads a snapshot, does its work, then tries to commit the next version number with a <strong>put-if-absent</strong> write. If another writer got there first, the loser detects the conflict and retries. Walk the flow:</p>
+  <p class="hint">▸ step through two concurrent writers</p>
+  <div class="occ-stage">
+    <div class="step" id="occ-step">STEP 1 / 5</div>
+    <div id="occ-body"><strong>Both writers read snapshot v7.</strong> Writer A (append US orders) and Writer B (append EU orders) each see the current version is 7 and start their work independently — no locks taken.</div>
+  </div>
+  <div class="occ-ctrl">
+    <button id="occ-prev">◀ Prev</button>
+    <button id="occ-next">Next ▶</button>
+    <div class="occ-dots"><span class="on"></span><span></span><span></span><span></span><span></span></div>
+  </div>
+  <p class="codecap">Avoid conflicts by scoping writers to disjoint partitions</p>
+  <pre class="code"><span class="c"># Each job writes only its own region — OCC won't treat them as conflicting</span>
+(df_us.write.format(<span class="s">"delta"</span>).mode(<span class="s">"append"</span>)
+   .option(<span class="s">"replaceWhere"</span>, <span class="s">"region = 'US'"</span>)   <span class="c"># disjoint predicate</span>
+   .saveAsTable(<span class="s">"main.sales.orders"</span>))
+<span class="c"># A parallel job using replaceWhere "region = 'EU'" commits cleanly in parallel.</span></pre>
+  <p style="margin-top:10px"><strong>Conflict types interviewers probe:</strong> <code>ConcurrentAppendException</code> (overlapping partition/predicate), <code>ConcurrentDeleteReadException</code> / <code>ConcurrentDeleteDeleteException</code> (a file you read/deleted was deleted), <code>MetadataChangedException</code> (schema changed under you).</p>
+</section>
+
+<section>
+  <h3>5 · Schema enforcement (write-time validation)</h3>
+  <p>Delta validates the incoming schema on <em>every</em> write and rejects mismatches. <strong>Enforcement rejects; evolution (opt-in) adds columns</strong> — don't confuse them.</p>
+  <pre class="code"><span class="c"># This APPEND fails fast — `bonus` is not a column in the target table</span>
+bad = spark.createDataFrame([(<span class="f">1</span>, <span class="s">"ACME"</span>, <span class="f">99.0</span>)], [<span class="s">"id"</span>, <span class="s">"name"</span>, <span class="s">"bonus"</span>])
+bad.write.format(<span class="s">"delta"</span>).mode(<span class="s">"append"</span>).saveAsTable(<span class="s">"main.sales.customers"</span>)
+<span class="c"># AnalysisException: A schema mismatch detected when writing to the Delta table.</span>
+
+<span class="c"># Opt in to evolution only when you *intend* to add the column:</span>
+(bad.write.format(<span class="s">"delta"</span>).mode(<span class="s">"append"</span>)
+    .option(<span class="s">"mergeSchema"</span>, <span class="s">"true"</span>)            <span class="c"># adds `bonus` to the table</span>
+    .saveAsTable(<span class="s">"main.sales.customers"</span>))</pre>
+
+  <h3>6 · Data skipping via column statistics</h3>
+  <p>Each <code>add</code> stores min/max/nullCount for the first <strong>32</strong> columns (<code>delta.dataSkippingNumIndexedCols</code>). A filtered query reads those stats from the log and <strong>skips whole Parquet files</strong> whose range can't match — often 10–100× less data scanned. <code>OPTIMIZE</code>/ZORDER/liquid clustering (Topic 3) tighten those ranges to make skipping far more effective.</p>
+  <pre class="code"><span class="c">-- Delta reads file-level min/max from the log and skips non-matching files</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders
+<span class="k">WHERE</span> order_date <span class="k">BETWEEN</span> <span class="s">'2024-01-01'</span> <span class="k">AND</span> <span class="s">'2024-01-07'</span>;</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 4: tabbed time-travel compare -->
+<section id="tt">
+  <h3>7 · Version history &amp; time travel</h3>
+  <p>Because the log keeps every commit, you can read the table <strong>as of</strong> any past version/timestamp (within retention) and roll back with one command. Compare the two APIs:</p>
+  <div class="tabs">
+    <div class="tab on" data-t="sql">Spark SQL</div>
+    <div class="tab" data-t="py">PySpark</div>
+  </div>
+  <div class="tabpane on" data-tp="sql">
+    <pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders <span class="k">VERSION AS OF</span> <span class="f">12</span>;            <span class="c">-- by version</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders <span class="k">TIMESTAMP AS OF</span> <span class="s">'2024-01-15'</span>;  <span class="c">-- by time</span>
+
+<span class="c">-- Roll a bad load back (writes a NEW commit; no data loss)</span>
+<span class="k">RESTORE TABLE</span> main.sales.orders <span class="k">TO VERSION AS OF</span> <span class="f">12</span>;</pre>
+  </div>
+  <div class="tabpane" data-tp="py">
+    <pre class="code">df = (spark.read
+        .option(<span class="s">"versionAsOf"</span>, <span class="f">12</span>)        <span class="c"># or .option("timestampAsOf", "2024-01-15")</span>
+        .table(<span class="s">"main.sales.orders"</span>))
+
+<span class="c"># Restore via the Delta table API</span>
+<span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+DeltaTable.forName(spark, <span class="s">"main.sales.orders"</span>).restoreToVersion(<span class="f">12</span>)</pre>
+  </div>
+</section>
+
+<section>
+  <h2>How to do it — from scratch</h2>
+  <pre class="code">catalog, schema = <span class="s">"main"</span>, <span class="s">"de_demo"</span>
+spark.sql(f<span class="s">"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}"</span>)
+spark.sql(f<span class="s">"USE {catalog}.{schema}"</span>)
+
+<span class="c"># Delta is the default — no USING DELTA needed</span>
+spark.sql(<span class="s">"""
+  CREATE TABLE IF NOT EXISTS orders (
+    order_id BIGINT, customer STRING,
+    amount DECIMAL(10,2), order_date DATE
+  )
+  TBLPROPERTIES (delta.checkpointInterval = 10)   -- explicitly set checkpoint cadence
+"""</span>)
+
+<span class="c"># Each write = a new version = a new JSON commit in _delta_log/</span>
+spark.sql(<span class="s">"INSERT INTO orders VALUES (1,'ACME', 250.00, DATE'2024-01-03')"</span>)
+spark.sql(<span class="s">"DESCRIBE HISTORY orders"</span>).show(truncate=<span class="k">False</span>)</pre>
+</section>
+
+<section>
+  <h2>Delta vs. plain Parquet/CSV "tables"</h2>
+  <table>
+    <tr><th>Capability</th><th>Plain Parquet/CSV dir</th><th>Delta table</th></tr>
+    <tr><td>Atomic multi-file writes</td><td class="no">✗ partial output visible</td><td class="yes">✓ all-or-nothing commit</td></tr>
+    <tr><td>Concurrent writers</td><td class="no">✗ corruption / lost data</td><td class="yes">✓ OCC + conflict detection</td></tr>
+    <tr><td>Schema enforcement</td><td class="no">✗ anything lands</td><td class="yes">✓ validated on write</td></tr>
+    <tr><td>Update / delete / upsert</td><td class="no">✗ rewrite by hand</td><td class="yes">✓ MERGE / UPDATE / DELETE</td></tr>
+    <tr><td>Time travel / audit</td><td class="no">✗ none</td><td class="yes">✓ DESCRIBE HISTORY, VERSION AS OF</td></tr>
+    <tr><td>Fast filtered reads</td><td class="no">✗ scan everything</td><td class="yes">✓ file-skipping via log stats</td></tr>
+  </table>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> every bronze/silver/gold table; concurrent batch + streaming ETL; reliable upserts, audits, rollbacks; CDC targets.</li>
+    <li><strong>Edge cases:</strong> the <strong>small-files / tiny-commits problem</strong> — committing per-row bloats the log and creates thousands of small files; batch writes and use <code>OPTIMIZE</code> (Topic 3). Concurrent writes to the same files raise a conflict the writer must <strong>retry</strong> (or avoid via disjoint <code>replaceWhere</code>).</li>
+    <li><strong>Limitations:</strong> <code>VACUUM</code> physically deletes files past the retention window (default <strong>7 days</strong>) — after that, old versions aren't queryable. Delta is for <strong>analytical</strong> workloads, not high-frequency OLTP single-row point writes.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Hand-editing or deleting files in <code>_delta_log/</code> — corrupts the table. Always use Delta operations.</li>
+    <li>❌ Assuming time travel is forever — VACUUM + retention decide how far back you can go.</li>
+    <li>❌ Confusing schema <strong>enforcement</strong> (rejects by default) with schema <strong>evolution</strong> (opt-in, adds columns).</li>
+    <li>❌ Committing per row in a loop — explodes commit + small-file count. Write in batches.</li>
+    <li>❌ Saying "Delta locks the table for writers" — it's <strong>optimistic</strong> concurrency (no locks; detect-and-retry).</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/" target="_blank" rel="noopener">What is Delta Lake?</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/concurrency-control" target="_blank" rel="noopener">Concurrency control</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/history" target="_blank" rel="noopener">Table history / time travel</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/data-skipping" target="_blank" rel="noopener">Data skipping</a>
+  <p style="margin-top:10px">Topic 2.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — superpowers (scoped to #pow)
+document.querySelectorAll('#pow .pow').forEach(p=>{
+  p.addEventListener('click',()=>{
+    const k=p.dataset.p;
+    document.querySelectorAll('#pow .pow').forEach(x=>x.classList.toggle('on',x===p));
+    document.querySelectorAll('#pow .powdetail .card').forEach(c=>c.classList.toggle('on',c.dataset.d===k));
+  });
+});
+// Diagram 2 — commit timeline (scoped to #commits)
+document.querySelectorAll('#commits .v').forEach(v=>{
+  v.addEventListener('click',()=>{
+    const k=v.dataset.v;
+    document.querySelectorAll('#commits .v').forEach(x=>x.classList.toggle('on',x===v));
+    document.querySelectorAll('#commits .vdetail .card').forEach(c=>c.classList.toggle('on',c.dataset.vd===k));
+  });
+});
+// Diagram 3 — OCC step-through (scoped to #occ)
+(function(){
+  const steps=[
+    ["STEP 1 / 5","<strong>Both writers read snapshot v7.</strong> Writer A (append US orders) and Writer B (append EU orders) each see version 7 and start work — no locks taken."],
+    ["STEP 2 / 5","<strong>Both do their work optimistically.</strong> A stages new US Parquet files; B stages new EU Parquet files. Neither knows about the other yet."],
+    ["STEP 3 / 5","<strong>Writer A commits first.</strong> Put-if-absent writes <code>...0008.json</code>. The table is now at v8. A succeeds atomically."],
+    ["STEP 4 / 5","<strong>Writer B tries to commit v8 — and loses the race.</strong> <code>...0008.json</code> already exists. Delta detects a potential conflict."],
+    ["STEP 5 / 5","<strong>B checks for a real conflict, then retries.</strong> A's files touched a disjoint region, so there's no logical conflict — B commits as <code>...0009.json</code> (v9). Both writes land, no corruption."]
+  ];
+  let i=0;
+  const stepEl=document.getElementById('occ-step'),bodyEl=document.getElementById('occ-body'),
+        dots=document.querySelectorAll('#occ .occ-dots span');
+  function render(){stepEl.textContent=steps[i][0];bodyEl.innerHTML=steps[i][1];
+    dots.forEach((d,j)=>d.classList.toggle('on',j===i));}
+  document.getElementById('occ-next').addEventListener('click',()=>{i=(i+1)%steps.length;render();});
+  document.getElementById('occ-prev').addEventListener('click',()=>{i=(i-1+steps.length)%steps.length;render();});
+})();
+// Diagram 4 — tabbed compare (scoped to #tt)
+document.querySelectorAll('#tt .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#tt .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#tt .tabpane').forEach(p=>p.classList.toggle('on',p.dataset.tp===k));
+  });
+});
+</script>
+</body>
+</html>

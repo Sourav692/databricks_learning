@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Executor memory · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  /* stacked memory bar */
+  .membar{display:flex;height:54px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:16px 0 6px;font-family:"Spline Sans Mono",monospace;font-size:.64rem}
+  .membar .seg-r{display:flex;align-items:center;justify-content:center;color:#fff;transition:flex-basis .35s ease,background .3s;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+  .membar .m-reserved{background:#9c8f7d}
+  .membar .m-user{background:#b08968}
+  .membar .m-storage{background:var(--violet)}
+  .membar .m-exec{background:var(--flame)}
+  .membar .m-spill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 6px,#9a3412 6px,#9a3412 12px)}
+  .membar.oom{box-shadow:0 0 0 3px #ef4444, 0 0 22px -2px rgba(239,68,68,.7)}
+  .rfloor{position:relative;height:14px;margin:-4px 0 12px}
+  .rfloor .mark{position:absolute;top:0;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet);transform:translateX(-50%);white-space:nowrap}
+  .rfloor .mark:before{content:"";position:absolute;left:50%;top:-8px;height:8px;border-left:1px dashed var(--violet)}
+  .extra{display:flex;gap:10px;margin:12px 0 0;flex-wrap:wrap}
+  .extbox{flex:1;min-width:150px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;background:var(--paper);font-size:.82rem;color:#5f5460;opacity:.45;transition:.25s}
+  .extbox.on{opacity:1;border-style:solid;border-color:var(--flame-2);background:#fff}
+  .extbox .t{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--flame);display:block;margin-bottom:3px}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:.78rem;color:#5f5460}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.s-res{background:#9c8f7d}.sw.s-usr{background:#b08968}.sw.s-sto{background:var(--violet)}.sw.s-exe{background:var(--flame)}
+  .sw.s-spl{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 4px,#9a3412 4px,#9a3412 8px)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 04</p>
+    <h1>Executor memory:<br>unified, spill <span class="drip">&amp; OOM.</span></h1>
+    <p class="lede">Where the data actually lives while a task runs — Spark's four heap regions, the borrow-and-evict rules that let execution beat cache, and why the same job either finishes, quietly spills to disk, or dies with an OOM.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">memory.fraction <b>0.6</b></span>
+      <span class="pill">storageFraction <b>0.5</b></span>
+      <span class="pill">reserved <b>300 MiB</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p>An <strong>executor</strong> is a JVM process on a worker node that runs your tasks and holds cached data. Its heap is not one undifferentiated pool — Spark's <strong>UnifiedMemoryManager</strong> carves it into four regions, and which region runs out first decides whether your job is fast, slow (spills to disk), or dead (OOM):</p>
+    <ul>
+      <li><strong>Reserved (300 MiB)</strong> — a fixed slice carved off first for Spark internals.</li>
+      <li><strong>User memory (~40%)</strong> — your data structures, UDF state, Spark metadata; <em>not</em> managed by the unified manager.</li>
+      <li><strong>Unified region <code>M</code></strong> = <code>spark.memory.fraction</code> × (heap − 300 MiB), <strong>0.6</strong> by default — the shared pool for the two consumers that do the work:
+        <ul>
+          <li><strong>Execution</strong> — shuffle / sort / aggregation / join buffers (transient).</li>
+          <li><strong>Storage</strong> — cached/persisted blocks + broadcast data (long-lived).</li>
+        </ul>
+      </li>
+      <li><strong>Storage floor <code>R</code></strong> = <code>spark.memory.storageFraction</code> × M, <strong>0.5</strong> by default — the part of cache execution <em>cannot</em> evict.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Execution and Storage share region <code>M</code> and borrow from each other — but the borrowing is <strong>asymmetric</strong>. <strong>Execution can evict Storage</strong> down to <code>R</code>; <strong>Storage can never evict Execution.</strong> A running task must make progress; a cached block can always be recomputed. Active work beats cached convenience — and that single fact explains most spill/OOM puzzles.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Spill and OOM are the two most common "slow / dead job" tickets</strong> — both are memory-region problems you can only diagnose if you know which region (execution vs storage) was under pressure.</li>
+      <li><strong>Spill is silent tax.</strong> When execution memory is exhausted, Spark spills to local disk and the job <em>still finishes</em> — just much slower (disk I/O + extra GC). Many "slow Spark jobs" are really un-noticed spill.</li>
+      <li><strong>Executor OOM kills the task</strong> when even spilling can't keep a partition within the container limit — usually a skewed partition, cache pinned in <code>R</code>, or oversized Python workers.</li>
+      <li><strong>PySpark adds a region the heap diagram doesn't show.</strong> Python UDFs run in worker processes <em>outside</em> the JVM heap and count against <em>overhead</em>, not <code>M</code> — the #1 hidden PySpark OOM, where bumping <code>spark.executor.memory</code> does nothing.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: UNIFIED MEMORY BAR ============ -->
+  <section>
+    <h2>See it work — the unified memory bar</h2>
+    <p>Drag <strong>execution demand</strong> and <strong>storage (cache) demand</strong>. Watch execution <em>borrow</em> free space, then <em>evict</em> cache down to the <code>R</code> floor when it needs more — and watch cache yield (it can never push execution back). Push total demand past <code>M</code> and a hatched <strong>spill</strong> segment appears; push it past the whole heap and the executor <strong>OOMs</strong>.</p>
+    <div class="lab" id="lab-mem">
+      <div class="lab-head"><span class="lab-title">Executor unified-memory simulator</span></div>
+      <p class="lab-sub">A default <code>spark.executor.memory = 1g</code> executor: usable ≈ 724 MiB, <code>M</code> ≈ 434 MiB, <code>R</code> ≈ 217 MiB.</p>
+      <div class="controls">
+        <div class="filterbar"><label>Execution demand <input type="range" id="mm-exec" min="0" max="520" value="120"><span class="sizeval" id="mm-execval">120 MiB</span></label></div>
+        <div class="filterbar"><label>Storage (cache) demand <input type="range" id="mm-stor" min="0" max="520" value="260"><span class="sizeval" id="mm-storval">260 MiB</span></label></div>
+      </div>
+      <div class="membar" id="mm-bar">
+        <div class="seg-r m-reserved" style="flex-basis:30%">reserved</div>
+        <div class="seg-r m-user" style="flex-basis:20%">user</div>
+        <div class="seg-r m-storage" style="flex-basis:25%">storage</div>
+        <div class="seg-r m-exec" style="flex-basis:25%">execution</div>
+        <div class="seg-r m-spill" style="flex-basis:0%"></div>
+      </div>
+      <div class="rfloor"><span class="mark" id="mm-rmark" style="left:60%">R floor (cache immune)</span></div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="mm-evict">—</div><div class="lbl">cache evicted by execution</div></div>
+        <div class="stat win"><div class="big" id="mm-spill">—</div><div class="lbl">spill to disk</div></div>
+        <div class="stat"><div class="big" id="mm-state">—</div><div class="lbl">executor state</div></div>
+      </div>
+      <div class="verdict" id="mm-verdict"></div>
+      <div class="legend">
+        <span><i class="sw s-res"></i>reserved 300 MiB</span>
+        <span><i class="sw s-usr"></i>user ~40%</span>
+        <span><i class="sw s-sto"></i>storage (cache)</span>
+        <span><i class="sw s-exe"></i>execution</span>
+        <span><i class="sw s-spl"></i>spill (disk)</span>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real accounting is per-task and continuous; the asymmetry (execution evicts storage down to R; storage never evicts execution) is exact.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>1 · Executor memory overview — the four regions</h3>
+    <p><span class="chip analogy">analogy</span> The executor heap is a <strong>shared commercial kitchen</strong>: a walled-off <strong>back office</strong> (reserved 300 MiB), your <strong>private pantry</strong> (user memory), and one big <strong>shared counter</strong> (region <code>M</code>). On that counter the <strong>active cooking workspace</strong> (execution) and the <strong>shelf of prepped ingredients</strong> (storage/cache) share the surface — the cook can shove ingredients aside, but the shelf can never push the cook off.</p>
+    <ul>
+      <li><strong>Reserved = 300 MiB</strong> (fixed), carved off first.</li>
+      <li><strong>Usable heap</strong> = <code>spark.executor.memory</code> − 300 MiB (default <code>spark.executor.memory = 1g</code>).</li>
+      <li><strong>Unified <code>M</code></strong> = <code>0.6</code> × usable heap.</li>
+      <li><strong>User memory</strong> = the remaining <strong>~40%</strong> — user objects, UDF state, metadata, and a safety cushion.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> On a default 1 GB executor, <code>M ≈ 0.6 × (1024 − 300) ≈ 434 MiB</code> is <em>all</em> that's shared between every shuffle buffer and every cached block — which is why a heavy shuffle and a big cache in the same stage fight for the same few hundred MiB.</p>
+
+    <h3>2 · Execution vs storage — two consumers, two lifecycles</h3>
+    <ul>
+      <li><strong>Execution memory</strong> — buffers for <strong>shuffle, sort, aggregation, join</strong>. <em>Transient</em>: grabbed by a task, freed when it finishes. Short → <strong>spill</strong>.</li>
+      <li><strong>Storage memory</strong> — <strong>cached/persisted blocks + broadcast</strong>. <em>Long-lived</em>: stays until evicted or <code>unpersist()</code>-ed. Over-allocated → starves execution.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> Execution is scratch paper you scribble on and toss mid-task; storage is a reference book you keep on the desk all session.</p>
+
+    <h3>3 · The unified model — borrow &amp; the evict asymmetry</h3>
+    <ul>
+      <li><strong>Borrow freely:</strong> "When no execution memory is used, storage can acquire all the available memory and vice versa." Nothing cached → a shuffle can use all of <code>M</code>; nothing shuffling → cache can fill all of <code>M</code>.</li>
+      <li><strong>Execution may evict Storage — down to <code>R</code>.</strong> A task needing execution memory evicts cached blocks <em>above</em> <code>R</code>. Blocks inside <code>R</code> (= 0.5 × M) are <strong>immune</strong>.</li>
+      <li><strong>Storage may NOT evict Execution.</strong> If cache wants more but execution holds it, cache just doesn't get it — the new block spills to disk (per its storage level) or isn't cached.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">Why the asymmetry exists</span>
+      A running task <em>must</em> make progress to finish the stage — evicting its buffers would fail or deadlock it. A cached block is only an optimization: if evicted, Spark <strong>recomputes</strong> it from lineage. So the rule is simply <em>active work beats cached convenience</em>.
+    </div>
+    <p><span class="chip usecase">use case</span> You <code>cache()</code> a 400 MiB DataFrame then aggregate it; the aggregation evicts cache blocks above <code>R</code>, so the cache ends up smaller than expected and the next read partly recomputes — the asymmetry biting a real job.</p>
+
+    <h3>4 · Data spilling — the warning sign before death</h3>
+    <ul>
+      <li><strong>What it is:</strong> when <strong>execution</strong> memory is exhausted during a shuffle/sort/agg/join, Spark spills the in-memory structures to <strong>local disk</strong>. Docs: "When data does not fit in memory Spark will spill these tables to disk, incurring the additional overhead of disk I/O and increased garbage collection."</li>
+      <li><strong>What it means:</strong> the job <strong>still finishes</strong> — spill is graceful degradation, not a crash — but pays disk I/O + more GC, so a spilling stage can be several times slower.</li>
+      <li><strong>How to see it:</strong> Spark UI shows <strong>Spill (Memory)</strong> and <strong>Spill (Disk)</strong> per task/stage. Any non-zero spill is a flag.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> Spill is overflow parking: the lot (execution memory) is full, so cars (data) park in the muddy field down the road (disk). Everyone still parks — it's just slower to walk back.</p>
+
+    <h3>5 · Why &amp; how executor OOM — when spilling isn't enough</h3>
+    <p>OOM (<code>java.lang.OutOfMemoryError</code>) happens when <strong>even spilling can't keep a partition within the container limit</strong>. Common causes:</p>
+    <ul>
+      <li><strong>A single huge/skewed partition</strong> — one key holds most rows; one task's buffers exceed memory faster than spill drains them (fixed in Lesson 08).</li>
+      <li><strong>Too many cached blocks pinned in <code>R</code></strong> — <code>R</code> is eviction-immune, so a heavily-cached executor leaves little room for execution.</li>
+      <li><strong>Oversized Python workers</strong> — grow past the overhead allotment; the cluster manager kills the container (sub-topic 7).</li>
+      <li><strong>Too-small <code>spark.executor.memory</code> / overhead</strong> for the partition size.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A <code>groupBy</code> where 90% of rows share one value → one task builds a hash aggregation for 90% of the data → spills, spills, then exceeds the container and the executor dies. <strong>Fix the skew, don't just add RAM.</strong></p>
+
+    <h3>6 · Off-heap memory — outside the JVM, no GC</h3>
+    <ul>
+      <li><strong>What it is:</strong> memory <strong>outside the JVM heap</strong> (Tungsten/<code>Unsafe</code>), so it's <strong>not garbage-collected</strong> — no GC pauses for that data.</li>
+      <li><strong>Configs:</strong> <code>spark.memory.offHeap.enabled = false</code> (default), <code>spark.memory.offHeap.size = 0</code> (default; <strong>must be &gt; 0 when enabled</strong>). When on, the docs advise you <em>"shrink your JVM heap size accordingly."</em></li>
+      <li><strong>Trade-off:</strong> less GC pressure on large heaps, but you must hand-size it; mainly a win when GC is the bottleneck (Lesson 10).</li>
+    </ul>
+
+    <h3>7 · PySpark (Python-worker) memory — the region outside the bar</h3>
+    <ul>
+      <li><strong>Where Python runs:</strong> Python UDFs, <code>mapInPandas</code>, Pandas/Arrow UDFs, RDD <code>map</code> in Python run in <strong>separate Python worker processes outside the JVM heap</strong> — they do <em>not</em> use region <code>M</code>.</li>
+      <li><strong>The default:</strong> <code>spark.executor.pyspark.memory</code> is <strong>Not set</strong>. When unset, Spark does not limit the Python workers and they count against the <strong>container's overhead/limit</strong> — a hidden OOM cause.</li>
+      <li><strong>Overhead covers it:</strong> <code>spark.executor.memoryOverhead</code> = <code>executor.memory × 0.10</code> (factor; 0.40 for K8s non-JVM), min <code>384m</code>. Overhead = off-heap + shuffle/network buffers + (when <code>pyspark.memory</code> unset) the Python workers.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A Pandas UDF that materializes a big batch per group blows the container while the JVM heap looks fine. The cure is <strong>more overhead</strong> (or a smaller batch / native function), <strong>not</strong> a bigger <code>spark.executor.memory</code>.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: OFF-HEAP & PYSPARK TOGGLE ============ -->
+  <section>
+    <h2>The memory the heap diagram hides</h2>
+    <p>Off-heap and Python-worker memory live <strong>outside</strong> the JVM bar above. Toggle them to see where they sit and which budget they spend — and why a Python-heavy OOM is an <em>overhead</em> bug, not a heap bug.</p>
+    <div class="lab" id="lab-outside">
+      <div class="lab-head"><span class="lab-title">Inside the heap vs outside the heap</span></div>
+      <p class="lab-sub">The unified bar (left) is JVM heap. The boxes on the right are separate budgets the cluster manager tracks.</p>
+      <div class="controls">
+        <div class="seg" id="ot-offheap" role="group" aria-label="off-heap">
+          <button data-on="false" aria-pressed="true">Off-heap: off</button>
+          <button data-on="true" aria-pressed="false">Off-heap: on</button>
+        </div>
+        <div class="seg" id="ot-py" role="group" aria-label="python workers">
+          <button data-on="false" aria-pressed="true">Python UDF: off</button>
+          <button data-on="true" aria-pressed="false">Python UDF: on</button>
+        </div>
+      </div>
+      <div class="membar" style="margin-top:18px">
+        <div class="seg-r m-reserved" style="flex-basis:18%">reserved</div>
+        <div class="seg-r m-user" style="flex-basis:30%">user</div>
+        <div class="seg-r m-storage" style="flex-basis:26%">storage</div>
+        <div class="seg-r m-exec" style="flex-basis:26%">execution</div>
+      </div>
+      <p class="lab-sub" style="margin:6px 0 0">↑ JVM heap (region M + user + reserved) — managed by the UnifiedMemoryManager</p>
+      <div class="extra">
+        <div class="extbox" id="ot-box-off"><span class="t">off-heap (Tungsten)</span>Outside the heap, no GC. Disabled by default; sized with <code>offHeap.size</code>.</div>
+        <div class="extbox" id="ot-box-py"><span class="t">python workers</span>Outside the heap. Spend the container's <strong>overhead</strong> budget (min 384m), not region M.</div>
+      </div>
+      <div class="verdict" id="ot-verdict">Both off by default: all memory accounting is the JVM heap bar plus a small overhead reserve.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: off-heap and Python-worker memory are separate from the unified heap regions.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Inspect the unified-memory configs</h3>
+    <pre><span class="tag">python</span><code><span class="c"># The four numbers that define region M. Read them before tuning anything.</span>
+print(spark.conf.get(<span class="s">"spark.executor.memory"</span>))          <span class="c"># default "1g" — the JVM heap</span>
+print(spark.conf.get(<span class="s">"spark.memory.fraction"</span>))          <span class="c"># default "0.6" — M = 0.6 * (heap - 300 MiB)</span>
+print(spark.conf.get(<span class="s">"spark.memory.storageFraction"</span>))   <span class="c"># default "0.5" — R = 0.5 * M (eviction-immune cache)</span>
+
+<span class="c"># VERIFY (do the arithmetic): on a 1g executor,</span>
+<span class="c">#   usable = 1024 - 300 = 724 MiB ; M = 0.6 * 724 ≈ 434 MiB ; R = 0.5 * 434 ≈ 217 MiB</span>
+<span class="c"># That ~434 MiB is shared by EVERY shuffle buffer AND every cached block on the executor.</span></code></pre>
+
+    <h3>See (and cure) a spill</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="c"># CREATE the condition: a wide aggregation over many groups stresses EXECUTION memory.</span>
+big = spark.range(<span class="f">0</span>, <span class="f">200_000_000</span>).withColumn(<span class="s">"k"</span>, (F.rand() * <span class="f">50_000_000</span>).cast(<span class="s">"long"</span>))
+agg = big.groupBy(<span class="s">"k"</span>).count()
+
+<span class="c"># VERIFY the spilling operator is in the plan:</span>
+agg.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   look for: HashAggregate(keys=[k], ...)  +  Exchange hashpartitioning(k, 200)</span>
+<span class="c">#   HashAggregate is the execution-memory consumer that spills when M is exhausted.</span>
+
+<span class="c"># Run the job, then READ THE UI:</span>
+agg.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()
+<span class="c"># Spark UI → Stages → aggregation stage → columns "Spill (Memory)" / "Spill (Disk)".</span>
+<span class="c"># Non-zero spill = execution memory ran out. Cure: more, smaller partitions:</span>
+spark.conf.set(<span class="s">"spark.sql.shuffle.partitions"</span>, <span class="f">800</span>)   <span class="c"># smaller slices → less per-task memory</span>
+<span class="c"># Re-run and confirm the spill columns drop toward zero. (Reset the conf afterwards.)</span></code></pre>
+
+    <h3>Watch execution evict storage (the asymmetry)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark <span class="k">import</span> StorageLevel
+
+<span class="c"># Cache a DataFrame, then run heavy EXECUTION work on it in the same stage.</span>
+cached = big.persist(StorageLevel.MEMORY_AND_DISK)   <span class="c"># DataFrame default; spills cache to disk</span>
+cached.count()                                        <span class="c"># materialize (cache is lazy until an action)</span>
+
+heavy = cached.groupBy(<span class="s">"k"</span>).count()                   <span class="c"># execution now competes with the cache</span>
+heavy.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()
+
+<span class="c"># VERIFY in Spark UI → Storage tab: the cached DataFrame may show < 100% "Fraction Cached"</span>
+<span class="c"># — execution EVICTED cache blocks above R to make room. Storage could not evict execution.</span>
+cached.unpersist()                                    <span class="c"># always release cache when done (frees R)</span></code></pre>
+
+    <h3>Enable off-heap memory (when GC is the bottleneck)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Off-heap lives OUTSIDE the JVM heap → no GC for that data. Size it explicitly, and</span>
+<span class="c"># shrink the heap so you don't double-count RAM (per the tuning docs).</span>
+spark.conf.set(<span class="s">"spark.memory.offHeap.enabled"</span>, <span class="s">"true"</span>)
+spark.conf.set(<span class="s">"spark.memory.offHeap.size"</span>, str(<span class="f">2</span> * <span class="f">1024</span> * <span class="f">1024</span> * <span class="f">1024</span>))  <span class="c"># 2 GiB in bytes (>0)</span>
+
+<span class="c"># VERIFY: Spark UI → Executors tab → "Off Heap Memory Used / Total" becomes non-zero, and</span>
+<span class="c"># Stages "GC Time" drops for the same workload. Set these at CLUSTER creation in production.</span></code></pre>
+
+    <h3>Budget Python-worker memory (the hidden OOM)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Python UDFs / Pandas UDFs run OUTSIDE the JVM heap, against the container's OVERHEAD.</span>
+<span class="c"># Default: spark.executor.pyspark.memory is NOT set → Spark does not limit Python workers.</span>
+print(spark.conf.get(<span class="s">"spark.executor.pyspark.memory"</span>, <span class="s">"&lt;not set&gt;"</span>))   <span class="c"># → "&lt;not set&gt;" by default</span>
+
+<span class="c"># For a Python-heavy job that OOMs the CONTAINER (not the heap), raise OVERHEAD at cluster</span>
+<span class="c"># creation (not runtime-settable per query):</span>
+<span class="c">#   spark.executor.memoryOverheadFactor = 0.10   (default; covers off-heap + shuffle + Python)</span>
+<span class="c">#   spark.executor.memoryOverhead       = "2g"   (an explicit floor for Python-heavy work)</span>
+<span class="c"># VERIFY: container OOM kills (Executors tab "Failed Tasks" / logs) stop after raising overhead</span>
+<span class="c"># — whereas bumping spark.executor.memory alone would NOT have helped.</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: OOM CAUSE WALKTHROUGH ============ -->
+  <section>
+    <h2>Diagnose an executor OOM, cause by cause</h2>
+    <p>Click each cause to see how to confirm it in the Spark UI and the fix that actually works (hint: it's rarely "add more heap").</p>
+    <div class="lab" id="lab-oom">
+      <div class="lab-head"><span class="lab-title">Executor OOM triage</span></div>
+      <p class="lab-sub">When even spilling can't keep a partition in the container, the executor dies. Which cause is it?</p>
+      <div class="step" data-step><div class="head"><span class="ix">01</span> A single huge / skewed partition</div><div class="detail">One key holds most of the rows, so one task's buffers exceed memory faster than spill can drain them. <strong>Confirm:</strong> Spark UI → Stages → the task-time distribution shows <em>max ≫ median</em>, and that one task has huge Shuffle Read + Spill before it dies. <strong>Fix:</strong> AQE skew join, then salting (Lesson 08) — split the hot key across many partitions. Adding heap only delays the OOM.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">02</span> Too many cached blocks pinned in <code>R</code></div><div class="detail"><code>R</code> = 0.5 × M is immune to eviction, so a heavily-cached executor leaves little room for execution. <strong>Confirm:</strong> Spark UI → Storage tab shows large cached DataFrames; the OOM stage is a shuffle/agg that needs execution memory. <strong>Fix:</strong> cache less, use a disk-spilling / serialized level, and <code>unpersist()</code> early (Lesson 06) — not more memory.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">03</span> Oversized Python workers (overhead, not heap)</div><div class="detail">Python UDFs / Pandas UDFs run outside the JVM heap and spend the container's <strong>overhead</strong> budget. A big per-group batch blows the container while the heap is idle. <strong>Confirm:</strong> Executors tab shows the JVM heap healthy but the container is killed (OOM in logs). <strong>Fix:</strong> raise <code>spark.executor.memoryOverhead</code> / set <code>spark.executor.pyspark.memory</code>, or shrink the batch — <em>not</em> <code>spark.executor.memory</code>.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">04</span> Too-small <code>executor.memory</code> / overhead</div><div class="detail">The heap or overhead is simply undersized for the partition size. <strong>Confirm:</strong> no skew (task times even), little cache, no Python — yet every task spills heavily and some die. <strong>Fix:</strong> add partitions first (smaller slices fit in M); only then raise <code>spark.executor.memory</code> or overhead. This is the <em>only</em> case where "more memory" is the right first move.</div></div>
+      <div class="verdict">The triage order: <b>which region failed?</b> Heap (execution/storage) → fix skew / cache / partitions. Container overhead (Python/off-heap) → raise overhead. The fix is wrong if you don't first name the region.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the common executor-OOM causes and their Spark-UI signatures.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Execution memory</th><th>Storage memory</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Holds</strong></td><td>Shuffle / sort / agg / join buffers</td><td>Cached/persisted blocks + broadcast</td></tr>
+        <tr><td><strong>Lifecycle</strong></td><td>Transient (per-task, freed on completion)</td><td>Long-lived (until evicted / <code>unpersist()</code>)</td></tr>
+        <tr><td><strong>Lives in</strong></td><td>Region <code>M</code> (shared)</td><td>Region <code>M</code>; guaranteed <code>R</code> = 0.5 × M</td></tr>
+        <tr><td><strong>Can evict the other?</strong></td><td><strong>Yes</strong> — evicts Storage down to <code>R</code></td><td><strong>No</strong> — never evicts Execution</td></tr>
+        <tr><td><strong>When short →</strong></td><td><strong>Spill to disk</strong> (slow, but finishes)</td><td>New block spills / isn't cached</td></tr>
+        <tr><td><strong>Failure mode</strong></td><td>OOM if even spill can't keep up</td><td>Pressures execution → spill/OOM elsewhere</td></tr>
+        <tr><td><strong>Tune with</strong></td><td>shuffle partitions, fix skew, off-heap</td><td>cache less, serialized/disk levels, <code>unpersist()</code></td></tr>
+      </tbody>
+    </table>
+    <table class="tbl">
+      <thead><tr><th>Region</th><th>Formula (default)</th><th>On a 1g executor</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Reserved</strong></td><td>300 MiB (fixed)</td><td>300 MiB</td></tr>
+        <tr><td><strong>Usable heap</strong></td><td><code>executor.memory</code> − 300 MiB</td><td>~724 MiB</td></tr>
+        <tr><td><strong>Unified <code>M</code></strong></td><td><code>0.6</code> × usable</td><td>~434 MiB</td></tr>
+        <tr><td><strong>Storage floor <code>R</code></strong></td><td><code>0.5</code> × M</td><td>~217 MiB</td></tr>
+        <tr><td><strong>User memory</strong></td><td>~40% × usable</td><td>~290 MiB</td></tr>
+        <tr><td><strong>Off-heap</strong></td><td><code>0</code> (disabled by default)</td><td>0</td></tr>
+        <tr><td><strong>Python workers</strong></td><td>outside heap; vs <strong>overhead</strong> (min 384m)</td><td>not in <code>M</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Diagnose a slow stage</strong> → check <strong>Spill (Memory/Disk)</strong>; spill = execution short. Add partitions / fix skew before adding RAM.</li>
+      <li><strong>Diagnose an executor OOM</strong> → decide <em>which</em> region failed: heap (execution/storage) vs container overhead (Python/off-heap). The fix differs completely.</li>
+      <li><strong>Right-size caching</strong> → cache lives in <code>M</code> and only <code>R</code> is safe; don't cache so much that execution starves (Lesson 06).</li>
+      <li><strong>Tame GC on big heaps</strong> → enable <strong>off-heap</strong> (Lesson 10) so cached data leaves the heap.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>Skew AQE can't fully fix</strong> — a key so dominant that even split sub-partitions exceed memory; fall back to salting (Lesson 08) or a different key.</li>
+      <li><strong>Cache pinned in <code>R</code></strong> — heavily-cached executors look "fine on heap" but OOM under a shuffle; the cure is <em>less</em> cache.</li>
+      <li><strong>Python-worker blow-up</strong> — a huge Pandas UDF batch OOMs the <em>container</em> while the heap is idle; raise <strong>overhead</strong>.</li>
+      <li><strong>Broadcast in storage</strong> — a broadcast relation consumes storage memory on every executor; a near-threshold broadcast (Lesson 02) pressures <code>M</code> cluster-wide.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>The unified model manages only the <strong>JVM heap regions</strong> (<code>M</code> + user) — <em>not</em> Python workers, off-heap (unless enabled), or the container limit. Those are separate budgets.</li>
+      <li><code>spark.memory.fraction</code> / <code>storageFraction</code> are <strong>cluster/JVM-level</strong>; changing them mid-session does <em>not</em> resize a running executor — set them at cluster creation.</li>
+      <li>Spill makes a job <strong>slow, not safe forever</strong> — a large enough skewed partition still OOMs no matter how much it spills.</li>
+      <li><strong>OSS vs Databricks:</strong> the unified-memory math (<code>0.6</code>/<code>0.5</code>/300 MiB/overhead 0.10) is identical; Databricks may layer its own overhead/Photon accounting on top — verify sizing in the Azure Databricks compute docs.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>"Add more <code>executor.memory</code>" as the reflex fix.</strong> If a Python worker or off-heap blows the <em>container</em>, more heap does nothing — raise <strong>overhead</strong>. If it's skew spill, more heap just delays the OOM.</li>
+      <li><strong>Thinking the split is a static 60/40.</strong> It's <em>unified</em> — either can use all of <code>M</code>. The only fixed guarantee is <code>R</code>, the eviction-immune cache floor.</li>
+      <li><strong>Believing storage can evict execution.</strong> It can't, ever. Cache yields to active work — this one fact explains most spill/OOM puzzles.</li>
+      <li><strong>Ignoring non-zero spill because "the job finished."</strong> Spill is the early warning; a slightly bigger input tomorrow turns it into an OOM.</li>
+      <li><strong>Caching everything.</strong> Cached blocks pin storage in <code>R</code> and pressure GC; cache only reused DataFrames, with the right level, and <code>unpersist()</code> when done (Lesson 06).</li>
+      <li><strong>Forgetting Python lives outside the heap.</strong> The unified-memory bar does <em>not</em> include Python workers — they're an overhead-budget item, the #1 hidden PySpark OOM.</li>
+      <li><strong>Changing <code>spark.memory.fraction</code> at runtime</strong> and expecting it to apply — it's a cluster-launch setting.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/tuning.html">Apache Spark — Tuning Guide (memory management, unified model, spill, GC)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (executor.memory, memory.fraction, storageFraction, offHeap.*, memoryOverhead, pyspark.memory)</a>
+      <a href="https://spark.apache.org/docs/latest/cluster-overview.html">Apache Spark — Cluster overview (executors, what runs where)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/compute/configure">Azure Databricks — Compute configuration (cluster/driver/executor sizing)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. The unified-memory math (0.6 / 0.5 / 300 MiB / overhead 0.10) is identical OSS-Spark vs Databricks; Databricks-specific overhead/Photon accounting is noted where it differs.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: unified executor-memory bar (two sliders → borrow / evict / spill / OOM) ---- */
+(function(){
+  const root = document.getElementById('lab-mem');
+  if(!root) return;
+  // Fixed geometry of a default 1g executor, in MiB.
+  const RESERVED = 300, USABLE = 724, M = Math.round(0.6 * USABLE), R = Math.round(0.5 * M); // 434, 217
+  const USER = USABLE - M;                 // ~290 MiB
+  const HEAP = RESERVED + USABLE;          // 1024 MiB total bar baseline
+  const execIn = root.querySelector('#mm-exec');
+  const storIn = root.querySelector('#mm-stor');
+  const execVal = root.querySelector('#mm-execval');
+  const storVal = root.querySelector('#mm-storval');
+  const bar = root.querySelector('#mm-bar');
+  const segRes = bar.querySelector('.m-reserved');
+  const segUsr = bar.querySelector('.m-user');
+  const segSto = bar.querySelector('.m-storage');
+  const segExe = bar.querySelector('.m-exec');
+  const segSpl = bar.querySelector('.m-spill');
+  const rmark = root.querySelector('#mm-rmark');
+  const elEvict = root.querySelector('#mm-evict');
+  const elSpill = root.querySelector('#mm-spill');
+  const elState = root.querySelector('#mm-state');
+  const verdict = root.querySelector('#mm-verdict');
+
+  function render(){
+    const execD = parseInt(execIn.value, 10);   // execution demand (MiB)
+    const storD = parseInt(storIn.value, 10);    // storage/cache demand (MiB)
+    execVal.textContent = execD + ' MiB';
+    storVal.textContent = storD + ' MiB';
+
+    // Execution wins region M. It can take up to all of M, evicting storage down to R.
+    const execInM = Math.min(execD, M);
+    // Storage gets whatever M is left after execution, but is guaranteed at least min(storD, R).
+    const storCap = Math.max(M - execInM, Math.min(storD, R));
+    const storInM = Math.min(storD, storCap);
+    // Cache the user WANTED but execution evicted (above R), shown as evicted-to-disk/recompute.
+    const evicted = Math.max(0, Math.min(storD, M) - storInM) + Math.max(0, storD - M);
+    // Execution that didn't fit in M spills to disk.
+    const spill = Math.max(0, execD - M);
+    // OOM if execution demand alone can't be held even with all of M and spill is enormous,
+    // or total live heap demand exceeds the usable heap by a wide margin.
+    const liveHeap = execInM + storInM;          // what actually sits in M
+    const oom = (execD > M + 220) || (execInM + storInM > USABLE && execD > M);
+
+    // Bar widths as % of the full heap baseline (+ spill drawn beyond as extra).
+    const baseTotal = HEAP + spill;              // extend the bar when spilling
+    segRes.style.flexBasis = (RESERVED / baseTotal * 100) + '%';
+    segUsr.style.flexBasis = (USER / baseTotal * 100) + '%';
+    segSto.style.flexBasis = (storInM / baseTotal * 100) + '%';
+    segExe.style.flexBasis = (execInM / baseTotal * 100) + '%';
+    segSpl.style.flexBasis = (spill / baseTotal * 100) + '%';
+    segSto.textContent = storInM > 40 ? 'storage ' + storInM : '';
+    segExe.textContent = execInM > 40 ? 'exec ' + execInM : '';
+    segSpl.textContent = spill > 40 ? 'spill ' + spill : '';
+    // R floor marker: position at reserved+user+R along the heap baseline.
+    rmark.style.left = ((RESERVED + USER + R) / baseTotal * 100) + '%';
+
+    elEvict.textContent = evicted > 0 ? evicted + ' MiB' : 'none';
+    elSpill.textContent = spill > 0 ? spill + ' MiB' : 'none';
+
+    bar.classList.toggle('oom', oom);
+    if(oom){
+      elState.textContent = 'OOM';
+      elState.parentElement.querySelector('.big').style.color = '#ef4444';
+      verdict.innerHTML = '<b>Executor OOM.</b> Execution demand (' + execD + ' MiB) exceeds region M (' + M + ' MiB) by more than spill can absorb within the container — the executor dies. Fix the cause (skew → smaller partitions / salting), don\'t just add heap.';
+    } else if(spill > 0){
+      elState.textContent = 'spilling';
+      elState.parentElement.querySelector('.big').style.color = 'var(--flame)';
+      verdict.innerHTML = '<b>Execution spilled ' + spill + ' MiB to disk.</b> M (' + M + ' MiB) was exhausted, so the job still finishes — just slower (disk I/O + GC).' + (evicted>0 ? ' It first evicted ' + evicted + ' MiB of cache down to the R floor (' + R + ' MiB).' : '') + ' Watch "Spill (Disk)" in the Stages tab.';
+    } else if(evicted > 0){
+      elState.textContent = 'healthy';
+      elState.parentElement.querySelector('.big').style.color = 'var(--violet)';
+      verdict.innerHTML = '<b>Execution borrowed from storage.</b> It evicted ' + evicted + ' MiB of cache (blocks above R) to fit — storage yielded because it can never evict execution. The cache below R (' + R + ' MiB) stays safe.';
+    } else {
+      elState.textContent = 'healthy';
+      elState.parentElement.querySelector('.big').style.color = 'var(--violet)';
+      verdict.innerHTML = '<b>Comfortable.</b> Execution (' + execInM + ' MiB) and cache (' + storInM + ' MiB) both fit inside M (' + M + ' MiB) — no eviction, no spill.';
+    }
+  }
+  execIn.addEventListener('input', render);
+  storIn.addEventListener('input', render);
+  render();
+})();
+
+/* ---- Diagram 2: off-heap & python-worker toggle (memory outside the heap) ---- */
+(function(){
+  const root = document.getElementById('lab-outside');
+  if(!root) return;
+  const offSeg = root.querySelector('#ot-offheap');
+  const pySeg  = root.querySelector('#ot-py');
+  const boxOff = root.querySelector('#ot-box-off');
+  const boxPy  = root.querySelector('#ot-box-py');
+  const verdict = root.querySelector('#ot-verdict');
+  let off = false, py = false;
+
+  function render(){
+    boxOff.classList.toggle('on', off);
+    boxPy.classList.toggle('on', py);
+    let msg;
+    if(!off && !py){
+      msg = 'Both off by default: all memory accounting is the JVM heap bar plus a small overhead reserve.';
+    } else if(off && !py){
+      msg = '<b>Off-heap on.</b> Tungsten allocates execution/storage data outside the heap (no GC) — you must size <code>offHeap.size</code> and shrink the heap so you don\'t double-count RAM.';
+    } else if(!off && py){
+      msg = '<b>Python workers active.</b> A Python/Pandas UDF runs in processes outside the heap, spending the container\'s <strong>overhead</strong> budget (min 384m), not region M. If they OOM, raise overhead — not <code>spark.executor.memory</code>.';
+    } else {
+      msg = '<b>Both outside the heap.</b> Off-heap (sized) + Python workers (overhead) both compete for the container limit alongside the JVM heap. A "memory" OOM here is almost never a heap problem — it\'s an overhead/sizing problem.';
+    }
+    verdict.innerHTML = msg;
+  }
+  offSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    off = b.dataset.on === 'true';
+    offSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  pySeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    py = b.dataset.on === 'true';
+    pySeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  render();
+})();
+
+/* ---- Diagram 3: executor-OOM triage accordion ---- */
+(function(){
+  const root = document.getElementById('lab-oom');
+  if(!root) return;
+  root.querySelectorAll('[data-step]').forEach(function(step){
+    step.addEventListener('click', function(){ step.classList.toggle('open'); });
+  });
+})();
+</script>
+</body>
+</html>

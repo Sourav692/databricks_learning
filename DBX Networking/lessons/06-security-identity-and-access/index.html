@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 6 — Security, Identity &amp; Access · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:780px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"\2713";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"\2715";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 6</div>
+  <h1>Security, Identity &amp; Access</h1>
+  <div class="subtitle">The guarded front door of the platform — for the FDE/RSA who has to explain
+    <strong>who is on the other end of the connection, how they prove it, and from where they may
+    connect</strong> to a customer's security team. Everything here hardens <strong>path ① (user →
+    control plane)</strong>; authorization (Unity Catalog) is topic 6.3.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">6.1 Identity &amp; Authentication</span>
+    <span class="badge">6.2 Network Access Controls</span>
+    <span class="badge">Architect altitude</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t61">6.1 · Identity &amp; Authentication</button>
+  <button data-tab="t62">6.2 · Network Access Controls</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>The front door, and the layers around it</h2>
+  <p>Networking (Stages 1–4) decided <em>which network paths</em> can reach a workspace. This topic decides
+    <strong>who is on the other end and from where</strong>. Two subtopics: <strong>6.1 Identity</strong>
+    (who are you, how proven) and <strong>6.2 Network access controls</strong> (from where you connect).
+    Both harden the <strong>start of path ① (user/client → control plane)</strong> — they do nothing for
+    path ② (compute ↔ control) or path ③ (compute → storage).</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>Identity is the front door; network controls are the layers around it.</strong> Microsoft
+      Entra ID is the single keymaker that issues badges (SSO); a service principal is a robot's badge; a
+      token is a day-pass. At the door: <strong>Conditional Access</strong> is the badge reader,
+      <strong>IP access lists</strong> are the bouncer reading the return address, and <strong>front-end
+      Private Link</strong> is a private tunnel that bricks over the public door. <em>Define identity once
+      in Entra ID, prove it via SSO or short-lived OAuth, then gate the door by where the request comes
+      from.</em></p>
+  </div>
+
+  <h3>The one crossover to remember</h3>
+  <div class="callout warn">
+    <h4>A path-① control can break path ②</h4>
+    <p>Under <strong>Secure Cluster Connectivity (No Public IP)</strong>, the classic compute plane's
+      <strong>egress IP</strong> also knocks on this same front door. If you enable a workspace IP access
+      list and forget that egress IP, <strong>classic clusters won't launch</strong> — the #1 self-inflicted
+      break in this topic.</p>
+  </div>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks identity and network access: Microsoft Entra ID as
+      source of truth syncs into the Databricks account; humans authenticate via browser SSO + MFA and
+      robots via service-principal OAuth M2M; the workspace front door is gated by Conditional Access,
+      context-based ingress + IP access lists (IPv4, must allow the SCC egress IP); front-end Private Link
+      replaces the public door with private endpoints in a transit VNet." />
+    <figcaption class="caption">Identity (6.1) proves WHO; the gated front door and the private tunnel (6.2)
+      prove FROM WHERE. PATs / pre-issued tokens bypass Conditional Access.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Microsoft Entra ID is our single source of truth — humans log in with SSO + MFA, every production
+      job runs as a service principal on short-lived OAuth, and long-lived PATs are capped or disabled.
+      The workspace front door is then gated by Conditional Access, IP access lists, and — where a
+      regulator demands it — front-end Private Link that removes the public door entirely. The controls
+      <strong>stack</strong>; you don't pick one."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive lives in the owning module)</h4>
+    <dl>
+      <dt>Automatic identity mgmt</dt><dd>SCIM-free sync of Entra ID users/groups/SPs (incl. nested) — default after 2025-08-01. → 6.1</dd>
+      <dt>Service principal</dt><dd>A non-human "robot" identity for jobs/CI-CD; authenticates via OAuth M2M. → 6.1</dd>
+      <dt>Conditional Access</dt><dd>Entra ID sign-in policy (MFA / device / location); evaluated before a token is issued. → 6.2</dd>
+      <dt>Context-based ingress</dt><dd>Account-level ingress policy (identity + request type + IP); enforced together with workspace IP lists. → 6.2</dd>
+      <dt>SCC egress IP</dt><dd>The classic compute plane's stable public egress IP — must be on the workspace allow list. → Stage 2.3</dd>
+      <dt>VNet injection</dt><dd>Workspace in your own VNet; required for front-end Private Link. → Stage 2.1</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 6.1 -->
+<section class="panel" id="t61">
+  <h2>6.1 · Identity &amp; Authentication</h2>
+  <p>Microsoft Entra ID is the single source of truth: identities are defined once in the account and
+    assigned to identity-federated workspaces. Switch the diagram between the <strong>provisioning model</strong>
+    (how identities get in) and the <strong>authentication flow</strong> (how humans vs robots prove it), and
+    click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d61','provision',this)">Provisioning model</button>
+    <button onclick="switchView('d61','authflow',this)">Authentication flow (human vs robot)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d61" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d61" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d61" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d61" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d61info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>Account-first is the modern model</h4>
+    <p>Define a user/group/SP <strong>once in the account</strong>, then assign it to identity-federated
+      workspaces. Workspace-local groups (from a legacy non-federated workspace) <strong>cannot</strong>
+      receive Unity Catalog grants — convert them to account groups.</p>
+  </div>
+
+  <h3>Provisioning — Automatic identity management vs SCIM</h3>
+  <table>
+    <thead><tr><th>Capability</th><th>Automatic identity management</th><th>SCIM provisioning</th></tr></thead>
+    <tbody>
+      <tr><td>Sync users / groups</td><td>✓ / ✓</td><td>✓ / ✓ (direct members only)</td></tr>
+      <tr><td>Sync <strong>nested</strong> groups</td><td>✓</td><td>✗</td></tr>
+      <tr><td>Sync <strong>service principals</strong></td><td>✓</td><td>✗</td></tr>
+      <tr><td>Needs an Entra app / admin role</td><td>✗</td><td>✓ (Cloud App Administrator)</td></tr>
+      <tr><td>On by default</td><td>✓ (accounts after 2025-08-01)</td><td>✗</td></tr>
+      <tr><td>Requires identity federation</td><td>✓</td><td>recommended (account-level)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>Don't mix the two on the same identity</h4>
+    <p>Provisioning the same principal via <strong>both SCIM and automatic identity management</strong>
+      creates duplicates and permission conflicts. Pick one source of truth (Databricks recommends
+      automatic identity management; keep SCIM as a documented fallback).</p>
+  </div>
+
+  <h3>PAT vs OAuth — and token lifetime (the part reviewers probe)</h3>
+  <table>
+    <thead><tr><th>Credential</th><th>Lifetime</th><th>Use it when</th><th>Avoid because</th></tr></thead>
+    <tbody>
+      <tr><td><strong>PAT</strong> (legacy)</td><td>max 730 days; auto-revoked after 90 days unused</td><td>A tool only supports PATs</td><td>Long-lived secret; <strong>bypasses Conditional Access</strong></td></tr>
+      <tr><td><strong>OAuth M2M</strong> (service principal)</td><td>Short-lived</td><td>Automation / CI-CD / jobs — recommended</td><td>—</td></tr>
+      <tr><td><strong>OAuth U2M</strong></td><td>Short-lived, auto-refreshed</td><td>Attended CLI/SDK as yourself</td><td>—</td></tr>
+      <tr><td><strong>Entra ID token</strong></td><td>Per Entra policy</td><td>Azure resources that only speak Entra ID</td><td>Not for hand-creating ADB user tokens</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — service principal + token policy</h3>
+  <p class="caption">Databricks CLI — create a robot identity for prod and cap PAT lifetime. Full IaC is the hands-on artifact.</p>
+  <pre><code># Create a Databricks-managed service principal + OAuth M2M secret (account-admin auth).
+databricks account service-principals create --json '{"displayName":"prod-job-runner"}'
+databricks account service-principal-secrets create &lt;SP_ID&gt;   # store secret in Azure Key Vault
+
+# Cap NEW PATs at 90 days (Databricks advises &lt; 90). "0" reverts to the 730-day default.
+databricks workspace-conf set-status --json '{ "maxTokenLifetimeDays": "90" }'
+# Disable PATs entirely (warning: Partner Connect needs PATs ON):
+databricks workspace-conf set-status --json '{ "enableTokensConfig": "false" }'</code></pre>
+  <p class="caption">Portal: <em>Account console → Security → User provisioning → Automatic identity management = Enabled</em>;
+    <em>Account console → User management → Service principals → Add</em>; <em>Workspace → Settings → Advanced → Personal Access Tokens</em>.</p>
+
+  <div class="callout warn">
+    <h4>What breaks &amp; the first check</h4>
+    <p><strong>User logs in but has no access</strong> → is the workspace federated / is the group an
+      <em>account</em> group? <strong>Duplicate users</strong> → same principal via SCIM <em>and</em>
+      automatic identity management? <strong>Job fails to auth</strong> → ran as an off-boarded human, or
+      a PAT that hit its lifetime / the 90-day-unused auto-revoke? (Deactivation does <em>not</em>
+      auto-revoke existing PATs.)</p>
+  </div>
+</section>
+
+<!-- 6.2 -->
+<section class="panel" id="t62">
+  <h2>6.2 · Network access controls for users</h2>
+  <p>Three layers gate the workspace front door, weakest to strongest. Switch the diagram between the
+    <strong>gated public door</strong> (Conditional Access → context ingress + IP list) and the
+    <strong>private tunnel</strong> (front-end Private Link), and click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d62','publicdoor',this)">Gated public door</button>
+    <button onclick="switchView('d62','privatelink',this)">Front-end Private Link (private door)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d62" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d62" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d62" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d62" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d62info"><strong>Tip</strong>Click any box to see what it checks and how it's secured.</div>
+
+  <div class="callout key">
+    <h4>Evaluation order that matters</h4>
+    <p>Conditional Access is evaluated at <strong>sign-in</strong> (before a token issues). Databricks then
+      checks ingress on the <strong>request</strong>: the account-level <strong>context-based ingress</strong>
+      policy and the <strong>workspace IP access list</strong> are <strong>enforced together — a request must
+      pass both</strong>, and a workspace list can only <em>narrow</em>, never widen, what the account policy
+      allows. Front-end Private Link sits beneath all of this — it changes <em>which IP</em> the request even
+      arrives on.</p>
+  </div>
+
+  <h3>The three controls side by side</h3>
+  <table>
+    <thead><tr><th>Control</th><th>What it checks</th><th>Strength</th><th>Tier / prereq</th><th>Key limitation</th></tr></thead>
+    <tbody>
+      <tr><td>IP access list (account / workspace)</td><td>Source IPv4</td><td>Soft</td><td>Premium</td><td>IPv4 only; must allow SCC egress IP; only narrows context ingress</td></tr>
+      <tr><td>Context-based ingress</td><td>Identity + request type + IP</td><td>Medium</td><td>Premium</td><td>Account-level; verify GA/region before prod</td></tr>
+      <tr><td>Entra ID Conditional Access</td><td>Identity, MFA, device, location</td><td>Medium-strong</td><td>Premium + Entra ID Premium</td><td>Interactive sign-in only — <strong>PATs bypass it</strong></td></tr>
+      <tr><td>Front-end Private Link</td><td>Arrives on a private IP in your VNet</td><td><strong>Strongest</strong></td><td>Premium + VNet injection</td><td>Needs <code>browser_authentication</code> PE + private DNS</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — IP list + front-end Private Endpoint</h3>
+  <p class="caption">Workspace IP list (CLI) + the user-facing <code>databricks_ui_api</code> PE (Terraform). Full runbook is the Stage 3 hands-on.</p>
+  <pre><code># Enable first — lists are silently ignored until the flag is true. MUST allow the SCC/NAT egress IP.
+databricks workspace-conf set-status --json '{ "enableIpAccessLists": "true" }'
+databricks ip-access-lists create --json '{
+  "label": "office-and-vpn", "list_type": "ALLOW",
+  "ip_addresses": ["1.1.1.0/24", "203.0.113.7/32"]   # include the SCC/NAT egress IP!
+}'</code></pre>
+  <pre><code>resource "azurerm_private_endpoint" "ui_api" {
+  name                = "adb-fe-ui-api-pe"
+  subnet_id           = azurerm_subnet.transit_pe.id        # PE subnet in the TRANSIT VNet
+  private_service_connection {
+    private_connection_resource_id = azurerm_databricks_workspace.this.id
+    subresource_names              = ["databricks_ui_api"]  # exact sub-resource name
+    is_manual_connection           = false
+  }
+  private_dns_zone_group {                                  # resolve URL to the PRIVATE IP
+    private_dns_zone_ids = [azurerm_private_dns_zone.adb.id] # privatelink.azuredatabricks.net (fixed name)
+  }
+}</code></pre>
+  <p class="caption">Portal: Conditional Access → target app <code>2ff814a6-3304-4ab8-85cb-cd0e6f879c1d</code> (AzureDatabricks),
+    Report-only first; Private Link → add <code>databricks_ui_api</code> + <code>browser_authentication</code> PEs, delete-lock the web-auth workspace, verify <code>nslookup</code> returns the private IP.</p>
+
+  <div class="callout warn">
+    <h4>What breaks &amp; the first check</h4>
+    <p><strong>Clusters won't launch after enabling IP lists</strong> → is the <em>SCC/NAT egress IP</em> on
+      the ALLOW list? <strong>Lists "do nothing"</strong> → is <code>enableIpAccessLists</code> true?
+      <strong>Allowed-but-denied</strong> → the account context-based ingress policy denies it (pass both).
+      <strong>SSO redirect fails after Private Link</strong> → <code>nslookup</code> the regional
+      <code>*.pl-auth.azuredatabricks.net</code>; missing <code>browser_authentication</code> PE or DNS
+      forwarding. <strong>CA "isn't blocking" a tool</strong> → it's using a PAT (bypasses Conditional Access).</p>
+  </div>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Always (any Premium customer)</h3>
+      <ul>
+        <li>Entra ID SSO as the single source of truth</li>
+        <li>Automatic identity management (no Entra app, syncs nested groups + SPs)</li>
+        <li>Every production job as a service principal on OAuth M2M</li>
+        <li>Conditional Access: MFA + block legacy auth + compliant device for admins</li>
+        <li>Cap PATs &lt; 90 days or disable them where a partner tool doesn't need them</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Step up when mandated</h3>
+      <ul>
+        <li>"Users must be on our network" → IP access lists / context-based ingress</li>
+        <li>"No public internet path" → front-end Private Link, Public Network Access = Disabled</li>
+        <li>Cross-tenant identity → SCIM + Entra B2B (not automatic identity management)</li>
+        <li>Pair front-end with back-end Private Link for end-to-end privatization</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Run production jobs as a named human</li>
+        <li>Leave PATs at the 730-day default, or disable them without checking Partner Connect</li>
+        <li>Assume deactivation auto-revokes existing PATs (it doesn't)</li>
+        <li>Double-provision via SCIM <em>and</em> automatic identity management</li>
+        <li>Forget the SCC/NAT egress IP on the workspace allow list</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't over-buy / misuse</h3>
+      <ul>
+        <li>Treat IP access lists as a substitute for Private Link (IPs are soft/spoofable)</li>
+        <li>Rely on Conditional Access for location when PATs are still enabled (they bypass it)</li>
+        <li>Skip <code>browser_authentication</code> when enabling front-end Private Link (SSO breaks)</li>
+        <li>Put the web-auth endpoint on a deletable production workspace</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Identity first, then network location.</strong> Make Entra ID the single source of truth and
+      run jobs as service principals before touching any network control. Then layer controls from cheap
+      (Conditional Access) → soft (IP lists) → hard (front-end Private Link), only as the regulatory bar
+      demands. They stack; you don't choose one.</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Authentication proves <em>who</em> you are; network access controls prove <em>where
+      you're connecting from</em>. Microsoft Entra ID is our single source of truth, every robot is a
+      service principal on short-lived OAuth, and we gate the front door with Conditional Access, IP access
+      lists, and — for a regulator — front-end Private Link that deletes the public door. The honest caveat:
+      PATs and pre-issued tokens bypass Conditional Access, so we cap or kill them."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"When someone leaves, does their access really disappear?"</td><td>Yes if Entra ID is the source of truth (SCIM / automatic identity mgmt) — but existing <strong>PATs aren't auto-revoked</strong>; revoke them explicitly via the Token report.</td></tr>
+      <tr><td>"Can we force MFA / block off-network logins?"</td><td>Yes — Entra ID <strong>Conditional Access</strong> on the AzureDatabricks app, not a Databricks toggle. Pairs with IP access lists / front-end Private Link.</td></tr>
+      <tr><td>"We're rolling out MFA tenant-wide — does it cover Databricks?"</td><td>Yes, via app <code>2ff814a6-...-cd0e6f879c1d</code> — but warn that <strong>PATs and pre-issued tokens bypass it</strong>.</td></tr>
+      <tr><td>"Can you pin access to our corporate egress / VPN ranges?"</td><td>Yes — workspace + account IP access lists (IPv4), or account-level context-based ingress.</td></tr>
+      <tr><td>"Does any user traffic ever cross the public internet?"</td><td>Only <strong>front-end Private Link with Public Network Access = Disabled</strong> gives a clean "no"; IP lists and Conditional Access still ride the public front door.</td></tr>
+      <tr><td>"Will turning this on lock our admins or break clusters?"</td><td>Two real risks: omitting your own IP, and omitting the <strong>SCC/NAT egress IP</strong> (clusters won't launch).</td></tr>
+      <tr><td>"Can we use Okta directly instead of Entra ID?"</td><td>On Azure, federate it <em>into</em> Entra ID; Entra ID stays the IdP Databricks talks to.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>Classic clusters won't launch after IP lists</h4><p>Under SCC the compute egress IP hits the same front door.<span class="fix">First check: is the SCC/NAT egress IP on the ALLOW list?</span></p></div>
+    <div class="scenario"><h4>Admins locked out of the workspace/console</h4><p>An ALLOW list that omits the current IP.<span class="fix">First check: hit the REST API/CLI as account admin, or disable enableIpAccessLists.</span></p></div>
+    <div class="scenario"><h4>IP lists "do nothing"</h4><p>Lists are ignored until the feature flag is on.<span class="fix">First check: databricks workspace-conf get-status enableIpAccessLists.</span></p></div>
+    <div class="scenario"><h4>Allowed by workspace list but still denied</h4><p>The account context-based ingress policy denies it.<span class="fix">First check: the account policy (and dry-run vs enforced) — a request must pass both.</span></p></div>
+    <div class="scenario"><h4>SSO redirect fails after front-end Private Link</h4><p>Missing web-auth endpoint or DNS forwarding.<span class="fix">First check: nslookup the regional *.pl-auth.azuredatabricks.net URL.</span></p></div>
+    <div class="scenario"><h4>Duplicate users / conflicting permissions</h4><p>Same principal via SCIM and automatic identity mgmt.<span class="fix">First check: the provisioning source — pick one.</span></p></div>
+    <div class="scenario"><h4>A nested group's members / an SP are missing</h4><p>SCIM syncs neither; SPs provision on first use.<span class="fix">First check: automatic identity mgmt on, and has the SP run once?</span></p></div>
+    <div class="scenario"><h4>Conditional Access "isn't blocking" a tool</h4><p>The client uses a PAT/pre-issued token.<span class="fix">First check: the auth method, not the CA policy.</span></p></div>
+  </div>
+
+  <h3>Three questions to ask before recommending a posture</h3>
+  <ol>
+    <li>Is Entra ID the single source of truth, and are production jobs running as service principals (not humans)?</li>
+    <li>Is the mandate "users must be on our network" (IP lists suffice) or "no public internet path" (front-end Private Link)?</li>
+    <li>Are PATs capped/disabled — and does the customer understand they bypass Conditional Access?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks docs — fetched 2026-06-26; automatic identity mgmt 2026-06-11, workspace IP access list 2026-05-04)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/users-groups/automatic-identity-management/" target="_blank">Automatic identity management (default after 2025-08-01; nested groups + SPs; single-tenant)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/users-groups/scim/" target="_blank">Sync users and groups from Microsoft Entra ID using SCIM</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/auth/single-sign-on/" target="_blank">Configure SSO (Entra-ID default, MFA, JIT after 2025-05-01)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/access-control/tokens" target="_blank">Monitor and revoke personal access tokens (730-day default, 90-day auto-revoke)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/front-end/ip-access-list-workspace" target="_blank">IP access lists for workspaces (IPv4 only; enforced together with context-based ingress; SCC egress IP)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/front-end/front-end-private-connect" target="_blank">Inbound (front-end) Private Link (databricks_ui_api + browser_authentication)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/archive/azure-admin/conditional-access" target="_blank">Conditional access for Azure Databricks (archived; app ID 2ff814a6-...-cd0e6f879c1d)</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive: default-enabled dates (2025-08-01 / 2025-05-01), token lifetimes, context-based ingress GA/region status, and the archived Conditional Access doc — reconfirm before quoting a customer.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- shared nodes ----------
+const ENTRA = {id:'entra',x:30,y:40,w:200,h:70,color:'#2272B4',label:'Microsoft Entra ID',sub:'your tenant · source of truth',
+  info:'<strong>Microsoft Entra ID (your tenant)</strong>Azure\'s cloud IdP (formerly "Azure AD/AAD"). Holds users, groups (incl. nested), and Entra service principals. Azure Databricks logs in against it by default — SSO, MFA, and Conditional Access are all configured here.'};
+const ACCOUNT = {id:'acct',x:340,y:40,w:220,h:74,color:'#FF3621',label:'Databricks account',sub:'accounts.azuredatabricks.net',
+  info:'<strong>Databricks account</strong>Where identities live once: account users, groups, and service principals. Identity federation assigns them to workspaces. Account admins manage SSO, provisioning, the token report, and PAT policy.'};
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 6.1 identity ----
+  d61:{ info:'d61info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      provision:{ nodes:[
+        ENTRA,
+        {id:'aim',x:30,y:160,w:200,h:60,color:'#00A972',label:'Automatic identity mgmt',sub:'SCIM-free · default 2025-08-01',
+          info:'<strong>Automatic identity management (recommended)</strong>Databricks reads Entra ID directly — no Entra app, no SCIM connector. Syncs users, groups, NESTED groups, and service principals (the things SCIM can\'t). Requires identity federation; default for accounts after 2025-08-01. Cross-tenant is NOT supported.'},
+        {id:'scim',x:30,y:240,w:200,h:56,color:'#6B7280',label:'SCIM connector',sub:'Entra app · legacy fallback',
+          info:'<strong>SCIM provisioning (fallback)</strong>An Entra enterprise app pushes users + direct group members to the account SCIM endpoint. Needs the Cloud Application Administrator role. No nested groups, no service principals. Use only when automatic identity management can\'t apply (e.g. cross-tenant Entra B2B). Don\'t run both on the same identity.'},
+        ACCOUNT,
+        {id:'fed',x:620,y:60,w:240,h:60,color:'#2272B4',label:'Identity-federated workspaces',sub:'account identities assigned in',
+          info:'<strong>Identity federation</strong>Account-level identities are assigned to workspaces. Default-on and cannot be disabled for new workspaces. Workspace-local groups (legacy) can\'t receive Unity Catalog grants — convert them to account groups.'},
+        {id:'sp',x:620,y:170,w:240,h:60,color:'#FF3621',label:'Service principals',sub:'OAuth M2M · run prod jobs',
+          info:'<strong>Service principals</strong>Non-human "robot" identities for jobs/CI-CD. Databricks-managed SPs authenticate with OAuth M2M (client ID + secret). Run ALL production jobs as SPs so no human off-boarding breaks a pipeline and humans never need write access to prod.'},
+        {id:'tok',x:620,y:262,w:240,h:54,color:'#6B7280',label:'Tokens (PAT vs OAuth)',sub:'cap PATs < 90d · prefer OAuth',
+          info:'<strong>Tokens</strong>PAT = long-lived legacy secret (max 730 days; auto-revoked after 90 days unused) and bypasses Conditional Access. OAuth M2M = short-lived, tied to a service principal. Cap PATs via maxTokenLifetimeDays or disable them; use the account Token report to revoke orphans.'}
+      ], arrows:[
+        {from:'entra',to:'aim',cls:'cold',label:'reads directly'},
+        {from:'aim',to:'acct',cls:'cold'},
+        {from:'scim',to:'acct',cls:'',label:'push'},
+        {from:'acct',to:'fed',cls:'hot',label:'assign'},
+        {from:'acct',to:'sp',cls:''},
+        {from:'acct',to:'tok',cls:''}
+      ]},
+      authflow:{ nodes:[
+        {id:'human',x:30,y:70,w:180,h:60,color:'#2272B4',label:'Human user',sub:'browser',
+          info:'<strong>Human user (browser)</strong>Opens the workspace URL, gets redirected to Entra ID, authenticates with password + MFA. Conditional Access (6.2) is evaluated HERE, at sign-in, before a token is issued.'},
+        {id:'robot',x:30,y:230,w:180,h:60,color:'#FF3621',label:'Job / CI-CD tool',sub:'service principal',
+          info:'<strong>Job / CI-CD tool (robot)</strong>Presents a service principal\'s client ID + secret to get a short-lived OAuth M2M token. No browser, no interactive sign-in — so Conditional Access never sees it. This is why you also cap/disable PATs.'},
+        ENTRA,
+        {id:'sso',x:340,y:160,w:200,h:56,color:'#00A972',label:'SSO + JIT',sub:'Entra assertion',
+          info:'<strong>SSO + JIT</strong>Entra ID returns a signed assertion that logs the user into Databricks (no separate Databricks password). Just-in-Time provisioning auto-creates the user on first login (default after 2025-05-01).'},
+        {id:'oauth',x:340,y:250,w:200,h:56,color:'#6B7280',label:'OAuth token endpoint',sub:'short-lived M2M token',
+          info:'<strong>OAuth M2M</strong>Exchanges the service principal\'s client ID + secret for a short-lived token. The recommended automation path — no long-lived bearer secret to leak.'},
+        {id:'ws',x:640,y:150,w:220,h:74,color:'#FF3621',label:'Workspace',sub:'UI · REST · jobs',
+          info:'<strong>Workspace</strong>The human lands via SSO; the robot calls the REST/SQL API with its short-lived token. Network access controls (6.2) then decide whether the request\'s source network is allowed.'}
+      ], arrows:[
+        {from:'human',to:'entra',cls:'hot',label:'redirect + MFA'},
+        {from:'entra',to:'sso',cls:'cold'},
+        {from:'sso',to:'ws',cls:'cold',label:'assertion → login'},
+        {from:'robot',to:'oauth',cls:'',label:'client ID + secret'},
+        {from:'oauth',to:'ws',cls:'',label:'short-lived token'}
+      ]}
+    }},
+
+  // ---- 6.2 network access controls ----
+  d62:{ info:'d62info', tip:'<strong>Tip</strong>Click any box to see what it checks and how it\'s secured.',
+    views:{
+      publicdoor:{ nodes:[
+        {id:'client',x:30,y:150,w:150,h:60,color:'#2272B4',label:'User / BI / REST',sub:'public internet',
+          info:'<strong>Client over the public internet</strong>By default a user can reach the workspace from any IP, any country. The controls to the right add "are you coming from a network we trust?" on top of "who are you?".'},
+        {id:'ca',x:240,y:40,w:200,h:64,color:'#FFC107',label:'Conditional Access',sub:'at sign-in',
+          info:'<strong>Entra ID Conditional Access</strong>Identity-aware sign-in policy on the AzureDatabricks app (2ff814a6-...-cd0e6f879c1d): require MFA, compliant/managed device, trusted named location, or block legacy auth. Evaluated at sign-in. Needs Entra ID Premium. PATs and pre-issued tokens BYPASS it.'},
+        {id:'ing',x:240,y:160,w:200,h:64,color:'#FF3621',label:'Context ingress + IP list',sub:'pass BOTH',
+          info:'<strong>Context-based ingress (account) + IP access list (workspace)</strong>Enforced together — a request must be allowed by BOTH. Context ingress combines identity + request type + network source (account-level, governs many workspaces); the workspace IP list (IPv4 only) can only narrow it. MUST allow the SCC/NAT egress IP or classic clusters fail.'},
+        {id:'ws',x:540,y:150,w:200,h:74,color:'#FF3621',label:'Workspace control plane',sub:'public door (gated)',
+          info:'<strong>Workspace control plane (public door)</strong>UI, REST API, Databricks Connect at adb-<id>.azuredatabricks.net. With these controls the public door stays open but gated. Premium plan required for all three controls.'},
+        {id:'blocked',x:540,y:40,w:200,h:54,color:'#DC2626',label:'Blocked',sub:'wrong location / IP / no MFA',
+          info:'<strong>Blocked</strong>Denied at sign-in (no MFA, untrusted location) or on the request (source IP not allowed by context ingress + IP list). Defense in depth: a stolen password alone isn\'t enough.'}
+      ], arrows:[
+        {from:'client',to:'ca',cls:'',label:'1 sign-in'},
+        {from:'ca',to:'ing',cls:'hot',label:'token issued'},
+        {from:'ing',to:'ws',cls:'hot',label:'IP allowed → 443'},
+        {from:'ca',to:'blocked',cls:'muted'},
+        {from:'ing',to:'blocked',cls:'muted'}
+      ]},
+      privatelink:{ nodes:[
+        {id:'client',x:30,y:150,w:150,h:64,color:'#2272B4',label:'User in your VNet',sub:'or peered network',
+          info:'<strong>User inside (or peered to) your VNet</strong>With front-end Private Link the user reaches the workspace over a private IP — no public door. Requires the workspace to use VNet injection.'},
+        {id:'pe',x:240,y:60,w:210,h:64,color:'#00A972',label:'databricks_ui_api PE',sub:'transit VNet · private IP',
+          info:'<strong>databricks_ui_api private endpoint</strong>The inbound user path for the workspace UI, REST API, and Databricks Connect — a private IP in your transit VNet. The exact sub-resource name is databricks_ui_api.'},
+        {id:'wauth',x:240,y:160,w:210,h:64,color:'#00A972',label:'browser_authentication PE',sub:'delete-locked web-auth WS',
+          info:'<strong>browser_authentication private endpoint</strong>The private endpoint for the SSO/OAuth browser callback. Without it the login redirect can\'t complete privately. Host it on a dedicated, DELETE-LOCKED web-auth workspace so a deleted prod workspace doesn\'t break regional SSO.'},
+        {id:'dns',x:240,y:262,w:210,h:54,color:'#6B7280',label:'Private DNS zone',sub:'privatelink.azuredatabricks.net',
+          info:'<strong>privatelink.azuredatabricks.net (fixed name)</strong>Resolves the workspace URL to the databricks_ui_api private IP and the regional *.pl-auth.azuredatabricks.net SSO URL to the browser_authentication private IP. Custom DNS must forward BOTH or SSO breaks.'},
+        {id:'ws',x:560,y:150,w:200,h:74,color:'#FF3621',label:'Workspace control plane',sub:'Public Network Access = Disabled',
+          info:'<strong>Workspace control plane (private)</strong>With Public Network Access = Disabled the public door is bricked over — the only way in is the private endpoint. The hard, fully-private posture (pair with back-end Private Link for end-to-end privatization).'}
+      ], arrows:[
+        {from:'client',to:'pe',cls:'cold',label:'private IP'},
+        {from:'client',to:'wauth',cls:'cold',label:'SSO callback'},
+        {from:'dns',to:'pe',cls:'muted',label:'resolves'},
+        {from:'pe',to:'ws',cls:'cold'},
+        {from:'wauth',to:'ws',cls:'cold'}
+      ]}
+    }}
+};
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d61','provision');
+renderDiagram('d62','publicdoor');
+</script>
+</body>
+</html>

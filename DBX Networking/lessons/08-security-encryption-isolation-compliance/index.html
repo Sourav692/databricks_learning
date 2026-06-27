@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 8 — Security: Encryption, Isolation &amp; Compliance · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:780px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"\2713";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"\2715";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 8</div>
+  <h1>Security: Encryption, Isolation &amp; Compliance</h1>
+  <div class="subtitle">The back half of every security review — for the FDE/RSA who has to defend
+    <strong>"is it encrypted &amp; who holds the key, how is serverless isolated, are you certified, and
+    show me the audit trail"</strong> to a customer's security, compliance, and audit teams. Stages 2–7
+    secured the <em>paths</em>; Stage 8 protects the <em>data and the workload</em> on them — and proves it.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">8.1 Encryption / CMK</span>
+    <span class="badge">8.2 Isolation</span>
+    <span class="badge">8.3 ESC / ESM / CSP</span>
+    <span class="badge">8.4 Audit &amp; monitoring</span>
+    <span class="badge">Architect altitude</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t81">8.1 · Encryption &amp; CMK</button>
+  <button data-tab="t82">8.2 · Compute Isolation</button>
+  <button data-tab="t83">8.3 · ESC / ESM / CSP</button>
+  <button data-tab="t84">8.4 · Audit &amp; Monitoring</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Protect the data, prove the controls</h2>
+  <p>Stages 2–7 locked the doors and hallways (planes, SCC, Private Link, NCC, firewalls). Stage 8 protects
+    what's <em>inside the rooms</em> — the data and the workload — and installs the cameras. Four subtopics,
+    four customer answers: <strong>encryption &amp; key custody</strong> (8.1), <strong>serverless tenant/user
+    isolation</strong> (8.2), <strong>the certified compliance posture</strong> (8.3), and <strong>the audit
+    trail + alerting</strong> (8.4).</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>Locked safes &amp; sealed envelopes (8.1) · a secure hotel with no master key (8.2) · Russian
+      dolls in a certified building (8.3) · one audit stream, two taps (8.4).</strong>
+      <em>Encryption is on by default and CMK only changes who holds the key; serverless isolation is proven by
+      architecture — scoped, short-lived tokens and wiped compute; CSP is the permanent certified posture you
+      scope to regulated workspaces; and you prove all of it with system tables + a SIEM export.</em></p>
+  </div>
+
+  <h3>Where each subtopic sits on the three-path scaffold (from 2.2)</h3>
+  <table>
+    <thead><tr><th>Subtopic</th><th>What it protects</th><th>Path it touches</th><th>The one-liner</th></tr></thead>
+    <tbody>
+      <tr><td><strong>8.1 Encryption / CMK</strong></td><td>Bytes in motion + at rest; key custody</td><td>Rides <em>all three</em> paths</td><td>"On by default; CMK = your key, your kill switch."</td></tr>
+      <tr><td><strong>8.2 Isolation</strong></td><td>One tenant/user can't touch another</td><td>Path ③ + in-box under all</td><td>"Scoped ~1h token, used direct to storage, wiped after."</td></tr>
+      <tr><td><strong>8.3 ESC/ESM/CSP</strong></td><td>Hardened, certified compute posture</td><td>Path ② + classic VMs</td><td>"CSP is a one-way door — scope it to regulated data."</td></tr>
+      <tr><td><strong>8.4 Audit/monitoring</strong></td><td>Evidence + alerting</td><td><em>Watches</em> all three</td><td>"Run both taps — account events live only in system tables."</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks Stage 8 security topology: Azure Key Vault wrapping/unwrapping
+      keys for control-plane managed services, workspace storage (DBFS root) and classic VM disks (8.1); serverless
+      compute plane holding only a 1-hour scoped token used directly to ADLS Gen2 (8.2); classic compute plane with
+      CIS-hardened image, agents and the CSP TCP 2443 egress rule (8.3); and the audit system table + Log Analytics /
+      Event Hub SIEM export (8.4)." />
+    <figcaption class="caption">The same map as the interactive diagrams — Key Vault &amp; CMK, serverless scoped
+      tokens, the hardened classic plane, and the audit/SIEM bridge.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Your data is encrypted in transit and at rest by default; with CMK <strong>you</strong> hold the key and
+      the kill switch. Serverless isolation is proven by architecture — dedicated compute wiped between workloads,
+      and short-lived, path-scoped tokens used <strong>directly</strong> to your ADLS. Regulated data runs under the
+      Compliance Security Profile, and every action is captured in an immutable audit trail you can query in SQL and
+      stream to your SIEM."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive lives in the owning module)</h4>
+    <dl>
+      <dt>Azure Key Vault</dt><dd>Hardware-backed key store; holds your CMK and does wrap/unwrap so the key never leaves. → 8.1</dd>
+      <dt>KEK / DEK</dt><dd>DEK encrypts the data; your Key Vault key (KEK) <em>wraps</em> the DEK. Databricks only calls wrap/unwrap. → 8.1</dd>
+      <dt>Access Connector</dt><dd>The managed identity UC uses to reach ADLS; UC down-scopes from it per request. → Stage 7 / 8.2</dd>
+      <dt>Lakeguard</dt><dd>Engine-level isolation (Spark Connect, container sandbox, UDF) so shared/serverless compute is UC-compliant. → 8.2</dd>
+      <dt>NSP</dt><dd>Network Security Perimeter — Azure's logical firewall boundary around your storage account. → 8.2</dd>
+      <dt>CSP / ESM / ESC</dt><dd>Compliance Security Profile ⊃ Enhanced Security Monitoring; paid for by the ESC add-on. → 8.3</dd>
+      <dt>system.access.audit</dt><dd>UC-governed audit-log Delta table; the only tap carrying account-level events. → 8.4</dd>
+      <dt>SIEM / Sentinel</dt><dd>The SOC's central security-log platform; fed via Azure diagnostic settings. → 8.4</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 8.1 -->
+<section class="panel" id="t81">
+  <h2>8.1 · Encryption: TLS, CMK &amp; Azure Key Vault</h2>
+  <p>Encryption is <strong>on by default</strong> — TLS 1.2+ in transit, AES-256 at rest. <strong>CMK doesn't add
+    a second safe; it swaps whose key opens the existing one</strong> from Microsoft's to yours in Key Vault.
+    Switch the diagram between the <strong>three CMK features</strong> and the <strong>TLS-in-transit</strong> view;
+    click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d81','cmk',this)">Three CMK features (wrap/unwrap)</button>
+    <button onclick="switchView('d81','tls',this)">TLS in transit (all paths)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d81" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d81" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d81" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d81" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d81info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The scope gotcha auditors probe (#1 misunderstanding)</h4>
+    <p>None of the three CMK features encrypt your <strong>ADLS Gen2 data lake</strong> — that's a separate storage
+      account you CMK directly in Azure Storage. CMK-for-DBFS-root only covers the workspace root container (which you
+      shouldn't use for governed data anyway).</p>
+  </div>
+
+  <h3>Microsoft-managed vs Customer-Managed Keys</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Microsoft-managed (default)</th><th>CMK</th></tr></thead>
+    <tbody>
+      <tr><td>Who holds the key</td><td>Microsoft</td><td><strong>You</strong>, in Azure Key Vault</td></tr>
+      <tr><td>Setup</td><td>None — automatic</td><td>Premium + Key Vault + grant + workspace config</td></tr>
+      <tr><td>Revocation ("kill switch")</td><td>No</td><td><strong>Yes</strong> — disable/delete key → data unreadable</td></tr>
+      <tr><td>Re-encrypts existing data</td><td>n/a</td><td><strong>No</strong> — future writes only</td></tr>
+      <tr><td>When to use</td><td>Most workloads; "is it encrypted?" = yes</td><td>Regulated data needing customer key custody</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — CMK at workspace creation</h3>
+  <p class="caption">Terraform (azurerm) — the encryption arguments. Verify exact names against current provider docs; full CMK + Key Vault IaC is the Stage 8 hands-on artifact.</p>
+  <pre><code>resource "azurerm_databricks_workspace" "this" {
+  sku = "premium"                                              # CMK requires Premium
+  managed_services_cmk_key_vault_key_id = azurerm_key_vault_key.ms.id    # control-plane data
+  managed_disk_cmk_key_vault_key_id     = azurerm_key_vault_key.disk.id   # classic VM disks
+  customer_managed_key_enabled      = true   # DBFS-root CMK
+  infrastructure_encryption_enabled = true   # DOUBLE encryption (deploy-time only)
+}</code></pre>
+  <p class="caption">Portal: Entra ID → Enterprise apps → <code>AzureDatabricks</code> · Key Vault (purge protection) →
+    RSA key → IAM → <em>Key Vault Crypto Service Encryption User</em> to the app + storage MI · Create workspace →
+    <strong>Encryption</strong> tab → Use your own key → paste the Key Identifier.</p>
+
+  <div class="callout warn">
+    <h4>Irreversible &amp; brick-risk</h4>
+    <p>Managed-services CMK <strong>cannot be disabled</strong>; double encryption is <strong>deploy-time only</strong>;
+      use a <strong>specific key version</strong> (never <code>latest</code>); and a deleted key without purge protection
+      <strong>permanently bricks</strong> the data and workspace login. Inter-node shuffle is unencrypted by default —
+      use Azure VNet encryption.</p>
+  </div>
+
+  <h3>Uses, edge cases &amp; limitations</h3>
+  <ul>
+    <li><strong>Uses:</strong> default TLS+at-rest answers "is it encrypted?" for free; CMK when an auditor requires customer key custody/rotation/revocation of control-plane data, workspace storage, or VM disks.</li>
+    <li><strong>Edge cases:</strong> CMK doesn't cover the ADLS lake; rotation needs the old key kept 24h; existing data isn't re-encrypted; managed-disk CMK doesn't apply to serverless (ephemeral disks).</li>
+    <li><strong>Limitations:</strong> all CMK = Premium + same-tenant Key Vault; managed-services CMK irreversible; key must be RSA, version explicit; double encryption deploy-time only.</li>
+  </ul>
+</section>
+
+<!-- 8.2 -->
+<section class="panel" id="t82">
+  <h2>8.2 · Compute Security &amp; Isolation</h2>
+  <p>The serverless trust question: <em>"if compute runs in Databricks' account, what stops another tenant — or
+    Databricks — from reading our data?"</em> The answer is architecture, not your perimeter. Switch the diagram
+    between the <strong>scoped-token data flow</strong> and the <strong>isolation layers</strong>; click any box.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d82','flow',this)">Scoped-token data flow</button>
+    <button onclick="switchView('d82','layers',this)">Isolation layers (Lakeguard)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d82" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d82" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d82" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d82" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d82info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The exam answer — three claims in one breath</h4>
+    <p><strong>Authorization happens before the credential is minted, the credential is scoped and short-lived
+      (~1h), and the control plane hands it over but is never on the data path.</strong> A stolen token buys an
+      attacker one path for one hour — that's the confused-deputy defence.</p>
+  </div>
+
+  <h3>Classic vs serverless isolation</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Classic</th><th>Serverless</th></tr></thead>
+    <tbody>
+      <tr><td>Primary isolation</td><td>"Natural" — your subscription + VNet</td><td>Platform-enforced: dedicated compute, private no-public-IP net, wipe on completion</td></tr>
+      <tr><td>Credential to storage</td><td>UC down-scoped token (or legacy cluster identity)</td><td><strong>~1h scoped token</strong>, per workload, direct to storage</td></tr>
+      <tr><td>Compute reuse</td><td>Cluster persists until terminated</td><td>Per-workload; wiped, no cross-tenant reuse</td></tr>
+      <tr><td>In-cluster multi-user</td><td>Lakeguard (Standard mode)</td><td>Lakeguard (incl. Python UDF isolation)</td></tr>
+      <tr><td>Storage firewall</td><td>NCC subnet IDs / endpoints</td><td><strong>NSP + <code>AzureDatabricksServerless</code> tag</strong>, or NCC PE</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the UC scoped-credential chain</h3>
+  <p class="caption">Terraform — core isolation (wipe, 1h token) is platform-enforced; you wire the plumbing.</p>
+  <pre><code>resource "azurerm_databricks_access_connector" "uc" {   # the managed identity UC uses
+  identity { type = "SystemAssigned" }
+}
+resource "azurerm_role_assignment" "uc_blob" {          # least privilege — NOT Owner/account key
+  scope = azurerm_storage_account.adls.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id = azurerm_databricks_access_connector.uc.identity[0].principal_id
+}
+resource "databricks_external_location" "this" {        # binds credential to one path (isolation unit)
+  url = "abfss://data@${azurerm_storage_account.adls.name}.dfs.core.windows.net/"
+  credential_name = databricks_storage_credential.this.name
+}</code></pre>
+  <p class="caption">Portal: NSP → Create (region = workspace region) → Associate ADLS (<em>Transition</em> mode) →
+    Inbound rule: Service Tag <code>AzureDatabricksServerless.&lt;region&gt;</code> · Access Connector → ADLS IAM →
+    Storage Blob Data Contributor → External Locations bind the <code>abfss://</code> path · Compute → access mode =
+    <strong>Standard</strong> (Lakeguard).</p>
+
+  <div class="callout warn">
+    <h4>Time-sensitive (verify) &amp; gotchas</h4>
+    <p>By <strong>2026-06-09</strong> a storage account that allowlisted serverless <em>subnet IDs</em> must move to an
+      <strong>NSP</strong> + the <code>AzureDatabricksServerless</code> service tag. Stay in <strong>Transition</strong>
+      mode (Enforced blocks all non-matching traffic). The 1-hour token is <em>not</em> a network control — still need
+      the storage firewall + egress policy. NSP Terraform coverage lags the Portal.</p>
+  </div>
+
+  <h3>Uses, edge cases &amp; limitations</h3>
+  <ul>
+    <li><strong>Uses:</strong> approving serverless for a regulated customer; designing the access-connector → storage-credential → external-location chain; picking Standard mode for safe multi-user classic clusters.</li>
+    <li><strong>Edge cases:</strong> the 2026-06-09 firewall migration; NSP enforced mode breaks other services; direct <code>abfss://</code> path access denied outside UC securables; Standard-mode capability gaps (no DBR ML/GPU/RDD/Scala) push some to Dedicated.</li>
+    <li><strong>Limitations:</strong> core isolation isn't tunable; the serverless service tag is for inbound rules to Azure Storage in the workspace region only; NSP Terraform coverage lags the Portal.</li>
+  </ul>
+</section>
+
+<!-- 8.3 -->
+<section class="panel" id="t83">
+  <h2>8.3 · Compliance: ESC, ESM &amp; CSP</h2>
+  <p>Three layers customers conflate, nested like Russian dolls: <strong>ESC</strong> (the paid add-on/bill),
+    <strong>ESM</strong> (hardened image + agents, classic only), <strong>CSP</strong> (the umbrella posture +
+    standards). <code>CSP ⊃ ESM ⊃ hardened image</code>. Switch the diagram between the <strong>nesting</strong> and
+    the <strong>classic-plane impact</strong>; click any box.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d83','nest',this)">ESC ⊃ ESM ⊃ CSP nesting</button>
+    <button onclick="switchView('d83','plane',this)">Classic-plane impact (+TCP 2443)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d83" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d83" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d83" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d83" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d83info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout warn">
+    <h4>CSP is a one-way door</h4>
+    <p>Enabling CSP or attaching a standard is <strong>intended to be permanent</strong> — you can't remove it from a
+      workspace that has processed regulated data; the only path back is <strong>delete + rebuild</strong>. Scope CSP
+      to the workspaces that actually touch regulated data, and settle topology <em>before</em> the first regulated row
+      lands.</p>
+  </div>
+
+  <h3>ESC vs ESM vs CSP</h3>
+  <table>
+    <thead><tr><th></th><th>ESC (add-on)</th><th>ESM</th><th>CSP</th></tr></thead>
+    <tbody>
+      <tr><td><strong>What it is</strong></td><td>Paid entitlement/SKU</td><td>Hardened image + agents</td><td>Umbrella posture + standards</td></tr>
+      <tr><td><strong>Scope</strong></td><td>Account/billing</td><td><strong>Classic only</strong></td><td>Classic + serverless (by standard/region)</td></tr>
+      <tr><td><strong>Reversible?</strong></td><td>n/a</td><td>Yes</td><td><strong>No</strong> — permanent once regulated data processed</td></tr>
+      <tr><td><strong>Restricts features</strong></td><td>No</td><td>No</td><td><strong>Yes</strong> — GA + named-preview allow-list only</td></tr>
+      <tr><td><strong>New network req</strong></td><td>No</td><td>No</td><td><strong>TCP 2443</strong> (if egress restricted) + Azure VNet encryption</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — CSP + ESM + auto-update</h3>
+  <p class="caption">Terraform (azurerm) — NOTE: only HIPAA / PCI_DSS / NONE here; other standards need Portal/CLI/PS/ARM.</p>
+  <pre><code>resource "azurerm_databricks_workspace" "this" {
+  sku = "premium"                                          # ESC requires Premium
+  enhanced_security_compliance {
+    automatic_cluster_update_enabled      = true            # permanent under CSP
+    compliance_security_profile_enabled   = true            # CSP on (PERMANENT!)
+    compliance_security_profile_standards = ["HIPAA", "PCI_DSS"]   # or ["NONE"]
+    enhanced_security_monitoring_enabled  = true            # ESM agents + hardened image
+  }
+}
+# On a restricted-egress VNet, also allow: Outbound TCP <host+container subnets> -> * : 2443</code></pre>
+  <p class="caption">Portal: workspace → Settings → <strong>Security &amp; compliance</strong> → enable compliance
+    security profile → pick standard(s) in-region or None → enable ESM → enable automatic cluster update. Confirm: a
+    <strong>shield icon</strong> appears by the workspace name.</p>
+
+  <div class="callout warn">
+    <h4>Time-sensitive (verify)</h4>
+    <p>HIPAA / HITRUST / IRAP <strong>become CSP-mandatory on 2026-09-01</strong>. Serverless standard support is
+      narrower &amp; region-specific than classic — always verify the standard × region × plane cell. Gen2/Arm64 VMs are
+      blocked under ESM/CSP.</p>
+  </div>
+
+  <h3>Uses, edge cases &amp; limitations</h3>
+  <ul>
+    <li><strong>Uses:</strong> regulated workspaces (CSP + matching standard); high internal bar without attestation (CSP <code>NONE</code>); hardened image/monitoring on classic without permanence (ESM-only).</li>
+    <li><strong>Edge cases:</strong> permanence (delete+rebuild to revert); serverless region gaps; restricted-preview surface blocks brand-new previews; Gen2/Arm64 excluded; forgetting TCP 2443; AI features off by default.</li>
+    <li><strong>Limitations:</strong> Premium + ESC required &amp; billed; ESM classic-only; Terraform standards subset (HIPAA/PCI_DSS/NONE); you own log review.</li>
+  </ul>
+</section>
+
+<!-- 8.4 -->
+<section class="panel" id="t84">
+  <h2>8.4 · Audit Logs, System Tables &amp; Monitoring</h2>
+  <p><strong>One audit stream, two taps.</strong> System tables (<code>system.access.audit</code>) you query in SQL —
+    the <em>only</em> tap carrying account-level events; Azure diagnostic settings export to your SIEM — workspace-level
+    only. Switch the diagram between the <strong>two taps</strong> and the <strong>SIEM bridge</strong>; click any box.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d84','taps',this)">Two taps (system table vs diagnostic)</button>
+    <button onclick="switchView('d84','siem',this)">SIEM bridge &amp; alerting</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d84" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d84" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d84" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d84" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d84info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The trap — the account-level blind spot</h4>
+    <p>Account-admin changes, account-level SCIM, and metastore-level grants appear <strong>only</strong> in
+      <code>system.access.audit</code> (<code>workspace_id = 0</code>), <em>never</em> in Azure diagnostic settings. A
+      SIEM-only strategy has a blind spot — the enterprise answer is always <strong>both taps</strong>.</p>
+  </div>
+
+  <h3>Choosing your audit/monitoring path</h3>
+  <table>
+    <thead><tr><th>Need</th><th>Use</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Ad-hoc "who touched X"</td><td><code>system.access.audit</code></td><td>One SQL query, 365-day, incl. account events</td></tr>
+      <tr><td>Central enterprise SIEM</td><td>Diagnostic → Event Hub / Log Analytics → Sentinel/Splunk</td><td>Native Azure bridge; single pane of glass</td></tr>
+      <tr><td>&gt; 365-day / immutable archive</td><td>Diagnostic → Storage (WORM)</td><td>System-table free retention is 365 days</td></tr>
+      <tr><td>Sub-minute detection</td><td>Diagnostic → Event Hub → SIEM</td><td>System tables lag (mins–hours)</td></tr>
+      <tr><td>In-platform scheduled detection</td><td>Databricks SQL Alert over system tables</td><td>No extra infra; email/Slack/PagerDuty</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — grant, alert query &amp; SIEM export</h3>
+  <p class="caption">SQL — least-privilege grant + a failed-login alert (the <code>event_date</code> predicate is required).</p>
+  <pre><code>GRANT SELECT ON TABLE system.access.audit TO `secops-analysts`;
+
+SELECT user_identity.email AS user_email, count(*) AS failed_logins
+FROM system.access.audit
+WHERE event_date &gt;= current_date() - INTERVAL 1 DAY        -- prune partitions (REQUIRED)
+  AND service_name = 'accounts'
+  AND action_name IN ('login','aadBrowserLogin','tokenLogin')
+  AND response.statusCode &lt;&gt; 200                            -- 200 = success; non-200 = the signal
+  AND event_time &gt;= current_timestamp() - INTERVAL 15 MINUTES
+GROUP BY user_identity.email HAVING failed_logins &gt;= 5;</code></pre>
+  <p class="caption">Terraform — export workspace logs to Log Analytics for Sentinel.</p>
+  <pre><code>resource "azurerm_monitor_diagnostic_setting" "adb_audit" {
+  target_resource_id         = azurerm_databricks_workspace.this.id
+  log_analytics_workspace_id = azurerm_log_analytics_workspace.sec.id
+  enabled_log { category = "accounts" }      # auth, tokens, IP ACLs
+  enabled_log { category = "unityCatalog" }  # grants, securable access
+  # use a dynamic block — Databricks adds categories over time
+}</code></pre>
+  <p class="caption">Portal: Catalog Explorer → <code>system</code> → confirm <code>system.access.audit</code> ·
+    workspace resource → Monitoring → <strong>Diagnostic settings → + Add</strong> → categories → Log Analytics /
+    Storage / Event Hub · SQL → Alerts → Create → paste query → condition → schedule → notifications.</p>
+
+  <div class="callout warn">
+    <h4>Edge cases &amp; limitations</h4>
+    <p>Audit table is <strong>Public Preview</strong> (free during preview); <strong>365-day</strong> free retention;
+      <strong>not real-time</strong> (match alert cadence to ingestion latency); broad scans rejected (always filter
+      <code>event_date</code>); a few services (cluster policies, vector search, legacy groups) don't emit to diagnostic
+      settings.</p>
+  </div>
+
+  <p class="caption">This module ships a runnable companion: <code>audit_monitoring.sql</code> (grants + failed-login,
+    sensitive-table, privilege-change, ESM-agent and cost-anomaly queries).</p>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Reach for it</h3>
+      <ul>
+        <li><strong>CMK</strong> when a regulator demands customer key custody / revocation</li>
+        <li><strong>Azure VNet encryption</strong> when "encrypted at all times" must include shuffle</li>
+        <li><strong>Serverless + CSP</strong> as the regulated default (fast, smallest blast radius)</li>
+        <li><strong>CSP + standard</strong> to process data under a named standard (hard gate)</li>
+        <li><strong>CSP <code>NONE</code></strong> for a strict internal bar with no attestation</li>
+        <li><strong>System tables + SIEM export</strong> together for the complete audit answer</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Expect CMK to cover the ADLS data lake (CMK that account directly)</li>
+        <li>Use <code>latest</code> as the key version or skip purge protection</li>
+        <li>Put a standing storage key / broad MSI secret on compute</li>
+        <li>Flip the NSP to Enforced, or forget the CSP TCP 2443 egress rule</li>
+        <li>Blanket-enable ESC/CSP across dev sandboxes (bills + restricts each)</li>
+        <li>Treat the SIEM as complete — account-level events live only in the system table</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Encryption defaults are enough until a regulator wants the key.</strong> Serverless + CSP is the
+      regulated default; classic + VNet injection only when the network path must live in the customer's subscription.
+      CSP is permanent — scope it. And audit = system tables for completeness + SIEM export for correlation,
+      <strong>never one alone</strong>. Premium is the non-negotiable baseline (CMK / CSP / IP ACLs / Private Link are
+      all Premium; CSP/ESM also bill the ESC add-on).</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Your data is encrypted in transit and at rest by default — with CMK you hold the key and the
+      kill switch. Serverless proves isolation by architecture: dedicated compute wiped between workloads, plus
+      short-lived, path-scoped tokens used directly to your ADLS. Regulated data runs under the Compliance Security
+      Profile — the certified posture, and it's permanent, so we scope it. And you prove all of it two ways: query the
+      audit trail in SQL, and stream it natively to your SIEM — run both, because account-level events live only in the
+      system table."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"Encrypted in transit &amp; at rest, and who holds the keys?"</td><td>Yes to both by default (TLS 1.2+ / Microsoft-managed AES-256); CMK is how <em>you</em> hold the key.</td></tr>
+      <tr><td>"Can we revoke Databricks' access unilaterally?"</td><td>Yes — disable/delete the Key Vault key (kill switch within the DEK cache window).</td></tr>
+      <tr><td>"Does CMK cover our ADLS data lake?"</td><td>No — that's a separate storage account you CMK directly. (The #1 misunderstanding.)</td></tr>
+      <tr><td>"If serverless runs in Databricks' account, what stops another tenant reading our data?"</td><td>Dedicated per-workload compute wiped on completion, no warm pool; UC vends ~1h path-scoped tokens used direct to ADLS; the control plane mints but never proxies bytes.</td></tr>
+      <tr><td>"Are you HIPAA / PCI / IRAP?"</td><td>The platform holds the attestations, but processing regulated data needs CSP + the matching standard on the workspace — and it's permanent.</td></tr>
+      <tr><td>"Where's the audit trail / can you feed our SIEM?"</td><td>System tables (365-day, incl. account-level) and Diagnostic export to Sentinel/Splunk. Account-level events are only in the system table — run both.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>Login/reads fail after a key change</h4><p>Key disabled/expired or the wrap/unwrap role was removed.<span class="fix">First check: Key Vault key enabled + AzureDatabricks app / storage MI still hold wrap/unwrap.</span></p></div>
+    <div class="scenario"><h4>Auditor: "lake isn't customer-keyed"</h4><p>CMK was set on the workspace, not the data lake.<span class="fix">First check: CMK on the ADLS Gen2 storage account itself.</span></p></div>
+    <div class="scenario"><h4>Serverless 403 to firewalled storage</h4><p>Wrong region tag or a stale subnet-ID rule.<span class="fix">First check: regional <code>AzureDatabricksServerless.&lt;region&gt;</code> tag, NSP in Transition.</span></p></div>
+    <div class="scenario"><h4>CSP compute won't start on a locked VNet</h4><p>Missing the new outbound rule.<span class="fix">First check: outbound TCP 2443 (+ Azure VNet encryption / supported VM type).</span></p></div>
+    <div class="scenario"><h4>Cluster won't launch on CSP/ESM</h4><p>Unsupported instance family.<span class="fix">First check: VM isn't Gen2 or Arm64.</span></p></div>
+    <div class="scenario"><h4>SIEM "missing" account-admin events</h4><p>They're ACCOUNT_LEVEL, never in diagnostic settings.<span class="fix">First check: query <code>system.access.audit</code> where <code>workspace_id = 0</code>.</span></p></div>
+    <div class="scenario"><h4>"Query returned too much data"</h4><p>No partition pruning on the system table.<span class="fix">First check: add an <code>event_date</code> predicate.</span></p></div>
+    <div class="scenario"><h4>Multi-user job sees another user's data</h4><p>Wrong access mode / legacy cluster.<span class="fix">First check: access mode is Standard (Lakeguard), not Dedicated-misused.</span></p></div>
+  </div>
+
+  <h3>Three questions to ask before recommending</h3>
+  <ol>
+    <li>Is there a mandate for <em>customer-held keys</em> (CMK), or do encryption defaults suffice?</li>
+    <li>Must you process data under a <em>named standard</em> — and is the standard supported on your plane × region (CSP is permanent)?</li>
+    <li>Do you have a <em>mandated central SIEM</em> / &gt;365-day / sub-minute requirement (then both taps), or is in-platform investigation enough?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks docs — encryption May–Jun 2026, isolation/Trust page fetched 2026-06-26, compliance 2026-05/06, system tables 2026-06-17)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/keys/" target="_blank">Data security and encryption (TLS, CMK, double, inter-node)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/keys/customer-managed-keys" target="_blank">Customer-managed keys (overview)</a></li>
+    <li>· <a href="https://www.databricks.com/trust/security-features/serverless-security" target="_blank">Serverless security (Databricks Trust) — ~1h scoped tokens, wiped compute</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/compute/lakeguard" target="_blank">User isolation — Lakeguard</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/privacy/security-profile" target="_blank">Compliance security profile (CSP)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/privacy/enhanced-security-compliance" target="_blank">Configure enhanced security &amp; compliance (port 2443, VNet encryption)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/system-tables/audit-logs" target="_blank">Audit log system table (system.access.audit)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/account-settings/audit-logs" target="_blank">Diagnostic log reference (categories, verbose audit)</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive: NSP/service-tag migration (2026-06-09), HIPAA/HITRUST/IRAP CSP-mandatory (2026-09-01), standard × region × plane cells, the 1-hour token lifetime, inter-node AES bit-length (overview vs how-to), audit-table Public Preview status — reconfirm before quoting a customer.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- shared nodes ----------
+const KV = {id:'kv',x:30,y:150,w:170,h:80,color:'#2272B4',label:'Azure Key Vault',sub:'your tenant · you hold keys',
+  info:'<strong>Azure Key Vault (your tenant)</strong>Hardware-backed key store holding your CMK (the KEK). Databricks only calls wrap/unwrap — the key never leaves the vault. Disable/delete it and the protected data becomes unreadable (the kill switch). Needs soft-delete + purge protection or a deleted key permanently bricks the data.'};
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 8.1 encryption / CMK ----
+  d81:{ info:'d81info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      cmk:{ nodes:[
+        KV,
+        {id:'cp',x:300,y:36,w:230,h:74,color:'#FF3621',label:'Control plane',sub:'managed-services data',
+          info:'<strong>CMK: managed services (control plane)</strong>Notebook source &amp; results, secrets, Databricks SQL queries &amp; history, PATs/Git creds, AI/BI dashboards, Genie Spaces. Your Key Vault key wraps the DEK. Can be added later but NEVER disabled. Granted to the AzureDatabricks app + workspace storage MI.'},
+        {id:'ws',x:300,y:140,w:230,h:64,color:'#6B7280',label:'Workspace storage (DBFS root)',sub:'job/SQL results · MLflow',
+          info:'<strong>CMK: DBFS root (workspace storage)</strong>Job results, SQL results, MLflow models, notebook revisions, DBFS root. Workspace managed identity gets wrap/unwrap. Optional double / infrastructure encryption (two algorithms + keys) — deploy-time only.'},
+        {id:'vm',x:300,y:236,w:230,h:64,color:'#6B7280',label:'Classic compute VM disks',sub:'temp / shuffle / OS',
+          info:'<strong>CMK: managed disks (classic VMs)</strong>Temporary spill/shuffle/OS disks on classic-compute VMs. Supports auto-rotation to the latest key version. NOT for serverless — serverless disks are ephemeral and wiped with the workload.'},
+        {id:'adls',x:640,y:140,w:230,h:80,color:'#00A972',label:'ADLS Gen2 data lake',sub:'NOT covered by ADB CMK',
+          info:'<strong>ADLS Gen2 data lake (the scope gotcha)</strong>Your governed data lives here behind UC external locations. None of the three ADB CMK features encrypt it — set CMK on THIS storage account directly in Azure Storage. The #1 review misunderstanding.'}
+      ], arrows:[
+        {from:'kv',to:'cp',cls:'',label:'wrap/unwrap'},
+        {from:'kv',to:'ws',cls:'',label:'wrap/unwrap'},
+        {from:'kv',to:'vm',cls:'',label:'wrap/unwrap'}
+      ]},
+      tls:{ nodes:[
+        {id:'user',x:30,y:150,w:150,h:54,color:'#2272B4',label:'User / BI / REST',sub:'browser · JDBC · CLI',
+          info:'<strong>Path ① — user → Databricks</strong>Browser/BI/REST reaches the workspace URL over HTTPS 443. TLS 1.2+ by default — no toggle.'},
+        {id:'cp',x:340,y:36,w:220,h:74,color:'#FF3621',label:'Control plane',sub:'TLS 1.2+ everywhere',
+          info:'<strong>Control plane</strong>Paths ① and ② terminate here over TLS 1.2+. Private Link (Stage 4) keeps the same TLS and removes the public-internet hop — TLS protects the bytes, Private Link hides the path.'},
+        {id:'vm',x:340,y:230,w:220,h:64,color:'#2272B4',label:'Classic cluster',sub:'no public IP',
+          info:'<strong>Classic cluster</strong>Dials out to the SCC relay over TLS 1.2+ (path ②) and reads ADLS over HTTPS/TLS (path ③). The ONE gap: worker-to-worker shuffle inside the cluster is unencrypted by default — close it with Azure VNet encryption.'},
+        {id:'adls',x:670,y:150,w:200,h:74,color:'#00A972',label:'ADLS Gen2',sub:'HTTPS / TLS',
+          info:'<strong>ADLS Gen2 (path ③)</strong>Compute reads/writes over HTTPS/TLS. At rest, AES-256 (Microsoft-managed by default; CMK on this account if mandated).'}
+      ], arrows:[
+        {from:'user',to:'cp',cls:'hot',label:'① TLS 1.2+'},
+        {from:'vm',to:'cp',cls:'hot',label:'② SCC relay · TLS'},
+        {from:'vm',to:'adls',cls:'hot',label:'③ HTTPS/TLS'}
+      ]}
+    }},
+
+  // ---- 8.2 isolation ----
+  d82:{ info:'d82info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      flow:{ nodes:[
+        {id:'uc',x:30,y:40,w:240,h:84,color:'#FF3621',label:'Unity Catalog (control plane)',sub:'token broker · NOT data path',
+          info:'<strong>Unity Catalog — the broker</strong>Checks the caller\'s READ/WRITE grant on the securable, then vends a down-scoped, time-bound (~1h) token to the workload. It mints and hands over the credential but is NEVER on the data path.'},
+        {id:'ac',x:30,y:150,w:240,h:66,color:'#6B7280',label:'Access Connector (MSI)',sub:'Storage Blob Data Contributor',
+          info:'<strong>Access Connector (managed identity)</strong>The identity UC wraps in a storage credential, granted Storage Blob Data Contributor narrowly. UC down-scopes from it per request — even the connector isn\'t a master key (confused-deputy defence).'},
+        {id:'w',x:360,y:130,w:230,h:90,color:'#00A972',label:'Serverless workload',sub:'dedicated · wiped · ~1h token',
+          info:'<strong>Serverless workload</strong>Dedicated per-workload compute in a private no-public-IP network; wiped on completion (no warm pool). Holds ONLY a ~1h token scoped to one path — a stolen token buys one path for one hour.'},
+        {id:'adls',x:650,y:130,w:220,h:90,color:'#00A972',label:'ADLS Gen2',sub:'NSP + serverless tag',
+          info:'<strong>ADLS Gen2 (direct read)</strong>The workload reads/writes DIRECTLY over the backbone + TLS 1.2+ — the control plane never proxies bytes. Locked to serverless via NSP + the regional AzureDatabricksServerless service tag (Transition mode).'}
+      ], arrows:[
+        {from:'w',to:'uc',cls:'',label:'① request table'},
+        {from:'uc',to:'ac',cls:'muted'},
+        {from:'uc',to:'w',cls:'hot',label:'② ~1h SCOPED token'},
+        {from:'w',to:'adls',cls:'cold',label:'③ DIRECT · TLS 1.2+'}
+      ]},
+      layers:{ nodes:[
+        {id:'compute',x:30,y:40,w:250,h:60,color:'#00A972',label:'Dedicated compute',sub:'per workload',
+          info:'<strong>Compute layer</strong>One workload never shares a VM/container with another; compute is dedicated and not reused across customers.'},
+        {id:'eph',x:30,y:118,w:250,h:60,color:'#00A972',label:'Ephemerality',sub:'wiped on completion',
+          info:'<strong>Ephemerality</strong>Compute AND attached disks are securely wiped the moment the workload completes — nothing survives, no warm pool holds your data.'},
+        {id:'net',x:30,y:196,w:250,h:60,color:'#00A972',label:'Network',sub:'no public IP · no lateral',
+          info:'<strong>Network layer</strong>Each workload sits in a private network with no public IPs; lateral movement is blocked and monitored.'},
+        {id:'lg',x:360,y:80,w:250,h:80,color:'#FF3621',label:'Lakeguard',sub:'in-cluster user isolation',
+          info:'<strong>Lakeguard</strong>For SHARED compute (Standard mode, serverless, SQL warehouses): Spark Connect decouples client from driver (no over-fetch past row/column filters), container sandboxing per client, and UDF isolation (incl. Python UDFs on serverless). This is WHY shared/serverless compute is UC-compliant — the engine enforces the boundary.'},
+        {id:'mode',x:360,y:180,w:250,h:64,color:'#6B7280',label:'Access mode',sub:'Standard vs Dedicated',
+          info:'<strong>Access modes</strong>Standard (was Shared) = multi-user, Lakeguard-isolated — the recommended default. Dedicated (single principal) is NOT "more isolated" — it just means no sharing. Serverless layers Lakeguard on platform isolation.'},
+        {id:'tls',x:680,y:120,w:190,h:64,color:'#2272B4',label:'Transport',sub:'backbone + TLS 1.2+',
+          info:'<strong>Transport</strong>Control plane ↔ serverless compute plane is always over the Microsoft backbone, encrypted with TLS 1.2+ — never the public internet.'}
+      ], arrows:[
+        {from:'compute',to:'lg',cls:'muted'},
+        {from:'net',to:'lg',cls:'muted'},
+        {from:'mode',to:'lg',cls:'muted'},
+        {from:'lg',to:'tls',cls:'muted'}
+      ]}
+    }},
+
+  // ---- 8.3 ESC/ESM/CSP ----
+  d83:{ info:'d83info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      nest:{ nodes:[
+        {id:'esc',x:30,y:140,w:200,h:84,color:'#6B7280',label:'ESC add-on',sub:'entitlement + billing',
+          info:'<strong>ESC — Enhanced Security &amp; Compliance add-on</strong>The paid SKU on top of Premium. Not a direct toggle — enabling ESM or CSP on ANY workspace activates the ESC charge. Don\'t blanket-enable across dev sandboxes.'},
+        {id:'csp',x:300,y:40,w:250,h:80,color:'#FF3621',label:'CSP',sub:'umbrella posture + standards',
+          info:'<strong>CSP — Compliance Security Profile</strong>Bundles ESM + automatic cluster update + TLS 1.2+ (incl. to the metastore) + compliance standards (HIPAA, PCI-DSS, IRAP…). Restricts the workspace to GA + a named-preview allow-list. A ONE-WAY DOOR — permanent once regulated data is processed.'},
+        {id:'esm',x:330,y:150,w:230,h:64,color:'#FF3621',label:'ESM',sub:'hardened image + agents',
+          info:'<strong>ESM — Enhanced Security Monitoring</strong>CIS Level 1 hardened Ubuntu image + 3 agents you can\'t disable: file-integrity (capsule8), antivirus (clamAV), vuln scan. CLASSIC compute plane only — serverless has its own controls. Can run alone (monitoring without the full profile).'},
+        {id:'img',x:360,y:250,w:200,h:54,color:'#6B7280',label:'CIS L1 hardened image',sub:'the innermost doll',
+          info:'<strong>Hardened image</strong>The innermost layer — a CIS Level 1 hardened Ubuntu base. CSP ⊃ ESM ⊃ hardened image. Re-released ~every 2–4 weeks; restart clusters (or auto-update) to pick up patches.'},
+        {id:'std',x:620,y:40,w:250,h:80,color:'#00A972',label:'Standards',sub:'HIPAA · PCI · IRAP · NONE',
+          info:'<strong>Compliance standards</strong>Attach one or more: HIPAA, PCI_DSS, HITRUST, IRAP_PROTECTED, UK_CYBER_ESSENTIALS_PLUS, CANADA_PROTECTED_B, or NONE. Terraform azurerm supports only HIPAA/PCI_DSS/NONE — others need Portal/CLI/PS/ARM. Serverless support is narrower &amp; region-specific.'}
+      ], arrows:[
+        {from:'esc',to:'csp',cls:'',label:'activates'},
+        {from:'csp',to:'esm',cls:'hot',label:'⊃ forces on'},
+        {from:'esm',to:'img',cls:'',label:'⊃'},
+        {from:'csp',to:'std',cls:'',label:'attaches'}
+      ]},
+      plane:{ nodes:[
+        {id:'vm',x:30,y:130,w:250,h:96,color:'#2272B4',label:'Classic compute VM',sub:'CIS L1 image + agents',
+          info:'<strong>Classic compute VM (ESM/CSP)</strong>CIS L1 hardened image with file-integrity (capsule8), antivirus (clamAV) and vuln-scan agents. Arm64-based VM types are UNSUPPORTED under ESM/CSP (VM type must support Azure VNet encryption; verify Gen2). Automatic cluster update restarts it in a maintenance window (permanent under CSP).'},
+        {id:'cp',x:360,y:40,w:230,h:70,color:'#FF3621',label:'Control plane / metastore',sub:'TLS 1.2+',
+          info:'<strong>Control plane / metastore</strong>CSP enforces TLS 1.2+ on egress and to the metastore. On a restricted-egress VNet (VNet injection + NSG/UDR/firewall), CSP additionally requires outbound TCP 2443 — miss it and CSP compute fails to operate.'},
+        {id:'fw',x:360,y:170,w:230,h:64,color:'#FFC107',label:'NSG / Azure Firewall',sub:'+ outbound TCP 2443',
+          info:'<strong>Egress firewall — the new rule</strong>The one new firewall rule CSP introduces on a locked-down VNet: allow outbound TCP 2443 (plus the usual ADB egress). Also requires Azure Virtual Network encryption on a supporting VM type (why Arm64 is excluded).'},
+        {id:'audit',x:660,y:150,w:210,h:70,color:'#00A972',label:'system.access.audit',sub:'capsule8 / clamAV rows',
+          info:'<strong>Agent output → audit table</strong>File-integrity (capsule8) and antivirus (clamAV) events land in the audit system table; vuln-scan results are emailed to admins. Databricks emits them — review/triage is the customer\'s job (ties to 8.4).'}
+      ], arrows:[
+        {from:'vm',to:'fw',cls:'hot',label:'TCP 2443'},
+        {from:'fw',to:'cp',cls:'hot',label:'TLS 1.2+'},
+        {from:'vm',to:'audit',cls:'cold',label:'agent rows'}
+      ]}
+    }},
+
+  // ---- 8.4 audit / monitoring ----
+  d84:{ info:'d84info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      taps:{ nodes:[
+        {id:'ae',x:30,y:140,w:230,h:84,color:'#FF3621',label:'Audit events',sub:'workspace + ACCOUNT level',
+          info:'<strong>Audit events (control plane + account)</strong>Every action — login, GRANT, cluster start, notebook command, failed permission check. Includes ACCOUNT-LEVEL events (workspace_id = 0) that the diagnostic pipeline never sees.'},
+        {id:'st',x:340,y:40,w:250,h:80,color:'#FF3621',label:'system.access.audit',sub:'tap INSIDE · SQL · 365-day',
+          info:'<strong>System table (tap inside)</strong>UC-governed Delta table you query in SQL — the ONLY tap carrying account-level events. 365-day free retention. Not real-time (mins–hours). Always filter on event_date or broad scans are rejected. Public Preview.'},
+        {id:'diag',x:340,y:160,w:250,h:80,color:'#2272B4',label:'Azure diagnostic settings',sub:'tap OUT · workspace-level only',
+          info:'<strong>Diagnostic settings (tap out)</strong>A setting on the Microsoft.Databricks/workspaces resource exporting selected log categories. WORKSPACE-LEVEL ONLY — account-admin/SCIM/metastore-grant events never flow here. A SIEM-only strategy has a blind spot.'},
+        {id:'wh',x:660,y:50,w:210,h:64,color:'#00A972',label:'SQL warehouse',sub:'analyst queries + alerts',
+          info:'<strong>SQL warehouse</strong>Where analysts query system.access.audit (with USE CATALOG/SCHEMA + SELECT grants) and where Databricks SQL Alerts run on a schedule.'},
+        {id:'siem',x:660,y:170,w:210,h:64,color:'#2272B4',label:'SIEM (Sentinel/Splunk)',sub:'central correlation',
+          info:'<strong>SIEM</strong>Log Analytics → Microsoft Sentinel (KQL analytics rules), or Event Hub → Splunk. The SOC\'s single pane of glass — but not complete without the system table for account-level events.'}
+      ], arrows:[
+        {from:'ae',to:'st',cls:'hot',label:'ALL events'},
+        {from:'ae',to:'diag',cls:'',label:'workspace-level'},
+        {from:'st',to:'wh',cls:'hot',label:'SQL'},
+        {from:'diag',to:'siem',cls:'',label:'export'}
+      ]},
+      siem:{ nodes:[
+        {id:'ae',x:30,y:150,w:200,h:70,color:'#FF3621',label:'Audit events',sub:'workspace-level',
+          info:'<strong>Workspace audit events</strong>The subset that flows through the Azure diagnostic pipeline (account-level events stay in the system table).'},
+        {id:'la',x:300,y:40,w:230,h:60,color:'#2272B4',label:'Log Analytics',sub:'Databricks* tables · KQL',
+          info:'<strong>Log Analytics</strong>Events land in DatabricksClusters/Jobs/UnityCatalog tables; query with KQL, then build Microsoft Sentinel analytics rules on top. Native Azure correlation.'},
+        {id:'sa',x:300,y:120,w:230,h:60,color:'#6B7280',label:'Storage account',sub:'WORM archive',
+          info:'<strong>Storage account (archive)</strong>Long-term immutable (WORM) archive — for >365-day retention auditors require, beyond the system table\'s free 365 days.'},
+        {id:'eh',x:300,y:200,w:230,h:60,color:'#00A972',label:'Event Hub',sub:'near-real-time',
+          info:'<strong>Event Hub</strong>High-throughput streaming pipe fanning logs to Splunk / 3rd-party SIEM in near-real-time — use it (not system tables) for sub-minute detection.'},
+        {id:'sen',x:620,y:60,w:230,h:60,color:'#2272B4',label:'Microsoft Sentinel',sub:'analytics rules',
+          info:'<strong>Microsoft Sentinel</strong>Built on Log Analytics; correlates Databricks telemetry with the rest of the estate and raises incidents.'},
+        {id:'alert',x:620,y:170,w:230,h:64,color:'#00A972',label:'Databricks SQL Alert',sub:'scheduled · notify',
+          info:'<strong>Databricks SQL Alert</strong>In-platform detection: a saved query runs on a schedule, evaluates a condition (e.g. failed_logins >= 5), and notifies email/Slack/PagerDuty/webhook. Can run as a Lakeflow Job task to chain a quarantine response. Match cadence to ingestion latency.'}
+      ], arrows:[
+        {from:'ae',to:'la',cls:''},
+        {from:'ae',to:'sa',cls:'muted'},
+        {from:'ae',to:'eh',cls:'cold'},
+        {from:'la',to:'sen',cls:'',label:'rules'},
+        {from:'eh',to:'alert',cls:'muted'}
+      ]}
+    }}
+};
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d81','cmk');
+renderDiagram('d82','flow');
+renderDiagram('d83','nest');
+renderDiagram('d84','taps');
+</script>
+</body>
+</html>

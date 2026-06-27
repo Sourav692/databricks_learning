@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ABAC — Complete Interactive Guide (Unity Catalog)</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#171d26; --panel2:#1e2632; --line:#2b3543;
+    --txt:#e7edf3; --muted:#9fb0c0; --accent:#ff5f46; --accent2:#ff8a3d;
+    --blue:#4aa3ff; --green:#37c285; --purple:#b07cff; --yellow:#ffcf5c;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:linear-gradient(180deg,#0c1117,#0f1419);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.6}
+
+  /* layout with sticky nav */
+  .shell{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px 1fr;gap:28px;padding:0 20px}
+  nav.toc{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:24px 8px 24px 0;border-right:1px solid var(--line)}
+  nav.toc .brand{font-weight:800;font-size:1.05rem;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:4px}
+  nav.toc .tag{font-size:.72rem;color:var(--muted);margin-bottom:14px}
+  nav.toc a{display:block;color:var(--muted);text-decoration:none;font-size:.85rem;padding:6px 10px;border-radius:8px;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--txt);background:var(--panel)}
+  nav.toc a.part{margin-top:12px;color:var(--accent2);font-weight:700;font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;pointer-events:none;padding-bottom:2px}
+  main{padding:28px 0 90px;min-width:0}
+  @media(max-width:860px){.shell{grid-template-columns:1fr}nav.toc{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}}
+
+  header.hero{text-align:center;padding:14px 0 8px}
+  .badge{display:inline-block;background:rgba(55,194,133,.15);color:var(--green);border:1px solid rgba(55,194,133,.4);padding:4px 12px;border-radius:999px;font-size:13px;font-weight:600}
+  h1{font-size:2.1rem;margin:14px 0 6px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent;font-weight:800}
+  .sub{color:var(--muted);max-width:720px;margin:0 auto;font-size:1.02rem}
+  .parthead{margin:46px 0 0;padding:10px 16px;border-radius:10px;background:linear-gradient(135deg,rgba(255,95,70,.14),rgba(255,138,61,.06));border:1px solid rgba(255,95,70,.3);font-weight:800;letter-spacing:.4px;font-size:.82rem;text-transform:uppercase;color:var(--accent2)}
+  h2{font-size:1.32rem;margin:36px 0 6px;display:flex;align-items:center;gap:10px;scroll-margin-top:14px}
+  h2 .n{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a1006;font-size:14px;font-weight:800}
+  h3{font-size:1.05rem;margin:18px 0 4px;color:var(--txt)}
+  .lead{color:var(--muted);margin:4px 0 14px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;margin:14px 0}
+  .hint{font-size:.84rem;color:var(--muted);text-align:center;margin-top:10px}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace;background:rgba(255,255,255,.06);padding:1px 6px;border-radius:5px;font-size:.86em}
+  pre{background:#0b1016;border:1px solid var(--line);border-radius:10px;padding:13px 15px;overflow:auto;font-size:.82rem;margin:6px 0 0}
+  pre .k{color:var(--accent2)} pre .c{color:#6b7a8a} pre .s{color:var(--green)} pre .f{color:var(--blue)}
+  table{width:100%;border-collapse:collapse;font-size:.86rem;margin-top:8px}
+  th,td{padding:9px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:.74rem;text-transform:uppercase;letter-spacing:.3px}
+  .warn{background:rgba(255,95,70,.08);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:11px 15px;margin:12px 0;color:#f3d3cb;font-size:.92rem}
+  .warn b{color:#fff}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:680px){.grid2{grid-template-columns:1fr}}
+  .tg{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:1px 7px;font-size:.74rem;font-weight:600;font-family:"SF Mono",Menlo,monospace;margin:1px 2px}
+  .tg.y{background:rgba(255,207,92,.13);color:var(--yellow);border:1px solid rgba(255,207,92,.35)}
+  .tg.dom{background:rgba(74,163,255,.13);color:var(--blue);border:1px solid rgba(74,163,255,.35)}
+  .tg.sen{background:rgba(255,207,92,.13);color:var(--yellow);border:1px solid rgba(255,207,92,.35)}
+  ul.tips{margin:8px 0 0;padding-left:18px} ul.tips li{margin:6px 0;color:var(--muted)} ul.tips b{color:var(--txt)}
+
+  /* glue */
+  .glue{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:stretch}
+  @media(max-width:680px){.glue{grid-template-columns:1fr}}
+  .gnode{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;cursor:pointer;transition:.18s;text-align:center}
+  .gnode:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .gnode .ic{font-size:26px}.gnode h4{margin:8px 0 2px}.gnode small{color:var(--muted)}
+  .gnode.tagn{border-top:3px solid var(--yellow)} .gnode.udfn{border-top:3px solid var(--blue)}
+  .gluebind{display:grid;place-items:center}
+  .policy{background:linear-gradient(135deg,rgba(255,95,70,.16),rgba(255,138,61,.10));border:1px solid rgba(255,95,70,.45);border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:.18s}
+  .policy:hover{transform:translateY(-3px)}
+  .glue-detail{margin-top:14px;background:#10161e;border:1px dashed var(--line);border-radius:12px;padding:0 18px;max-height:0;overflow:hidden;transition:max-height .3s,padding .3s}
+  .glue-detail.open{max-height:340px;padding:16px 18px}
+  .glue-detail h5{margin:0 0 6px;color:var(--accent2)}
+
+  /* tree */
+  .treebox{display:flex;gap:30px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+  .tree{display:flex;flex-direction:column;align-items:center}
+  .tnode{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px 18px;min-width:230px;text-align:center;cursor:pointer;transition:.18s}
+  .tnode:hover{border-color:var(--accent)} .tnode .lbl{font-weight:700}.tnode .meta{font-size:.8rem;color:var(--muted)}
+  .tnode.col{border-style:dashed;border-color:var(--accent)}
+  .conn{width:2px;height:24px;background:var(--green)}
+  .conn.broken{background:repeating-linear-gradient(var(--accent) 0 5px,transparent 5px 11px);position:relative}
+  .conn.broken::after{content:"✕ no inherit";position:absolute;left:14px;top:3px;color:var(--accent);font-size:.72rem;white-space:nowrap}
+  .flow{font-size:.78rem;color:var(--green);margin:2px 0}
+  .treeexp{flex:1;min-width:250px;max-width:380px;background:#10161e;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .treeexp h5{margin:0 0 8px;color:var(--accent2)} .treeexp p{margin:0;color:var(--muted);font-size:.92rem}
+
+  /* persona toolbars */
+  .seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-wrap:wrap}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:9px 15px;cursor:pointer;font-size:.88rem;font-weight:600}
+  .seg button.active{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#1a1006}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+  tr.hidden-row{opacity:.28;text-decoration:line-through;color:var(--muted)}
+  td.mask,td.full{color:var(--accent);font-family:"SF Mono",Menlo,monospace}
+  td.partial{color:var(--yellow);font-family:"SF Mono",Menlo,monospace}
+  td.null{color:var(--muted);font-style:italic}
+  .eu-pill{font-size:.7rem;background:rgba(74,163,255,.15);color:var(--blue);border:1px solid rgba(74,163,255,.35);border-radius:6px;padding:1px 6px;margin-left:6px}
+  .demo-note{margin-top:12px;font-size:.9rem;color:var(--muted);background:#10161e;border-left:3px solid var(--purple);padding:10px 14px;border-radius:0 8px 8px 0}
+  .memberbar{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 6px;font-family:"SF Mono",Menlo,monospace;font-size:.82rem}
+  .chip{border:1px solid var(--line);border-radius:7px;padding:3px 9px;color:var(--muted)} .chip b{color:var(--txt)}
+  .chip .t{color:var(--green)} .chip .f{color:var(--accent)}
+  .personas{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+  .persona{flex:1;min-width:140px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px;cursor:pointer;transition:.16s;text-align:center}
+  .persona:hover{transform:translateY(-2px)} .persona.active{border-color:var(--accent);background:linear-gradient(135deg,rgba(255,95,70,.12),rgba(255,138,61,.06))}
+  .persona .ic{font-size:22px}.persona h4{margin:5px 0 1px}.persona small{color:var(--muted);font-size:.78rem}
+
+  /* matrix */
+  .matrix{display:grid;grid-template-columns:auto 1fr 1fr;gap:10px;margin-top:6px}
+  .mhead{display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:.82rem;font-weight:600;text-align:center;padding:6px}
+  .mcell{border:1px solid var(--line);border-radius:11px;padding:13px;background:var(--panel2)}
+  .mcell h4{margin:0 0 3px;font-size:.95rem} .mcell.int h4{color:var(--green)} .mcell.conf h4{color:var(--accent)}
+  .mcell small{color:var(--muted);font-size:.8rem;display:block}
+  .rowlab{display:flex;align-items:center;writing-mode:vertical-rl;transform:rotate(180deg);justify-content:center;color:var(--blue);font-weight:700;font-size:.84rem}
+
+  /* do/dont + decision */
+  .do{background:rgba(55,194,133,.07);border:1px solid rgba(55,194,133,.3);border-radius:12px;padding:14px 16px}
+  .dont{background:rgba(255,95,70,.07);border:1px solid rgba(255,95,70,.3);border-radius:12px;padding:14px 16px}
+  .do h4{color:var(--green);margin:0 0 6px}.dont h4{color:var(--accent);margin:0 0 6px}
+  .dcard{border-radius:12px;padding:16px 18px;border:1px solid var(--line)}
+  .dcard.abac{background:rgba(255,138,61,.07);border-color:rgba(255,138,61,.35)}
+  .dcard.rls{background:rgba(74,163,255,.07);border-color:rgba(74,163,255,.35)}
+  .dcard.abac h4{color:var(--accent2);margin:0 0 8px}.dcard.rls h4{color:var(--blue);margin:0 0 8px}
+  .layers{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:600px){.layers{grid-template-columns:1fr}}
+  .layer{border-radius:12px;padding:16px 18px;border:1px solid var(--line)}
+  .layer.l1{background:rgba(74,163,255,.08);border-color:rgba(74,163,255,.35)}
+  .layer.l2{background:rgba(55,194,133,.08);border-color:rgba(55,194,133,.35)}
+  .layer.l1 h4{color:var(--blue);margin:0 0 4px}.layer.l2 h4{color:var(--green);margin:0 0 4px}.layer p{margin:0;color:var(--muted);font-size:.9rem}
+  footer{margin-top:46px;text-align:center;color:var(--muted);font-size:.82rem;border-top:1px solid var(--line);padding-top:18px}
+  a.src{color:var(--blue);text-decoration:none} a.src:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ NAV ============ -->
+  <nav class="toc">
+    <div class="brand">ABAC Guide</div>
+    <div class="tag">Unity Catalog · GA</div>
+    <a class="part">Foundations</a>
+    <a href="#s1">1 · What is ABAC</a>
+    <a href="#s2">2 · The glue model</a>
+    <a href="#s3">3 · Tags &amp; policy anatomy</a>
+    <a href="#s4">4 · Hierarchy &amp; inheritance</a>
+    <a href="#s5">5 · Row filter vs column mask</a>
+    <a class="part">Manage &amp; multi-domain</a>
+    <a href="#s6">6 · Unset tags &amp; drop policies</a>
+    <a href="#s7">7 · Multi-domain by group</a>
+    <a href="#s8">8 · Groups, users &amp; access</a>
+    <a class="part">Capstone &amp; guidance</a>
+    <a href="#s9">9 · Two-tag matrix</a>
+    <a href="#s10">10 · Do's &amp; don'ts</a>
+    <a href="#s11">11 · ABAC vs RLS/CLS</a>
+    <a href="#s12">12 · Gotchas master list</a>
+  </nav>
+
+  <!-- ============ MAIN ============ -->
+  <main>
+  <header class="hero">
+    <span class="badge">● Generally Available · Unity Catalog</span>
+    <h1>Attribute-Based Access Control</h1>
+    <p class="sub">Tag your data once, write the rule once, and protection follows the data automatically — across today's tables and every future one. A complete, interactive walkthrough. Click anything that looks clickable.</p>
+  </header>
+
+  <!-- =================== PART 1 =================== -->
+  <div class="parthead">Part 1 · Foundations</div>
+
+  <h2 id="s1"><span class="n">1</span> What is ABAC?</h2>
+  <p class="lead"><b>Plain:</b> instead of a separate rule per table/column, you label data with <b>tags</b>, write <b>one rule</b> ("mask anything tagged PII"), and Databricks applies it automatically to current <i>and future</i> tagged objects.</p>
+  <div class="card">
+    <p style="margin-top:0"><b>Technical:</b> ABAC is a <b>dynamic access-control model</b> in Unity Catalog where access decisions are made by evaluating <b>policies</b> against <b>attributes</b> (governed tags) attached to securables. A single policy attached at a catalog or schema applies automatically to every matching object in scope — it behaves like a <i>future grant</i> for security rules.</p>
+    <p style="margin-bottom:0"><b>GA status:</b> ABAC row-filter &amp; column-mask policies, governed tags, and automated data classification are <b>generally available</b>. ABAC protects <b>tables, materialized views, and streaming tables</b>.</p>
+  </div>
+
+  <h2 id="s2"><span class="n">2</span> The glue model</h2>
+  <p class="lead">Three pieces. The <b>policy is the glue</b> that binds a function to a tag. Click each.</p>
+  <div class="card">
+    <div class="glue">
+      <div class="gnode tagn" onclick="glueToggle('tag')"><div class="ic">🏷️</div><h4>Governed Tag</h4><small>account-level label</small><br><span class="tg y">pii = ssn</span></div>
+      <div class="gluebind"><div style="font-size:26px;color:var(--accent)">＋</div></div>
+      <div class="gnode udfn" onclick="glueToggle('udf')"><div class="ic">⚙️</div><h4>UDF</h4><small>filter / mask logic</small><br><span class="tg" style="color:var(--blue);border:1px solid rgba(74,163,255,.35);background:rgba(74,163,255,.12)">mask_ssn()</span></div>
+    </div>
+    <div style="text-align:center;margin:14px 0;color:var(--accent);font-size:20px">⬇ bound by ⬇</div>
+    <div class="policy" onclick="glueToggle('policy')"><div class="ic" style="font-size:26px">🛡️</div><h4 style="margin:6px 0 2px">POLICY</h4><small style="color:var(--muted)">"Apply <b>mask_ssn()</b> to any column tagged <b>pii=ssn</b>, for all users except admins."</small></div>
+    <div id="glueDetail" class="glue-detail"></div>
+    <p class="hint">Tag a new column <code>pii=ssn</code> tomorrow → this same policy catches it. No new function, no new policy.</p>
+  </div>
+
+  <h2 id="s3"><span class="n">3</span> Governed tags &amp; policy anatomy</h2>
+  <h3>Governed tags</h3>
+  <p class="lead">Key–value pairs (<code>pii = ssn</code>), <b>defined once at the account level</b> with allowed values, applied to catalogs/schemas/tables/<b>columns</b>. Reusable across the whole estate (even multiple metastores). Tagging is a <b>security boundary</b> — control who has <code>APPLY TAG</code>.</p>
+  <h3>Policy anatomy — <code>CREATE POLICY</code></h3>
+  <div class="card">
+<pre><span class="k">CREATE POLICY</span> &lt;name&gt;
+<span class="k">ON</span> &lt;CATALOG | SCHEMA | TABLE&gt; &lt;securable&gt;     <span class="c">-- SCOPE: where attached (+ descendants)</span>
+  <span class="k">ROW FILTER</span> &lt;udf&gt;                            <span class="c">-- ACTION (one of these two)</span>
+  | <span class="k">COLUMN MASK</span> &lt;udf&gt; <span class="k">ON COLUMN</span> &lt;col&gt;
+<span class="k">TO</span> <span class="s">`account users`</span> <span class="k">EXCEPT</span> <span class="s">`admins`</span>       <span class="c">-- PRINCIPALS / exemptions</span>
+<span class="k">FOR TABLES</span>                                  <span class="c">-- only supported target today</span>
+<span class="k">WHEN</span> <span class="f">has_tag</span>(<span class="s">'HR'</span>)                         <span class="c">-- TABLE condition (optional)</span>
+<span class="k">MATCH COLUMNS</span> <span class="f">has_tag_value</span>(<span class="s">'pii','ssn'</span>) <span class="k">AS</span> c  <span class="c">-- COLUMN condition (up to 3)</span>
+<span class="k">ON COLUMN</span> c
+<span class="k">USING COLUMNS</span> (c);                            <span class="c">-- args passed to the UDF</span></pre>
+    <table>
+      <tr><th>Clause</th><th>Meaning</th></tr>
+      <tr><td><code>ON</code></td><td>Scope — catalog/schema/table; applies to it and all descendants.</td></tr>
+      <tr><td><code>ROW FILTER</code> / <code>COLUMN MASK</code></td><td>Which protection.</td></tr>
+      <tr><td><code>TO … EXCEPT</code></td><td>Who it applies to / who's exempt.</td></tr>
+      <tr><td><code>WHEN</code></td><td>Table condition (match tables by tag). Omit = all tables in scope.</td></tr>
+      <tr><td><code>MATCH COLUMNS</code></td><td>Column condition; up to <b>3</b> expressions, all must match.</td></tr>
+      <tr><td><code>USING COLUMNS</code></td><td>Passes matched columns / constants to the UDF.</td></tr>
+    </table>
+    <p style="margin-bottom:0">Matching functions: <code>has_tag('key')</code> and <code>has_tag_value('key','value')</code>.</p>
+    <div class="warn"><b>Syntax note:</b> snake_case <code>has_tag</code>/<code>has_tag_value</code> is preferred; the camelCase <code>hasTag</code>/<code>hasTagValue</code> still works but is being deprecated for new policies.</div>
+  </div>
+
+  <h2 id="s4"><span class="n">4</span> Hierarchy &amp; inheritance</h2>
+  <p class="lead">Tags flow <b>downward</b> — with one exception. Click a level.</p>
+  <div class="card">
+    <div class="treebox">
+      <div class="tree">
+        <div class="tnode" onclick="treePick('catalog')"><div class="lbl">📚 Catalog</div><div class="meta">databricks_ansh</div></div>
+        <div class="flow">▼ inherits</div><div class="conn"></div>
+        <div class="tnode" onclick="treePick('schema')"><div class="lbl">🗂️ Schema</div><div class="meta">customers</div></div>
+        <div class="flow">▼ inherits</div><div class="conn"></div>
+        <div class="tnode" onclick="treePick('table')"><div class="lbl">📋 Table</div><div class="meta">profiles</div></div>
+        <div class="flow" style="color:var(--accent)">▼ does NOT inherit</div><div class="conn broken"></div>
+        <div class="tnode col" onclick="treePick('column')"><div class="lbl">🔡 Column</div><div class="meta">ssn · tag directly</div></div>
+      </div>
+      <div class="treeexp">
+        <h5 id="treeTitle">Pick a level</h5>
+        <p id="treeBody">Tags applied higher up cascade to descendants — a tag on the catalog reaches every schema and table inside it. Click each level to see what it inherits.</p>
+      </div>
+    </div>
+    <div class="warn"><b><code>has_tag()</code> context differs:</b> in a <code>WHEN</code> (table) clause it sees table + inherited tags; in <code>MATCH COLUMNS</code> it sees <b>only column-level</b> tags (tables don't pass tags to columns).</div>
+  </div>
+
+  <h2 id="s5"><span class="n">5</span> Row filter vs column mask</h2>
+  <p class="lead">The two policy types on <code>profiles</code>. Toggle the policy and switch who's asking.</p>
+  <div class="card">
+    <div class="toolbar">
+      <div class="seg" id="rfMode">
+        <button data-mode="none" class="active" onclick="rfSetMode('none')">No policy</button>
+        <button data-mode="row" onclick="rfSetMode('row')">+ Row filter</button>
+        <button data-mode="mask" onclick="rfSetMode('mask')">+ Column mask</button>
+        <button data-mode="both" onclick="rfSetMode('both')">Both</button>
+      </div>
+      <div class="seg" id="rfWho">
+        <button data-who="analyst" class="active" onclick="rfSetWho('analyst')">👤 Analyst</button>
+        <button data-who="admin" onclick="rfSetWho('admin')">🛡️ Admin (exempt)</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Name</th><th>Phone</th><th>Address <span class="tg y">pii=address</span></th><th>SSN <span class="tg y">pii=ssn</span></th></tr></thead>
+      <tbody id="rfBody"></tbody>
+    </table>
+    <div class="demo-note" id="rfNote"></div>
+  </div>
+  <div class="grid2">
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--green)">Row filter — TRUE keeps, FALSE hides</h4>
+<pre><span class="c">-- hide EU rows ⇒ return FALSE for them</span>
+<span class="k">CREATE FUNCTION</span> non_eu_filter(addr STRING)
+<span class="k">RETURNS</span> BOOLEAN
+<span class="k">RETURN NOT</span> (addr <span class="k">ILIKE</span> <span class="s">'%europe%'</span>);
+
+<span class="k">CREATE POLICY</span> hide_eu_customers
+<span class="k">ON SCHEMA</span> customers <span class="k">ROW FILTER</span> non_eu_filter
+<span class="k">TO</span> <span class="s">`account users`</span> <span class="k">FOR TABLES</span>
+<span class="k">MATCH COLUMNS</span> <span class="f">has_tag_value</span>(<span class="s">'pii','address'</span>) <span class="k">AS</span> a
+<span class="k">USING COLUMNS</span> (a);</pre>
+    </div>
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--accent)">Column mask — value bound from ON COLUMN</h4>
+<pre><span class="k">CREATE FUNCTION</span> mask_ssn(s STRING)
+<span class="k">RETURNS</span> STRING <span class="k">RETURN</span> <span class="s">'***-**-****'</span>;
+
+<span class="k">CREATE POLICY</span> data_mask_ssn
+<span class="k">ON SCHEMA</span> customers <span class="k">COLUMN MASK</span> mask_ssn
+<span class="k">TO</span> <span class="s">`account users`</span> <span class="k">EXCEPT</span> <span class="s">`admins`</span> <span class="k">FOR TABLES</span>
+<span class="k">MATCH COLUMNS</span> <span class="f">has_tag_value</span>(<span class="s">'pii','ssn'</span>) <span class="k">AS</span> s
+<span class="k">ON COLUMN</span> s;</pre>
+    </div>
+  </div>
+  <div class="warn">⚠️ <b>Row-filter polarity:</b> the UDF returns <code>TRUE</code> = keep, <code>FALSE</code> = hide. Naming a function "is_eu" and returning TRUE for EU rows would <i>keep</i> them.</div>
+
+  <!-- =================== PART 2 =================== -->
+  <div class="parthead">Part 2 · Manage &amp; multi-domain</div>
+
+  <h2 id="s6"><span class="n">6</span> Unset tags &amp; drop policies</h2>
+  <div class="grid2">
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--yellow)">🏷️ Unset a tag — key only</h4>
+<pre><span class="c">-- name the KEY, never the value</span>
+<span class="k">ALTER TABLE</span> customers.profiles
+  <span class="k">ALTER COLUMN</span> address <span class="k">UNSET TAGS</span> (<span class="s">'pii'</span>);
+
+<span class="c">-- equivalent statement form</span>
+<span class="k">UNSET TAG ON COLUMN</span> cat.sch.profiles.address pii;</pre>
+    </div>
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--accent)">🛡️ Drop a policy — scope-matched</h4>
+<pre><span class="k">SHOW POLICIES ON SCHEMA</span> cat.customers;
+
+<span class="k">DROP POLICY</span> data_mask <span class="k">ON SCHEMA</span> cat.customers;
+<span class="c">-- drop from the SAME level it was attached</span>
+<span class="c">-- (CATALOG / SCHEMA / TABLE)</span></pre>
+    </div>
+  </div>
+  <div class="warn">⚠️ <b>Dropping a tagged column fails</b> while it still carries a governed tag — <code>UNSET</code> first, then drop. You can only unset one column per <code>ALTER TABLE</code>. SQL is the reliable, scriptable, auditable path.</div>
+
+  <h2 id="s7"><span class="n">7</span> Multi-domain by group</h2>
+  <p class="lead">One <code>employees</code> table, different visibility per team — decided <i>inside</i> the UDF via <code>is_account_group_member()</code>. Pick who runs the query.</p>
+  <div class="card">
+    <div class="personas">
+      <div class="persona active" data-p="hr" onclick="gmPick('hr')"><div class="ic">👔</div><h4>HR user</h4><small>in hr_group</small></div>
+      <div class="persona" data-p="fin" onclick="gmPick('fin')"><div class="ic">💰</div><h4>Finance user</h4><small>in finance_group</small></div>
+      <div class="persona" data-p="other" onclick="gmPick('other')"><div class="ic">👤</div><h4>Other user</h4><small>neither group</small></div>
+    </div>
+    <div class="memberbar" id="gmBar"></div>
+    <table>
+      <thead><tr><th>ID</th><th>Name <span class="tg y">pii=name</span></th><th>Dept</th><th>Salary <span class="tg y">pii=salary</span></th></tr></thead>
+      <tbody id="gmBody"></tbody>
+    </table>
+    <div class="demo-note" id="gmNote"></div>
+    <p class="hint">name → revealed only to HR · salary → revealed only to Finance · everyone else masked</p>
+  </div>
+  <div class="grid2">
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--green)">Name mask — HR only</h4>
+<pre><span class="k">CREATE FUNCTION</span> mask_name(name STRING)
+<span class="k">RETURNS</span> STRING
+<span class="k">RETURN CASE WHEN</span> <span class="f">is_account_group_member</span>(<span class="s">'hr_group'</span>)
+  <span class="k">THEN</span> name <span class="k">ELSE</span> <span class="s">'***'</span> <span class="k">END</span>;</pre>
+    </div>
+    <div class="card" style="margin:0">
+      <h4 style="margin:0 0 6px;color:var(--green)">Salary mask — Finance only</h4>
+<pre><span class="c">-- return type must cast to DOUBLE</span>
+<span class="k">CREATE FUNCTION</span> mask_salary(salary DOUBLE)
+<span class="k">RETURNS</span> DOUBLE
+<span class="k">RETURN CASE WHEN</span> <span class="f">is_account_group_member</span>(<span class="s">'finance_group'</span>)
+  <span class="k">THEN</span> salary <span class="k">ELSE NULL END</span>;</pre>
+    </div>
+  </div>
+
+  <h2 id="s8"><span class="n">8</span> Groups, users &amp; access — two layers</h2>
+  <p class="lead">ABAC decides <i>what's masked</i>. It does <b>not</b> grant the right to read the table. Two separate layers.</p>
+  <div class="card">
+    <div class="layers">
+      <div class="layer l1">
+        <h4>Layer 1 · Access</h4>
+        <p><b>Can you open the table at all?</b> Grant to <b>groups</b>, not users:</p>
+<pre><span class="k">GRANT USE CATALOG</span> <span class="k">ON CATALOG</span> cat <span class="k">TO</span> <span class="s">`hr_group`</span>;
+<span class="k">GRANT USE SCHEMA</span>  <span class="k">ON SCHEMA</span>  cat.customers <span class="k">TO</span> <span class="s">`hr_group`</span>;
+<span class="k">GRANT SELECT</span>      <span class="k">ON SCHEMA</span>  cat.customers <span class="k">TO</span> <span class="s">`hr_group`</span>;</pre>
+      </div>
+      <div class="layer l2">
+        <h4>Layer 2 · ABAC</h4>
+        <p><b>Which rows/columns once inside?</b> Governed tags + policies + <code>is_account_group_member()</code> decide masking per group automatically.</p>
+      </div>
+    </div>
+    <div class="warn">⚠️ <b>#1 gotcha:</b> <code>is_account_group_member()</code> checks <b>account-level</b> membership and <b>ignores workspace-local</b> groups. If your groups aren't account-level (and synced), every user falls to the "Other" branch and masking looks broken.</div>
+  </div>
+
+  <!-- =================== PART 3 =================== -->
+  <div class="parthead">Part 3 · Capstone &amp; guidance</div>
+
+  <h2 id="s9"><span class="n">9</span> Multi-domain capstone — two-tag matrix</h2>
+  <p class="lead"><span class="tg dom">domain</span> says <i>which team</i> · <span class="tg sen">sensitivity</span> says <i>how hard</i> to mask. Their intersection picks the function.</p>
+  <div class="card">
+    <div class="matrix">
+      <div></div>
+      <div class="mhead"><span class="tg sen">sensitivity = internal</span></div>
+      <div class="mhead"><span class="tg sen">sensitivity = confidential</span></div>
+      <div class="rowlab">domain = HR</div>
+      <div class="mcell int"><h4>partial_mask</h4><small><code>employee_name</code></small><small>others <code>A****</code>; HR full</small></div>
+      <div class="mcell conf"><h4>full_mask</h4><small><code>ssn</code></small><small>others <code>****</code>; HR full</small></div>
+      <div class="rowlab" style="color:var(--green)">domain = finance</div>
+      <div class="mcell int"><h4>partial_mask</h4><small><code>cost_center</code></small><small>others <code>C****</code>; Finance full</small></div>
+      <div class="mcell conf"><h4>full_mask</h4><small><code>salary_band</code></small><small>others <code>****</code>; Finance full</small></div>
+    </div>
+    <p class="hint">4 policies = domain (2) × sensitivity (2), but only <b>2 reused functions</b>. Each is <code>TO `account users` EXCEPT &lt;owning group&gt;</code>.</p>
+  </div>
+  <p class="lead">Pick who runs <code>SELECT * FROM employee_records</code>:</p>
+  <div class="card">
+    <div class="personas">
+      <div class="persona active" data-p="hr" onclick="capPick('hr')"><div class="ic">👔</div><h4>HR</h4><small>exempt: HR cols</small></div>
+      <div class="persona" data-p="fin" onclick="capPick('fin')"><div class="ic">💰</div><h4>Finance</h4><small>exempt: finance cols</small></div>
+      <div class="persona" data-p="other" onclick="capPick('other')"><div class="ic">👤</div><h4>Other</h4><small>account users</small></div>
+    </div>
+    <div style="overflow-x:auto">
+    <table>
+      <thead><tr>
+        <th>Name<br><span class="tg dom">HR</span><span class="tg sen">internal</span></th>
+        <th>SSN<br><span class="tg dom">HR</span><span class="tg sen">confidential</span></th>
+        <th>Cost ctr<br><span class="tg dom">finance</span><span class="tg sen">internal</span></th>
+        <th>Salary<br><span class="tg dom">finance</span><span class="tg sen">confidential</span></th>
+        <th>Region<br><small style="color:var(--muted)">untagged</small></th>
+      </tr></thead>
+      <tbody id="capBody"></tbody>
+    </table>
+    </div>
+    <div class="demo-note" id="capNote"></div>
+    <div class="hint"><span class="partial" style="font-family:monospace">X****</span> = partial (internal) · <span class="full" style="font-family:monospace">****</span> = full (confidential) · untagged columns always visible</div>
+  </div>
+  <div class="warn">⚠️ <b>Tagging:</b> apply both tags as a <b>comma tuple</b> — <code>SET TAGS ('domain'='HR', 'sensitivity'='internal')</code>, never <code>AND</code>. A <code>MATCH COLUMNS</code> key that doesn't exist on the column (e.g. <code>department</code> vs <code>domain</code>) silently matches nothing — no error, data unprotected.</div>
+
+  <h2 id="s10"><span class="n">10</span> Do's &amp; don'ts (UDF performance)</h2>
+  <p class="lead">The UDF runs for <b>every row / value</b>, so keep it cheap. Strong guidelines, not hard rules.</p>
+  <div class="grid2">
+    <div class="do">
+      <h4>✅ Do</h4>
+      <ul class="tips">
+        <li>Keep UDFs simple — basic <b>CASE</b> / boolean logic</li>
+        <li>Reference <b>only target columns</b> (enables predicate pushdown)</li>
+        <li>External table? Keep it <b>small enough to broadcast</b>; partition it</li>
+        <li>Prefer <b>SQL UDFs</b>; mark <code>DETERMINISTIC</code></li>
+        <li>Use <code>try_cast</code>/<code>try_divide</code> (error-safe)</li>
+        <li><b>Reuse</b> one mask across columns</li>
+      </ul>
+    </div>
+    <div class="dont">
+      <h4>❌ Avoid</h4>
+      <ul class="tips">
+        <li><b>External API calls</b> / cross-DB lookups</li>
+        <li>Complex <b>subqueries / joins</b> on large tables</li>
+        <li><b>Regex</b> on large text (XML/JSON) fields</li>
+        <li>Multi-level <b>nesting</b></li>
+        <li><b>Per-row metadata lookups</b> (<code>information_schema</code>)</li>
+        <li>Non-deterministic funcs (<code>rand()</code>, <code>now()</code>)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="warn"><b>SecureView barrier:</b> any policy on a table blocks side-effecting predicates from being pushed to storage, so <code>WHERE func(col)=…</code> forces a full scan while <code>WHERE col='x'</code> still prunes. Favor simple equality predicates; <code>EXCEPT</code> removes the barrier for exempt users. Test on ≥1M rows before production.</div>
+
+  <h2 id="s11"><span class="n">11</span> When to use ABAC vs RLS/CLS</h2>
+  <p class="lead">Both sit <i>on top of</i> grants (neither grants access). The deciding factor is <b>scale + governance</b>.</p>
+  <div class="layers">
+    <div class="dcard abac">
+      <h4>Use ABAC when…</h4>
+      <ul class="tips">
+        <li><b>Many tables</b> need <b>consistent</b> rules</li>
+        <li>Duties are <b>separated</b> (taggers vs policy authors)</li>
+        <li>Estate is <b>growing</b> — new tagged tables auto-covered</li>
+        <li>Admins must enforce rules owners <b>can't bypass</b></li>
+        <li><code>CREATE POLICY … ON CATALOG/SCHEMA/TABLE</code></li>
+      </ul>
+    </div>
+    <div class="dcard rls">
+      <h4>Use table-level RLS/CLS when…</h4>
+      <ul class="tips">
+        <li><b>Small, stable</b> set of tables</li>
+        <li>Each table has <b>bespoke</b> logic that doesn't generalize</li>
+        <li><b>Table owners</b> manage their own filters/masks</li>
+        <li>No central tag system desired</li>
+        <li><code>ALTER TABLE … SET ROW FILTER / SET MASK</code></li>
+      </ul>
+    </div>
+  </div>
+  <p class="lead" style="margin-top:14px">They can <b>coexist</b> (still one filter/table &amp; one mask/column per user). A third option — <b>dynamic views</b> — fits control spanning multiple source tables, but views lack tag-based auditing and the anti-probing barrier. <b>One line:</b> many tables + central governance → ABAC; few, bespoke, stable tables → table-level.</p>
+
+  <h2 id="s12"><span class="n">12</span> Gotchas master list</h2>
+  <div class="card">
+    <ul class="tips">
+      <li><b>Row-filter polarity:</b> <code>TRUE</code> = keep, <code>FALSE</code> = hide.</li>
+      <li><b>Columns don't inherit tags</b> — tag each sensitive column directly.</li>
+      <li><b>Wrong tag key/value = silent miss</b> — no error, data returns unprotected.</li>
+      <li><b>Unset uses the key only</b> — <code>UNSET TAGS ('pii')</code>, never <code>('pii'='ssn')</code>.</li>
+      <li><b>Multiple tags on a column = comma tuple</b>, not <code>AND</code>.</li>
+      <li><b>Untag before dropping</b> a governed-tagged column.</li>
+      <li><b>Drop a policy from its exact scope</b>; <code>SHOW POLICIES</code> / <code>SHOW EFFECTIVE POLICIES</code> to inspect.</li>
+      <li><b><code>is_account_group_member</code> = account-level only</b>; workspace-local membership ignored.</li>
+      <li><b>ABAC ≠ access</b> — users still need <code>SELECT</code> + <code>USE CATALOG</code>/<code>USE SCHEMA</code>.</li>
+      <li><b>Mask UDFs must return a cast-compatible type</b> (numeric → <code>NULL</code>/<code>0.0</code>, not a string).</li>
+      <li><b>One row filter per table, one mask per column</b> per user — conflicts throw <code>UC_ABAC_MULTIPLE_ROW_FILTERS</code>/<code>MULTIPLE_MASKS</code> and block the table.</li>
+      <li><b>Quotas:</b> 10 policies/catalog · 10/schema · 5/table · 20 principals/policy.</li>
+      <li>Prefer <code>TO`/`EXCEPT</code> over identity checks inside the UDF; <code>CREATE OR REPLACE POLICY</code> to re-run.</li>
+    </ul>
+  </div>
+
+  <footer>
+    Databricks Data Engineering learning project · Consolidated &amp; verified against the official Unity Catalog ABAC docs:
+    <a class="src" href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/core-concepts" target="_blank">core concepts</a> ·
+    <a class="src" href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policies" target="_blank">policies</a> ·
+    <a class="src" href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/common-patterns" target="_blank">common patterns</a> ·
+    <a class="src" href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/performance" target="_blank">performance</a> ·
+    <a class="src" href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/abac-vs-rls-cm" target="_blank">ABAC vs RLS/CM</a> ·
+    <a class="src" href="https://docs.databricks.com/aws/en/database-objects/tags" target="_blank">tags</a>
+  </footer>
+  </main>
+</div>
+
+<script>
+/* ---------- Section 2: glue ---------- */
+const glueText={
+  tag:["🏷️ Governed Tag","A key–value label defined <b>once at the account level</b> with allowed values (key <code>pii</code> → <code>ssn</code>, <code>address</code>). Applied to catalogs, schemas, tables, and columns. Carries no logic — it just classifies."],
+  udf:["⚙️ User-Defined Function","Holds the <b>logic</b>. A row-filter UDF returns BOOLEAN (TRUE keeps the row); a column-mask UDF takes the value and returns a masked version. Reusable across policies. You need <code>EXECUTE</code> on it."],
+  policy:["🛡️ Policy — the glue","Binds the UDF to objects matching a tag condition, for chosen principals. Attached at a <b>scope</b> via <code>CREATE POLICY … ON …</code>, evaluated dynamically — new tagged objects are covered automatically, like a future grant."]
+};
+function glueToggle(k){
+  const d=document.getElementById('glueDetail');const [t,b]=glueText[k];
+  if(d.dataset.k===k && d.classList.contains('open')){d.classList.remove('open');d.dataset.k='';return;}
+  d.innerHTML='<h5>'+t+'</h5><div style="color:var(--muted)">'+b+'</div>';d.classList.add('open');d.dataset.k=k;
+}
+
+/* ---------- Section 4: tree ---------- */
+const treeText={
+  catalog:["📚 Catalog (databricks_ansh)","Top level. A tag or policy here applies to <b>every schema and table</b> beneath it. Databricks recommends attaching policies at the catalog level for maximum reuse."],
+  schema:["🗂️ Schema (customers)","Inherits tags from its catalog and passes them to its tables. A schema-scoped policy evaluates against every table in the schema — including ones created later."],
+  table:["📋 Table (profiles)","Inherits tags from catalog and schema. A table-scoped policy applies only to this table. Tables, materialized views, and streaming tables are the supported targets."],
+  column:["🔡 Column (ssn) — the exception","Columns do <b>NOT</b> inherit tags from their table. Tag columns <b>directly</b>. That's why <code>has_tag()</code> inside MATCH COLUMNS sees only column-level tags."]
+};
+function treePick(k){document.getElementById('treeTitle').innerHTML=treeText[k][0];document.getElementById('treeBody').innerHTML=treeText[k][1];}
+
+/* ---------- Section 5: row/mask ---------- */
+const rfRows=[
+  {n:"Ava Stone",p:"555-0101",a:"New York, USA",s:"111-11-1111",eu:false},
+  {n:"Liam Reed",p:"555-0102",a:"California, USA",s:"222-22-2222",eu:false},
+  {n:"Emma Cruz",p:"555-0105",a:"Berlin, Europe",s:"555-55-5555",eu:true},
+  {n:"Luca Rossi",p:"555-0106",a:"Rome, Europe",s:"666-66-6666",eu:true},
+  {n:"Omar Ali",p:"555-0108",a:"Chicago, USA",s:"888-88-8888",eu:false}
+];
+let rfMode="none", rfWho="analyst";
+const rfNotes={
+  none:"No policy attached — every user sees all rows and raw SSNs.",
+  row:"Row filter <code>hide_eu_customers</code> active: EU rows removed for the analyst. SSNs still raw.",
+  mask:"Column mask <code>data_mask_ssn</code> active: SSN shows <code>***-**-****</code>. All rows still visible.",
+  both:"Both policies active: EU rows hidden AND SSN masked for the analyst.",
+  admin:"This user is in <b>EXCEPT `admins`</b>, so policies don't apply — raw, unfiltered data."
+};
+function rfRender(){
+  const tb=document.getElementById('rfBody');tb.innerHTML='';const applies=rfWho==="analyst";
+  rfRows.forEach(r=>{
+    const hide=applies&&(rfMode==="row"||rfMode==="both")&&r.eu;
+    const mask=applies&&(rfMode==="mask"||rfMode==="both");
+    const tr=document.createElement('tr');if(hide)tr.className='hidden-row';
+    tr.innerHTML='<td>'+r.n+'</td><td>'+r.p+'</td><td>'+r.a+(r.eu?' <span class="eu-pill">EU</span>':'')+'</td><td'+(mask?' class="mask"':'')+'>'+(mask?'***-**-****':r.s)+'</td>';
+    tb.appendChild(tr);
+  });
+  document.getElementById('rfNote').innerHTML = rfWho==="admin"?rfNotes.admin:rfNotes[rfMode];
+}
+function rfSetMode(m){rfMode=m;document.querySelectorAll('#rfMode button').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));rfRender();}
+function rfSetWho(w){rfWho=w;document.querySelectorAll('#rfWho button').forEach(b=>b.classList.toggle('active',b.dataset.who===w));rfRender();}
+rfRender();
+
+/* ---------- Section 7: group multi-domain ---------- */
+const gmRows=[
+  {id:1,name:"Ava Stone",dept:"Engineering",salary:"$145,000"},
+  {id:2,name:"Liam Reed",dept:"Sales",salary:"$98,000"},
+  {id:3,name:"Mia Lopez",dept:"Marketing",salary:"$112,000"},
+  {id:4,name:"Omar Ali",dept:"Engineering",salary:"$160,000"}
+];
+const gmCfg={
+  hr:{hr:true,fin:false,note:"<b>HR user:</b> in <code>hr_group</code> → real <b>names</b>. Not in finance_group → <b>salary</b> = <code>NULL</code>."},
+  fin:{hr:false,fin:true,note:"<b>Finance user:</b> in <code>finance_group</code> → real <b>salaries</b>. Not in hr_group → <b>name</b> = <code>***</code>."},
+  other:{hr:false,fin:false,note:"<b>Other user:</b> neither group → ELSE branch of both UDFs, so <b>name and salary both masked</b>."}
+};
+let gmCur="hr";
+function gmSync(){var box=document.querySelectorAll('.personas')[0];if(box)box.querySelectorAll('.persona').forEach(e=>e.classList.toggle('active',e.dataset.p===gmCur));}
+function gmPick(p){gmCur=p;gmSync();gmRender();}
+function gmRender(){
+  const c=gmCfg[gmCur];
+  document.getElementById('gmBar').innerHTML=
+    '<span class="chip">is_account_group_member(<b>hr_group</b>) → <span class="'+(c.hr?'t':'f')+'">'+c.hr+'</span></span>'+
+    '<span class="chip">is_account_group_member(<b>finance_group</b>) → <span class="'+(c.fin?'t':'f')+'">'+c.fin+'</span></span>';
+  const tb=document.getElementById('gmBody');tb.innerHTML='';
+  gmRows.forEach(r=>{
+    const name=c.hr?'<td>'+r.name+'</td>':'<td class="mask">***</td>';
+    const sal=c.fin?'<td>'+r.salary+'</td>':'<td class="null">NULL</td>';
+    tb.insertAdjacentHTML('beforeend','<tr><td>'+r.id+'</td>'+name+'<td>'+r.dept+'</td>'+sal+'</tr>');
+  });
+  document.getElementById('gmNote').innerHTML=c.note;
+}
+
+/* ---------- Section 9: capstone two-tag ---------- */
+const capRows=[
+  {name:"Ava Stone",ssn:"111-11-1111",cc:"CC-100",band:"Band-5",region:"US"},
+  {name:"Liam Reed",ssn:"222-22-2222",cc:"CC-200",band:"Band-3",region:"US"},
+  {name:"Mia Lopez",ssn:"333-33-3333",cc:"CC-100",band:"Band-4",region:"EU"}
+];
+const capCfg={
+  hr:{name:"raw",ssn:"raw",cc:"partial",band:"full",note:"<b>HR</b> — exempt from HR policies → <code>name</code> &amp; <code>ssn</code> raw. Subject to finance → cost center partial, salary band masked."},
+  fin:{name:"partial",ssn:"full",cc:"raw",band:"raw",note:"<b>Finance</b> — exempt from finance policies → <code>cost_center</code> &amp; <code>salary_band</code> raw. Subject to HR → name partial, SSN masked."},
+  other:{name:"partial",ssn:"full",cc:"partial",band:"full",note:"<b>Other</b> (only <code>account users</code>) — exempt from nothing → all four tagged columns masked: internal → partial, confidential → full."}
+};
+let capCur="hr";
+function capPart(v){return v.charAt(0)+"****";}
+function capCell(mode,val){if(mode==="raw")return '<td>'+val+'</td>';if(mode==="partial")return '<td class="partial">'+capPart(val)+'</td>';return '<td class="full">****</td>';}
+function capSync(){var box=document.querySelectorAll('.personas')[1];if(box)box.querySelectorAll('.persona').forEach(e=>e.classList.toggle('active',e.dataset.p===capCur));}
+function capPick(p){capCur=p;capSync();capRender();}
+function capRender(){
+  const c=capCfg[capCur],tb=document.getElementById('capBody');tb.innerHTML='';
+  capRows.forEach(r=>{tb.insertAdjacentHTML('beforeend','<tr>'+capCell(c.name,r.name)+capCell(c.ssn,r.ssn)+capCell(c.cc,r.cc)+capCell(c.band,r.band)+'<td>'+r.region+'</td></tr>');});
+  document.getElementById('capNote').innerHTML=c.note;
+}
+
+/* init persona demos — 2 .personas blocks: [0]=group multi-domain (s7), [1]=capstone (s9) */
+gmSync(); gmRender();
+capSync(); capRender();
+</script>
+</body>
+</html>

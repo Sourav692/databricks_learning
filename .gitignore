@@ -1,0 +1,12 @@
+
+.databricks
+.claude
+.venv
+.vscode
+.DS_Store
+.spark-experiments-main/
+spark-experiments-main/
+Databricks_Bootcamp/
+.mcp.json
+spark-experiments-main.zip
+.env

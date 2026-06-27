@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Skipping &amp; Z-ordering · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.scan{background:linear-gradient(135deg,var(--frost-2),var(--frost))}
+  .sw.skp{background:var(--paper-2);opacity:.5}
+  .sw.clu{background:linear-gradient(135deg,#bfeaf3,#8fd6e8)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+
+  /* ---------- min/max stats inspector (lesson-03 specific, reuses palette) ---------- */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0 6px}
+  .fcard{border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:#fff;transition:.25s;box-shadow:var(--shadow)}
+  .fcard .name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;color:#6a7780;text-transform:uppercase}
+  .fcard .rng{font-family:"Spline Sans Mono",monospace;font-size:1.02rem;font-weight:600;margin:6px 0 4px}
+  .fcard .bar{height:8px;border-radius:6px;background:var(--paper-2);position:relative;overflow:hidden;margin-top:8px}
+  .fcard .bar i{position:absolute;top:0;bottom:0;background:linear-gradient(90deg,#bfeaf3,#8fd6e8);border-radius:6px}
+  .fcard .tag2{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;margin-top:8px;display:inline-block;padding:2px 8px;border-radius:999px}
+  .fcard.read{border-color:#15596f;background:linear-gradient(135deg,#eafaff,#d4f0f7)}
+  .fcard.read .tag2{background:linear-gradient(135deg,var(--frost-2),var(--frost));color:#eafaff}
+  .fcard.pruned{opacity:.42;filter:grayscale(.3)}
+  .fcard.pruned .tag2{background:var(--paper-2);color:#7a868f}
+  .numinput{font-family:"Spline Sans Mono",monospace;font-size:.9rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:120px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 03</p>
+    <h1>Data skipping &amp;<br><span class="drip">Z-ordering.</span></h1>
+    <p class="lede">Delta records a min, max, null-count and row-count for every file as it writes. At query time the engine reads those stats first and skips any file whose range can't match — so a good layout means reading a fraction of the table.</p>
+    <div class="meta">
+      <span class="pill">Skipping <b>automatic</b></span>
+      <span class="pill">Stats cols <b>first 32</b></span>
+      <span class="pill">ZORDER <b>not idempotent</b></span>
+      <span class="pill">New tables <b>use clustering</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Data skipping</strong> is how Delta makes a query fast by <em>not reading files it doesn't need to</em>. Every write records four <strong>per-file statistics</strong> per column in the transaction log: the <strong>MIN</strong>, the <strong>MAX</strong>, the <strong>NULL count</strong>, and the file's <strong>total record count</strong>. When you run <code>WHERE amount &gt; 5000</code>, the engine checks each file's <code>amount</code> range first — if a file only ranges 0–100, it <strong>skips the whole file without opening it</strong>.</p>
+    <p>The catch: skipping only works if matching rows are <em>physically near each other</em>. If they're scattered, every file's range overlaps your predicate and nothing can be skipped. <strong>Z-ordering</strong> (<code>ZORDER BY</code>) fixes that — it rewrites the data along a <strong>space-filling curve</strong> so related rows land in the same files, giving tight, non-overlapping min/max ranges.</p>
+    <p><span class="chip analogy">Analogy</span><br>Data skipping is the <strong>index tabs on a filing cabinet</strong>: before pulling a folder you glance at the label range ("IDs 1000–1999"); if you want 5500 you don't even open that drawer. Z-ordering is <strong>re-shelving the warehouse so items bought together sit on one shelf</strong> — the picker walks far fewer aisles.</p>
+    <p><span class="chip usecase">Real-world use case</span><br>An 8 TB <code>orders</code> table queried daily with <code>WHERE order_status = 'RETURNED' AND region = 'EU'</code>. <code>OPTIMIZE … ZORDER BY (order_status, region)</code> colocates those rows into a handful of files so the rest are skipped. (For a <em>new</em> table you'd use liquid clustering instead.)</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Reading less data is the biggest query win.</strong> On a billion-row table, scanning 5% of files vs 100% is the difference between seconds and minutes — and between a small bill and a large one.</li>
+      <li><strong>Stats are free and already there.</strong> Delta collects MIN/MAX/NULL/count automatically on every write. Data skipping is on by default — you don't enable it, you just give it a layout that lets it work.</li>
+      <li><strong>Layout decides how much you can skip.</strong> Stats tell the engine <em>whether</em> a file can match; <strong>colocation</strong> (Z-order, or better, liquid clustering) decides how <em>tightly</em> matching rows are packed — which decides how many files are skippable.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Data skipping is <strong>automatic</strong>; your job is to give it <strong>tight, non-overlapping min/max ranges</strong> on the columns you filter on — by choosing the right stats columns and the right colocation strategy.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: file-grid data-skipping simulator ============ -->
+  <section>
+    <h2>See it work — data-skipping simulator</h2>
+    <p>Below is a table stored as 64 files. Pick a layout, then run a <code>WHERE col = value</code> filter and watch which files get <strong>scanned</strong> vs <strong>skipped</strong>. The fewer files scanned, the faster and cheaper the query.</p>
+
+    <div class="lab" id="lab-skipping">
+      <div class="lab-head">
+        <span class="lab-title">File-grid data-skipping simulator</span>
+      </div>
+      <p class="lab-sub">A 64-file Delta table of order rows, colored by <code>order_status</code>.</p>
+
+      <div class="controls">
+        <div class="seg" id="ds-layoutSeg" role="group" aria-label="Table layout">
+          <button data-layout="none" aria-pressed="true">Unsorted / scattered</button>
+          <button data-layout="clustered" aria-pressed="false">ZORDER&nbsp;BY (order_status)</button>
+        </div>
+      </div>
+
+      <div class="filterbar">
+        <label for="ds-filterSel">Run query:</label>
+        <select id="ds-filterSel">
+          <option value="ALL">no filter (full scan)</option>
+          <option value="RETURNED" selected>WHERE order_status = 'RETURNED'</option>
+          <option value="SHIPPED">WHERE order_status = 'SHIPPED'</option>
+          <option value="PENDING">WHERE order_status = 'PENDING'</option>
+          <option value="CANCELLED">WHERE order_status = 'CANCELLED'</option>
+        </select>
+      </div>
+      <div class="qstr" id="ds-qstr"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="ds-gridLabel">Files on disk</div>
+        <div class="grid" id="ds-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw scan"></i> scanned (must read)</span>
+        <span><i class="sw skp"></i> skipped (data skipping)</span>
+        <span><i class="sw clu"></i> Z-ordered file</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="ds-statScan">—</div><div class="lbl">files scanned</div></div>
+        <div class="stat"><div class="big" id="ds-statSkip">—</div><div class="lbl">files skipped</div></div>
+        <div class="stat win"><div class="big" id="ds-statSave">—</div><div class="lbl">data read avoided</div></div>
+      </div>
+      <div class="verdict" id="ds-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of the concept. Real data skipping uses per-file min/max statistics; results depend on data distribution and file sizes.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: min/max stats inspector ============ -->
+  <section>
+    <h2>See it work — min/max stats inspector</h2>
+    <p>This is the mechanism behind the grid above. Six files each carry a <code>[min, max]</code> range for <code>amount</code>. Type a predicate value: a file is <strong>pruned</strong> if its range can't contain the value, and <strong>read</strong> if it could. This is exactly what the optimizer does before opening any file.</p>
+
+    <div class="lab" id="lab-stats">
+      <div class="lab-head">
+        <span class="lab-title">Min/max stats inspector</span>
+      </div>
+      <p class="lab-sub">Per-file stats for column <code>amount</code> — the optimizer reads these from <code>_delta_log</code>.</p>
+
+      <div class="filterbar">
+        <label for="st-op">Predicate:</label>
+        <div class="seg" id="st-opSeg" role="group" aria-label="Operator">
+          <button data-op="eq" aria-pressed="true">amount =</button>
+          <button data-op="gt" aria-pressed="false">amount &gt;</button>
+          <button data-op="lt" aria-pressed="false">amount &lt;</button>
+        </div>
+        <input class="numinput" id="st-val" type="number" value="2500" step="100" aria-label="Predicate value">
+      </div>
+      <div class="qstr" id="st-qstr"></div>
+
+      <div class="cards" id="st-cards" aria-live="polite"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="st-read">—</div><div class="lbl">files read</div></div>
+        <div class="stat"><div class="big" id="st-pruned">—</div><div class="lbl">files pruned</div></div>
+        <div class="stat win"><div class="big" id="st-save">—</div><div class="lbl">files skipped</div></div>
+      </div>
+      <div class="verdict" id="st-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real stats include MIN, MAX, NULL count and record count per column; only the first 32 columns are indexed by default on UC EXTERNAL tables, and long strings are truncated.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3>1 · Per-file statistics: MIN, MAX, NULL count, record count</h3>
+    <p>On every write, Delta stores four stats <strong>per file, per column</strong> — MIN, MAX, NULL count, and the file's total record count — in the <code>_delta_log</code>. The engine reads these tiny stats first and prunes any provably non-matching file <strong>without opening it</strong>. Helps range-comparable predicates (<code>=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>BETWEEN</code>, <code>IN</code>); does nothing for, e.g., <code>LIKE '%x%'</code>. Skipping is best-effort — never wrong, just sometimes conservative.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Data skipping is automatic — no syntax to "turn it on". Stats collected on write.</span>
+<span class="c">-- The engine prunes any file whose amount MIN/MAX can't reach 5000:</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.delta_opt_demo.orders
+<span class="k">WHERE</span> amount &gt; <span class="s">5000</span>;
+
+<span class="c">-- File-level view (numFiles, sizeInBytes):</span>
+<span class="k">DESCRIBE DETAIL</span> main.delta_opt_demo.orders;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># Skipping happens transparently under the hood.</span>
+(spark.table(<span class="s">"main.delta_opt_demo.orders"</span>)
+      .where(<span class="s">"amount &gt; 5000"</span>)   <span class="c"># min/max pruning kicks in automatically</span>
+      .count())</pre>
+
+    <h3>2 · How the optimizer prunes files at query time</h3>
+    <p>The planner intersects each predicate with every file's min/max range. A file is <strong>kept</strong> only if its range <em>could</em> overlap the predicate; otherwise it's <strong>skipped</strong> — all before any data file is opened. The win scales with how <em>non-overlapping</em> the ranges are. Scattered data ⇒ ranges overlap everywhere ⇒ nothing skippable despite perfect stats. That's the problem Z-order / clustering fixes.</p>
+
+    <h3>3 · Stats columns = first 32 columns by default (UC EXTERNAL)</h3>
+    <p>By default Delta collects skipping stats only on the <strong>first 32 columns</strong> (UC EXTERNAL tables). Columns past the 32nd get <strong>no</strong> min/max, so predicates on them can't drive skipping. The cap keeps writes fast and the log small — but a hot filter column past position 32 is silently un-indexed. Fix by reordering it earlier, raising <code>dataSkippingNumIndexedCols</code>, or naming it in <code>dataSkippingStatsColumns</code>.</p>
+
+    <h3>4 · UC MANAGED tables: predictive optimization handles stats</h3>
+    <p><span class="chip analogy">Analogy</span> <span class="chip usecase">Managed = self-tuning</span></p>
+    <p>For <strong>UC MANAGED</strong> tables, <strong>predictive optimization</strong> provides intelligent stats — <strong>no 32-column limit</strong> — and runs <code>ANALYZE</code> to maintain the stats it judges useful. You generally don't tune stats columns on managed tables. (Managed-only; EXTERNAL tables still get the 32-col default. See Lesson 09.)</p>
+    <pre><span class="tag">SQL</span><span class="c">-- On UC MANAGED tables, predictive optimization manages stats (runs ANALYZE for you).</span>
+<span class="k">DESCRIBE EXTENDED</span> main.delta_opt_demo.orders;  <span class="c">-- look for "Predictive Optimization"</span></pre>
+
+    <h3>5 · <code>dataSkippingNumIndexedCols</code> vs <code>dataSkippingStatsColumns</code></h3>
+    <p><code>delta.dataSkippingNumIndexedCols</code> (<strong>all DBR</strong>) sets how many <em>leading</em> columns get stats — <strong>order-dependent</strong>, default 32. <code>delta.dataSkippingStatsColumns</code> (<strong>DBR 13.3 LTS+</strong>) is an <strong>explicit column list</strong> regardless of position and <strong>supersedes</strong> the numeric knob. Prefer the explicit list — name exactly the columns you filter on (and exclude expensive long-string ones). Indexing more columns costs more on write, so index what you actually filter on.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- PREFERRED (DBR 13.3 LTS+): name exactly the columns to collect stats on.</span>
+<span class="c">-- Supersedes dataSkippingNumIndexedCols.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.orders
+  <span class="k">SET TBLPROPERTIES</span> (
+    <span class="s">'delta.dataSkippingStatsColumns'</span> = <span class="s">'order_status, region, amount'</span>
+  );
+
+<span class="c">-- OLDER / order-dependent knob (all DBR): index the first N columns.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.orders
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.dataSkippingNumIndexedCols'</span> = <span class="s">'8'</span>);</pre>
+
+    <h3>6 · Changing these props does NOT recompute existing stats</h3>
+    <p>Setting either property affects <strong>future writes only</strong>. Already-written files keep their old stats — the change does not retroactively recompute them. You're left with a <strong>mixed</strong> table (new files have new stats, old files don't) until you recompute or rewrite.</p>
+
+    <h3>7 · <code>ANALYZE TABLE … COMPUTE DELTA STATISTICS</code> (DBR 14.3 LTS+)</h3>
+    <p>This recomputes data-skipping stats for <strong>existing</strong> files using the <em>current</em> stats config, without rewriting the data files. It's how you backfill stats after changing the stats-columns property so old files start skipping on the newly-chosen columns. It reads the files (a cost), but far less than rewriting the table.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Backfill stats on EXISTING files after changing the stats-columns property.</span>
+<span class="c">-- DBR 14.3 LTS+.</span>
+<span class="k">ANALYZE TABLE</span> main.delta_opt_demo.orders <span class="k">COMPUTE DELTA STATISTICS</span>;</pre>
+
+    <h3>8 · Long strings are truncated during stats collection</h3>
+    <p>When collecting MIN/MAX for a <strong>long string</strong> column, Delta <strong>truncates</strong> the value (stores a prefix). Coarser min/max ⇒ weaker skipping. So <strong>consider excluding long string columns from stats</strong> and spending the budget on selective columns.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Spend the stats budget on selective columns; EXCLUDE a long free-text column</span>
+<span class="c">-- (its truncated min/max barely helps skipping anyway -- 'notes_text' omitted on purpose).</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.orders
+  <span class="k">SET TBLPROPERTIES</span> (
+    <span class="s">'delta.dataSkippingStatsColumns'</span> = <span class="s">'order_status, region, amount'</span>
+  );</pre>
+
+    <h3>9 · Z-ordering: <code>OPTIMIZE … ZORDER BY (cols)</code> and the Z-order curve</h3>
+    <p><span class="chip analogy">Analogy: re-shelve by what's bought together</span> <span class="chip usecase">High-cardinality filter columns</span></p>
+    <p><code>OPTIMIZE t [WHERE …] ZORDER BY (colA, colB)</code> <strong>rewrites</strong> data so rows with nearby values colocate in the same files, using a <strong>space-filling (Z-order) curve</strong> that keeps <em>multiple</em> columns clustered at once. Result: tight, non-overlapping min/max ranges = aggressive skipping. Use it for <strong>high-cardinality columns common in predicates</strong>. Multiple columns are allowed, but <strong>effectiveness drops per extra column</strong> — Z-order on the 1–2 columns that dominate your filters.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Compact AND colocate by the columns you filter on most (high-cardinality is fine).</span>
+<span class="c">-- WHERE scopes the rewrite to one partition (cheaper) on a partitioned table.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.orders
+<span class="k">WHERE</span> order_date &gt;= <span class="k">DATE</span><span class="s">'2026-06-01'</span>
+<span class="k">ZORDER BY</span> (order_status, region);   <span class="c">-- 1-2 dominant cols; more = less benefit each</span></pre>
+    <pre><span class="tag">PySpark</span><span class="c"># DeltaTable API equivalent of OPTIMIZE ... ZORDER BY.</span>
+<span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+dt = DeltaTable.forName(spark, <span class="s">"main.delta_opt_demo.orders"</span>)
+(dt.optimize()
+   .where(<span class="s">"order_date &gt;= '2026-06-01'"</span>)   <span class="c"># scope the rewrite (optional)</span>
+   .executeZOrderBy(<span class="s">"order_status"</span>, <span class="s">"region"</span>))</pre>
+
+    <h3>10 · ZORDER constraints: stats required · not idempotent · no partition cols</h3>
+    <ul>
+      <li><strong>Stats required:</strong> a Z-ordered column must have stats collected — skipping reads min/max, so a column with no stats gains nothing.</li>
+      <li><strong>Not idempotent:</strong> unlike plain <code>OPTIMIZE</code> (bin-packing), <code>OPTIMIZE … ZORDER BY</code> may <strong>rewrite files again</strong> on a re-run — schedule it deliberately.</li>
+      <li><strong>No partition columns:</strong> you can't Z-order a partition column; Z-order only reorganizes <em>within</em> a partition.</li>
+    </ul>
+    <pre><span class="tag">SQL</span><span class="c">-- Ensure Z-order columns are in the stats set FIRST, recompute on existing files,</span>
+<span class="c">-- THEN Z-order. Don't Z-order a partition column.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.orders
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.dataSkippingStatsColumns'</span> = <span class="s">'order_status, region, amount'</span>);
+<span class="k">ANALYZE TABLE</span> main.delta_opt_demo.orders <span class="k">COMPUTE DELTA STATISTICS</span>;  <span class="c">-- DBR 14.3 LTS+</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.orders <span class="k">ZORDER BY</span> (order_status, region);  <span class="c">-- NOT idempotent</span></pre>
+
+    <h3>11 · The modern recommendation: liquid clustering instead of Z-order</h3>
+    <p>Since <strong>DBR 13.3+</strong>, Databricks recommends <strong>liquid clustering</strong> (Lesson 08) <strong>instead of Z-order</strong>: same colocation-for-skipping benefit, but <strong>incremental</strong> (no full rewrite per run) and you can <strong>change keys with no rewrite</strong>. Hard rule: <strong><code>ZORDER</code> is NOT compatible with liquid clustering</strong> — use one or the other. Reach for Z-order only on legacy / external tables you're not converting.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- MODERN DEFAULT for a NEW table: liquid clustering, NOT ZORDER (Lesson 08).</span>
+<span class="k">CREATE OR REPLACE TABLE</span> main.delta_opt_demo.orders (
+  order_id     <span class="k">BIGINT</span>,
+  order_status <span class="k">STRING</span>,
+  region       <span class="k">STRING</span>,
+  amount       <span class="k">DOUBLE</span>,
+  order_date   <span class="k">DATE</span>
+)
+<span class="k">CLUSTER BY</span> (order_status, region);   <span class="c">-- do NOT also ZORDER -- they're incompatible</span></pre>
+  </section>
+
+  <section>
+    <h2>Comparison — choosing a skipping strategy</h2>
+    <table class="tbl">
+      <thead><tr><th>Approach</th><th>What it does</th><th>Maintenance</th><th>Change keys later</th><th>Idempotent?</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Data skipping (stats)</strong></td><td>Auto min/max/null/count pruning per file</td><td>Free (on by default)</td><td>n/a</td><td>n/a</td><td>✔ Always on — give it good layout</td></tr>
+        <tr><td class="mono">dataSkippingNumIndexedCols</td><td>Index first <em>N</em> cols (order-dependent)</td><td>Property + recompute</td><td>Reorder / change N</td><td>n/a</td><td>OK on older DBR</td></tr>
+        <tr><td class="mono">dataSkippingStatsColumns</td><td>Index an explicit column list (13.3+)</td><td>Property + <code>ANALYZE</code></td><td>Edit list + recompute</td><td>n/a</td><td>✔ Preferred control</td></tr>
+        <tr><td class="mono">OPTIMIZE … ZORDER BY</td><td>Colocate via space-filling curve</td><td>Manual, full rewrites</td><td>Re-run (rewrite)</td><td><strong>No</strong></td><td>Legacy / external only</td></tr>
+        <tr><td><strong>Liquid clustering</strong> <span class="mono">CLUSTER BY</span></td><td>Colocate via clustering keys</td><td>Incremental <code>OPTIMIZE</code></td><td><strong>Anytime, no rewrite</strong></td><td>Incremental</td><td>✔ <strong>Prefer for new tables</strong></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Data skipping:</strong> always — it's automatic. Your lever is <em>layout</em> and <em>stats columns</em>.</li>
+      <li><strong><code>dataSkippingStatsColumns</code>:</strong> when a hot filter column is past position 32, or to exclude a long-string column and focus the stats budget.</li>
+      <li><strong><code>ANALYZE … COMPUTE DELTA STATISTICS</code>:</strong> to backfill stats on existing files after changing the config (DBR 14.3 LTS+).</li>
+      <li><strong><code>ZORDER BY</code>:</strong> legacy / external Delta tables filtered on a high-cardinality column you won't convert to liquid clustering. For new tables, use liquid clustering.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Hot filter column past column 32</strong> → no stats, no skipping; reorder, raise the numeric knob, or list it explicitly.</li>
+      <li><strong>Scattered data, perfect stats</strong> → ranges overlap everywhere → nothing skippable; you need Z-order / clustering.</li>
+      <li><strong>Long free-text column</strong> → truncated min/max → weak skipping; exclude it from stats.</li>
+      <li><strong>Z-order too many columns</strong> → per-column locality drops; keep to 1–2 dominant cols.</li>
+      <li><strong>Re-running <code>OPTIMIZE … ZORDER</code></strong> → NOT a no-op (not idempotent); it can rewrite again.</li>
+      <li><strong>Changing stats props and expecting old files to improve</strong> → they won't until you <code>ANALYZE … COMPUTE DELTA STATISTICS</code> (or rewrite).</li>
+      <li><strong>Z-order on a partition column</strong> → not allowed; Z-order works only within a partition.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>Stats default to the <strong>first 32 columns</strong> on UC EXTERNAL tables; columns past 32 are un-indexed unless configured.</li>
+      <li><code>dataSkippingStatsColumns</code> requires <strong>DBR 13.3 LTS+</strong>; <code>ANALYZE … COMPUTE DELTA STATISTICS</code> requires <strong>DBR 14.3 LTS+</strong>.</li>
+      <li>Changing the stats properties <strong>does not</strong> recompute existing files' stats.</li>
+      <li><strong>Long strings are truncated</strong> during stats collection.</li>
+      <li><code>ZORDER BY</code> is <strong>not idempotent</strong>, <strong>cannot target partition columns</strong>, requires its columns to <strong>have stats</strong>, and is <strong>not compatible with liquid clustering</strong>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Skipping needs locality, not just stats.</strong> Perfect min/max does nothing if rows are scattered — colocate with Z-order or (preferred) liquid clustering.</li>
+      <li><strong>Check the first 32 columns.</strong> On UC EXTERNAL tables a hot filter column past 32 gets no stats; reorder, raise <code>dataSkippingNumIndexedCols</code>, or list it.</li>
+      <li><strong>Prefer the explicit list.</strong> On DBR 13.3 LTS+, <code>dataSkippingStatsColumns</code> supersedes the numeric knob and lets you exclude long-string columns.</li>
+      <li><strong>Property changes don't backfill.</strong> Run <code>ANALYZE … COMPUTE DELTA STATISTICS</code> (DBR 14.3 LTS+) to update existing files.</li>
+      <li><strong>Z-order is not idempotent and not free.</strong> It rewrites data; schedule it deliberately. Its columns must have stats.</li>
+      <li><strong>You can't Z-order a partition column.</strong> It works only within a partition.</li>
+      <li><strong>Don't mix Z-order with liquid clustering</strong> — they're incompatible. For new tables, use liquid clustering (Lesson 08).</li>
+      <li><strong>UC MANAGED: let predictive optimization handle stats</strong> — no 32-col limit; it runs <code>ANALYZE</code> for you (Lesson 09).</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">Data skipping for Delta Lake (stats, stats columns, ANALYZE, ZORDER)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE — optimize data file layout</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/sql/language-manual/delta-optimize" target="_blank" rel="noopener">OPTIMIZE SQL reference (ZORDER BY clause)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables (the modern replacement)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization (intelligent stats / ANALYZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: file-grid data-skipping simulator ---------- */
+(function(){
+  const root = document.getElementById('lab-skipping');
+  if(!root) return;
+  const STATUSES = ["RETURNED","SHIPPED","PENDING","CANCELLED","REFUNDED"];
+  const N = 64;
+  const grid = root.querySelector('#ds-grid');
+  let layout = 'none';
+  let filter = 'RETURNED';
+
+  // Fixed dataset: each file gets a dominant order_status.
+  const seed = [];
+  for(let i=0;i<N;i++){ seed.push(STATUSES[Math.floor((Math.pow(i*7+3,1.3))%STATUSES.length)]); }
+  for(let i=0;i<N;i++){ if(i%5===0) seed[i]=STATUSES[(i/5)%STATUSES.length|0]; }
+
+  function currentOrder(){
+    const idx=[...Array(N).keys()];
+    if(layout==='clustered'){
+      // Z-ordered -> contiguous blocks of the same status (tight min/max ranges)
+      idx.sort((a,b)=> STATUSES.indexOf(seed[a]) - STATUSES.indexOf(seed[b]) || a-b);
+    }
+    return idx;
+  }
+
+  function render(){
+    const order=currentOrder();
+    grid.innerHTML='';
+    let scanned=0;
+    order.forEach((fileIdx,pos)=>{
+      const c=seed[fileIdx];
+      const cell=document.createElement('div');
+      cell.className='file';
+      const match=(filter==='ALL')||(c===filter);
+      let willScan;
+      if(filter==='ALL'){ willScan=true; }
+      else if(layout==='clustered'){ willScan=match; }       // tight ranges -> perfect skipping
+      else { willScan=match || (pos%3===0); }                // scattered -> overlapping ranges
+      if(layout==='clustered') cell.classList.add('clustered');
+      if(willScan){ cell.classList.add('hit'); scanned++; } else cell.classList.add('skip');
+      const v=document.createElement('span');
+      v.className='v'; v.textContent= willScan ? c.slice(0,4) : '';
+      cell.appendChild(v);
+      grid.appendChild(cell);
+      cell.style.opacity=0; cell.style.transform='scale(.7)';
+      setTimeout(()=>{ cell.style.opacity= willScan?1:.32; cell.style.transform=''; }, pos*7);
+    });
+    const skipped=N-scanned;
+    root.querySelector('#ds-statScan').textContent=scanned;
+    root.querySelector('#ds-statSkip').textContent=skipped;
+    const save=Math.round(skipped/N*100);
+    root.querySelector('#ds-statSave').textContent=save+'%';
+    root.querySelector('#ds-qstr').textContent = filter==='ALL'
+      ? "SELECT * FROM orders;"
+      : "SELECT * FROM orders WHERE order_status = '"+filter+"';";
+    root.querySelector('#ds-gridLabel').textContent =
+      layout==='clustered' ? 'Files on disk — grouped by order_status (Z-ordered)' : 'Files on disk — scattered (unsorted)';
+    const vd=root.querySelector('#ds-verdict');
+    if(filter==='ALL'){
+      vd.innerHTML="A query with <b>no filter</b> reads the whole table — skipping can't help. Data skipping only kicks in when you filter on a column with stats.";
+    } else if(layout==='clustered'){
+      vd.innerHTML="Because rows for <b>"+filter+"</b> sit together, their files have tight min/max ranges and the engine skips "+skipped+" of 64 files. <b>"+save+"% of the data is never read.</b>";
+    } else {
+      vd.innerHTML="With a scattered layout, matching rows are spread everywhere, so per-file min/max ranges overlap the predicate and the engine must scan far more — only "+save+"% skipped. <code>ZORDER BY (order_status)</code> fixes this.";
+    }
+  }
+
+  root.querySelectorAll('#ds-layoutSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      layout=btn.dataset.layout;
+      root.querySelectorAll('#ds-layoutSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render();
+    });
+  });
+  root.querySelector('#ds-filterSel').addEventListener('change',e=>{ filter=e.target.value; render(); });
+  render();
+})();
+
+/* ---------- Interactive 2: min/max stats inspector ---------- */
+(function(){
+  const root = document.getElementById('lab-stats');
+  if(!root) return;
+  // Six files, each with a [min,max] range for `amount`. Domain ~0..6000.
+  const FILES=[
+    {name:"file-00", min:0,    max:980},
+    {name:"file-01", min:900,  max:1850},
+    {name:"file-02", min:1800, max:2750},
+    {name:"file-03", min:2600, max:3600},
+    {name:"file-04", min:3400, max:4700},
+    {name:"file-05", min:4500, max:6000}
+  ];
+  const DOMAIN_MAX=6000;
+  let op='eq';
+  const cards=root.querySelector('#st-cards');
+
+  function couldMatch(f,op,val){
+    // A file is READ if its [min,max] range could contain a row satisfying the predicate.
+    if(op==='eq') return val>=f.min && val<=f.max;     // value within range
+    if(op==='gt') return f.max>val;                    // some row could exceed val
+    if(op==='lt') return f.min<val;                    // some row could be below val
+    return true;
+  }
+
+  function render(){
+    const val=Number(root.querySelector('#st-val').value || 0);
+    cards.innerHTML='';
+    let read=0;
+    FILES.forEach(f=>{
+      const keep=couldMatch(f,op,val);
+      if(keep) read++;
+      const card=document.createElement('div');
+      card.className='fcard '+(keep?'read':'pruned');
+      const leftPct=Math.max(0,Math.min(100, f.min/DOMAIN_MAX*100));
+      const widPct =Math.max(2,Math.min(100, (f.max-f.min)/DOMAIN_MAX*100));
+      card.innerHTML=
+        '<div class="name">'+f.name+'</div>'+
+        '<div class="rng">['+f.min+', '+f.max+']</div>'+
+        '<div class="bar"><i style="left:'+leftPct+'%;width:'+widPct+'%"></i></div>'+
+        '<div class="tag2">'+(keep?'read':'pruned')+'</div>';
+      cards.appendChild(card);
+    });
+    const pruned=FILES.length-read;
+    root.querySelector('#st-read').textContent=read;
+    root.querySelector('#st-pruned').textContent=pruned;
+    root.querySelector('#st-save').textContent=pruned;
+    const sym = op==='eq' ? '=' : (op==='gt' ? '>' : '<');
+    root.querySelector('#st-qstr').textContent="SELECT * FROM orders WHERE amount "+sym+" "+val+";";
+    const vd=root.querySelector('#st-verdict');
+    if(pruned===0){
+      vd.innerHTML="Every file's range could contain a matching row, so <b>nothing is pruned</b> — the engine reads all "+FILES.length+" files. Tighter, non-overlapping ranges (via Z-order / clustering) would let it skip more.";
+    } else {
+      vd.innerHTML="The optimizer reads only the <b>"+read+"</b> file(s) whose min/max range could satisfy <code>amount "+sym+" "+val+"</code> and <b>prunes "+pruned+"</b> without opening them. This is data skipping in action.";
+    }
+  }
+
+  root.querySelectorAll('#st-opSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      op=btn.dataset.op;
+      root.querySelectorAll('#st-opSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render();
+    });
+  });
+  root.querySelector('#st-val').addEventListener('input',render);
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Streaming Tables, MVs, Flows & Sinks · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.4vw,2.7rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: 4 object cards */
+  .objs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ob{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;transition:.18s;text-align:center}
+  .ob:hover{border-color:var(--brand-2)}.ob.on{border-color:var(--teal);background:#eef7f8}
+  .ob .ic{font-size:1.4rem}.ob .t{font-weight:600;font-size:.82rem;margin-top:2px}
+  .obd{margin-top:10px}.obd .card{display:none}.obd .card.on{display:block;animation:fade .25s ease}
+  /* diagram 2: ST vs MV chooser */
+  .q{font-weight:600;margin-bottom:8px}
+  .scen{display:flex;flex-direction:column;gap:6px}
+  .sc{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;cursor:pointer;font-size:.9rem;transition:.15s}
+  .sc:hover{border-color:var(--teal)}
+  .sc .ans{display:none;margin-top:6px;font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+  .sc.show .ans{display:block}
+  .sc .ans.st{color:#1f6b3a}.sc .ans.mv{color:var(--brand)}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.objs{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 5.2</p>
+  <h1>Streaming Tables, MVs, <em>Flows</em> &amp; Sinks</h1>
+  <p class="lede">The building blocks of an SDP pipeline — streaming tables for incremental ingest, materialized views for always-correct results, flows that feed them (and fan-in), and sinks that write out. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">ST vs MV</span><span class="pill">append flows</span><span class="pill">external sinks</span><span class="pill">watermarks</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Streaming table</strong> = incremental Delta table (row processed once). <strong>Materialized view</strong> = cached results that refresh. <strong>Flow</strong> = the query that feeds an ST/sink (multiple flows can fan into one ST). <strong>Sink</strong> = external target (Kafka/Event Hubs/Delta).</div>
+  <div class="card analogy" style="margin-top:10px">🎥 <strong>Analogy:</strong> a <strong>streaming table</strong> is a <em>security camera recording</em> — keeps appending new footage, never re-films the past. A <strong>materialized view</strong> is a <em>live scoreboard</em> — recomputes totals whenever the scores change so it's always correct.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: 4 objects -->
+<section id="obj">
+  <h2>The four objects — click each</h2>
+  <p class="hint">▸ streaming table · materialized view · flow · sink</p>
+  <div class="objs">
+    <div class="ob on" data-o="st"><div class="ic">🎥</div><div class="t">Streaming table</div></div>
+    <div class="ob" data-o="mv"><div class="ic">📊</div><div class="t">Materialized view</div></div>
+    <div class="ob" data-o="fl"><div class="ic">🔀</div><div class="t">Flow</div></div>
+    <div class="ob" data-o="sk"><div class="ic">📤</div><div class="t">Sink</div></div>
+  </div>
+  <div class="obd">
+    <div class="card on" data-od="st"><strong>Streaming table</strong> — a Delta table with incremental/streaming support; each input row is processed once (append-mostly). Ideal for ingestion. Owned/updated by a single pipeline.</div>
+    <div class="card" data-od="mv"><strong>Materialized view</strong> — cached precomputed query results that refresh when sources change. Keeps joins/aggregations always correct.</div>
+    <div class="card" data-od="fl"><strong>Flow</strong> — the query (DataFrame API) that processes data into a streaming table or sink. One ST can have multiple <strong>append flows</strong> (fan-in many sources).</div>
+    <div class="card" data-od="sk"><strong>Sink</strong> — an external destination a flow writes to: Apache Kafka, Azure Event Hubs, or a Delta/UC table. <strong>Python-only, streaming-only.</strong></div>
+  </div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: ST vs MV chooser -->
+<section id="choose">
+  <h2>1 · Streaming table or materialized view? — click to reveal</h2>
+  <p class="q">Pick the right object for each scenario:</p>
+  <div class="scen">
+    <div class="sc" onclick="this.classList.toggle('show')">High-volume clickstream ingest from cloud storage <span class="ans st">→ Streaming table (append-only, low latency)</span></div>
+    <div class="sc" onclick="this.classList.toggle('show')">Daily revenue joined to a dimension that changes <span class="ans mv">→ Materialized view (always reflects current dims)</span></div>
+    <div class="sc" onclick="this.classList.toggle('show')">Each input row should be processed exactly once <span class="ans st">→ Streaming table</span></div>
+    <div class="sc" onclick="this.classList.toggle('show')">Correctness of an aggregation matters more than latency <span class="ans mv">→ Materialized view</span></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Streaming table</th><th>Materialized view</th></tr>
+    <tr><td>Processing</td><td>Row once (incremental)</td><td>Refreshes results</td></tr>
+    <tr><td>Latency</td><td class="win">Low</td><td>Higher</td></tr>
+    <tr><td>Dim changes</td><td>May miss late updates</td><td class="win">Always current</td></tr>
+    <tr><td>Pick for</td><td class="win">Append ingest</td><td class="win">Correct joins/aggs</td></tr>
+  </table>
+  <p class="codecap">Python (current API) &amp; SQL</p>
+  <pre class="code"><span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+<span class="f">@dp.table</span>                       <span class="c"># streaming table — incremental ingest</span>
+<span class="k">def</span> bronze_events():
+    <span class="k">return</span> spark.readStream.format(<span class="s">"cloudFiles"</span>).option(<span class="s">"cloudFiles.format"</span>,<span class="s">"json"</span>).load(src)
+
+<span class="f">@dp.materialized_view</span>           <span class="c"># MV — always-correct join to current dim</span>
+<span class="k">def</span> user_activity():
+    <span class="k">return</span> spark.read.table(<span class="s">"bronze_events"</span>).join(spark.read.table(<span class="s">"dim_users"</span>), <span class="s">"user_id"</span>)</pre>
+  <pre class="code" style="margin-top:8px"><span class="k">CREATE OR REFRESH STREAMING TABLE</span> bronze_events
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> read_files(<span class="s">'/Volumes/main/raw/events'</span>, format => <span class="s">'json'</span>);
+<span class="k">CREATE OR REFRESH MATERIALIZED VIEW</span> user_activity
+<span class="k">AS SELECT</span> e.*, u.segment <span class="k">FROM</span> bronze_events e <span class="k">JOIN</span> dim_users u <span class="k">USING</span> (user_id);</pre>
+</section>
+
+<section id="flows">
+  <h2>2 · Flows — fan many sources into one ST</h2>
+  <p>Create the streaming table explicitly, then attach <strong>append flows</strong> — each processes incrementally and independently, feeding one ST (cleaner than a giant UNION that reprocesses everything).</p>
+  <pre class="code">dp.create_streaming_table(<span class="s">"all_events"</span>)        <span class="c"># target ST (no query of its own)</span>
+
+<span class="f">@dp.append_flow</span>(target=<span class="s">"all_events"</span>)          <span class="c"># flow 1: US</span>
+<span class="k">def</span> us_events():  <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_events_us"</span>)
+
+<span class="f">@dp.append_flow</span>(target=<span class="s">"all_events"</span>)          <span class="c"># flow 2: EU — same target</span>
+<span class="k">def</span> eu_events():  <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_events_eu"</span>)</pre>
+</section>
+
+<section id="sinks">
+  <h2>3 · Sinks — write out to Kafka / Event Hubs / Delta</h2>
+  <p>Create a sink with <code>create_sink</code>, then point an append flow at it. <strong>Sinks are Python-only and accept streaming queries only.</strong></p>
+  <pre class="code">dp.create_sink(
+    name=<span class="s">"events_kafka"</span>,
+    format=<span class="s">"kafka"</span>,                            <span class="c"># also: "delta", Event Hubs (via Kafka), custom</span>
+    options={<span class="s">"kafka.bootstrap.servers"</span>: <span class="s">"host:9092"</span>, <span class="s">"topic"</span>: <span class="s">"enriched_events"</span>})
+
+<span class="f">@dp.append_flow</span>(target=<span class="s">"events_kafka"</span>)        <span class="c"># write the stream to the sink</span>
+<span class="k">def</span> publish_events():
+    <span class="k">return</span> spark.readStream.table(<span class="s">"user_activity"</span>).selectExpr(
+        <span class="s">"CAST(user_id AS STRING) AS key"</span>, <span class="s">"to_json(struct(*)) AS value"</span>)</pre>
+</section>
+
+<section id="watermark">
+  <h2>4 · Stateful streams need watermarks</h2>
+  <p>Streaming aggregations/joins keep <strong>state</strong>. Without a <strong>watermark</strong> bounding how late data can arrive, that state grows unbounded → OOM.</p>
+  <pre class="code"><span class="f">@dp.table</span>
+<span class="k">def</span> events_per_min():
+    <span class="k">from</span> pyspark.sql.functions <span class="k">import</span> window, col
+    <span class="k">return</span> (spark.readStream.table(<span class="s">"bronze_events"</span>)
+              .withWatermark(<span class="s">"event_ts"</span>, <span class="s">"10 minutes"</span>)   <span class="c"># bound late data → bounded state</span>
+              .groupBy(window(col(<span class="s">"event_ts"</span>), <span class="s">"1 minute"</span>)).count())</pre>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li><strong>ST vs MV is the #1 SDP interview question</strong> — pick wrong and you reprocess everything (slow) or serve stale joins (wrong).</li>
+    <li>Flows + sinks show SDP is more than two table types — fan multiple inputs into one ST and write out to Kafka.</li>
+  </ul>
+  <div class="card usecase">🖱️ <strong>Real-world use case:</strong> <code>bronze_events</code> (ST) ingests clickstream incrementally; <code>dim_users</code> changes daily so <code>user_activity</code> is an <strong>MV</strong> re-joining to current users; an <strong>append flow</strong> unions a second region, and a <strong>sink</strong> writes enriched events to Kafka.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> STs for bronze/silver ingest; MVs for gold aggregates &amp; dimension-joined tables; append flows to fan many sources into one ST; sinks to push results out.</li>
+    <li><strong>Edge cases:</strong> STs are append-mostly — schema changes/reprocessing often need a <strong>full refresh</strong>; unbounded streaming aggs/joins need <strong>watermarks</strong> or state grows unbounded; an ST is owned by a single pipeline.</li>
+    <li><strong>Limitation:</strong> MV refresh has latency/cost; STs can be "fast-but-wrong" if a dimension changed after a row was processed (so joins often belong in MVs). <strong>Sinks: Python-only, streaming-only.</strong></li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Streaming table for a dimension join that must stay current → use an MV.</li>
+    <li>❌ Materialized view for high-volume append ingest → use a streaming table.</li>
+    <li>❌ Trying to define a <strong>sink in SQL</strong> — sinks are Python-only, streaming-only.</li>
+    <li>❌ Forgetting watermarks on unbounded streams → unbounded state / OOM.</li>
+    <li>❌ Writing to one streaming table from two pipelines → conflicts (single owner).</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/streaming-tables" target="_blank" rel="noopener">Streaming tables</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/materialized-views" target="_blank" rel="noopener">Materialized views</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/flows" target="_blank" rel="noopener">Flows</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/sinks" target="_blank" rel="noopener">Sinks</a>
+  <p style="margin-top:10px">Topic 5.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — objects (scoped to #obj)
+document.querySelectorAll('#obj .ob').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#obj .ob').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#obj .obd .card').forEach(c=>c.classList.toggle('on',c.dataset.od===k));
+  });
+});
+// Diagram 2 (#choose) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

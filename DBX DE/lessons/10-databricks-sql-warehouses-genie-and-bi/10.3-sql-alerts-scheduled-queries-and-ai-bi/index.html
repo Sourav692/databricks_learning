@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Alerts, Scheduled Queries & AI/BI Dashboards · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.2vw,2.6rem);line-height:1.06;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: alert simulator */
+  .ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  .ctrl label{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#48555f}
+  input[type=range]{flex:1}
+  .alert{margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:12px;border-radius:8px;text-align:center;font-weight:600}
+  .alert.ok{background:#dff0e6;color:#1f6b3a;border:1px solid #9ed3b2}
+  .alert.fire{background:#fdecea;color:#9a2b1a;border:1px solid #f0b3a8}
+  /* diagram 2: feature tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 10.3</p>
+  <h1>SQL <em>Alerts</em>, Scheduled Queries &amp; AI/BI Dashboards</h1>
+  <p class="lede">Turn queries into automation and visuals: schedule queries on Quartz cron, alert when a threshold trips, and build AI/BI dashboards with Genie authoring + subscriptions — all versionable as bundle code.</p>
+  <div class="pills"><span class="pill">scheduled query (Quartz cron)</span><span class="pill">alert = query + condition</span><span class="pill">AI/BI Dashboards</span><span class="pill">as code (DABs)</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">A <strong>scheduled query</strong> runs on Quartz cron; a <strong>SQL Alert</strong> = scheduled query + a <strong>condition</strong> → notify (email/Slack); an <strong>AI/BI Dashboard</strong> = datasets + visuals on a canvas with Genie NL authoring, refresh &amp; subscriptions — and all three deploy as <strong>Asset Bundle</strong> resources.</div>
+  <div class="card analogy" style="margin-top:10px">🚨 <strong>Analogy:</strong> a scheduled query is an <strong>automatic meter reading</strong>; an <strong>alert</strong> is a <strong>smoke detector</strong> (evaluates on a cadence, only beeps when a threshold trips); a <strong>dashboard</strong> is the car's gauge cluster — refreshed live.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: alert simulator -->
+<section id="alert">
+  <h2>Alert simulator — drag today's order count</h2>
+  <p class="hint">▸ condition: alert when <code>orders_today = 0</code> (pipeline failure)</p>
+  <div class="ctrl">
+    <label>today's orders_today:</label>
+    <input type="range" id="cnt" min="0" max="500" value="320" step="10">
+    <span class="mono" id="cntv">320</span>
+  </div>
+  <div class="alert ok" id="alertbox"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · Scheduled queries — Quartz cron on a warehouse</h3>
+  <p class="mech"><b>Mechanism:</b> attach a <strong>schedule</strong> to a saved query; at each fire time it runs on a SQL Warehouse as the <strong>owner</strong>. Databricks uses <strong>6-field Quartz cron</strong> (<code>sec min hour day month dow</code>), not 5-field Unix cron. <b>Trade-off:</b> cadence = freshness <em>and</em> cost.</p>
+  <pre class="code"><span class="c"># Quartz cron is 6 fields. "every day at 06:00":</span>
+<span class="y">schedule</span>:
+  <span class="y">quartz_cron_schedule</span>: <span class="s">"0 0 6 * * ?"</span>   <span class="c"># sec min hour day month dow</span>
+  <span class="y">timezone_id</span>: <span class="s">America/New_York</span></pre>
+
+  <h3>2 · SQL Alerts — condition on a query result → notify</h3>
+  <p class="mech"><b>Mechanism:</b> an alert points at a query, defines an <strong>evaluation</strong> (a comparison on a result column vs a threshold), and on a schedule checks it — if met, sends to <strong>notification destinations</strong>. <b>Trade-off:</b> evaluates only when scheduled (cadence = detection lag); condition-only, not arbitrary logic.</p>
+  <pre class="code"><span class="c">-- The alert's backing query returns ONE row/column to compare.</span>
+<span class="c">-- Condition (set in the alert): WHEN orders_today = 0 → notify on-call.</span>
+<span class="k">SELECT</span> <span class="f">count</span>(*) <span class="k">AS</span> orders_today
+<span class="k">FROM</span> prod.sales.orders
+<span class="k">WHERE</span> order_date = <span class="f">current_date</span>();</pre>
+
+  <h3>3 · Alerts &amp; schedules as code — Asset Bundle</h3>
+  <p class="mech"><b>Mechanism:</b> the <code>alert</code> bundle resource (SQL alert v2) declares the query, evaluation, schedule, and warehouse — versioned and promoted by CI/CD. <b>Trade-off:</b> the bundle is the source of truth; UI edits get reverted on the next deploy.</p>
+  <pre class="code"><span class="c"># databricks.yml — verified keys (alert v2 resource)</span>
+<span class="y">resources</span>:
+  <span class="y">alerts</span>:
+    <span class="y">orders_zero_alert</span>:
+      <span class="y">display_name</span>: orders_zero_alert
+      <span class="y">query_text</span>: <span class="s">"SELECT count(*) AS orders_today FROM prod.sales.orders WHERE order_date = current_date()"</span>
+      <span class="y">evaluation</span>:
+        <span class="y">comparison_operator</span>: EQUAL      <span class="c"># EQUAL / GREATER_THAN / LESS_THAN …</span>
+        <span class="y">source</span>: { <span class="y">name</span>: orders_today }  <span class="c"># result column to compare</span>
+        <span class="y">threshold</span>: { <span class="y">value</span>: { <span class="y">double_value</span>: <span class="s">0</span> } }
+      <span class="y">schedule</span>:
+        <span class="y">quartz_cron_schedule</span>: <span class="s">"0 0 6 * * ?"</span>
+        <span class="y">timezone_id</span>: America/New_York
+      <span class="y">warehouse_id</span>: <span class="s">${var.warehouse_id}</span></pre>
+
+  <h3>4 · AI/BI Dashboards — datasets, visuals, filters, subscriptions</h3>
+  <p class="mech"><b>Mechanism:</b> datasets (queries) feed the canvas; visualizations + parameters/filters cross-filter widgets; author by hand or with <strong>Genie</strong> (NL), then publish with scheduled refresh + email/Slack <strong>subscriptions</strong>. <b>Trade-off:</b> runs on a warehouse (cold-start latency); refresh runs as the publisher — mind permissions/cost. Successor to retired legacy/Redash dashboards.</p>
+  <pre class="code"><span class="c">-- A dashboard DATASET is a query, usually parameterized so filters work:</span>
+<span class="k">SELECT</span> region, <span class="f">sum</span>(amount) <span class="k">AS</span> revenue
+<span class="k">FROM</span> prod.sales.orders
+<span class="k">WHERE</span> order_date <span class="k">BETWEEN</span> :start_date <span class="k">AND</span> :end_date
+<span class="k">GROUP BY</span> region <span class="k">ORDER BY</span> revenue <span class="k">DESC</span>;</pre>
+
+  <h3>5 · Dashboards as code — bundle the <code>.lvdash.json</code></h3>
+  <p class="mech"><b>Mechanism:</b> an AI/BI Dashboard serializes to <code>*.lvdash.json</code>; the <code>dashboard</code> bundle resource references that file + a warehouse. <code>databricks bundle generate dashboard</code> exports an existing one. <b>Trade-off:</b> the JSON is generated — edit in the UI then re-export, don't hand-edit.</p>
+  <pre class="code"><span class="c"># databricks.yml — verified keys (dashboard resource)</span>
+<span class="y">resources</span>:
+  <span class="y">dashboards</span>:
+    <span class="y">revenue_overview</span>:
+      <span class="y">display_name</span>: <span class="s">"Revenue Overview"</span>
+      <span class="y">file_path</span>: <span class="s">../src/revenue_overview.lvdash.json</span>
+      <span class="y">warehouse_id</span>: <span class="s">${var.warehouse_id}</span>
+
+<span class="c"># export an existing dashboard, then deploy:</span>
+<span class="c"># databricks bundle generate dashboard --existing-path "/Workspace/.../Revenue Overview"</span>
+<span class="c"># databricks bundle deploy -t prod</span></pre>
+</section>
+
+<!-- diagram 2: feature tabs -->
+<section id="feat">
+  <h2>Three tools — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="sched">Scheduled query</button>
+    <button class="tab" data-t="alert">SQL Alert</button>
+    <button class="tab" data-t="dash">AI/BI Dashboard</button>
+  </div>
+  <div class="panel on" data-p="sched"><div class="card"><strong>Scheduled query</strong> — run a saved query on a <strong>6-field Quartz cron</strong> on a chosen SQL Warehouse, no manual Run. Runs as the owner.</div></div>
+  <div class="panel" data-p="alert"><div class="card"><strong>SQL Alert</strong> — a scheduled query + a <strong>condition</strong> (e.g. <code>= 0</code>, <code>&gt; threshold</code>); when met, sends to <strong>notification destinations</strong> (email/Slack/webhook). Fires only when the schedule runs.</div></div>
+  <div class="panel" data-p="dash"><div class="card"><strong>AI/BI Dashboard</strong> — datasets + visualizations on an interactive canvas; build charts via <strong>Genie</strong> NL; global/page/widget filters; publish with scheduled refresh + email/Slack <strong>subscriptions</strong>. (Legacy/Redash dashboards are retired.)</div></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>DE doesn't stop at gold tables — stakeholders need monitoring &amp; visibility. Alerts catch problems automatically; dashboards make data usable.</li>
+    <li>"Alert when revenue drops / a pipeline's row count is 0?" → <strong>SQL Alert on a scheduled query</strong>.</li>
+    <li>Shipping dashboards/alerts <strong>as code</strong> (versioned, promoted dev→prod) is what makes a workspace enterprise-grade.</li>
+  </ul>
+  <div class="card usecase">🌅 <strong>Real-world use case:</strong> a scheduled query computes daily order counts; a SQL Alert emails on-call if today's count is <strong>0</strong>; an AI/BI Dashboard shows revenue by region with a daily Slack subscription — all defined in a bundle and promoted by CI/CD.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> data-quality/SLA alerting, daily KPI emails, executive dashboards, self-serve NL exploration via Genie, version-controlled BI via bundles.</li>
+    <li><strong>Edge cases:</strong> alerts evaluate <strong>only when scheduled</strong> (detection lag = cadence); dashboards/refresh run as the <strong>owner</strong> (permission/cost; cold-start latency); schedules are <strong>6-field Quartz</strong>, not Unix cron.</li>
+    <li><strong>Limitation:</strong> alerts trigger on a <strong>query-result condition</strong>, not arbitrary logic; <strong>legacy/Redash dashboards are retired</strong> — use AI/BI Dashboards.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Expecting an alert to fire <strong>instantly</strong> — it fires on its schedule (mind the lag).</li>
+    <li>❌ Writing a <strong>5-field Unix cron</strong> (<code>0 6 * * *</code>) — Databricks wants <strong>6-field Quartz</strong> (<code>0 0 6 * * ?</code>).</li>
+    <li>❌ Building on <strong>legacy dashboards</strong> — retired; use AI/BI Dashboards.</li>
+    <li>❌ Forgetting scheduled refresh/queries run as the <strong>owner</strong> (permission/cost).</li>
+    <li>❌ No notification destination → an alert that never tells anyone.</li>
+    <li>❌ Hand-editing the generated <code>.lvdash.json</code> instead of editing in the UI and re-running <code>bundle generate dashboard</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/dashboards/" target="_blank" rel="noopener">AI/BI Dashboards</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/user/alerts/" target="_blank" rel="noopener">SQL Alerts</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/user/queries/schedule-query" target="_blank" rel="noopener">Schedule a query</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/resources" target="_blank" rel="noopener">Bundle resources</a>
+  <p style="margin-top:10px">Topic 10.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — alert simulator (scoped to #alert)
+const cnt=document.getElementById('cnt'), cntv=document.getElementById('cntv'), box=document.getElementById('alertbox');
+function evalAlert(v){
+  cntv.textContent=v;
+  if(v===0){ box.className='alert fire'; box.textContent='🚨 ALERT FIRES — orders_today = 0 → email + Slack on-call (likely pipeline failure)'; }
+  else { box.className='alert ok'; box.textContent='✅ OK — orders_today = '+v+' (condition not met, no notification)'; }
+}
+cnt.addEventListener('input',e=>evalAlert(+e.target.value));
+evalAlert(320);
+// Diagram 2 — feature tabs (scoped to #feat)
+document.querySelectorAll('#feat .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#feat .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#feat .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="620" fill="#FAFAF9"/>
+  <text x="24" y="34" font-size="20" font-weight="700" fill="#1B3139">Azure Databricks — Security, Authorization &amp; Governance (Stage 7)</text>
+  <text x="24" y="54" font-size="12" fill="#6B7280">Authorization layers on top of the network: grants + FGAC (who/what) · access connector (identity to ADLS) · cluster policy/access mode/ACL (who launches compute)</text>
+
+  <!-- ===== Account / control-plane band ===== -->
+  <rect x="24" y="74" width="932" height="118" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="40" y="96" font-size="12" font-weight="700" fill="#1B3139">Databricks account / control plane — account-level identity &amp; governance</text>
+
+  <rect x="44" y="110" width="210" height="66" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="149" y="134" text-anchor="middle" font-size="13" font-weight="700" fill="#FF3621">Microsoft Entra ID</text>
+  <text x="149" y="152" text-anchor="middle" font-size="10" fill="#4A5860">users · groups · service principals</text>
+  <text x="149" y="166" text-anchor="middle" font-size="10" fill="#4A5860">SSO + SCIM → account principals</text>
+
+  <rect x="276" y="110" width="250" height="66" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="401" y="130" text-anchor="middle" font-size="13" font-weight="700" fill="#2272B4">Unity Catalog metastore</text>
+  <text x="401" y="147" text-anchor="middle" font-size="10" fill="#4A5860">one per region · catalog → schema → object</text>
+  <text x="401" y="161" text-anchor="middle" font-size="10" fill="#4A5860">GRANT model · workspace-catalog binding</text>
+
+  <rect x="548" y="110" width="180" height="66" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="638" y="134" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">FGAC / ABAC (7.2)</text>
+  <text x="638" y="151" text-anchor="middle" font-size="10" fill="#4A5860">row filters · column masks</text>
+  <text x="638" y="165" text-anchor="middle" font-size="10" fill="#4A5860">governed tag → policy</text>
+
+  <rect x="748" y="110" width="190" height="66" rx="8" fill="#fff" stroke="#6B7280" stroke-width="2"/>
+  <text x="843" y="134" text-anchor="middle" font-size="12" font-weight="700" fill="#6B7280">Cluster policy (7.4)</text>
+  <text x="843" y="151" text-anchor="middle" font-size="10" fill="#4A5860">dbus_per_hour cap · data_security_mode</text>
+  <text x="843" y="165" text-anchor="middle" font-size="10" fill="#4A5860">CAN USE · ACLs</text>
+
+  <!-- ===== Customer subscription band ===== -->
+  <rect x="24" y="216" width="932" height="372" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="40" y="238" font-size="12" font-weight="700" fill="#1B3139">Your Azure subscription</text>
+
+  <!-- Compute -->
+  <rect x="44" y="256" width="220" height="96" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="154" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#2272B4">Compute (cluster / SQL warehouse)</text>
+  <text x="154" y="302" text-anchor="middle" font-size="10" fill="#4A5860">access mode: Standard / Dedicated</text>
+  <text x="154" y="316" text-anchor="middle" font-size="10" fill="#4A5860">UC-compliant · no public IP</text>
+  <text x="154" y="334" text-anchor="middle" font-size="10" fill="#4A5860">runs the governed query</text>
+
+  <!-- Access connector -->
+  <rect x="360" y="256" width="240" height="96" rx="8" fill="#e9f7ef" stroke="#00A972" stroke-width="2"/>
+  <text x="480" y="284" text-anchor="middle" font-size="13" font-weight="700" fill="#00A972">Access Connector (7.3)</text>
+  <text x="480" y="302" text-anchor="middle" font-size="10" fill="#4A5860">Microsoft.Databricks/accessConnectors</text>
+  <text x="480" y="316" text-anchor="middle" font-size="10" fill="#4A5860">= Azure managed identity (no secret)</text>
+  <text x="480" y="334" text-anchor="middle" font-size="10" fill="#4A5860">RBAC: Storage Blob Data Contributor</text>
+
+  <!-- ADLS -->
+  <rect x="700" y="256" width="220" height="96" rx="8" fill="#e9f7ef" stroke="#00A972" stroke-width="2"/>
+  <text x="810" y="288" text-anchor="middle" font-size="13" font-weight="700" fill="#00A972">ADLS Gen2 (HNS)</text>
+  <text x="810" y="306" text-anchor="middle" font-size="10" fill="#4A5860">your governed data</text>
+  <text x="810" y="320" text-anchor="middle" font-size="10" fill="#4A5860">storage firewall: trusted Resource instance</text>
+  <text x="810" y="336" text-anchor="middle" font-size="10" fill="#4A5860">behind Service / Private Endpoint</text>
+
+  <!-- UC securables row -->
+  <rect x="360" y="392" width="240" height="74" rx="8" fill="#eaf4fb" stroke="#3a93dd" stroke-width="2"/>
+  <text x="480" y="416" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">External location + storage credential</text>
+  <text x="480" y="433" text-anchor="middle" font-size="10" fill="#4A5860">abfss://… path → wraps the connector ID</text>
+  <text x="480" y="447" text-anchor="middle" font-size="10" fill="#4A5860">GRANT READ/WRITE FILES live here · bindable</text>
+  <text x="480" y="460" text-anchor="middle" font-size="10" fill="#4A5860">no key on the chain</text>
+
+  <!-- gate chain (7.1) -->
+  <rect x="44" y="392" width="220" height="172" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="154" y="414" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">7.1 — the three gates</text>
+  <rect x="64" y="426" width="180" height="32" rx="6" fill="#F1F0EF" stroke="#6B7280"/>
+  <text x="154" y="447" text-anchor="middle" font-size="11" fill="#1B3139">USE CATALOG  (floor key)</text>
+  <rect x="64" y="466" width="180" height="32" rx="6" fill="#F1F0EF" stroke="#6B7280"/>
+  <text x="154" y="487" text-anchor="middle" font-size="11" fill="#1B3139">USE SCHEMA  (room key)</text>
+  <rect x="64" y="506" width="180" height="32" rx="6" fill="#FFF4F2" stroke="#FF3621"/>
+  <text x="154" y="527" text-anchor="middle" font-size="11" font-weight="600" fill="#FF3621">SELECT  (cabinet key)</text>
+  <text x="154" y="556" text-anchor="middle" font-size="10" fill="#6B7280">all three together = read</text>
+
+  <!-- binding note -->
+  <rect x="700" y="392" width="220" height="74" rx="8" fill="#FEF3C7" stroke="#FFC107" stroke-width="2"/>
+  <text x="810" y="416" text-anchor="middle" font-size="12" font-weight="700" fill="#8a6d00">Binding (7.1 / 7.3)</text>
+  <text x="810" y="433" text-anchor="middle" font-size="10" fill="#6b5500">prod catalog / external location</text>
+  <text x="810" y="447" text-anchor="middle" font-size="10" fill="#6b5500">bound to prod workspaces only —</text>
+  <text x="810" y="461" text-anchor="middle" font-size="10" fill="#6b5500">supersedes grants (dev denied)</text>
+
+  <!-- ===== arrows ===== -->
+  <!-- policy governs compute -->
+  <line x1="843" y1="176" x2="220" y2="256" stroke="#6B7280" stroke-width="1.5" marker-end="url(#ah)" stroke-dasharray="4,3"/>
+  <text x="470" y="206" font-size="10" fill="#6B7280">policy + access mode + ACL govern the compute</text>
+
+  <!-- metastore authorizes -->
+  <line x1="401" y1="176" x2="180" y2="256" stroke="#FF3621" stroke-width="2" marker-end="url(#aho)"/>
+  <text x="232" y="216" font-size="10" fill="#FF3621" font-weight="600">grants + FGAC authorize the query</text>
+
+  <!-- compute via external location -->
+  <line x1="264" y1="430" x2="360" y2="430" stroke="#3a93dd" stroke-width="2" marker-end="url(#ah)"/>
+  <line x1="154" y1="392" x2="154" y2="360" stroke="#6B7280" stroke-width="1.5" marker-end="url(#ah)"/>
+
+  <!-- compute -> connector -->
+  <line x1="264" y1="304" x2="360" y2="304" stroke="#00A972" stroke-width="2" marker-end="url(#ahg)"/>
+  <text x="312" y="296" text-anchor="middle" font-size="10" fill="#00A972">authn as MI</text>
+
+  <!-- external location -> connector -->
+  <line x1="480" y1="392" x2="480" y2="352" stroke="#3a93dd" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- connector -> ADLS -->
+  <line x1="600" y1="304" x2="700" y2="304" stroke="#00A972" stroke-width="2.4" marker-end="url(#ahg)"/>
+  <text x="650" y="296" text-anchor="middle" font-size="10" fill="#00A972" font-weight="600">③ short-lived token</text>
+
+  <text x="40" y="606" font-size="11" fill="#6B7280">Five locks on one door: network (Stages 2–6) · grants (7.1) · FGAC/ABAC (7.2) · access connector identity (7.3) · cluster policy/access mode/ACL (7.4).</text>
+</svg>

@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 10 — FDE Field Playbooks · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"✓";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"✕";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 10</div>
+  <h1>FDE Field Playbooks</h1>
+  <div class="subtitle">The field-engineering capstone — for the FDE/RSA who gets paged:
+    <strong>"cluster won't start," "I can't log in," "serverless gets 403," "which architecture do we deploy?"</strong>
+    Every fault lands on one of three connectivity paths. Pick the path, read its black box, run one check —
+    the root cause is almost always the customer's own VNet, DNS, firewall or RBAC.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">10.1 Startup</span>
+    <span class="badge">10.2 Connectivity</span>
+    <span class="badge">10.3 Storage/Serverless</span>
+    <span class="badge">10.4 Decision Flow</span>
+    <span class="badge">10.5 Diagnostics</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t101">10.1 · Startup</button>
+  <button data-tab="t102">10.2 · Connectivity</button>
+  <button data-tab="t103">10.3 · Storage &amp; Serverless</button>
+  <button data-tab="t104">10.4 · Decision Flow</button>
+  <button data-tab="t105">10.5 · Diagnostics</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Troubleshoot &amp; design on the three-path map</h2>
+  <p>Stages 1–9 taught how VNet injection, SCC, Private Link, NCC, DEP and Unity Catalog storage access
+    <em>work</em>. Stage 10 turns that into <strong>runbooks</strong> (symptom → first check → root cause → fix),
+    the <strong>decision flow</strong> for picking a deployment pattern, and the <strong>diagnostics &amp;
+    escalation</strong> discipline that resolves a case on round-trip one.</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>You are an air-crash investigator standing on the three-path map.</strong> Every fault lands on
+      exactly one path — ① <em>user → Databricks</em>, ② <em>compute ↔ control plane</em>, ③ <em>compute →
+      storage</em>. So: (1) <strong>which path is failing?</strong> (the symptom tells you), (2) <strong>read
+      that path's black box</strong> (termination reason, <code>nslookup</code>, storage error, flow-log
+      <code>DENY</code>), (3) <strong>run ONE check, not ten</strong> — backwards from the message, not forwards
+      from the architecture. Design (10.4) is the same map run forwards; diagnostics (10.5) is it turned into
+      evidence — <em>collect first, theorise second.</em></p>
+  </div>
+
+  <h3>The five playbooks at a glance</h3>
+  <table>
+    <thead><tr><th>Subtopic</th><th>Path</th><th>Tell-tale symptom</th><th>First check</th></tr></thead>
+    <tbody>
+      <tr><td><strong>10.1 Startup</strong></td><td>② + plumbing</td><td>"Cluster won't start" / terminated with a reason</td><td>Read termination reason → quota / Available-IPs / NSG-UDR / delegation</td></tr>
+      <tr><td><strong>10.2 Connectivity</strong></td><td>① + ②</td><td>"Can't log in" / "login spins" / "Control Plane Request Failure"</td><td><code>nslookup</code> from the <em>failing</em> network</td></tr>
+      <tr><td><strong>10.3 Storage/Serverless</strong></td><td>③</td><td>"403 reading ADLS" / "serverless can't reach storage"</td><td>Error string → network vs identity gate; classic vs serverless</td></tr>
+      <tr><td><strong>10.4 Decision flow</strong></td><td>all (design)</td><td>"Which architecture for us?"</td><td>Ask the four mandate questions → name the rung</td></tr>
+      <tr><td><strong>10.5 Diagnostics</strong></td><td>all (evidence)</td><td>"Prove what broke" / "where do logs go?"</td><td>Status first → match symptom to layer → read its black box</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Topic 10 topology: the three connectivity paths with each playbook annotated —
+      10.1 startup on the container/host subnets, 10.2 DNS/connectivity on paths 1 and 2, 10.3 the two storage gates,
+      10.4 the decision-flow ladder, 10.5 the diagnostic black boxes." />
+    <figcaption class="caption">Red labels mark where each playbook bites. Symptom → pick path → read box → one check.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a customer wants to hear</h4>
+    <p>"Every Databricks fault lands on one of three paths. We pick the path from the symptom, read that path's
+      black box, and run one check — and the root cause is almost always in your own VNet, DNS, firewall or RBAC,
+      not the platform. We design the same way, forwards: pick the lowest network rung that satisfies your mandate."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (deep dive lives in the owning stage)</h4>
+    <dl>
+      <dt>SCC relay / NPIP</dt><dd>Nodes have no public IP/inbound ports; they dial <em>outbound 443</em> to the relay. Blocked egress → never registers. → Stage 3</dd>
+      <dt>Private Endpoint / sub-resource</dt><dd>A private IP for a service. <code>databricks_ui_api</code> = UI/REST + relay; <code>browser_authentication</code> = SSO; <code>dfs</code>/<code>blob</code> = ADLS. → Stage 4</dd>
+      <dt>Private DNS zone</dt><dd>Must be <em>linked</em> to the client's VNet or the FQDN resolves to a public IP. → Stage 4</dd>
+      <dt>NCC</dt><dd>Account-level, regional object giving <em>serverless</em> private connectivity + egress policies. → Stage 5</dd>
+      <dt>Service tag</dt><dd><code>AzureDatabricks(Serverless)</code> — Microsoft-maintained IP set; use instead of IPs (they rotate). → Stage 0/4</dd>
+      <dt>System tables / flow logs</dt><dd>UC-governed <code>system.access.*</code> and Network Watcher VNet flow logs — the black boxes. → Stage 9</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 10.1 -->
+<section class="panel" id="t101">
+  <h2>10.1 · Compute &amp; networking startup failures</h2>
+  <p>A starting cluster is a <strong>delivery truck leaving the depot</strong> — it needs a parking spot (vCPU
+    quota), two licence plates (host + container IP), an open gate with the right pass (NSG/delegation), and a
+    working road to head office (UDR/NAT → SCC relay). Switch the diagram between the <strong>five failure
+    families</strong> and click a box to see what it is, why it's there, and what breaks.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d101','quota',this)">Ⓐ Quota</button>
+    <button onclick="switchView('d101','ip',this)">Ⓑ IP exhaustion</button>
+    <button onclick="switchView('d101','egress',this)">Ⓒ NSG/UDR/egress</button>
+    <button onclick="switchView('d101','deleg',this)">Ⓓ Delegation</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d101" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d101" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d101" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d101" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d101info"><strong>Tip</strong>Pick a failure family, then click a box for the cause→effect and the first check.</div>
+
+  <div class="callout warn">
+    <h4>The discriminator that trips people</h4>
+    <p>An IP-exhaustion error <em>says</em> "cloud provider launch failure," which looks like quota. The tell is
+      <strong>Available IPs on the container subnet ≥ requested nodes</strong>. Quota fine but IPs near zero →
+      exhaustion. Subnet CIDR is <strong>immutable</strong> — size for peak on day one (2 IPs/node, −5 reserved).</p>
+  </div>
+
+  <h3>Illustrative config — the forced-tunnel UDR that keeps the relay reachable</h3>
+  <p class="caption">Terraform — keep control-plane traffic on the backbone via SERVICE TAGS; send the rest to the hub firewall. Missing the first routes = bootstrap timeout. Full module is the owning stage's hands-on artifact.</p>
+  <pre><code>resource "azurerm_route" "adb_cp" {            # SCC relay + webapp + API
+  address_prefix = "AzureDatabricks"           # SERVICE TAG, not a CIDR (IPs rotate)
+  next_hop_type  = "Internet"                  # stays on the Microsoft backbone
+}
+resource "azurerm_route" "default_to_fw" {     # everything else -> hub firewall
+  address_prefix         = "0.0.0.0/0"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = "10.100.0.4"        # hub Azure Firewall private IP
+}
+# Also required: routes for "Storage" (443) and "EventHub" (9093).</code></pre>
+  <p class="caption">Portal: termination reason at Compute → cluster → <em>Event log</em> + Driver logs. Failed deploy → RG → <em>Deployments</em> (ARM error). Quota → Subscription → Usage + quotas. IPs → VNet → Subnets → <strong>Available IPs</strong>.</p>
+
+  <div class="callout warn">
+    <h4>Post-2026-03-31 trap (verify)</h4>
+    <p>New Azure VNets have <strong>no implicit internet egress</strong> — a new injected workspace needs a
+      <strong>NAT gateway on both subnets</strong> or clusters can't reach the relay. Don't use an egress load
+      balancer with SCC (SNAT port exhaustion).</p>
+  </div>
+</section>
+
+<!-- 10.2 -->
+<section class="panel" id="t102">
+  <h2>10.2 · Connectivity — front-end, Private Link, DNS &amp; SCC</h2>
+  <p>The workspace URL is a <strong>phone number</strong>, DNS is the <strong>phonebook</strong>, Private Link is
+    a <strong>private unlisted line</strong>. ~80% of "Private Link is broken" tickets are really "the phonebook
+    gives out the wrong number" — so check DNS first. Switch the diagram between the four paths and click a box.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d102','front',this)">① Front-end</button>
+    <button onclick="switchView('d102','back',this)">② Back-end / SCC</button>
+    <button onclick="switchView('d102','webauth',this)">④ Web-auth / SSO</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d102" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d102" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d102" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d102" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d102info"><strong>Tip</strong>Pick a path, then click a box. Every private endpoint depends on a privatelink DNS record resolving to its private IP.</div>
+
+  <div class="callout key">
+    <h4>The DNS-first probe — from the FAILING network</h4>
+    <p>Resolving from your laptop on the public internet proves nothing. A public IP / NXDOMAIN almost always
+      means the <strong>Private DNS zone isn't linked to the client's VNet</strong> (the #1 omission).</p>
+  </div>
+
+  <h3>Illustrative config — the probe + the forwarding fix</h3>
+  <pre><code>nslookup adb-1111111111111111.1.azuredatabricks.net   # from a jump-box in the VNet
+#   GOOD: CNAME -> ...privatelink.azuredatabricks.net, Address 10.x.x.x
+#   BAD : a public IP (20.x / 40.x) -> Private DNS zone not in use
+
+az network private-dns link vnet list \
+  --resource-group dns-rg --zone-name privatelink.azuredatabricks.net -o table</code></pre>
+  <p class="caption">Fix: conditional-forward <code>*.azuredatabricks.net</code>, <code>*.privatelink.azuredatabricks.net</code>,
+    <code>*.databricksapps.com</code> → Azure DNS <code>168.63.129.16</code>. Portal: Private DNS zone → <em>Virtual network links</em> / Recordsets; workspace → Networking → <em>Private endpoint connections</em> (Approved).</p>
+
+  <div class="callout warn">
+    <h4>Region-wide SSO outage</h4>
+    <p>There is exactly <strong>one <code>browser_authentication</code> endpoint per region</strong>. Deleting its
+      host workspace breaks login for <em>every</em> workspace in the region — set a <strong>delete lock</strong>.
+      Don't route the SCC relay through firewall deep inspection; allowlist relay <strong>FQDNs, not IPs</strong>.</p>
+  </div>
+</section>
+
+<!-- 10.3 -->
+<section class="panel" id="t103">
+  <h2>10.3 · Storage &amp; serverless access</h2>
+  <p>Every storage read passes <strong>two turnstiles in order</strong>: the <strong>network gate</strong>
+    (storage firewall — did the packet reach the building?) then the <strong>identity gate</strong> (RBAC + Unity
+    Catalog — can you open this cabinet?). A 403 is just "a turnstile said no." Switch the diagram between
+    <strong>classic</strong> and <strong>serverless</strong> — they take different doors.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d103','classic',this)">Classic path</button>
+    <button onclick="switchView('d103','serverless',this)">Serverless path</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d103" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d103" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d103" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d103" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d103info"><strong>Tip</strong>Pick classic or serverless, then click a gate or path to see the cause→effect and the first check.</div>
+
+  <div class="callout key">
+    <h4>Read the error to pick the gate, then ask "classic or serverless?"</h4>
+    <p><code>AuthorizationFailure</code> = <strong>network gate</strong>; <code>AuthorizationPermissionMismatch</code>
+      = <strong>identity gate</strong>; UC <code>PERMISSION_DENIED</code> (before any Azure call) = <strong>grant</strong>.
+      The #1 misdiagnosis: allowlisting <em>your</em> VNet for serverless — serverless isn't in it.</p>
+  </div>
+
+  <h3>Illustrative config — wire the identity gate (the most common 403)</h3>
+  <pre><code>-- UC: credential -> external location -> grant. The GRANT is the missing line in many 403s.
+CREATE STORAGE CREDENTIAL adls_cred WITH AZURE_MANAGED_IDENTITY
+  ACCESS_CONNECTOR_ID = '/subscriptions/&lt;sub&gt;/resourceGroups/adb-rg/providers/Microsoft.Databricks/accessConnectors/adb-ac';
+CREATE EXTERNAL LOCATION lake_ext URL 'abfss://data@mydatalake.dfs.core.windows.net/'
+  WITH (STORAGE CREDENTIAL adls_cred);
+GRANT READ FILES ON EXTERNAL LOCATION lake_ext TO `data-engineers`;</code></pre>
+  <pre><code># Azure: the access-connector identity needs the DATA-PLANE role (not "...Reader").
+az role assignment create --assignee-object-id &lt;MI-principal-id&gt; \
+  --assignee-principal-type ServicePrincipal --role "Storage Blob Data Contributor" \
+  --scope ".../storageAccounts/mydatalake"</code></pre>
+  <p class="caption">Portal: storage → Networking (firewall / PE connections / resource-instance rule for <code>Microsoft.Databricks/accessConnectors</code>); Account console → NCC (create → add PE rule → bind → approve PE on storage → wait ~10 min → restart serverless).</p>
+
+  <div class="callout warn">
+    <h4>Half-fixes &amp; limits</h4>
+    <p>A <code>dfs</code> PE <strong>without</strong> the matching <code>blob</code> PE breaks ABFS in confusing
+      ways — always create the pair. Service Endpoint <em>Policies</em> are a no-op on Databricks-delegated subnets.
+      NCC: 10/region, 100 PEs/region, 50 workspaces/NCC; Premium required.</p>
+  </div>
+</section>
+
+<!-- 10.4 -->
+<section class="panel" id="t104">
+  <h2>10.4 · Customer deployment patterns &amp; the decision flow</h2>
+  <p>Three reference architectures are <strong>three rungs of a security ladder</strong>, not three products.
+    Start every customer on the bottom rung and <strong>climb only as far as their compliance mandate forces</strong>
+    — each rung up bolts on billable Azure parts and DNS/firewall ops. Switch the diagram between the rungs.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d104','ms',this)">Managed security</button>
+    <button onclick="switchView('d104','hc',this)">Hardened connectivity</button>
+    <button onclick="switchView('d104','iso',this)">Isolated environment</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d104" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d104" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d104" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d104" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d104info"><strong>Tip</strong>Pick a rung, then click a path to see which controls flip from public-ish to private at that rung.</div>
+
+  <h3>The feature matrix (the interview answer)</h3>
+  <table>
+    <thead><tr><th>Feature</th><th>Managed security</th><th>Hardened</th><th>Isolated</th></tr></thead>
+    <tbody>
+      <tr><td>VNet injection + SCC</td><td>Yes</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Back-end Private Link</td><td>Optional</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Front-end (workspace) Private Link</td><td>No</td><td>No</td><td><strong>Yes</strong></td></tr>
+      <tr><td>IP access lists (ws/account/OpenSharing)</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>Serverless egress control + NCC PEs</td><td>No</td><td>Yes</td><td>Yes</td></tr>
+      <tr><td>External firewall (DEP)</td><td>Optional</td><td>Optional</td><td><strong>Yes</strong></td></tr>
+      <tr><td>Public network access</td><td>Enabled</td><td>Enabled</td><td><strong>Disabled</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the delta from baseline to Isolated</h3>
+  <pre><code>resource "azurerm_databricks_workspace" "isolated" {
+  sku                                   = "premium"               # all Private Link needs Premium
+  public_network_access_enabled         = false                   # &lt;-- Isolated: reject public
+  network_security_group_rules_required = "NoAzureDatabricksRules" # &lt;-- back-end PL needs this
+  custom_parameters { no_public_ip = true /* + VNet/subnet/NSG associations */ }
+}
+# + databricks_ui_api PE (back-end) and databricks_ui_api + browser_authentication PE
+#   (front-end, in the TRANSIT VNet) complete the Isolated inbound path.</code></pre>
+  <p class="caption">Portal: Networking → SCC=Yes, own VNet=Yes (all rungs); Required NSG rules = AllRules (Managed) / NoAzureDatabricksRules (back-end PL); Public network access = Enabled (Managed/Hardened) / Disabled (Isolated).</p>
+
+  <div class="callout warn">
+    <h4>Old deck names → current names</h4>
+    <p>"Standard / Simplified deployment" → the <strong>Isolated environment</strong> inbound wiring; "secure/hardened
+      workspace" → <strong>Hardened connectivity</strong>; "default/managed-VNet" → <strong>Managed security</strong>;
+      "full DEP" → <strong>Isolated + external firewall</strong>. Subnet CIDR &amp; VNet injection are deploy-time.</p>
+  </div>
+</section>
+
+<!-- 10.5 -->
+<section class="panel" id="t105">
+  <h2>10.5 · Diagnostics, support &amp; escalation</h2>
+  <p>You're an <strong>air-crash investigator</strong>, not a witness. Your black boxes — <strong>system tables,
+    VNet flow logs, diagnostic-settings export</strong> — only have a recording if you switched them on
+    <em>before</em> the crash. Switch the diagram between the <strong>diagnostic layers</strong> and the
+    <strong>escalation flow</strong>; click a box for what it answers and its retention.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d105','layers',this)">Black boxes by path</button>
+    <button onclick="switchView('d105','escalate',this)">Escalation flow</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d105" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d105" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d105" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d105" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d105info"><strong>Tip</strong>Click a black box for what it answers and how long it keeps data — evidence has a shelf life.</div>
+
+  <div class="callout warn">
+    <h4>Evidence has a shelf life</h4>
+    <p><code>system.access.inbound_network</code> is <strong>30 days</strong>; <code>node_timeline</code> 90d;
+      cluster event logs <strong>die with the cluster</strong>. Turn on logging <em>before</em> go-live, or you
+      can't root-cause later. Collect first, theorise second.</p>
+  </div>
+
+  <h3>Illustrative config — read the network-denial black boxes</h3>
+  <pre><code>SELECT event_time, source.ip AS src_ip, authenticated_as, policy_outcome, rule_label
+FROM   system.access.inbound_network                       -- 30-day retention
+WHERE  event_time &gt;= current_timestamp() - INTERVAL 2 HOUR ORDER BY event_time DESC;
+
+SELECT event_time, destination_type, destination,
+       dns_event.rcode AS dns_rcode, storage_event.rejection_reason
+FROM   system.access.outbound_network                      -- DNS vs IP vs STORAGE denial
+WHERE  event_time &gt;= current_date() - INTERVAL 1 DAY ORDER BY event_time DESC;</code></pre>
+  <pre><code># Enable VNet flow logs BEFORE incidents — a 'D' record names the rule + 5-tuple that dropped the packet.
+az network watcher flow-log create --resource-group rg-network --name adb-vnet-flowlog \
+  --location eastus --vnet adb-vnet --storage-account stflowlogseastus \
+  --traffic-analytics true --workspace &lt;log-analytics-resource-id&gt;</code></pre>
+  <p class="caption">Status first: status.azuredatabricks.net + Service Health + Resource health. Escalate: Help + support → Create a support request → Technical → <strong>Azure Databricks</strong> → the workspace's <strong>subscription</strong> (wrong subscription = the engineer can't see your resources).</p>
+
+  <div class="callout warn">
+    <h4>SIEM coverage gap &amp; NSG flow-log retirement</h4>
+    <p>Diagnostic settings omit <code>clusterPolicies</code>/<code>groups</code>/<code>vectorSearch</code> — pair
+      with the audit system table. <strong>NSG flow logs are being retired</strong> in favour of VNet flow logs
+      (verify the date). Never promise Sev-A speed on a Developer support plan.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>Uses, edge cases &amp; limitations</h4>
+    <p><strong>Uses:</strong> first-15-minutes triage on any startup / connectivity / storage /
+      serverless escalation; the decision conversation that scopes a deployment; standing up
+      logging before go-live; packaging an escalation that resolves on round-trip one.</p>
+    <p><strong>Edge cases:</strong></p>
+    <ul>
+      <li><strong>Serverless ≠ classic</strong> on paths ②/③ — no subnet, no static IP; use NCC +
+        the <code>AzureDatabricksServerless</code> service tag, not your VNet (the #1 misdiagnosis).</li>
+      <li><strong>Diagnosing from the wrong network</strong> — <code>nslookup</code> from a public
+        laptop returns the public IP and proves nothing.</li>
+      <li><strong>Half-fixes:</strong> <code>dfs</code> PE without <code>blob</code>; service endpoint
+        on one subnet only; <code>Storage Blob Data Reader</code> (reads work, writes 403).</li>
+      <li><strong>Shared blast radius:</strong> deleting the web-auth host workspace breaks login
+        region-wide; one missing VNet link breaks every machine on that VNet.</li>
+      <li><strong>Post-2026-03-31</strong> new VNets have no default outbound — new workspace can't
+        reach the relay even when DNS is perfect.</li>
+      <li><strong>Short retention:</strong> <code>inbound_network</code> 30d, <code>node_timeline</code>
+        90d, cluster event logs die with the cluster — export early.</li>
+      <li><strong>Service Endpoint Policies</strong> are a no-op on Databricks-delegated subnets.</li>
+    </ul>
+    <p><strong>Limitations:</strong> Private Link / IP access lists / CMK / egress control /
+      diagnostic logs require <strong>Premium</strong>; NCC quotas (10/region, 100 PEs/region,
+      50 workspaces/NCC); subnet CIDR + VNet injection are deploy-time; NSG-rules / public-access
+      changes need all compute stopped and a 15+ min window; many networking system tables are
+      <strong>Public Preview</strong> (free now, behaviour can change) — flag preview status.</p>
+  </div>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Bake into every deployment</h3>
+      <ul>
+        <li>NAT gateway on both subnets (post-2026-03-31)</li>
+        <li>Container subnet sized for peak (2 IPs/node, −5)</li>
+        <li>SCC on; never hand-edit the managed NSG rules</li>
+        <li>Conditional-forward the three DNS suffixes to 168.63.129.16</li>
+        <li>Dedicated, delete-locked web-auth workspace per region</li>
+        <li>System tables + VNet flow logs + SIEM export before go-live</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Match the rung to the mandate</h3>
+      <ul>
+        <li>Non-regulated analytics → <strong>Managed security</strong></li>
+        <li>Audit + access control, public login OK → <strong>Hardened</strong></li>
+        <li>"No public / no exfil" mandate → <strong>Isolated (+ firewall = DEP)</strong></li>
+        <li>Free-backbone storage acceptable → Service Endpoint</li>
+        <li>"No public IP on storage" → Private/NCC endpoint</li>
+        <li>Scarce RFC 1918 / huge autoscale → overlay IP-exhaustion (RFC 6598 + serverless)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Sell the vault to the coffee shop (default everyone to Isolated)</li>
+        <li>Route the SCC relay through the DEP firewall (allow it directly)</li>
+        <li>Allowlist your VNet for serverless (use service tag / NCC PE)</li>
+        <li>Create a <code>dfs</code> PE without the <code>blob</code> PE</li>
+        <li>Use <code>Storage Blob Data Reader</code> when writes are needed</li>
+        <li>Build new tooling on NSG flow logs (retiring) or file on the wrong subscription</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't misread the symptom</h3>
+      <ul>
+        <li>IP exhaustion ≠ quota — check container subnet Available IPs</li>
+        <li>"Public access not allowed" ≠ policy bug — usually a DNS leak</li>
+        <li><code>AuthorizationFailure</code> ≠ <code>PermissionMismatch</code> — network vs identity gate</li>
+        <li>Diagnose DNS from the failing network, not your laptop</li>
+        <li>Don't debug before checking the status page</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Symptom → pick the path → read the box → run ONE check.</strong> Design forwards: <strong>pick the
+      lowest rung that satisfies the mandate</strong>, never the highest — climbing is cheap to spec but expensive
+      to operate. And turn the logging black box on before go-live, because evidence has a shelf life.</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security/network team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Every Databricks fault lands on one of three paths — users in, clusters to control, clusters
+      to data. We pick the path from the symptom, read that path's black box — the termination reason, the
+      <code>nslookup</code>, the storage error — and run one check. The root cause is almost always in your own VNet,
+      DNS, firewall or RBAC, not the platform. We design the same way, forwards: pick the lowest network rung that
+      satisfies your mandate, and turn logging on before go-live."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"Our cluster won't start — is it Databricks or our network?"</td><td>Read the termination reason; 4 of 5 are quota/IP/NSG-UDR/delegation — your network, not the platform.</td></tr>
+      <tr><td>"Databricks is down — is it your platform?"</td><td>One <code>nslookup</code> from the failing network; if the URL doesn't return a <em>private</em> IP, the break is in your DNS linking.</td></tr>
+      <tr><td>"We allowlisted our VNet but serverless still gets 403."</td><td>Serverless isn't in your VNet — allow the <code>AzureDatabricksServerless</code> service tag or add an NCC private endpoint.</td></tr>
+      <tr><td>"Which architecture do you recommend?"</td><td>Ask the four mandate questions (regulatory? exfil? ingress/egress control? data class?) and name the rung. We don't lead with the vault.</td></tr>
+      <tr><td>"Where do our audit logs go / how long are they kept?"</td><td><code>system.access.audit</code> (recommended) and/or diagnostic settings → Log Analytics; audit 365d, <strong>inbound only 30d</strong> — export to a SIEM for more.</td></tr>
+      <tr><td>"Do we open tickets with Microsoft or Databricks?"</td><td>Azure Databricks is first-party — file in the Azure portal (Help + support → Technical → Azure Databricks); the account team handles non-break-fix asks.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>insufficient IP addresses</h4><p>Container subnet ran out (2 IPs/node, −5 reserved).<span class="fix">First check: VNet → Subnets → Available IPs vs requested nodes.</span></p></div>
+    <div class="scenario"><h4>bootstrap / NPIP tunnel timeout</h4><p>Node can't reach the relay.<span class="fix">First check: NSG outbound 443 to AzureDatabricks + UDR/firewall allow relay FQDN + NAT attached.</span></p></div>
+    <div class="scenario"><h4>Every cluster fails instantly</h4><p>Subnet delegation or NSG association dropped.<span class="fix">First check: subnet Delegation = Microsoft.Databricks/workspaces + NSG attached.</span></p></div>
+    <div class="scenario"><h4>"Control Plane Request Failure"</h4><p>Back-end DNS/PE/egress broken.<span class="fix">First check: <code>nslookup</code> from a workspace-VNet jump-box → back-end PE private IP + relay egress.</span></p></div>
+    <div class="scenario"><h4>Login spins / loops</h4><p>Web-auth record missing or host workspace deleted.<span class="fix">First check: <code>nslookup &lt;region&gt;.pl-auth...</code> + web-auth host workspace exists.</span></p></div>
+    <div class="scenario"><h4>Serverless 403, classic fine</h4><p>Serverless isn't in your VNet.<span class="fix">First check: NSP service-tag rule / NCC PE ESTABLISHED + bound + restarted.</span></p></div>
+    <div class="scenario"><h4>AuthorizationPermissionMismatch</h4><p>Identity gate: wrong RBAC role.<span class="fix">First check: access-connector identity has Storage Blob Data Contributor.</span></p></div>
+    <div class="scenario"><h4>Timeout but DNS fine</h4><p>NSG/UDR dropping the packet.<span class="fix">First check: VNet flow-log DENY record + effective NSG rules/routes.</span></p></div>
+    <div class="scenario"><h4>Support case stalls day one</h4><p>Filed on the wrong subscription.<span class="fix">First check: case is on the workspace's subscription + right severity/plan.</span></p></div>
+  </div>
+
+  <h3>Four questions to ask before recommending an architecture</h3>
+  <ol>
+    <li>Is there a regulatory mandate that traffic <em>never</em> touches the public internet?</li>
+    <li>Do you need data-exfiltration protection (block egress to arbitrary internet)?</li>
+    <li>Do you need ingress allowlisting + egress control + private data, but public login is OK?</li>
+    <li>Is RFC 1918 scarce or will a workspace autoscale to hundreds of nodes (overlay IP-exhaustion)?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (consolidated from the per-subtopic lessons; verified against current Azure Databricks + Azure docs, fetched 2026-06-26)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/vnet-inject" target="_blank">Deploy in your VNet (VNet injection) — subnet sizing, 5 reserved IPs, immutable CIDR, managed NSG rules</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/secure-cluster-connectivity" target="_blank">Secure cluster connectivity (SCC/NPIP) — outbound 443, NAT egress, post-2026-03-31 change, FQDNs not IPs</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/front-end/front-end-private-connect" target="_blank">Inbound (front-end) Private Link — DNS verification, pl-auth records, conditional forwarding</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/private-link-standard" target="_blank">Classic (back-end) Private Link — NoAzureDatabricksRules, "Control Plane Request Failure"</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/storage/firewall-support" target="_blank">Workspace storage firewall — dfs+blob PE pair, serverless service tag / NCC</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/serverless-network-security/serverless-private-link" target="_blank">NCC private endpoints — dfs/blob, PENDING→ESTABLISHED, limits</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/deployment-architecture/" target="_blank">Network reference architecture — Managed security / Hardened / Isolated + feature matrix</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/system-tables/network" target="_blank">Network access events system table — retention, DENY/DENY_DRY_RUN</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/network-watcher/vnet-flow-logs-overview" target="_blank">VNet flow logs (Network Watcher) — 5-tuple, DENY, PE capture caveat</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/azure-portal/supportability/how-to-create-azure-support-request" target="_blank">Create an Azure support request — Technical → Azure Databricks → subscription</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive: default-outbound retirement (2026-03-31), Azure NSP for service endpoints (2026-04-07),
+    NSG-flow-log retirement, Public-Preview status of network/audit system tables, NCC limits, Azure support SLAs by
+    plan — reconfirm before quoting a customer. Exact Azure error strings vary by API version; treat the message theme as the signal.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 10.1 startup: five failure families ----
+  d101:{ info:'d101info', tip:'<strong>Tip</strong>Pick a failure family, then click a box for the cause→effect and the first check.',
+    views:{
+      quota:{ nodes:'BASE101', arrows:[
+        {from:'node',to:'relay',cls:'muted'},
+        {from:'cont',to:'node',cls:'muted'},
+        {from:'host',to:'node',cls:'muted'},
+        {from:'quota',to:'node',cls:'hot',label:'Ⓐ vCPU / public-IP limit'}
+      ]},
+      ip:{ nodes:'BASE101', arrows:[
+        {from:'cont',to:'node',cls:'hot',label:'Ⓑ no free container IPs'},
+        {from:'host',to:'node',cls:''},
+        {from:'node',to:'relay',cls:'muted'},
+        {from:'quota',to:'node',cls:'muted'}
+      ]},
+      egress:{ nodes:'BASE101', arrows:[
+        {from:'cont',to:'node',cls:''},
+        {from:'host',to:'node',cls:''},
+        {from:'node',to:'relay',cls:'hot',label:'Ⓒ outbound 443 blocked'},
+        {from:'quota',to:'node',cls:'muted'}
+      ]},
+      deleg:{ nodes:'BASE101', arrows:[
+        {from:'host',to:'node',cls:'hot',label:'Ⓓ delegation/NSG stripped'},
+        {from:'cont',to:'node',cls:'hot'},
+        {from:'node',to:'relay',cls:'muted'},
+        {from:'quota',to:'node',cls:'muted'}
+      ]}
+    }},
+
+  // ---- 10.2 connectivity: four paths ----
+  d102:{ info:'d102info', tip:'<strong>Tip</strong>Pick a path, then click a box. Every private endpoint depends on a privatelink DNS record resolving to its private IP.',
+    views:{
+      front:{ nodes:'BASE102', arrows:[
+        {from:'user',to:'fepe',cls:'hot',label:'① 443 · DNS must resolve PRIVATE'},
+        {from:'fepe',to:'cp',cls:'hot'},
+        {from:'cont',to:'bepe',cls:'muted'},
+        {from:'user',to:'wape',cls:'muted'}
+      ]},
+      back:{ nodes:'BASE102', arrows:[
+        {from:'cont',to:'bepe',cls:'hot',label:'② SCC relay OUTBOUND 443'},
+        {from:'bepe',to:'cp',cls:'hot'},
+        {from:'user',to:'fepe',cls:'muted'},
+        {from:'user',to:'wape',cls:'muted'}
+      ]},
+      webauth:{ nodes:'BASE102', arrows:[
+        {from:'user',to:'wape',cls:'hot',label:'④ pl-auth callback (1/region)'},
+        {from:'wape',to:'cp',cls:'hot'},
+        {from:'cp',to:'entra',cls:'cold',label:'OAuth redirect'},
+        {from:'user',to:'fepe',cls:'muted'},
+        {from:'cont',to:'bepe',cls:'muted'}
+      ]}
+    }},
+
+  // ---- 10.3 storage: classic vs serverless, two gates ----
+  d103:{ info:'d103info', tip:'<strong>Tip</strong>Pick classic or serverless, then click a gate or path to see the cause→effect and the first check.',
+    views:{
+      classic:{ nodes:[
+        {id:'cont',x:30,y:150,w:170,h:64,color:'#2272B4',label:'Classic cluster',sub:'your VNet · Microsoft.Storage SE',
+          info:'<strong>Classic cluster (your VNet)</strong>Reaches storage via a Service Endpoint on BOTH host + container subnets, or a dfs+blob PE pair. First check: SE on both subnets AND both in the storage firewall allowlist.'},
+        {id:'pe',x:30,y:250,w:170,h:60,color:'#6B7280',label:'/28 PE subnet',sub:'dfs + blob PE pair',
+          info:'<strong>/28 PE subnet (dfs + blob)</strong>For the workspace-storage firewall. A dfs PE WITHOUT the matching blob PE is the classic half-fix — ABFS fails in confusing ways. Always create the pair, both Approved.'},
+        {id:'g1',x:340,y:120,w:200,h:74,color:'#FF3621',label:'GATE 1 — NETWORK',sub:'storage firewall',
+          info:'<strong>Gate 1 — network (storage firewall)</strong>Checks where the packet came from. Fail → 403 AuthorizationFailure. First check: is the caller\'s subnet/PE allowlisted? Worked yesterday, 403 today = someone flipped it to "selected networks" (fail-closed).'},
+        {id:'g2',x:340,y:228,w:200,h:74,color:'#00A972',label:'GATE 2 — IDENTITY',sub:'RBAC + Unity Catalog',
+          info:'<strong>Gate 2 — identity (RBAC + UC)</strong>Packet arrived; is the caller authorized? Fail → AuthorizationPermissionMismatch (RBAC) or UC PERMISSION_DENIED (grant). First check: access-connector identity has Storage Blob Data Contributor (not ...Reader) + the UC grant.'},
+        {id:'ac',x:620,y:120,w:240,h:74,color:'#6B7280',label:'Access Connector',sub:'managed identity',
+          info:'<strong>Access Connector (managed identity)</strong>Carries the Entra ID identity UC uses to reach storage. Needs Storage Blob Data Contributor on the account; referenced by the UC storage credential. Wrong connector ID / role = identity-gate 403.'},
+        {id:'adls',x:620,y:228,w:240,h:74,color:'#00A972',label:'ADLS Gen2',sub:'your data',
+          info:'<strong>ADLS Gen2 (your governed data)</strong>The path-③ destination, behind both gates. Read directly by compute, never through the control plane.'}
+      ], arrows:[
+        {from:'cont',to:'g1',cls:'hot',label:'classic (your subnets)'},
+        {from:'pe',to:'g1',cls:''},
+        {from:'g1',to:'g2',cls:'',label:'then identity'},
+        {from:'ac',to:'g2',cls:'cold',label:'Blob Data Contributor'},
+        {from:'g2',to:'adls',cls:''}
+      ]},
+      serverless:{ nodes:[
+        {id:'svl',x:30,y:150,w:180,h:64,color:'#00A972',label:'Serverless pool',sub:'Databricks sub · NOT your VNet',
+          info:'<strong>Serverless pool</strong>Runs in the Databricks-owned subscription — NOT in your VNet. The #1 misdiagnosis is allowlisting your subnets; serverless isn\'t in them. It reaches storage via the service tag (NSP) or an NCC private endpoint.'},
+        {id:'nsp',x:30,y:236,w:180,h:50,color:'#6B7280',label:'NSP service tag',sub:'AzureDatabricksServerless',
+          info:'<strong>NSP service tag (AzureDatabricksServerless)</strong>The free-backbone serverless allowlist. First check: is the storage account onboarded to a network security perimeter that allows this service tag?'},
+        {id:'ncc',x:230,y:236,w:180,h:50,color:'#6B7280',label:'NCC private endpoint',sub:'ESTABLISHED + bound',
+          info:'<strong>NCC private endpoint</strong>Account-level, regional. First check: PE rule = ESTABLISHED (not PENDING — that means unapproved on storage), NCC bound to the workspace, and serverless RESTARTED after binding (~10 min).'},
+        {id:'g1',x:460,y:120,w:190,h:74,color:'#FF3621',label:'GATE 1 — NETWORK',sub:'storage firewall',
+          info:'<strong>Gate 1 — network (storage firewall)</strong>For serverless this allows the service tag or the NCC PE — not your VNet. Fail → 403 AuthorizationFailure even though classic works fine.'},
+        {id:'g2',x:460,y:228,w:190,h:74,color:'#00A972',label:'GATE 2 — IDENTITY',sub:'RBAC + UC',
+          info:'<strong>Gate 2 — identity (RBAC + UC)</strong>Same as classic. Under Restricted serverless egress, direct-from-code storage is blocked — route via UC. Use dry-run to see what would be denied before enforcing.'},
+        {id:'adls',x:700,y:174,w:170,h:74,color:'#00A972',label:'ADLS Gen2',sub:'your data',
+          info:'<strong>ADLS Gen2</strong>Reached by serverless over the backbone, behind both gates. Egress is also subject to the network policy — a destination reachable by PE still must be listed.'}
+      ], arrows:[
+        {from:'svl',to:'nsp',cls:''},
+        {from:'svl',to:'ncc',cls:''},
+        {from:'nsp',to:'g1',cls:'cold',label:'service tag'},
+        {from:'ncc',to:'g1',cls:'cold',label:'NCC PE'},
+        {from:'g1',to:'g2',cls:''},
+        {from:'g2',to:'adls',cls:''}
+      ]}
+    }},
+
+  // ---- 10.4 decision flow: three rungs ----
+  d104:{ info:'d104info', tip:'<strong>Tip</strong>Pick a rung, then click a path to see which controls flip from public-ish to private at that rung.',
+    views:{
+      ms:{ nodes:'BASE104', arrows:[
+        {from:'user',to:'cp',cls:'',label:'① public TLS'},
+        {from:'cluster',to:'cp',cls:'hot',label:'② SCC (public egress)'},
+        {from:'svr',to:'adls',cls:'',label:'③ public + firewall/tags'}
+      ]},
+      hc:{ nodes:'BASE104', arrows:[
+        {from:'user',to:'cp',cls:'',label:'① public + IP ACLs'},
+        {from:'cluster',to:'cp',cls:'hot',label:'② back-end PL (private)'},
+        {from:'svr',to:'adls',cls:'cold',label:'③ NCC PE (private) + egress control'}
+      ]},
+      iso:{ nodes:'BASE104', arrows:[
+        {from:'user',to:'cp',cls:'cold',label:'① front-end PL · public DISABLED'},
+        {from:'cluster',to:'cp',cls:'hot',label:'② back-end PL'},
+        {from:'svr',to:'adls',cls:'cold',label:'③ NCC PE + external firewall (DEP)'}
+      ]}
+    }},
+
+  // ---- 10.5 diagnostics: layers vs escalation ----
+  d105:{ info:'d105info', tip:'<strong>Tip</strong>Click a black box for what it answers and how long it keeps data — evidence has a shelf life.',
+    views:{
+      layers:{ nodes:[
+        {id:'p1',x:30,y:40,w:150,h:60,color:'#2272B4',label:'① user → DBX',sub:'access layer',
+          info:'<strong>Path ① — access layer</strong>Who tried what, allowed or denied at the front door. Read system.access.audit (365d) + inbound_network DENY (30d).'},
+        {id:'p2',x:30,y:150,w:150,h:60,color:'#FF3621',label:'② compute ↔ CP',sub:'platform layer',
+          info:'<strong>Path ② — platform/compute layer</strong>Did the cluster start? Why did a node die? Read the cluster event log + driver logs (die with the cluster) and system.compute.* (instance_events 365d / node_timeline 90d).'},
+        {id:'p3',x:30,y:260,w:150,h:60,color:'#00A972',label:'③ compute → storage',sub:'name + fabric layer',
+          info:'<strong>Path ③ — name + fabric layer</strong>Did the FQDN resolve, to what IP? Was the packet dropped? nslookup/dig + outbound_network.dns_event + VNet flow-log DENY (must be enabled BEFORE the incident).'},
+        {id:'b1',x:300,y:40,w:250,h:60,color:'#6B7280',label:'system.access.audit / inbound_network',sub:'audit 365d · inbound DENY 30d',
+          info:'<strong>Audit + inbound_network</strong>The canonical access record + one row per denied inbound (policy_outcome DENY / DENY_DRY_RUN, rule_label, source). 30-day inbound retention — export to a SIEM for more.'},
+        {id:'b2',x:300,y:150,w:250,h:60,color:'#6B7280',label:'cluster event log + system.compute.*',sub:'event log dies with cluster',
+          info:'<strong>Cluster event log + compute system tables</strong>Termination reason (IP exhaustion / cloud launch failure), driver logs. Collect BEFORE deleting the cluster — they\'re not in a system table. instance_events survives (365d) but is state, not the stack trace.'},
+        {id:'b3',x:300,y:260,w:250,h:60,color:'#6B7280',label:'nslookup + outbound_network + flow logs',sub:'flow logs = enable first',
+          info:'<strong>nslookup + outbound_network + VNet flow logs</strong>Public IP where you expected private = DNS/zone-link problem. Resolves fine but hangs = flow-log DENY at NSG/UDR (5-tuple + rule). PE traffic captured at the SOURCE node, not the PE.'},
+        {id:'st',x:620,y:150,w:240,h:60,color:'#FFC107',label:'Step 0: status / Service Health',sub:'me or the platform?',
+          info:'<strong>Step 0 — status first</strong>status.azuredatabricks.net + Azure Service Health + Resource health. ~1 in 5 "urgent" outages is an upstream incident you can\'t fix and shouldn\'t debug. Check before collecting logs.'}
+      ], arrows:[
+        {from:'p1',to:'b1',cls:''},
+        {from:'p2',to:'b2',cls:'hot'},
+        {from:'p3',to:'b3',cls:'cold'},
+        {from:'st',to:'b2',cls:'muted'}
+      ]},
+      escalate:{ nodes:[
+        {id:'sym',x:30,y:150,w:150,h:60,color:'#2272B4',label:'Symptom reported',sub:'',
+          info:'<strong>Symptom reported</strong>Start the funnel: status first, then match the symptom to a layer.'},
+        {id:'status',x:240,y:40,w:170,h:60,color:'#FFC107',label:'Status + Service Health',sub:'OK?',
+          info:'<strong>Status + Service Health</strong>If degraded, it\'s an upstream incident — track and communicate, don\'t debug. If OK, proceed to read the layer\'s black box.'},
+        {id:'repro',x:240,y:150,w:170,h:60,color:'#FF3621',label:'Reproduce',sub:'1 cmd + UTC + IDs',
+          info:'<strong>Reproduce</strong>Minimise to one failing command; pin the dimensions (classic vs serverless, UI vs CLI); capture exact UTC timestamps + workspace/cluster IDs + requestId/event_id. Note what is NOT broken.'},
+        {id:'fix',x:240,y:260,w:170,h:60,color:'#00A972',label:'Fix yourself',sub:'NSG/UDR/DNS/policy/CIDR',
+          info:'<strong>Fix yourself</strong>If the root cause is in YOUR Azure config (NSG/UDR/DNS/policy/RBAC/CIDR), fix it — most Stage 10 tickets end here.'},
+        {id:'esc',x:480,y:150,w:200,h:74,color:'#FF3621',label:'Escalate (Azure portal)',sub:'Technical · Azure Databricks',
+          info:'<strong>Escalate via the Azure portal</strong>Azure Databricks is first-party. Help + support → Create a support request → Technical → Azure Databricks → the workspace\'s SUBSCRIPTION (wrong subscription = the engineer can\'t see your resources = stalls day one). Severity SLA depends on the Azure support plan.'},
+        {id:'pkg',x:720,y:150,w:150,h:74,color:'#6B7280',label:'The package',sub:'one zip beats ten messages',
+          info:'<strong>The evidence package</strong>Workspace ID + region, UTC timestamps, requestId/event_id, minimal repro, system.access.* rows, the flow-log DENY, nslookup output, cluster event-log termination reason. Account team/TAM for non-break-fix asks.'}
+      ], arrows:[
+        {from:'sym',to:'status',cls:''},
+        {from:'status',to:'repro',cls:''},
+        {from:'repro',to:'fix',cls:'cold',label:'yours'},
+        {from:'repro',to:'esc',cls:'hot',label:'platform / limit'},
+        {from:'esc',to:'pkg',cls:''}
+      ]}
+    }}
+};
+
+// shared base node sets
+const BASE101 = [
+  {id:'quota',x:30,y:40,w:170,h:60,color:'#6B7280',label:'Subscription quota',sub:'vCPU · public IP',
+    info:'<strong>Ⓐ Quota (subscription)</strong>New nodes\' total vCPUs exceed the regional per-family limit → fast launch failure (QuotaExceeded). A PublicIPCountLimit error means SCC is DISABLED — fix the quota AND flag the hardening gap. First check: Subscription → Usage + quotas (region + VM family / Public IP).'},
+  {id:'host',x:30,y:150,w:170,h:60,color:'#6B7280',label:'Host subnet',sub:'delegated + NSG',
+    info:'<strong>Ⓓ Host subnet — delegation/NSG</strong>Must show Delegation = Microsoft.Databricks/workspaces and an NSG attached, no foreign resources. Stripped → EVERY cluster fails instantly. Subnets can\'t be shared with other resources or workspaces.'},
+  {id:'cont',x:30,y:260,w:170,h:60,color:'#2272B4',label:'Container subnet',sub:'2 IPs/node · −5 reserved',
+    info:'<strong>Ⓑ Container subnet — IP exhaustion</strong>Each node burns 1 host + 1 container IP; the container subnet is the binding limit; Azure reserves 5 IPs. usable = 2^(32−n) − 5. First check: VNet → Subnets → Available IPs vs requested nodes. CIDR is IMMUTABLE — size for peak.'},
+  {id:'node',x:340,y:150,w:200,h:78,color:'#2272B4',label:'Cluster node (VM)',sub:'No Public IP',
+    info:'<strong>Cluster node (VM, NPIP)</strong>Runs in your VNet, no public IP, no inbound ports. To register it must dial OUTBOUND 443 to the SCC relay. The termination reason in the cluster Event log names which gate broke.'},
+  {id:'relay',x:660,y:150,w:200,h:78,color:'#FF3621',label:'SCC relay → register',sub:'control plane',
+    info:'<strong>Ⓒ SCC relay (control plane)</strong>The node\'s outbound 443 target. Blocked by a Deny rule, a 0.0.0.0/0 UDR to a firewall that doesn\'t allow the relay FQDN, or a post-2026-03-31 VNet with no NAT → bootstrap/NPIP-tunnel timeout. First check: NSG outbound rules + UDR/firewall allowlist + NAT. Allowlist FQDNs/service tags, not IPs.'}
+];
+
+const BASE102 = [
+  {id:'user',x:30,y:150,w:140,h:58,color:'#2272B4',label:'User / BI / REST',sub:'browser · JDBC · CLI',
+    info:'<strong>User / BI / REST</strong>Reaches the workspace over 443. On a locked-down workspace there is NO public fallback — connectivity is only as good as name resolution. Always nslookup from the FAILING network, never your laptop.'},
+  {id:'fepe',x:270,y:40,w:170,h:62,color:'#FFC107',label:'Front-end PE',sub:'databricks_ui_api (transit)',
+    info:'<strong>Front-end PE (databricks_ui_api, transit VNet)</strong>Depends on privatelink.azuredatabricks.net resolving to its private IP. Public IP/NXDOMAIN ⇒ the client VNet isn\'t linked to the zone (the #1 omission) or the custom-DNS forwarder is missing.'},
+  {id:'wape',x:270,y:260,w:170,h:62,color:'#FFC107',label:'Web-auth PE',sub:'browser_authentication',
+    info:'<strong>Web-auth PE (browser_authentication)</strong>Carries the SSO callback to <region>.pl-auth.azuredatabricks.net. ONE per region per DNS zone. Missing record or deleted host workspace → login breaks region-wide. Delete-lock the host workspace.'},
+  {id:'bepe',x:270,y:150,w:170,h:62,color:'#FFC107',label:'Back-end PE',sub:'databricks_ui_api (workspace)',
+    info:'<strong>Back-end PE (databricks_ui_api, workspace VNet)</strong>Where the cluster\'s outbound 443 to the SCC relay goes under back-end Private Link. If its DNS resolves public or the PE is Pending → cluster gets "Control Plane Request Failure".'},
+  {id:'cp',x:560,y:90,w:180,h:70,color:'#FF3621',label:'Control plane',sub:'web app · REST · SCC relay',
+    info:'<strong>Control plane</strong>Where paths ① and ② terminate. The endpoints are usually healthy — it\'s the NAME RESOLUTION to them that\'s missing. That\'s why an FDE diagnoses DNS-first.'},
+  {id:'cont',x:30,y:260,w:140,h:58,color:'#2272B4',label:'Classic cluster',sub:'workspace VNet',
+    info:'<strong>Classic cluster (workspace VNet)</strong>Initiates path ② outbound 443 to the relay via the back-end PE. nslookup from a jump-box IN this VNet must return the back-end PE private IP.'},
+  {id:'entra',x:560,y:250,w:180,h:62,color:'#6B7280',label:'Microsoft Entra ID',sub:'SSO / OAuth',
+    info:'<strong>Microsoft Entra ID (SSO/OAuth)</strong>If DNS is correct but login still fails, suspect Entra ID Conditional Access (blocking the network/location) — that\'s identity, not networking; hand to the IdP team.'}
+];
+
+const BASE104 = [
+  {id:'user',x:30,y:150,w:150,h:60,color:'#2272B4',label:'User / BI / REST',sub:'path ①',
+    info:'<strong>Path ① user → Databricks</strong>Managed: public TLS. Hardened: + IP access lists (public but access-controlled). Isolated: front-end Private Link + public access DISABLED (the only "nothing public" answer). The browser_authentication PE is required for SSO in Isolated.'},
+  {id:'cluster',x:30,y:260,w:150,h:60,color:'#2272B4',label:'Classic cluster',sub:'path ②',
+    info:'<strong>Path ② compute ↔ control plane</strong>SCC + VNet injection on every rung. Back-end Private Link is Optional at Managed, recommended at Hardened, required at Isolated. Don\'t route the SCC relay through the DEP firewall — allow it directly.'},
+  {id:'cp',x:360,y:90,w:190,h:74,color:'#FF3621',label:'Control plane',sub:'Databricks sub',
+    info:'<strong>Control plane</strong>Paths ① and ② terminate here. The rung decides how private these connections are — but governance (Unity Catalog) sits on top regardless of the rung; networking and governance are orthogonal.'},
+  {id:'svr',x:360,y:230,w:190,h:74,color:'#00A972',label:'Serverless / compute',sub:'egress side',
+    info:'<strong>Serverless / outbound side</strong>Managed: public + firewall/tags. Hardened: serverless egress control (network policies) + NCC private endpoints. Isolated: + external firewall (DEP). Serverless dodges VNet IPs — the IP-exhaustion overlay often "moves spiky workloads to serverless".'},
+  {id:'adls',x:660,y:160,w:190,h:74,color:'#00A972',label:'ADLS Gen2',sub:'path ③',
+    info:'<strong>Path ③ compute → storage</strong>Managed: public + firewall. Hardened/Isolated: private via NCC private endpoints. All Private Link rungs require the Premium plan. Subnet CIDR + VNet injection are deploy-time — pick the rung before terraform apply.'}
+];
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+const BASE_SETS = {BASE101, BASE102, BASE104};
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = (typeof view.nodes==='string') ? BASE_SETS[view.nodes] : view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d101','quota');
+renderDiagram('d102','front');
+renderDiagram('d103','classic');
+renderDiagram('d104','ms');
+renderDiagram('d105','layers');
+</script>
+</body>
+</html>

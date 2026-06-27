@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joins · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 02</p>
+    <h1>Sort-Merge, Shuffle-Hash<br>&amp; <span class="drip">Broadcast joins.</span></h1>
+    <p class="lede">The same join can be a sub-second lookup or a cluster-melting shuffle. Spark picks one of three physical strategies from its size estimate — here's how each works, and how to control which one you get.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">Broadcast threshold <b>10 MB</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p>A <strong>join</strong> combines two DataFrames on a key. Spark can run that one logical join three physically different ways — and the choice decides whether the job moves gigabytes across the network or almost nothing:</p>
+    <ul>
+      <li><strong>Broadcast Hash Join (BHJ)</strong> — copy the <em>small</em> table to every executor, join locally, <strong>no shuffle of the big table</strong>.</li>
+      <li><strong>Shuffle Sort-Merge Join (SMJ)</strong> — shuffle <em>both</em> tables by key, sort, merge. The default for big-vs-big.</li>
+      <li><strong>Shuffle Hash Join (SHJ)</strong> — shuffle both, build an in-memory hash table on one side. A rarely-chosen middle ground.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Spark picks the strategy from its <strong>size estimate</strong> of each side. Get the estimate (or the threshold) right and big-vs-small joins broadcast automatically; get it wrong and you pay for a full shuffle you didn't need.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li>A <strong>shuffle</strong> — Spark moving rows across the network so equal keys land together — is the single most expensive thing a join can do: network I/O + disk spill + serialization + a stage boundary that makes every executor wait for the slowest.</li>
+      <li>The classic enterprise join is a <strong>huge fact table ⋈ a small dimension</strong> (orders ⋈ countries, events ⋈ device-lookup). If it broadcasts, the fact table is never shuffled — often a 10× win. If it falls back to sort-merge, you shuffle the whole fact table for nothing.</li>
+      <li>Interviewers probe this constantly: <em>"Your join is slow — what do you check?"</em> The answer starts with <strong>"which strategy did the planner pick, and why?"</strong> — which you read from <code>df.explain()</code> and the Spark UI.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: STRATEGY CHOOSER ============ -->
+  <section>
+    <h2>See it work — the strategy chooser</h2>
+    <p>Drag the small table's estimated size. Watch the plan flip from a shuffle-free broadcast join to a full sort-merge shuffle the moment it crosses the <code>10 MB</code> threshold — and toggle a <code>broadcast()</code> hint to override the estimate.</p>
+    <div class="lab" id="lab-chooser">
+      <div class="lab-head"><span class="lab-title">Join-strategy chooser</span></div>
+      <p class="lab-sub">A 2 TB <code>orders</code> table joined to a <code>country</code> dimension of the size you choose.</p>
+      <div class="controls">
+        <div class="filterbar"><label>Small side size <input type="range" id="jc-size" min="1" max="80" value="6"><span class="sizeval" id="jc-sizeval">6 MB</span></label></div>
+        <div class="seg" id="jc-mode" role="group" aria-label="planner mode">
+          <button data-mode="auto" aria-pressed="true">Let Spark decide</button>
+          <button data-mode="hint" aria-pressed="false">Force broadcast()</button>
+        </div>
+      </div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="jc-strategy">—</div><div class="lbl">chosen strategy</div></div>
+        <div class="stat win"><div class="big" id="jc-shuffle">—</div><div class="lbl">2 TB orders shuffled?</div></div>
+        <div class="stat"><div class="big" id="jc-cost">—</div><div class="lbl">relative cost</div></div>
+      </div>
+      <div class="planbox" id="jc-plan"></div>
+      <div class="verdict" id="jc-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real selection also weighs join type, stats quality, and AQE's runtime sizes.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>Quick recap: the shuffle is the enemy</h3>
+    <p><span class="chip analogy">analogy</span> A shuffle is like making every shopper in a mall walk to one central desk to be sorted by surname before they can be served — slow, and everyone waits for the longest queue. A join needs matching keys on the same executor: either <strong>move the data to the keys</strong> (shuffle both sides) or <strong>move a copy of the small table to every executor</strong> (broadcast). Every strategy is just a different answer to "how do we get matching keys together?"</p>
+
+    <h3>1 · Broadcast Hash Join (BHJ) — the fast path</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> Spark collects the small side to the <strong>driver</strong>, ships a read-only copy to <strong>every executor</strong> (a <code>BroadcastExchange</code>), and each task probes that in-memory hash table while streaming its slice of the big side. The big side is <strong>never shuffled</strong>.</li>
+      <li><strong>When Spark picks it:</strong> automatically when one side's <em>estimated</em> size &le; <code>spark.sql.autoBroadcastJoinThreshold</code> (<strong>10 MB</strong>), or when you force it with <code>broadcast()</code> / a <code>BROADCAST</code> hint. AQE can also flip a sort-merge join to broadcast <em>at runtime</em>.</li>
+      <li><strong>Trade-off:</strong> blazing fast and shuffle-free, but the small side must fit in the driver's and each executor's memory. Broadcast something too big → driver OOM / <code>maxResultSize</code> exceeded.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>orders</code> (2 TB) ⋈ <code>country_codes</code> (8 KB) — broadcast the country table; the 2 TB is read once, never shuffled.</p>
+
+    <h3>2 · Shuffle Sort-Merge Join (SMJ) — the default for big-vs-big</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> both sides shuffled by key (two <code>Exchange</code> nodes), each partition <strong>sorted</strong> by key, then the two sorted streams <strong>merged</strong> in lockstep. Sorting is what lets it merge without holding either side fully in memory — so it scales to two enormous tables.</li>
+      <li><strong>When Spark picks it:</strong> the default for large-vs-large equi-joins, because <code>spark.sql.join.preferSortMergeJoin = true</code>. Chosen whenever neither side is broadcastable.</li>
+      <li><strong>Trade-off:</strong> robust and memory-friendly (streams, sorted), but you pay the <strong>full double shuffle + sort</strong>.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>transactions</code> (1 TB) ⋈ <code>accounts</code> (300 GB) on <code>account_id</code> — neither fits in memory, so sort-merge is correct.</p>
+
+    <h3>3 · Shuffle Hash Join (SHJ) — the rare middle ground</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> both sides shuffled by key, then one side built into a <strong>per-partition hash table</strong> (no sort) and the other probes it.</li>
+      <li><strong>When Spark picks it:</strong> only when neither side is broadcastable <strong>and</strong> <code>preferSortMergeJoin = false</code> (or a <code>SHUFFLE_HASH</code> hint), and one side fits in memory per partition.</li>
+      <li><strong>Trade-off:</strong> skips the sort (can beat SMJ when one side is moderately small), but the hash table must fit in execution memory per partition — risky on skew, which is why Spark prefers sort-merge by default.</li>
+    </ul>
+
+    <h3>How Spark chooses (the decision order)</h3>
+    <ol>
+      <li>Is there a <strong>hint</strong>? Priority: <code>BROADCAST</code> → <code>MERGE</code> → <code>SHUFFLE_HASH</code> → <code>SHUFFLE_REPLICATE_NL</code>.</li>
+      <li>Else, one side <strong>estimated</strong> &le; 10 MB? → <strong>Broadcast Hash Join.</strong></li>
+      <li>Else, equi-join with <code>preferSortMergeJoin = true</code> → <strong>Shuffle Sort-Merge Join.</strong></li>
+      <li>Else (small-ish side, <code>preferSortMergeJoin = false</code>) → <strong>Shuffle Hash Join.</strong></li>
+      <li>No equi-key → nested-loop / Cartesian (slow — usually a bug).</li>
+    </ol>
+    <div class="callout">
+      <span class="lbl">Why you sometimes must force broadcast()</span>
+      A filter or aggregation before the join shrinks a side — but pre-AQE, Spark may not re-estimate it, so it keeps planning a shuffle. That gap is exactly what AQE (Lesson 05) closes at runtime, and why a manual <code>broadcast()</code> is sometimes the fix.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: SMJ STEP-THROUGH ============ -->
+  <section>
+    <h2>Walk a sort-merge join, phase by phase</h2>
+    <p>Click each phase to see what the engine actually does when neither side can be broadcast.</p>
+    <div class="lab" id="lab-smj">
+      <div class="lab-head"><span class="lab-title">Sort-merge join execution</span></div>
+      <p class="lab-sub"><code>transactions</code> ⋈ <code>accounts</code> on <code>account_id</code> — both too big to broadcast.</p>
+      <div class="step" data-step><div class="head"><span class="ix">01</span> Shuffle both sides by the join key</div><div class="detail">Each side is repartitioned so all rows with the same <code>account_id</code> land in the same partition number on both sides. This is the expensive part — two <code>Exchange</code> nodes, gigabytes over the network and to local disk. The post-shuffle partition count is <code>spark.sql.shuffle.partitions</code> (200 by default; AQE then coalesces it).</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">02</span> Sort each partition by the key</div><div class="detail">Within every partition, both sides are sorted by <code>account_id</code>. Sorting is what makes the next step cheap: you never have to hold a whole side in memory — you stream two ordered lists.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">03</span> Merge the two sorted streams</div><div class="detail">Walk both sorted partitions in lockstep like merging two sorted lists; whenever the keys match, emit the joined row. Memory stays flat because it's a streaming merge — this is why SMJ scales to two huge tables where a hash join might OOM.</div></div>
+      <div class="verdict">Cost lives in <b>step 01</b>. Eliminate it by <b>broadcasting</b> a small side, or — for a join you run repeatedly on the same key — by <b>bucketing</b> both tables once on write (Lesson 11), so the shuffle never happens again.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the physical operators behind <code>SortMergeJoin</code>.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Force (or guarantee) a broadcast join</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> broadcast
+
+<span class="c"># orders is huge; country is tiny. broadcast() tells the planner:</span>
+<span class="c"># ship `country` to every executor and DO NOT shuffle `orders`.</span>
+joined = orders.join(broadcast(country), on=<span class="s">"country_code"</span>, how=<span class="s">"inner"</span>)
+
+<span class="c"># VERIFY: BroadcastHashJoin + a BroadcastExchange on the country side,</span>
+<span class="c"># and NO Exchange on the orders side.</span>
+joined.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   *(n) BroadcastHashJoin ... (orders.country_code = country.country_code)</span>
+<span class="c">#   :- *(n) &lt;orders scan, no Exchange&gt;          &lt;-- big side NOT shuffled  ✅</span>
+<span class="c">#   +- BroadcastExchange ...                    &lt;-- small side broadcast    ✅</span></code></pre>
+
+    <p>Equivalent Spark SQL hint — same effect:</p>
+    <pre><span class="tag">sql</span><code><span class="c">-- The hint goes immediately after SELECT. BROADCAST(country) == broadcast(country).</span>
+<span class="k">SELECT</span> <span class="c">/*+ BROADCAST(country) */</span> o.*, c.country_name
+<span class="k">FROM</span>   orders o
+<span class="k">JOIN</span>   country c <span class="k">ON</span> o.country_code = c.country_code;</code></pre>
+
+    <h3>Tune the auto-broadcast threshold</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Raise the threshold so a ~50 MB dimension still auto-broadcasts (default 10 MB).</span>
+spark.conf.set(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="f">50</span> * <span class="f">1024</span> * <span class="f">1024</span>)  <span class="c"># bytes</span>
+
+<span class="c"># Or disable auto-broadcast entirely to FORCE a sort-merge join (to A/B a plan):</span>
+spark.conf.set(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>, -<span class="f">1</span>)  <span class="c"># -1 = never auto-broadcast</span>
+
+<span class="c"># VERIFY by re-running .explain() and confirming the join node flipped</span>
+<span class="c"># (BroadcastHashJoin &lt;-&gt; SortMergeJoin) — then reset the conf.</span></code></pre>
+
+    <h3>Contrast: naive big-vs-small vs broadcast</h3>
+    <pre><span class="tag">python</span><code><span class="c"># ❌ Naive: if Spark mis-estimates `country` as big, it shuffles the 2 TB orders table.</span>
+slow = orders.join(country, <span class="s">"country_code"</span>)            <span class="c"># may plan SortMergeJoin → double shuffle</span>
+
+<span class="c"># ✅ Right: force the broadcast so only the tiny side moves.</span>
+fast = orders.join(broadcast(country), <span class="s">"country_code"</span>)  <span class="c"># BroadcastHashJoin → no big-side shuffle</span>
+<span class="c"># Spark UI SQL tab: `fast` has no Exchange on the orders branch; `slow` has two.</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: TABBED PLAN COMPARE ============ -->
+  <section>
+    <h2>Compare the plans</h2>
+    <p>Switch strategies to see the physical plan and the operators each one adds.</p>
+    <div class="lab" id="lab-plans">
+      <div class="lab-head"><span class="lab-title">Physical plan by strategy</span></div>
+      <div class="controls">
+        <div class="seg" id="pl-seg" role="group" aria-label="strategy">
+          <button data-s="bhj" aria-pressed="true">Broadcast Hash</button>
+          <button data-s="smj" aria-pressed="false">Sort-Merge</button>
+          <button data-s="shj" aria-pressed="false">Shuffle Hash</button>
+        </div>
+      </div>
+      <div class="planbox" id="pl-plan"></div>
+      <div class="verdict" id="pl-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Broadcast Hash</th><th>Sort-Merge</th><th>Shuffle Hash</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Shuffle</strong></td><td>None (broadcasts small side)</td><td><strong>Both</strong> sides shuffled</td><td><strong>Both</strong> sides shuffled</td></tr>
+        <tr><td><strong>Sort?</strong></td><td>No</td><td><strong>Yes</strong> (both sides)</td><td>No</td></tr>
+        <tr><td><strong>Best when</strong></td><td>One side &le; ~10 MB (fits memory)</td><td>Both sides large</td><td>One side small-ish, sort too costly</td></tr>
+        <tr><td><strong>Default trigger</strong></td><td>side &le; threshold (10 MB) / <code>BROADCAST</code> hint</td><td><code>preferSortMergeJoin=true</code> (default)</td><td>neither broadcastable &amp; <code>preferSortMergeJoin=false</code> / <code>SHUFFLE_HASH</code></td></tr>
+        <tr><td><strong>Main risk</strong></td><td>Driver/executor OOM if too big</td><td>Cost of the double shuffle + sort</td><td>Hash-table OOM on a skewed partition</td></tr>
+        <tr><td><strong>Plan node</strong></td><td><code>BroadcastHashJoin</code> + <code>BroadcastExchange</code></td><td><code>SortMergeJoin</code> + 2× <code>Exchange</code> + <code>Sort</code></td><td><code>ShuffledHashJoin</code> + 2× <code>Exchange</code></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li>Big fact ⋈ small dimension → <strong>broadcast</strong> (the highest-leverage join tuning there is).</li>
+      <li>Big ⋈ big on a shared key → <strong>sort-merge</strong>, and consider <strong>bucketing</strong> (Lesson 11) to pre-shuffle once and skip it on every future read.</li>
+      <li>Let <strong>AQE</strong> (Lesson 05) switch sort-merge → broadcast at runtime when the small side only becomes small after a filter.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li>A dimension <em>almost</em> under the threshold: a column projection / filter can shrink it enough — but pre-AQE Spark may not re-estimate, so force <code>broadcast()</code>.</li>
+      <li><strong>Broadcasting the wrong (big) side:</strong> <code>broadcast()</code> is a hint; broadcasting a 5 GB table OOMs the driver / blows <code>spark.driver.maxResultSize</code> (Lesson 03).</li>
+      <li><strong>Outer joins limit broadcast:</strong> you can broadcast only the side allowed to be the build side (e.g. the right side of a LEFT outer join).</li>
+      <li><strong>No equi-key</strong> (<code>a.x &gt; b.y</code>): falls back to a nested-loop join — broadcast a tiny side or rewrite the query.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>BHJ needs the small side to fit in <strong>driver and executor</strong> memory — there's no streamed broadcast. Above your budget, sort-merge (or bucketing) is the only safe choice.</li>
+      <li>The auto-broadcast decision uses an <strong>estimate</strong>; bad/missing stats → wrong choice. Run <code>ANALYZE TABLE … COMPUTE STATISTICS</code> or rely on AQE's runtime sizes.</li>
+      <li><code>autoBroadcastJoinThreshold</code> is <strong>10 MB in OSS Spark</strong>; on <strong>Databricks</strong>, AQE also uses a higher <em>runtime</em> switch (<code>spark.databricks.adaptive.autoBroadcastJoinThreshold</code>, <strong>30 MB</strong>). State which you mean.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Reading the plan wrong.</strong> The <code>BroadcastExchange</code> should be on the <em>small</em> side. If it's on your big table, you're broadcasting the wrong one.</li>
+      <li><strong>Forcing broadcast on a table that grows.</strong> An 8 MB dimension today becomes an 80 MB OOM next quarter. Prefer AQE; hint only with a known cap.</li>
+      <li><strong>Bumping the threshold globally</strong> to fix one join changes <em>every</em> join in the session. Scope it, or use a per-query <code>broadcast()</code>/hint.</li>
+      <li><strong>Assuming a small DataFrame broadcasts.</strong> If it's the output of a wide transformation, its <em>estimated</em> size may be huge — check <code>.explain()</code>.</li>
+      <li><strong>Confusing a broadcast <em>join</em> with a broadcast <em>variable</em></strong> (Lesson 09). One is a join strategy; the other is a value you reference in a UDF/<code>map</code>.</li>
+      <li><strong>Disabling AQE to "control" joins.</strong> Its runtime SMJ→broadcast switch and skew-join split usually beat hand-tuning. Keep it on.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (join strategies, AQE)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — Join hints (BROADCAST / MERGE / SHUFFLE_HASH / SHUFFLE_REPLICATE_NL)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (autoBroadcastJoinThreshold, shuffle.partitions)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: join-strategy chooser (slider + mode toggle) ---- */
+(function(){
+  const root = document.getElementById('lab-chooser');
+  if(!root) return;
+  const THRESH = 10;                 // OSS autoBroadcastJoinThreshold, MB
+  const size = root.querySelector('#jc-size');
+  const sizeval = root.querySelector('#jc-sizeval');
+  const modeSeg = root.querySelector('#jc-mode');
+  const elStrat = root.querySelector('#jc-strategy');
+  const elShuf  = root.querySelector('#jc-shuffle');
+  const elCost  = root.querySelector('#jc-cost');
+  const plan    = root.querySelector('#jc-plan');
+  const verdict = root.querySelector('#jc-verdict');
+  let mode = 'auto';
+
+  function render(){
+    const mb = parseInt(size.value, 10);
+    sizeval.textContent = mb + ' MB';
+    const broadcast = (mode === 'hint') || (mb <= THRESH);
+    if(broadcast){
+      elStrat.textContent = 'Broadcast Hash';
+      elShuf.textContent = 'No';
+      elCost.textContent = mode === 'hint' && mb > 30 ? 'risky' : 'low';
+      plan.innerHTML =
+        '<span class="dim">== Physical Plan ==</span>\n' +
+        '<span class="ok">BroadcastHashJoin</span> [country_code]\n' +
+        ':- FileScan orders        <span class="ok">&lt;- no Exchange (2 TB not shuffled) ✅</span>\n' +
+        '+- <span class="ok">BroadcastExchange</span> &lt;- country shipped to every executor';
+      let v;
+      if(mode === 'hint' && mb > 30){
+        v = '<b>Forced broadcast of a ' + mb + ' MB table.</b> It works, but a side this big risks driver / executor OOM (Lesson 03). Hint only the genuinely small side.';
+      } else if(mode === 'hint'){
+        v = '<b>broadcast() hint wins.</b> Spark ships the ' + mb + ' MB side and never shuffles the 2 TB orders table.';
+      } else {
+        v = '<b>Auto-broadcast.</b> At ' + mb + ' MB the side is under the 10 MB' + (mb<=10?'':'…') + ' threshold, so Spark broadcasts it — no big-side shuffle.';
+      }
+      verdict.innerHTML = v;
+    } else {
+      elStrat.textContent = 'Sort-Merge';
+      elShuf.textContent = 'Yes — both';
+      elCost.textContent = 'high';
+      plan.innerHTML =
+        '<span class="dim">== Physical Plan ==</span>\n' +
+        'SortMergeJoin [country_code]\n' +
+        ':- Sort  +- <span class="bad">Exchange</span> hashpartitioning  <span class="bad">&lt;- 2 TB orders shuffled ❌</span>\n' +
+        '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning  <span class="bad">&lt;- country shuffled too</span>';
+      const dbx = (mb > THRESH && mb <= 30) ? ' On Databricks, AQE\'s 30 MB runtime switch could still flip this to a broadcast once it sees the real size.' : '';
+      verdict.innerHTML = '<b>Falls back to sort-merge.</b> At ' + mb + ' MB the side is over the 10 MB threshold, so Spark shuffles <em>both</em> tables — including all 2 TB of orders.' + dbx + ' Force it with <code>broadcast()</code> if the real size is actually small.';
+    }
+  }
+  size.addEventListener('input', render);
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  render();
+})();
+
+/* ---- Diagram 2: sort-merge step accordion ---- */
+(function(){
+  const root = document.getElementById('lab-smj');
+  if(!root) return;
+  root.querySelectorAll('[data-step]').forEach(function(step){
+    step.addEventListener('click', function(){ step.classList.toggle('open'); });
+  });
+})();
+
+/* ---- Diagram 3: tabbed plan compare ---- */
+(function(){
+  const root = document.getElementById('lab-plans');
+  if(!root) return;
+  const seg = root.querySelector('#pl-seg');
+  const plan = root.querySelector('#pl-plan');
+  const note = root.querySelector('#pl-note');
+  const data = {
+    bhj: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            '<span class="ok">BroadcastHashJoin</span> [id], Inner\n' +
+            ':- FileScan big           <span class="ok">&lt;- no Exchange ✅</span>\n' +
+            '+- <span class="ok">BroadcastExchange</span>\n' +
+            '   +- FileScan small',
+      note: '<b>One exchange, broadcast type.</b> The big side is never shuffled — this is the plan you want for big-vs-small.'
+    },
+    smj: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            'SortMergeJoin [id], Inner\n' +
+            ':- Sort [id ASC]\n' +
+            ':  +- <span class="bad">Exchange</span> hashpartitioning(id, 200)\n' +
+            '+- Sort [id ASC]\n' +
+            '   +- <span class="bad">Exchange</span> hashpartitioning(id, 200)',
+      note: '<b>Two exchanges + two sorts.</b> The robust default for big-vs-big — and the most expensive. Bucketing (Lesson 11) can remove the exchanges.'
+    },
+    shj: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            'ShuffledHashJoin [id], Inner, BuildRight\n' +
+            ':- <span class="bad">Exchange</span> hashpartitioning(id, 200)\n' +
+            '+- <span class="bad">Exchange</span> hashpartitioning(id, 200)\n' +
+            '   +- FileScan small   <span class="dim">&lt;- built into a hash table (no sort)</span>',
+      note: '<b>Two exchanges, no sort.</b> Only chosen when neither side broadcasts and <code>preferSortMergeJoin=false</code> (or a SHUFFLE_HASH hint). Risky under skew.'
+    }
+  };
+  function show(s){
+    plan.innerHTML = data[s].plan;
+    note.innerHTML = data[s].note;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s)));
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.s);
+  });
+  show('bhj');
+})();
+</script>
+</body>
+</html>

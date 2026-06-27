@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Auto Loader — Concept & Architecture</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2a323c; --red:#ff3621; --orange:#ff7a45; --amber:#ffb454; --green:#3fb950;
+    --blue:#58a6ff; --purple:#bc8cff; --chip:#222b35;
+    --radius:14px; --shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:linear-gradient(180deg,#0b0f14,#0d1117 280px); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1020px; margin:0 auto; padding:0 20px 80px}
+  header.hero{
+    padding:54px 20px 30px; text-align:center;
+    background:radial-gradient(1200px 320px at 50% -40%, rgba(255,54,33,.22), transparent 70%);
+  }
+  .hero .kicker{color:var(--orange); font-weight:700; letter-spacing:.14em; font-size:.78rem; text-transform:uppercase}
+  .hero h1{font-size:2.5rem; margin:.25em 0 .15em; line-height:1.1}
+  .hero p{color:var(--muted); max-width:680px; margin:0 auto; font-size:1.05rem}
+  h2{font-size:1.5rem; margin:2.4em 0 .5em; padding-bottom:.3em; border-bottom:1px solid var(--line)}
+  h3{font-size:1.15rem; margin:1.6em 0 .4em; color:#fff}
+  p{margin:.6em 0}
+  .lead{color:var(--muted)}
+  code{background:#0a0e13; border:1px solid var(--line); padding:.12em .42em; border-radius:6px;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:.86em; color:var(--amber)}
+  a{color:var(--blue)}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:16px; margin-top:18px}
+  @media(max-width:820px){.grid3{grid-template-columns:1fr}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow)}
+  .card .pill{display:inline-block; font-size:.72rem; font-weight:700; letter-spacing:.05em; padding:.25em .7em;
+    border-radius:999px; margin-bottom:10px; text-transform:uppercase}
+  .p-idem{background:rgba(63,185,80,.15); color:var(--green); border:1px solid rgba(63,185,80,.35)}
+  .p-inf{background:rgba(88,166,255,.15); color:var(--blue); border:1px solid rgba(88,166,255,.35)}
+  .p-evo{background:rgba(188,140,255,.15); color:var(--purple); border:1px solid rgba(188,140,255,.35)}
+  .card h3{margin-top:0}
+  table{width:100%; border-collapse:collapse; margin:1em 0; font-size:.94rem; background:var(--panel); border-radius:10px; overflow:hidden}
+  th,td{padding:11px 14px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+  th{background:var(--panel2); color:#fff; font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .note{background:rgba(255,180,84,.08); border-left:3px solid var(--amber); padding:12px 16px; border-radius:0 10px 10px 0; margin:1em 0; color:#f0e6d2}
+  .gotcha{background:rgba(255,54,33,.07); border-left:3px solid var(--red); padding:6px 16px; border-radius:0 10px 10px 0; margin:1em 0}
+  .gotcha ul{margin:.5em 0}
+
+  /* ---------- Interactive diagram ---------- */
+  .sim{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:var(--shadow); margin-top:18px}
+  .daybar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:6px}
+  .daybtn{flex:1; min-width:150px; cursor:pointer; border:1px solid var(--line); background:var(--panel2); color:var(--ink);
+    padding:12px 14px; border-radius:12px; font-size:.92rem; text-align:left; transition:.2s}
+  .daybtn b{display:block; font-size:1rem; margin-bottom:2px}
+  .daybtn small{color:var(--muted)}
+  .daybtn:hover{border-color:var(--orange)}
+  .daybtn.active{border-color:var(--red); background:linear-gradient(180deg,rgba(255,54,33,.16),rgba(255,54,33,.04)); box-shadow:0 0 0 1px rgba(255,54,33,.3) inset}
+  .daybtn.active b{color:var(--orange)}
+
+  .stage{display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin:18px 0; align-items:stretch}
+  @media(max-width:820px){.stage{grid-template-columns:1fr}}
+  .box{background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:14px; position:relative; min-height:150px}
+  .box h4{margin:0 0 10px; font-size:.95rem; display:flex; align-items:center; gap:8px}
+  .box h4 .dot{width:9px; height:9px; border-radius:50%}
+  .dot-src{background:var(--blue)} .dot-al{background:var(--red)} .dot-dst{background:var(--green)}
+  .file{display:flex; align-items:center; gap:8px; background:#0a0e13; border:1px solid var(--line); border-radius:9px;
+    padding:8px 10px; margin:7px 0; font-size:.86rem; transition:.35s; opacity:.35}
+  .file .ic{font-size:1rem}
+  .file.show{opacity:1}
+  .file.new{border-color:var(--purple); box-shadow:0 0 0 1px rgba(188,140,255,.4) inset}
+  .file.skip{opacity:.4; text-decoration:line-through; color:var(--muted)}
+  .file.active{border-color:var(--orange); box-shadow:0 0 14px rgba(255,122,69,.35)}
+  .tag{margin-left:auto; font-size:.68rem; padding:.1em .5em; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+  .tag.proc{color:var(--green); border-color:rgba(63,185,80,.4)}
+  .tag.skp{color:var(--muted)}
+  .tag.nw{color:var(--purple); border-color:rgba(188,140,255,.4)}
+
+  .al-engine{display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; height:100%}
+  .al-core{font-size:1.6rem; font-weight:800; color:var(--red); letter-spacing:.02em}
+  .al-sub{font-size:.78rem; color:var(--muted); text-align:center}
+  .flow{font-size:1.4rem; color:var(--orange); text-align:center; opacity:.5}
+
+  .meta{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px}
+  @media(max-width:820px){.meta{grid-template-columns:1fr}}
+  .metabox{background:#0a0e13; border:1px dashed var(--line); border-radius:14px; padding:14px}
+  .metabox h4{margin:0 0 8px; font-size:.9rem; display:flex; gap:8px; align-items:center}
+  .metabox .sub{font-size:.74rem; color:var(--muted); margin-bottom:8px}
+  .kv{font-family:"SF Mono",Menlo,monospace; font-size:.8rem; background:#11161d; border:1px solid var(--line);
+    border-radius:8px; padding:7px 10px; margin:5px 0; opacity:.35; transition:.35s}
+  .kv.show{opacity:1}
+  .kv.added{color:var(--purple); border-color:rgba(188,140,255,.45)}
+  .schema-col{display:inline-block; background:#11161d; border:1px solid var(--line); border-radius:7px; padding:3px 9px;
+    margin:3px 4px 3px 0; font-size:.78rem; opacity:.35; transition:.35s; font-family:"SF Mono",Menlo,monospace}
+  .schema-col.show{opacity:1}
+  .schema-col.added{color:var(--purple); border-color:var(--purple); animation:pop .5s ease}
+  @keyframes pop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+
+  .statusbar{margin-top:16px; border-radius:12px; padding:14px 16px; font-size:.95rem; border:1px solid var(--line); background:var(--panel2)}
+  .statusbar.ok{border-color:rgba(63,185,80,.4); background:rgba(63,185,80,.08)}
+  .statusbar.err{border-color:rgba(255,54,33,.5); background:rgba(255,54,33,.1)}
+  .statusbar .st-title{font-weight:700; display:flex; align-items:center; gap:8px}
+  .statusbar code{background:#0a0e13}
+  .restart{margin-top:12px; display:none}
+  .restart.show{display:inline-flex}
+  .btn{cursor:pointer; border:none; border-radius:10px; padding:10px 18px; font-weight:600; font-size:.9rem;
+    background:var(--red); color:#fff; transition:.2s; display:inline-flex; align-items:center; gap:8px}
+  .btn:hover{filter:brightness(1.1)}
+  .btn.ghost{background:var(--panel2); border:1px solid var(--line); color:var(--ink)}
+  .controls{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+  .footer{margin-top:48px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:.86rem}
+  .footer a{color:var(--blue)}
+  .src-list{list-style:none; padding:0; margin:8px 0}
+  .src-list li{margin:6px 0}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="kicker">Databricks Data Engineering</div>
+  <h1>Auto Loader — Concept &amp; Complete Architecture</h1>
+  <p>Incremental, exactly-once file ingestion from cloud storage — built on Spark Structured Streaming, with the bookkeeping handled for you.</p>
+</header>
+
+<div class="wrap">
+
+  <h2>1. What Auto Loader Is</h2>
+  <p>Auto Loader is a Databricks feature that <strong>incrementally and efficiently ingests files from cloud storage</strong> (S3, ADLS, GCS) into Databricks as they arrive — without re-reading files it has already processed. You invoke it through the <code>cloudFiles</code> source format.</p>
+  <p class="lead">In one technical sentence: it is built on top of <strong>Spark Structured Streaming</strong> (Spark's engine for processing data continuously as it arrives), and it automates the state, checkpoints, and new-file tracking you would otherwise have to manage by hand. You worry about the data; Auto Loader manages everything else.</p>
+
+  <h2>2. The Three Pillars</h2>
+  <p class="lead">Master these three ideas and the code becomes easy.</p>
+  <div class="grid3">
+    <div class="card">
+      <span class="pill p-idem">Pillar 1 · Idempotency</span>
+      <h3>Exactly once</h3>
+      <p>Each file is processed <strong>once and only once</strong>. New-file metadata is tracked in <strong>RocksDB</strong>, a fast key-value store kept inside the <strong>checkpoint location</strong>. Each run consults it and skips processed files.</p>
+    </div>
+    <div class="card">
+      <span class="pill p-inf">Pillar 2 · Schema Inference</span>
+      <h3>Sample then store</h3>
+      <p>On first run it infers the schema by sampling the first <strong>50&nbsp;GB or 1,000 files, whichever comes first</strong>, and saves it in a <code>_schemas</code> folder at <code>cloudFiles.schemaLocation</code>.</p>
+    </div>
+    <div class="card">
+      <span class="pill p-evo">Pillar 3 · Schema Evolution</span>
+      <h3>Adapt, don't drop</h3>
+      <p>When a new column appears, Auto Loader infers it, <strong>updates the schema location</strong>, then stops with <code>UnknownFieldException</code>. A restart reloads the schema and continues.</p>
+    </div>
+  </div>
+
+  <h2>3. Interactive Walk-Through</h2>
+  <p class="lead">Step through three days of ingestion. Watch files flow <em>source → Auto Loader → destination</em>, and watch the checkpoint (RocksDB) and schema location update at each step.</p>
+
+  <div class="sim">
+    <div class="daybar">
+      <button class="daybtn active" data-day="1" onclick="setDay(1)">
+        <b>Day 1</b><small>First file — schema inferred</small>
+      </button>
+      <button class="daybtn" data-day="2" onclick="setDay(2)">
+        <b>Day 2</b><small>New file — old ones skipped</small>
+      </button>
+      <button class="daybtn" data-day="3" onclick="setDay(3)">
+        <b>Day 3</b><small>New column — stream stops</small>
+      </button>
+    </div>
+
+    <div class="stage">
+      <div class="box">
+        <h4><span class="dot dot-src"></span>Source (cloud storage)</h4>
+        <div class="file" id="f1"><span class="ic">📄</span> orders_01.json <span class="tag" id="t1">new</span></div>
+        <div class="file" id="f2"><span class="ic">📄</span> orders_02.json <span class="tag" id="t2"></span></div>
+        <div class="file" id="f3"><span class="ic">📄</span> orders_03.json <span class="tag" id="t3"></span></div>
+      </div>
+
+      <div class="box">
+        <h4><span class="dot dot-al"></span>Auto Loader</h4>
+        <div class="al-engine">
+          <div class="al-core">cloudFiles</div>
+          <div class="flow">▼ ▼ ▼</div>
+          <div class="al-sub" id="alSub">Reads only new files,<br>infers &amp; checks schema</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h4><span class="dot dot-dst"></span>Destination (Delta)</h4>
+        <div class="file" id="d1"><span class="ic">✅</span> orders_01 rows</div>
+        <div class="file" id="d2"><span class="ic">✅</span> orders_02 rows</div>
+        <div class="file" id="d3"><span class="ic">✅</span> orders_03 rows</div>
+      </div>
+    </div>
+
+    <div class="meta">
+      <div class="metabox">
+        <h4>🗂️ Checkpoint location <span class="tag proc">RocksDB</span></h4>
+        <div class="sub">Idempotency — which files are already processed</div>
+        <div class="kv" id="k1">orders_01.json → processed</div>
+        <div class="kv" id="k2">orders_02.json → processed</div>
+        <div class="kv" id="k3">orders_03.json → processed</div>
+      </div>
+      <div class="metabox">
+        <h4>🧬 Schema location <span class="tag nw">_schemas</span></h4>
+        <div class="sub">The inferred / evolved schema on disk</div>
+        <div>
+          <span class="schema-col" id="s1">order_id</span>
+          <span class="schema-col" id="s2">amount</span>
+          <span class="schema-col" id="s3">customer</span>
+          <span class="schema-col" id="s4">email</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar" id="status">
+      <div class="st-title" id="stTitle">Day 1</div>
+      <div id="stBody"></div>
+      <button class="btn restart" id="restartBtn" onclick="restart()">↻ Restart the query</button>
+    </div>
+
+    <div class="controls">
+      <button class="btn ghost" onclick="prevDay()">‹ Previous</button>
+      <button class="btn" onclick="nextDay()">Next ›</button>
+    </div>
+  </div>
+
+  <h2>4. End-to-End Flow (in words)</h2>
+  <p><strong>Day 1 — one file.</strong> Auto Loader reads it, infers the schema and saves it to <code>_schemas</code>, writes rows to the destination, and records the file in RocksDB inside the checkpoint.</p>
+  <p><strong>Day 2 — a second file.</strong> RocksDB shows file 1 is done, so it is skipped. Only file 2 is read; schema matches; rows are written; file 2 is recorded.</p>
+  <p><strong>Day 3 — a file with a new column.</strong> Earlier files are skipped. Auto Loader infers the new column, <strong>appends it to the schema location</strong>, then compares against its in-memory cached schema, finds a mismatch, and stops with <code>UnknownFieldException</code>. You <strong>restart</strong>; it reloads the updated schema and continues normally.</p>
+  <div class="note"><strong>The key insight:</strong> Auto Loader updates the schema location <em>before</em> it throws the error — that is exactly why the restart succeeds.</div>
+
+  <h2>5. Schema Evolution Modes</h2>
+  <p class="lead">Set via <code>cloudFiles.schemaEvolutionMode</code>.</p>
+  <table>
+    <tr><th>Mode</th><th>Behavior when a new column appears</th></tr>
+    <tr><td><code>addNewColumns</code></td><td><strong>Default</strong> when no schema is supplied. Adds the column, stops the stream with <code>UnknownFieldException</code>; restart to continue.</td></tr>
+    <tr><td><code>rescue</code></td><td>Never fails. Unknown columns are captured in <code>_rescued_data</code> instead of evolving the schema.</td></tr>
+    <tr><td><code>failOnNewColumns</code></td><td>Stream fails and does <strong>not</strong> update the schema; fix the schema or hints manually.</td></tr>
+    <tr><td><code>none</code></td><td>Ignores new columns entirely; nothing rescued, nothing evolved.</td></tr>
+  </table>
+  <div class="note"><code>addNewColumns</code> is <strong>not allowed when you explicitly provide a schema</strong> (then the default becomes <code>none</code>) — but it does work if you supply your schema as a <em>schema hint</em>.</div>
+
+  <h2>6. Two Locations People Confuse</h2>
+  <table>
+    <tr><th>Location</th><th>Set by</th><th>What lives there</th></tr>
+    <tr><td><strong>Checkpoint location</strong></td><td><code>checkpointLocation</code> (on the write)</td><td>Stream offsets + <strong>RocksDB</strong> file-tracking state → idempotency</td></tr>
+    <tr><td><strong>Schema location</strong></td><td><code>cloudFiles.schemaLocation</code> (on the read)</td><td>The <code>_schemas</code> folder holding the inferred / evolved schema</td></tr>
+  </table>
+  <p class="lead">Checkpoint = <em>what's been processed</em>. Schema location = <em>what the data looks like</em>.</p>
+
+  <h2>7. Common Mistakes / Gotchas</h2>
+  <div class="gotcha">
+    <ul>
+      <li><strong>Deleting the checkpoint</strong> → Auto Loader forgets processed files and reprocesses everything (breaks exactly-once).</li>
+      <li><strong>Expecting the stream never to stop on <code>addNewColumns</code></strong> → it stops once per new column; design for automatic restart (jobs / Lakeflow pipelines do this for you).</li>
+      <li><strong>Providing a fixed schema and expecting evolution</strong> → the default mode becomes <code>none</code>; use schema hints if you want evolution plus type control.</li>
+      <li><strong>Assuming columns get typed</strong> → inferred columns default to <em>string</em>; use <code>cloudFiles.inferColumnTypes</code> or schema hints for real types.</li>
+      <li><strong>Forgetting <code>_rescued_data</code></strong> → it silently catches mismatched / extra data; check it or you may "lose" records you didn't realize were rescued.</li>
+    </ul>
+  </div>
+
+  <div class="footer">
+    <strong>Sources (official Databricks documentation):</strong>
+    <ul class="src-list">
+      <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema" target="_blank" rel="noopener">Configure schema inference and evolution in Auto Loader</a></li>
+      <li><a href="https://docs.databricks.com/en/ingestion/cloud-object-storage/auto-loader/faq.html" target="_blank" rel="noopener">Auto Loader FAQ</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/data-engineering/schema-evolution" target="_blank" rel="noopener">Schema evolution in Databricks</a></li>
+    </ul>
+    Verified May 2026. Built as a personal learning aid — open in any browser.
+  </div>
+</div>
+
+<script>
+  var day = 1;
+  var stopped = false; // Day 3 stopped state
+
+  function cls(id, add, on){ var el=document.getElementById(id); if(el){ el.classList[on?'add':'remove'](add); } }
+  function txt(id, t){ var el=document.getElementById(id); if(el){ el.innerHTML=t; } }
+
+  function reset(){
+    ['f1','f2','f3','d1','d2','d3'].forEach(function(id){ cls(id,'show',false); cls(id,'skip',false); cls(id,'new',false); cls(id,'active',false); });
+    ['k1','k2','k3'].forEach(function(id){ cls(id,'show',false); });
+    ['s1','s2','s3','s4'].forEach(function(id){ cls(id,'show',false); cls(id,'added',false); });
+    cls('s4','show',false);
+    ['t1','t2','t3'].forEach(function(id){ txt(id,''); document.getElementById(id).className='tag'; });
+    var sb=document.getElementById('status'); sb.className='statusbar';
+    cls('restartBtn','show',false);
+  }
+
+  function render(){
+    reset();
+    var sub = document.getElementById('alSub');
+
+    if(day===1){
+      cls('f1','show',true); cls('f1','new',true); cls('f1','active',true);
+      txt('t1','new'); document.getElementById('t1').className='tag nw';
+      cls('d1','show',true);
+      cls('k1','show',true);
+      ['s1','s2','s3'].forEach(function(id){ cls(id,'show',true); });
+      sub.innerHTML='Infers schema from<br>the first file';
+      document.getElementById('status').className='statusbar ok';
+      txt('stTitle','✅ Day 1 — first run');
+      txt('stBody','One file in the source. Auto Loader <b>infers the schema</b> (order_id, amount, customer) and stores it in <code>_schemas</code>, writes the rows to the Delta destination, and records <code>orders_01.json → processed</code> in RocksDB.');
+    }
+    else if(day===2){
+      // file 1 processed/skipped, file 2 new & active
+      cls('f1','show',true); cls('f1','skip',true);
+      txt('t1','processed'); document.getElementById('t1').className='tag proc';
+      cls('f2','show',true); cls('f2','new',true); cls('f2','active',true);
+      txt('t2','new'); document.getElementById('t2').className='tag nw';
+      cls('d1','show',true); cls('d2','show',true);
+      cls('k1','show',true); cls('k2','show',true);
+      ['s1','s2','s3'].forEach(function(id){ cls(id,'show',true); });
+      sub.innerHTML='Skips file 1,<br>reads only file 2';
+      document.getElementById('status').className='statusbar ok';
+      txt('stTitle','✅ Day 2 — incremental run');
+      txt('stBody','RocksDB shows <code>orders_01</code> is already processed, so it is <b>skipped</b>. Only <code>orders_02.json</code> is read. Schema matches, rows are written, and <code>orders_02 → processed</code> is recorded.');
+    }
+    else if(day===3 && !stopped){
+      cls('f1','show',true); cls('f1','skip',true); txt('t1','processed'); document.getElementById('t1').className='tag proc';
+      cls('f2','show',true); cls('f2','skip',true); txt('t2','processed'); document.getElementById('t2').className='tag proc';
+      cls('f3','show',true); cls('f3','new',true); cls('f3','active',true);
+      txt('t3','+ email'); document.getElementById('t3').className='tag nw';
+      cls('d1','show',true); cls('d2','show',true);
+      cls('k1','show',true); cls('k2','show',true);
+      // schema location gets the new column appended
+      ['s1','s2','s3'].forEach(function(id){ cls(id,'show',true); });
+      cls('s4','show',true); cls('s4','added',true);
+      sub.innerHTML='New column found!<br>Inferring + updating schema';
+      document.getElementById('status').className='statusbar err';
+      txt('stTitle','⛔ Day 3 — new column → stream stops');
+      txt('stBody','<code>orders_03.json</code> has a new <b>email</b> column. Auto Loader first infers it and <b>appends it to the schema location</b> (see the purple <code>email</code> on the right). It then compares against its <i>cached</i> in-memory schema, finds a mismatch, and stops with <code>UnknownFieldException</code>. The file is <b>not</b> yet written.');
+      cls('restartBtn','show',true);
+    }
+    else if(day===3 && stopped){
+      // after restart
+      ['f1','f2'].forEach(function(id){ cls(id,'show',true); cls(id,'skip',true); });
+      txt('t1','processed'); document.getElementById('t1').className='tag proc';
+      txt('t2','processed'); document.getElementById('t2').className='tag proc';
+      cls('f3','show',true); cls('f3','new',true); cls('f3','active',true);
+      txt('t3','+ email'); document.getElementById('t3').className='tag nw';
+      cls('d1','show',true); cls('d2','show',true); cls('d3','show',true);
+      cls('k1','show',true); cls('k2','show',true); cls('k3','show',true);
+      ['s1','s2','s3'].forEach(function(id){ cls(id,'show',true); });
+      cls('s4','show',true); cls('s4','added',true);
+      sub.innerHTML='Reloads updated schema,<br>continues normally';
+      document.getElementById('status').className='statusbar ok';
+      txt('stTitle','✅ Restarted — stream self-heals');
+      txt('stBody','On restart Auto Loader <b>reloads the updated schema</b> from <code>_schemas</code> (now including <code>email</code>), processes <code>orders_03.json</code> into the destination, and records it in RocksDB. In a job or pipeline this restart happens automatically.');
+    }
+    // toggle active day button
+    document.querySelectorAll('.daybtn').forEach(function(b){
+      b.classList.toggle('active', parseInt(b.dataset.day,10)===day);
+    });
+  }
+
+  function setDay(d){ day=d; if(d!==3){ stopped=false; } render(); }
+  function nextDay(){ if(day===3){ if(!stopped){ stopped=true; render(); } return; } day++; render(); }
+  function prevDay(){ if(day===3 && stopped){ stopped=false; render(); return; } if(day>1){ day--; render(); } }
+  function restart(){ stopped=true; render(); }
+
+  render();
+</script>
+</body>
+</html>

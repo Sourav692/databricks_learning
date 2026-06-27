@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPTIMIZE & Z-ORDER · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  /* diagram 1: compaction animation */
+  .files{display:flex;flex-wrap:wrap;gap:5px;margin:10px 0;min-height:46px}
+  .f{width:26px;height:26px;border-radius:5px;background:var(--paper-2);border:1px solid var(--line);transition:.4s}
+  .f.big{width:74px;height:34px;background:#dff0e6;border-color:#9ed3b2}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer}
+  .btn:hover{background:var(--brand);color:#fff}
+  .stat{font-family:"Spline Sans Mono",monospace;font-size:.76rem;color:#48555f;margin-top:6px}
+  /* diagram 2: zorder skipping grid */
+  .gridwrap{display:flex;gap:20px;flex-wrap:wrap}
+  .gcol{flex:1;min-width:230px}
+  .gtitle{font-weight:600;font-size:.9rem;margin-bottom:6px}
+  .cells{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+  .c{aspect-ratio:1.4;border-radius:5px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:.7rem;font-family:"Spline Sans Mono",monospace;background:#fff;cursor:pointer}
+  .c.match{background:#dff0e6;border-color:#9ed3b2}
+  .c.skip{background:#f3eee4;color:#b9ad95}
+  .c.read{outline:2px solid var(--brand)}
+  .legend{font-size:.74rem;color:#48555f;margin-top:6px}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 3.1</p>
+  <h1><em>OPTIMIZE</em> &amp; Z-ORDER</h1>
+  <p class="lede">OPTIMIZE compacts many small files into fewer big ones; ZORDER co-locates related values so queries skip more data. This deep dive walks each with the mechanism and the code.</p>
+  <div class="pills"><span class="pill">Small-file problem</span><span class="pill">Bin-packing ~1 GB</span><span class="pill">Data skipping</span><span class="pill">Optimized writes</span><span class="pill">Liquid Clustering preferred</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>OPTIMIZE</strong> = compaction (fix tiny files), bin-packing toward ~1 GB files. <strong>ZORDER BY</strong> = cluster related values on rewrite so filters skip more files. For new tables, Databricks now recommends <strong>Liquid Clustering</strong> over ZORDER.</div>
+  <div class="card analogy" style="margin-top:10px">📦 <strong>Analogy:</strong> a warehouse of tiny one-item boxes. <strong>OPTIMIZE</strong> repacks them into a few big neat boxes (faster to fetch). <strong>Z-ORDER</strong> also groups related items — all "red shirts" together — so a picker filtering for red shirts opens far fewer boxes.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: compaction -->
+<section id="compact">
+  <h2>OPTIMIZE — watch compaction</h2>
+  <p class="hint">▸ click to run / reset</p>
+  <div class="files" id="files"></div>
+  <div class="btnrow">
+    <button class="btn" onclick="runOptimize()">Run OPTIMIZE</button>
+    <button class="btn" onclick="resetFiles()">Reset</button>
+  </div>
+  <div class="stat" id="fstat">12 small files · slow reads</div>
+</section>
+
+<!-- DEEP DIVE: OPTIMIZE bin-packing -->
+<section id="binpack">
+  <h2>1 · OPTIMIZE — bin-packing compaction</h2>
+  <p>Rewrites small files into fewer files near a target size (~1 GB by default, <code>spark.databricks.delta.optimize.maxFileSize</code>). <strong>Idempotent</strong> and reader-safe (snapshot isolation); scope it with a predicate to keep cost down.</p>
+  <p class="codecap">SQL &amp; PySpark</p>
+  <pre class="code"><span class="k">OPTIMIZE</span> main.sales.events;                              <span class="c">-- whole table</span>
+<span class="k">OPTIMIZE</span> main.sales.events <span class="k">WHERE</span> event_date &gt;= <span class="s">'2026-06-01'</span>;  <span class="c">-- scope = cheaper</span></pre>
+  <pre class="code" style="margin-top:8px"><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+DeltaTable.forName(spark, <span class="s">"main.sales.events"</span>).optimize().executeCompaction()</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: zorder data skipping -->
+<section id="zo">
+  <h2>2 · Z-ORDER — data skipping in action</h2>
+  <p class="hint">▸ click a layout; you're querying <code>WHERE color = red</code></p>
+  <div class="btnrow" style="margin-bottom:10px">
+    <button class="btn" onclick="setZ(false)">Without Z-ORDER</button>
+    <button class="btn" onclick="setZ(true)">With Z-ORDER</button>
+  </div>
+  <div class="gridwrap">
+    <div class="gcol">
+      <div class="gtitle">Files (each holds 4 rows)</div>
+      <div class="cells" id="zgrid"></div>
+      <div class="legend" id="zlegend"></div>
+    </div>
+  </div>
+  <p style="margin-top:14px">ZORDER sorts data along a space-filling curve so similar values land in the same files → tighter per-file min/max → more files skipped. Pick the <strong>1–3 columns you actually filter/join on</strong>; it's re-applied on each OPTIMIZE as new data lands.</p>
+  <pre class="code"><span class="k">OPTIMIZE</span> main.sales.events <span class="k">ZORDER BY</span> (event_date, user_id);</pre>
+  <pre class="code" style="margin-top:8px">(DeltaTable.forName(spark, <span class="s">"main.sales.events"</span>)
+   .optimize()
+   .executeZOrderBy(<span class="s">"event_date"</span>, <span class="s">"user_id"</span>))</pre>
+</section>
+
+<section id="writetime">
+  <h2>3 · Avoid small files at write time</h2>
+  <p>Rather than only cleaning up afterward, reduce small files <em>as you write</em>. Both target ~128 MB (vs OPTIMIZE's ~1 GB), trading a little write latency for fewer files.</p>
+  <pre class="code"><span class="k">ALTER TABLE</span> main.sales.events <span class="k">SET TBLPROPERTIES</span> (
+  <span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>,   <span class="c">-- ~128 MB files on write</span>
+  <span class="s">'delta.autoOptimize.autoCompact'</span>   = <span class="s">'true'</span>);  <span class="c">-- compact small files after write</span></pre>
+</section>
+
+<section>
+  <h2>4 · Let Databricks run it — Predictive Optimization</h2>
+  <div class="card note">💡 On <strong>Unity Catalog managed tables</strong>, Predictive Optimization automatically runs <code>OPTIMIZE</code> (and VACUUM/ANALYZE) when it detects benefit — so often you don't schedule OPTIMIZE yourself (don't double-schedule). External tables aren't covered — you maintain those manually.</div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Streaming/frequent writes create <strong>thousands of small files</strong> → every query pays to open them all. OPTIMIZE restores fast reads.</li>
+    <li><strong>Data skipping</strong> is how Delta avoids reading irrelevant files; Z-ORDER makes skipping far more effective on your filter columns.</li>
+  </ul>
+  <div class="card usecase">📈 <strong>Real-world use case:</strong> an Auto Loader job writes a bronze table every minute, leaving tiny files. A nightly <code>OPTIMIZE events ZORDER BY (event_date, user_id)</code> compacts and clusters by the common filters → dashboards speed up.</div>
+</section>
+
+<section>
+  <h2>ZORDER vs Liquid Clustering</h2>
+  <table>
+    <tr><th></th><th>OPTIMIZE (bin-pack)</th><th>OPTIMIZE … ZORDER</th><th>Liquid Clustering</th></tr>
+    <tr><td>Fixes small files</td><td>✅</td><td>✅</td><td>✅ (incremental)</td></tr>
+    <tr><td>Improves filter skipping</td><td>❌</td><td>✅ (chosen cols)</td><td>✅ (chosen cols)</td></tr>
+    <tr><td>Idempotent / re-spec</td><td>✅ idempotent</td><td>re-applied each run</td><td>key set on table</td></tr>
+    <tr><td>Status</td><td>current</td><td><strong>older approach</strong></td><td><strong>recommended (new tables)</strong></td></tr>
+  </table>
+  <div class="card note" style="margin-top:12px">💡 <strong>Modern default:</strong> for new tables prefer <strong>Liquid Clustering</strong> (<code>CLUSTER BY</code>, Topic 3.2) over partitioning/ZORDER. Reach for ZORDER mainly on existing tables not yet on liquid clustering.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> compacting streaming/bronze tables; speeding selective queries via ZORDER on high-cardinality filter columns; optimized writes to prevent small files up front.</li>
+    <li><strong>Edge case:</strong> OPTIMIZE is CPU-intensive — run off-peak on adequate compute, use <code>WHERE</code> to limit scope. ZORDER on too many columns dilutes the benefit (pick 1–3).</li>
+    <li><strong>Limitation:</strong> ZORDER must be re-applied on each OPTIMIZE and is the older approach — prefer <strong>Liquid Clustering</strong> for new tables. A rewrite is a data-change commit, so it interacts with VACUUM retention and streaming readers.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Expecting plain OPTIMIZE to speed up <em>filtering</em> — that's ZORDER; OPTIMIZE alone just compacts.</li>
+    <li>❌ ZORDER by a column you never filter on — no benefit, wasted compute.</li>
+    <li>❌ Partitioning + ZORDER for a brand-new table — prefer Liquid Clustering.</li>
+    <li>❌ Double-scheduling when Predictive Optimization already handles managed tables.</li>
+    <li>❌ Assuming ZORDER auto-maintains — new data needs another <code>OPTIMIZE … ZORDER</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/optimize" target="_blank" rel="noopener">OPTIMIZE</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize" target="_blank" rel="noopener">OPTIMIZE (SQL ref)</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/data-skipping" target="_blank" rel="noopener">Data skipping &amp; Z-order</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/tune-file-size" target="_blank" rel="noopener">Control data file size</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/clustering" target="_blank" rel="noopener">Liquid clustering</a>
+  <p style="margin-top:10px">Topic 3.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — compaction (scoped to #compact)
+const filesEl=document.getElementById('files'), fstat=document.getElementById('fstat');
+function resetFiles(){
+  filesEl.innerHTML='';
+  for(let i=0;i<12;i++){const d=document.createElement('div');d.className='f';filesEl.appendChild(d);}
+  fstat.textContent='12 small files · slow reads';
+}
+function runOptimize(){
+  filesEl.innerHTML='';
+  for(let i=0;i<3;i++){const d=document.createElement('div');d.className='f big';filesEl.appendChild(d);}
+  fstat.textContent='3 compacted files · fast reads ✅ (bin-packing is idempotent — re-running does nothing)';
+}
+resetFiles();
+// Diagram 2 — zorder skipping (scoped to #zo)
+const zgrid=document.getElementById('zgrid'), zlegend=document.getElementById('zlegend');
+function setZ(sorted){
+  // 16 rows: 4 reds scattered (unsorted) vs grouped (sorted) into files of 4
+  let cells=[];
+  if(!sorted){ cells=['R','b','b','g', 'b','R','g','b', 'g','b','R','b', 'b','g','b','R']; }
+  else       { cells=['R','R','R','R', 'b','b','b','b', 'g','g','g','b', 'b','g','b','g']; }
+  zgrid.innerHTML='';
+  for(let f=0;f<4;f++){
+    const fileHasRed = cells.slice(f*4,f*4+4).includes('R');
+    for(let j=0;j<4;j++){
+      const v=cells[f*4+j];
+      const c=document.createElement('div');
+      c.className='c '+(v==='R'?'match':'skip');
+      if(fileHasRed) c.classList.add('read');
+      c.textContent=v==='R'?'red':(v==='b'?'blu':'grn');
+      zgrid.appendChild(c);
+    }
+  }
+  const filesRead = sorted?1:4;
+  zlegend.textContent = (sorted?'With Z-ORDER: ':'Without Z-ORDER: ')+filesRead+' of 4 files read (outlined). Skipped files are faded.';
+}
+setZ(false);
+</script>
+</body>
+</html>

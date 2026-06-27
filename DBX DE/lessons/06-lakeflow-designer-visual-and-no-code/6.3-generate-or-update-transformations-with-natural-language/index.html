@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Genie Code — NL Transformations · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.8vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  .warn{border-left:4px solid #d4452f;background:#fdecea}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: prompt -> code */
+  .prompts{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+  .pr{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#fff;cursor:pointer;font-size:.9rem;transition:.15s}
+  .pr:hover{border-color:var(--teal);background:#eef7f8}
+  .pr.on{border-color:var(--brand-2);background:#fff3e8}
+  /* diagram 2: genie family */
+  .fam{display:flex;flex-direction:column;gap:8px}
+  .fb{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .fb:hover{border-color:var(--brand-2)}.fb.open{border-color:var(--teal)}
+  .fb .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .fb .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.fb.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 6.3</p>
+  <h1><em>Genie Code</em> — NL Transformations</h1>
+  <p class="lede">Describe a data task in plain language; Genie Code generates or updates governed code, pipelines, and dashboards — UC-aware and permission-bound. This deep dive shows prompt → code, and the review discipline.</p>
+  <div class="pills"><span class="pill">NL → code</span><span class="pill">UC permission-aware</span><span class="pill">agent mode</span><span class="pill">review before ship</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Genie Code</strong> turns plain-language prompts into governed transformations/pipelines, using Unity Catalog metadata and respecting your permissions. In Designer it builds/edits transforms from prompts instead of manual operators.</div>
+  <div class="card analogy" style="margin-top:10px">👩‍💻 <strong>Analogy:</strong> a <strong>junior data engineer who pair-programs with you</strong> — say "monthly revenue per region," it writes the transform; keep it, tweak it, or say "now add last year for comparison."</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: prompt -> code -->
+<section id="p2c">
+  <h2>1 · Prompt → transformation — click a prompt</h2>
+  <p class="hint">▸ watch the generated (governed) code update conversationally</p>
+  <div class="prompts">
+    <div class="pr on" data-p="rev">"total revenue by region"</div>
+    <div class="pr" data-p="join">"join orders to customers, last 90 days"</div>
+    <div class="pr" data-p="refund">"...and exclude refunded orders"</div>
+  </div>
+  <pre class="code" id="gcode"></pre>
+  <div class="card note" style="margin-top:10px">💡 The output is <strong>production-ready, UC-governed code</strong> — review it like any PR before shipping.</div>
+</section>
+
+<section id="code2">
+  <h2>2 · The generated code (SQL or PySpark)</h2>
+  <p>Genie Code emits SQL or the PySpark equivalent (e.g. for a Designer Python operator). Prompts can reference your real schema because it reads Unity Catalog metadata.</p>
+  <pre class="code"><span class="c"># Prompt: "join customers, last 90 days, exclude refunds, revenue by region" → PySpark</span>
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+(orders.join(customers, <span class="s">"customer_id"</span>)
+       .where(<span class="s">"order_date >= current_date() - INTERVAL 90 DAYS AND status <> 'refunded'"</span>)
+       .groupBy(<span class="s">"region"</span>).agg(F.sum(<span class="s">"amount"</span>).alias(<span class="s">"revenue"</span>)))</pre>
+</section>
+
+<section id="review">
+  <h2>3 · The review discipline (enterprise-critical)</h2>
+  <p>Treat generated code like a <strong>junior engineer's PR</strong>. AI can produce plausible-but-wrong logic — review before shipping, especially:</p>
+  <ul>
+    <li><strong>Joins</strong> — wrong key/grain → row explosion or silent duplicates.</li>
+    <li><strong>Aggregations</strong> — double-counting after a fan-out join.</li>
+    <li><strong>Filters / nulls / time windows</strong> — off-by-one day, timezone slips.</li>
+    <li><strong>Deletes/overwrites</strong> in generated write steps.</li>
+  </ul>
+  <div class="card warn">⚠️ Because the output is real governed code, you can diff it, review it in a PR, and version it in Git — make that part of the workflow, not optional.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: genie family -->
+<section id="fam">
+  <h2>4 · The Genie family — click each</h2>
+  <div class="fam">
+    <div class="fb open" onclick="this.classList.toggle('open')"><div class="h"><span>Genie Code</span><span>▸</span></div><div class="d">AI-native coding assistant: NL → code, pipelines, dashboards across notebooks, SQL editor, Lakeflow Pipelines, MLflow. Has an <strong>agent mode</strong> in Lakeflow Pipelines for autonomous ETL/SDP building. This is the data-engineering side.</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>Genie (AI/BI)</span><span>▸</span></div><div class="d">For business users — natural-language analytics / Q&amp;A over governed data.</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>Genie Spaces</span><span>▸</span></div><div class="d">For data teams — configure trusted metrics and governance that power the Genie experiences.</div></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th>Member</th><th>For</th><th>Does</th></tr>
+    <tr><td>Genie Code</td><td>engineers / analysts</td><td>NL → code/pipelines/dashboards</td></tr>
+    <tr><td>Genie (AI/BI)</td><td>business users</td><td>NL Q&amp;A over data</td></tr>
+    <tr><td>Genie Spaces</td><td>data teams</td><td>trusted metrics / governance</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Collapses "what I want" → "working transform" without hand-writing every step, while staying inside the governed lakehouse.</li>
+    <li>The AI-native NL-to-pipeline story is a hot 2026 interview theme — knowing Genie Code (and that it's permission-aware) shows current fluency.</li>
+  </ul>
+  <div class="card usecase">🧑‍💼 <strong>Real-world use case:</strong> an analyst in Designer types "join orders to customers, keep last 90 days, total revenue by region"; Genie Code generates it, they refine with "exclude refunded orders," review it, and ship a governed pipeline.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> drafting/editing Designer transforms by prompt; scaffolding SDP pipelines; quick dashboard/notebook code; assisted debugging.</li>
+    <li><strong>Edge case:</strong> AI output <strong>must be reviewed</strong> — verify logic, especially joins/aggregations and edge cases.</li>
+    <li><strong>Limitation:</strong> it's a "Designated Service" with <strong>regional data-residency</strong> rules — features vary by region; ⚠️ verify availability. Permission-bound, so it can't surface data you can't already see.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Shipping Genie-generated transforms <strong>unreviewed</strong>.</li>
+    <li>❌ Assuming it bypasses governance — it's <strong>UC permission-aware</strong>, not a back door.</li>
+    <li>❌ Expecting identical features everywhere — availability varies by region.</li>
+    <li>❌ Confusing <strong>Genie Code</strong> (build code/pipelines) with <strong>Genie</strong> AI/BI (business Q&amp;A).</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/genie-code/" target="_blank" rel="noopener">Genie Code</a> ·
+  <a href="https://docs.databricks.com/aws/en/designer/" target="_blank" rel="noopener">Lakeflow Designer</a> ·
+  <a href="https://docs.databricks.com/aws/en/genie/" target="_blank" rel="noopener">Genie (AI/BI)</a>
+  <p style="margin-top:10px">Topic 6.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — prompt -> code (scoped to #p2c)
+const CODE={
+  rev:"-- Genie Code (governed)\nSELECT region, SUM(amount) AS revenue\nFROM orders\nGROUP BY region;",
+  join:"-- Genie Code (governed)\nSELECT o.*, c.name\nFROM orders o\nJOIN customers c USING (customer_id)\nWHERE o.order_date >= current_date() - INTERVAL 90 DAYS;",
+  refund:"-- Genie Code (governed) — refined\nSELECT region, SUM(amount) AS revenue\nFROM orders o JOIN customers c USING (customer_id)\nWHERE o.order_date >= current_date() - INTERVAL 90 DAYS\n  AND o.status <> 'refunded'\nGROUP BY region;"
+};
+const gc=document.getElementById('gcode');
+function setPrompt(k){
+  document.querySelectorAll('#p2c .pr').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  gc.textContent=CODE[k];
+}
+document.querySelectorAll('#p2c .pr').forEach(p=>p.addEventListener('click',()=>setPrompt(p.dataset.p)));
+setPrompt('rev');
+// Diagram 2 (#fam) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

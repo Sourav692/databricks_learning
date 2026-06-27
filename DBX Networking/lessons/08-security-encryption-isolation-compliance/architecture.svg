@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 620" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="620" fill="#FAFAF9"/>
+  <text x="24" y="34" font-size="20" font-weight="700" fill="#1B3139">Azure Databricks — Security: Encryption, Isolation &amp; Compliance</text>
+  <text x="24" y="54" font-size="12" fill="#6B7280">8.1 TLS/CMK + Key Vault · 8.2 serverless isolation &amp; scoped tokens · 8.3 ESC/ESM/CSP · 8.4 audit system tables + SIEM export</text>
+
+  <!-- Databricks-owned subscription -->
+  <rect x="360" y="80" width="300" height="250" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="510" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Databricks-owned Azure subscription</text>
+
+  <rect x="384" y="116" width="252" height="92" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="510" y="140" text-anchor="middle" font-size="13" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="510" y="158" text-anchor="middle" font-size="10" fill="#4A5860">web app · REST · Unity Catalog (token broker)</text>
+  <text x="510" y="172" text-anchor="middle" font-size="10" fill="#4A5860">audit events (workspace + ACCOUNT-level)</text>
+  <text x="510" y="186" text-anchor="middle" font-size="10" fill="#4A5860">CMK managed-services data · SCC relay</text>
+
+  <rect x="384" y="222" width="252" height="90" rx="8" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="510" y="244" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Serverless compute plane (your region)</text>
+  <text x="510" y="262" text-anchor="middle" font-size="10" fill="#4A5860">8.2: dedicated per-workload · no public IP</text>
+  <text x="510" y="276" text-anchor="middle" font-size="10" fill="#4A5860">wiped on completion · Lakeguard</text>
+  <text x="510" y="290" text-anchor="middle" font-size="10" fill="#4A5860">holds only ~1h SCOPED token (one path)</text>
+
+  <!-- Key Vault -->
+  <rect x="700" y="96" width="250" height="118" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="825" y="118" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Azure Key Vault (your tenant) — 8.1</text>
+  <text x="825" y="138" text-anchor="middle" font-size="10" fill="#4A5860">you hold the keys · wrap/unwrap only</text>
+  <rect x="716" y="150" width="218" height="22" rx="5" fill="#EFF6FF" stroke="#2272B4" stroke-width="1"/>
+  <text x="825" y="165" text-anchor="middle" font-size="10" fill="#1B3139">KEK: managed-services · DBFS root · disks</text>
+  <text x="825" y="190" text-anchor="middle" font-size="9.5" fill="#6B7280">revoke key = kill switch (data unreadable)</text>
+  <text x="825" y="204" text-anchor="middle" font-size="9.5" fill="#6B7280">Get + Wrap + Unwrap → AzureDatabricks app</text>
+
+  <!-- Customer subscription -->
+  <rect x="24" y="350" width="700" height="250" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="374" y="372" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">YOUR Azure subscription</text>
+
+  <!-- Classic compute plane (CSP/ESM) -->
+  <rect x="44" y="388" width="320" height="120" rx="10" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="204" y="408" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Classic compute plane VNet (8.3 ESM/CSP)</text>
+  <text x="204" y="426" text-anchor="middle" font-size="10" fill="#4A5860">CIS L1 hardened Ubuntu image (ESM, classic only)</text>
+  <text x="204" y="440" text-anchor="middle" font-size="10" fill="#4A5860">agents: file-integrity (capsule8) · AV (clamAV) · vuln</text>
+  <text x="204" y="454" text-anchor="middle" font-size="10" fill="#4A5860">managed-disk CMK · inter-node AES/TLS (8.1)</text>
+  <text x="204" y="468" text-anchor="middle" font-size="10" fill="#4A5860">no public IP (SCC) · auto cluster update (CSP)</text>
+  <text x="204" y="494" text-anchor="middle" font-size="10" font-weight="600" fill="#FF3621">CSP + restricted egress → allow outbound TCP 2443</text>
+
+  <!-- Workspace storage -->
+  <rect x="384" y="388" width="150" height="120" rx="10" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="459" y="410" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Workspace storage</text>
+  <text x="459" y="428" text-anchor="middle" font-size="9.5" fill="#4A5860">DBFS root (legacy)</text>
+  <text x="459" y="442" text-anchor="middle" font-size="9.5" fill="#4A5860">job/SQL results,</text>
+  <text x="459" y="456" text-anchor="middle" font-size="9.5" fill="#4A5860">MLflow, revisions</text>
+  <text x="459" y="474" text-anchor="middle" font-size="9.5" font-weight="600" fill="#2272B4">CMK: DBFS root</text>
+  <text x="459" y="488" text-anchor="middle" font-size="9.5" fill="#6B7280">+ double encryption</text>
+
+  <!-- ADLS data lake -->
+  <rect x="554" y="388" width="150" height="120" rx="10" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="629" y="410" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2 lake</text>
+  <text x="629" y="428" text-anchor="middle" font-size="9.5" fill="#4A5860">governed data (UC</text>
+  <text x="629" y="442" text-anchor="middle" font-size="9.5" fill="#4A5860">external locations)</text>
+  <text x="629" y="460" text-anchor="middle" font-size="9.5" font-weight="600" fill="#FF3621">NOT covered by</text>
+  <text x="629" y="473" text-anchor="middle" font-size="9.5" font-weight="600" fill="#FF3621">ADB CMK — set CMK</text>
+  <text x="629" y="486" text-anchor="middle" font-size="9.5" fill="#4A5860">on this acct directly</text>
+  <text x="629" y="500" text-anchor="middle" font-size="9" fill="#6B7280">firewall: NSP + serverless tag</text>
+
+  <!-- SIEM / monitoring (8.4) -->
+  <rect x="740" y="260" width="216" height="200" rx="12" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="848" y="282" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">8.4 Audit &amp; monitoring</text>
+  <rect x="756" y="294" width="184" height="40" rx="6" fill="#FFF4F2" stroke="#FF3621" stroke-width="1.5"/>
+  <text x="848" y="311" text-anchor="middle" font-size="10" font-weight="700" fill="#FF3621">system.access.audit</text>
+  <text x="848" y="325" text-anchor="middle" font-size="9" fill="#4A5860">ONLY tap with ACCOUNT-level events</text>
+  <rect x="756" y="342" width="184" height="34" rx="6" fill="#EFF6FF" stroke="#2272B4" stroke-width="1"/>
+  <text x="848" y="363" text-anchor="middle" font-size="10" fill="#1B3139">Log Analytics → Sentinel (KQL)</text>
+  <rect x="756" y="382" width="184" height="34" rx="6" fill="#EFF6FF" stroke="#2272B4" stroke-width="1"/>
+  <text x="848" y="403" text-anchor="middle" font-size="10" fill="#1B3139">Event Hub → Splunk (real-time)</text>
+  <rect x="756" y="422" width="184" height="30" rx="6" fill="#F4FBF8" stroke="#00A972" stroke-width="1"/>
+  <text x="848" y="441" text-anchor="middle" font-size="10" fill="#1B3139">SQL alert → email/Slack/PD</text>
+
+  <!-- Arrows -->
+  <!-- Key Vault wrap/unwrap to CP, workspace storage, classic VMs -->
+  <path d="M700 150 C 670 150, 660 152, 636 152" fill="none" stroke="#2272B4" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+  <text x="648" y="142" font-size="9" fill="#2272B4">wrap/unwrap</text>
+  <path d="M716 200 C 560 250, 500 340, 470 388" fill="none" stroke="#2272B4" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+  <path d="M720 205 C 360 300, 250 350, 210 388" fill="none" stroke="#2272B4" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+
+  <!-- 8.2 serverless: UC vends token, direct read -->
+  <path d="M510 312 C 540 340, 600 360, 629 388" fill="none" stroke="#00A972" stroke-width="2.4" marker-end="url(#ahg)"/>
+  <text x="566" y="350" font-size="9.5" font-weight="700" fill="#00A972">③ ~1h token → DIRECT read (TLS 1.2+)</text>
+
+  <!-- classic VM -> control plane (path 2, SCC + 2443) -->
+  <path d="M300 388 C 330 350, 380 250, 420 208" fill="none" stroke="#FF3621" stroke-width="2.4" marker-end="url(#aho)"/>
+  <text x="312" y="330" font-size="9.5" font-weight="700" fill="#FF3621">② SCC relay · TLS · +TCP 2443 (CSP)</text>
+
+  <!-- classic VM -> ADLS (path 3) -->
+  <path d="M364 470 C 480 480, 520 470, 554 460" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- audit feeds -->
+  <path d="M636 165 C 700 200, 740 250, 800 294" fill="none" stroke="#FF3621" stroke-width="2" marker-end="url(#aho)"/>
+  <text x="700" y="232" font-size="9" fill="#FF3621">audit events</text>
+
+  <!-- Legend -->
+  <rect x="24" y="520" width="320" height="74" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="34" y="540" font-size="11" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="34" y1="554" x2="58" y2="554" stroke="#2272B4" stroke-width="1.8" stroke-dasharray="4,3"/>
+  <text x="64" y="558" font-size="9.5" fill="#4A5860">8.1 CMK wrap/unwrap (key never leaves vault)</text>
+  <line x1="34" y1="570" x2="58" y2="570" stroke="#00A972" stroke-width="2.4"/>
+  <text x="64" y="574" font-size="9.5" fill="#4A5860">8.2 serverless scoped-token direct read</text>
+  <line x1="34" y1="586" x2="58" y2="586" stroke="#FF3621" stroke-width="2.4"/>
+  <text x="64" y="590" font-size="9.5" fill="#4A5860">8.3 control-plane path (+TCP 2443) · 8.4 audit feed</text>
+</svg>

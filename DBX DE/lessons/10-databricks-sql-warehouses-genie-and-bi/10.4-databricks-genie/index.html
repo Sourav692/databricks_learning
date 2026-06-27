@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Genie · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;margin:.6em 0}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2);font-family:"Spline Sans Mono",monospace;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: NL -> SQL with curation toggle */
+  .toggle{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-family:"Spline Sans Mono",monospace;font-size:.82rem}
+  .sw{width:46px;height:24px;border-radius:999px;background:var(--paper-2);border:1px solid var(--line);position:relative;cursor:pointer;transition:.2s}
+  .sw .knob{position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;border:1px solid var(--line);transition:.2s}
+  .sw.on{background:var(--teal)}.sw.on .knob{left:24px}
+  .ask{font-family:"Spline Sans Mono",monospace;font-size:.84rem;border:1px solid var(--line);border-radius:8px;background:#fff;padding:10px 12px;margin-bottom:8px}
+  .ans{border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px}
+  .ans .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c}
+  .ans pre{background:#0d1117;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+  /* diagram 2: genie family */
+  .fam{display:flex;flex-direction:column;gap:8px}
+  .fb{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .fb:hover{border-color:var(--brand-2)}.fb.open{border-color:var(--teal)}
+  .fb .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .fb .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.fb.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 10.4</p>
+  <h1>Databricks <em>Genie</em></h1>
+  <p class="lede">Business users ask data questions in plain English; Genie generates governed SQL over Unity Catalog data. A curated Genie space grounds it in your business terms — and the Conversation API makes it programmable.</p>
+  <div class="pills"><span class="pill">NL → SQL</span><span class="pill">Genie space + curation</span><span class="pill">UC-governed</span><span class="pill">Conversation API</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>AI/BI Genie</strong> turns plain-English questions into SQL + results over governed UC data. You build a <strong>Genie space</strong> over chosen datasets and <strong>curate</strong> it (instructions, example SQL, certified metrics) so answers match your business definitions — all enforced by Unity Catalog and callable via the Conversation API.</div>
+  <div class="card analogy" style="margin-top:10px">🗣️ <strong>Analogy:</strong> a <strong>bilingual analyst on call</strong> — you speak "business," it speaks "SQL." The <strong>curation</strong> is the glossary you give it so it uses <em>your</em> definition of "active customer" or "revenue."</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: NL->SQL with curation toggle -->
+<section id="ask">
+  <h2>Ask in English — and see why curation matters</h2>
+  <p class="hint">▸ toggle curation to compare the answer</p>
+  <div class="toggle"><span>Space curation:</span><div class="sw on" id="sw"><div class="knob"></div></div><span id="swlabel">ON (metrics + instructions)</span></div>
+  <div class="ask">🧑‍💼 "What was revenue by region last quarter?"</div>
+  <div class="ans" id="ans"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · The Genie space — scope + datasets</h3>
+  <p class="mech"><b>Mechanism:</b> a space is bound to a set of UC tables/views and runs on a SQL Warehouse — the unit of scope, curation &amp; permission. <b>Trade-off:</b> too many/messy tables dilute accuracy; aim at a focused, well-named gold domain.</p>
+  <pre class="code"><span class="c">-- A space points at curated gold objects; make columns self-describing.</span>
+<span class="k">CREATE OR REPLACE VIEW</span> gold.sales_fact <span class="k">AS</span>
+<span class="k">SELECT</span> order_id, region, net_revenue, fiscal_quarter, order_date
+<span class="k">FROM</span> prod.sales.orders_enriched;
+<span class="k">COMMENT ON COLUMN</span> gold.sales_fact.net_revenue <span class="k">IS</span> <span class="s">'Revenue after returns/discounts (finance definition)'</span>;</pre>
+
+  <h3>2 · Natural language → SQL</h3>
+  <p class="mech"><b>Mechanism:</b> Genie maps the question to SQL using schemas + column comments + curation, runs it, and returns the <strong>SQL and result</strong> so users verify &amp; refine. <b>Trade-off:</b> ambiguity → plausible-but-wrong query; fix with curation, not luck.</p>
+  <pre class="code"><span class="c">-- "revenue by region last quarter" → Genie generates (and shows):</span>
+<span class="k">SELECT</span> region, <span class="f">sum</span>(net_revenue) <span class="k">AS</span> revenue
+<span class="k">FROM</span> gold.sales_fact
+<span class="k">WHERE</span> fiscal_quarter = <span class="s">'2026-Q1'</span>
+<span class="k">GROUP BY</span> region <span class="k">ORDER BY</span> revenue <span class="k">DESC</span>;</pre>
+
+  <h3>3 · Curation &amp; trust — instructions, example SQL, metrics</h3>
+  <p class="mech"><b>Mechanism:</b> curate with general instructions, example SQL, certified/sample questions, and defined joins &amp; metrics so "revenue" resolves to one definition. <b>Trade-off:</b> ongoing upkeep — but it's what makes answers trustworthy.</p>
+  <pre class="code"><span class="c">-- Encode the canonical metric as a governed object everyone (incl. Genie) reuses:</span>
+<span class="k">CREATE OR REPLACE VIEW</span> gold.active_customers <span class="k">AS</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> prod.sales.customers
+<span class="k">WHERE</span> status = <span class="s">'ACTIVE'</span> <span class="k">AND</span> last_seen &gt;= <span class="f">current_date</span>() - <span class="k">INTERVAL</span> <span class="s">90</span> <span class="k">DAYS</span>;
+<span class="c">-- Space instruction: "'active customer' = rows in gold.active_customers."</span></pre>
+
+  <h3>4 · Governance — UC grants, row filters, column masks</h3>
+  <p class="mech"><b>Mechanism:</b> Genie queries run as the <strong>asking user</strong> through Unity Catalog, so existing grants, row filters, and column masks apply automatically — it can't surface data the user couldn't query. <b>Trade-off:</b> users get <em>different</em> rows by grant (correct, but explain it).</p>
+  <pre class="code"><span class="c">-- Grant the curated domain; an existing row filter (8.3) still applies in Genie.</span>
+<span class="k">GRANT SELECT</span> <span class="k">ON VIEW</span> gold.sales_fact <span class="k">TO</span> <span class="s">`sales-ops`</span>;
+<span class="c">-- ALTER TABLE prod.sales.orders_enriched</span>
+<span class="c">--   SET ROW FILTER catalog.sec.region_filter ON (region);  -- scopes rows per user</span></pre>
+
+  <h3>5 · Genie is programmable — the Conversation API</h3>
+  <p class="mech"><b>Mechanism:</b> drive a space from code — start a conversation, send follow-ups, poll the message until done. <b>Trade-off:</b> start a <strong>new conversation per session</strong> (reuse bleeds context); poll every 1–5 s, cap ~10 min. <span style="color:#9a6b1a">⚠️ verify the API version against docs.</span></p>
+  <pre class="code"><span class="c"># Start a conversation in a space (verified path, API 2.0):</span>
+curl -X POST \
+  https://&lt;host&gt;/api/<span class="s">2.0</span>/genie/spaces/&lt;space_id&gt;/start-conversation \
+  -H <span class="s">"Authorization: Bearer $DATABRICKS_TOKEN"</span> \
+  -d <span class="s">'{"content": "What was revenue by region last quarter?"}'</span>
+
+<span class="c"># Follow-up: POST .../spaces/&lt;space_id&gt;/conversations/&lt;conversation_id&gt;/messages</span>
+<span class="c"># Poll the message until status = COMPLETED / FAILED / CANCELLED.</span></pre>
+
+  <h3>6 · Genie vs a generic LLM chatbot</h3>
+  <p class="mech"><b>Mechanism:</b> a generic chatbot answers from training data; <strong>Genie is grounded</strong> — it answers only by generating SQL over your governed tables, shows the query, and respects UC. <b>Trade-off:</b> it won't answer beyond its data (by design); review SQL for key decisions.</p>
+  <table>
+    <tr><th></th><th>Databricks Genie</th><th>Generic LLM chatbot</th></tr>
+    <tr><td>Source of truth</td><td>your <strong>UC tables</strong> (live)</td><td>training data / prompt</td></tr>
+    <tr><td>Output</td><td><strong>SQL + result</strong> (verifiable)</td><td>prose (opaque)</td></tr>
+    <tr><td>Governance</td><td><strong>UC grants/filters/masks</strong></td><td>none</td></tr>
+    <tr><td>Accuracy lever</td><td><strong>curation</strong> (metrics, instructions)</td><td>prompt engineering</td></tr>
+  </table>
+</section>
+
+<!-- diagram 2: genie family -->
+<section id="fam">
+  <h2>The Genie family — click each</h2>
+  <div class="fam">
+    <div class="fb open" onclick="this.classList.toggle('open')"><div class="h"><span>AI/BI Genie (this lesson)</span><span>▸</span></div><div class="d">For <strong>business users</strong> — natural-language Q&amp;A over governed data via a curated Genie space. Generates SQL + visualizations.</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>Genie Code</span><span>▸</span></div><div class="d">For <strong>developers</strong> — NL → code/pipelines/dashboards across notebooks, SQL editor, Lakeflow Pipelines (Topic 6.3).</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>Genie One</span><span>▸</span></div><div class="d">Cross-asset chat experience for broader Q&amp;A across the platform.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Democratizes data — non-SQL users self-serve — while staying inside <strong>UC governance</strong>.</li>
+    <li>"How do non-technical users query the lakehouse safely?" → a <strong>Genie space</strong>, and <em>curation drives accuracy</em>.</li>
+    <li>Programmable via the <strong>Conversation API</strong> — embed Genie in apps/agents, not just the chat box.</li>
+  </ul>
+  <div class="card usecase">📈 <strong>Real-world use case:</strong> a sales-ops Genie space over gold tables — a manager asks "top 5 regions by revenue last quarter," Genie writes the SQL and charts it, grounded by the space's certified "revenue" metric so it matches finance.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> self-serve analytics, ad-hoc Q&amp;A over curated domains, reducing the analyst queue, embedding Q&amp;A via the API.</li>
+    <li><strong>Edge cases:</strong> accuracy depends on <strong>curation</strong> — thin spaces give vague/wrong answers; ambiguous terms ("active user") need a defined metric; per-user governance means different users get different rows.</li>
+    <li><strong>Limitation:</strong> assistive — review generated SQL for key decisions; best over clean, well-named <strong>gold</strong> tables; availability varies by region.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Expecting great answers from an <strong>uncurated</strong> space.</li>
+    <li>❌ Pointing Genie at messy <strong>bronze</strong> — aim it at clean gold.</li>
+    <li>❌ Treating output as always-correct — verify the SQL for key numbers.</li>
+    <li>❌ Confusing <strong>Genie</strong> (business Q&amp;A) with <strong>Genie Code</strong> (build code/pipelines).</li>
+    <li>❌ Reusing one API <strong>conversation</strong> across unrelated sessions — start a new one to avoid context bleed.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/genie/" target="_blank" rel="noopener">AI/BI Genie</a> ·
+  <a href="https://docs.databricks.com/aws/en/genie/set-up" target="_blank" rel="noopener">Set up &amp; curate</a> ·
+  <a href="https://docs.databricks.com/aws/en/genie/conversation-api" target="_blank" rel="noopener">Conversation API</a> ·
+  <a href="https://docs.databricks.com/api/workspace/genie/startconversation" target="_blank" rel="noopener">API reference</a>
+  <p style="margin-top:10px">Topic 10.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — NL->SQL with curation toggle (scoped to #ask)
+const sw=document.getElementById('sw'), swlabel=document.getElementById('swlabel'), ans=document.getElementById('ans');
+let curated=true;
+function renderAns(){
+  sw.classList.toggle('on',curated);
+  swlabel.textContent = curated ? 'ON (metrics + instructions)' : 'OFF (bare tables)';
+  if(curated){
+    ans.innerHTML='<div class="lbl">Genie SQL (uses certified "revenue" metric, fiscal quarter):</div>'+
+      '<pre>SELECT region, SUM(net_revenue) AS revenue\nFROM gold.sales_fact\nWHERE fiscal_quarter = \'2026-Q1\'\nGROUP BY region ORDER BY revenue DESC;</pre>'+
+      '<div class="lbl">✅ Matches finance — grounded by the space\'s metric definition.</div>';
+  } else {
+    ans.innerHTML='<div class="lbl">Genie SQL (guesses columns &amp; "quarter"):</div>'+
+      '<pre>SELECT region, SUM(amount) AS revenue\nFROM sales\nWHERE date > \'2026-04-01\'\nGROUP BY region;</pre>'+
+      '<div class="lbl">⚠️ May not match finance — which "amount"? gross/net? which quarter? Curation removes the ambiguity.</div>';
+  }
+}
+sw.addEventListener('click',()=>{ curated=!curated; renderAns(); });
+renderAns();
+// Diagram 2 (#fam) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

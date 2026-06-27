@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Loader · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: conveyor sim */
+  .land{display:flex;gap:6px;flex-wrap:wrap;min-height:40px;margin:8px 0;padding:8px;border:1px dashed var(--line);border-radius:8px;background:#fff}
+  .file{width:30px;height:34px;border-radius:5px;border:1px solid var(--line);background:var(--paper-2);display:flex;align-items:center;justify-content:center;font-size:.62rem;font-family:"Spline Sans Mono",monospace;color:#6a7780}
+  .file.new{background:#fff3e8;border-color:var(--brand-2);color:var(--brand)}
+  .file.done{background:#dff0e6;border-color:#9ed3b2;color:#1f6b3a}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer}
+  .btn:hover{background:var(--brand);color:#fff}
+  .stat{font-family:"Spline Sans Mono",monospace;font-size:.76rem;color:#48555f;margin-top:6px}
+  /* diagram 2: mode + feature tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 4.1</p>
+  <h1><em>Auto Loader</em> (cloudFiles)</h1>
+  <p class="lede">Incrementally ingests only the new files landing in cloud storage — a Structured Streaming source with checkpointing, schema evolution, and a rescued-data column. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">cloudFiles</span><span class="pill">exactly-once</span><span class="pill">schema evolution</span><span class="pill">_rescued_data</span><span class="pill">file events</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Auto Loader</strong> (<code>format("cloudFiles")</code>) streams in only <strong>new</strong> files as they arrive — checkpointed for exactly-once, with automatic schema inference/evolution and a <code>_rescued_data</code> column for mismatches.</div>
+  <div class="card analogy" style="margin-top:10px">🎢 <strong>Analogy:</strong> a <strong>conveyor belt that only picks up new boxes.</strong> Files keep landing in a folder; Auto Loader grabs just the ones it hasn't seen — never re-handling old boxes, even after a restart.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: incremental conveyor -->
+<section id="conv">
+  <h2>Incremental ingest — only new files</h2>
+  <p class="hint">▸ "land" new files, then run Auto Loader; restart-safe via checkpoint</p>
+  <div class="land" id="land"></div>
+  <div class="btnrow">
+    <button class="btn" onclick="landFiles()">Land new files</button>
+    <button class="btn" onclick="runAL()">Run Auto Loader</button>
+    <button class="btn" onclick="resetAL()">Reset</button>
+  </div>
+  <div class="stat" id="alstat">No files yet.</div>
+</section>
+
+<!-- DEEP DIVE: core setup -->
+<section id="setup">
+  <h2>1 · Core setup — cloudFiles source + checkpoint</h2>
+  <p><code>trigger(availableNow=True)</code> processes all currently-available files then stops (ideal for scheduled jobs); omit for an always-on stream. Throttle with <code>maxFilesPerTrigger</code>/<code>maxBytesPerTrigger</code>.</p>
+  <p class="codecap">PySpark</p>
+  <pre class="code">df = (spark.readStream.format(<span class="s">"cloudFiles"</span>)
+        .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>)
+        .option(<span class="s">"cloudFiles.schemaLocation"</span>, <span class="s">"/Volumes/cat/sch/vol/_schema"</span>)
+        .load(<span class="s">"/Volumes/cat/sch/vol/landing"</span>))
+
+(df.writeStream
+   .option(<span class="s">"checkpointLocation"</span>, <span class="s">"/Volumes/cat/sch/vol/_ckpt"</span>)   <span class="c"># exactly-once state</span>
+   .trigger(availableNow=<span class="k">True</span>)                                   <span class="c"># all new, then stop</span>
+   .toTable(<span class="s">"cat.sch.bronze_events"</span>))</pre>
+  <p class="codecap">SQL — read_files streaming TVF</p>
+  <pre class="code"><span class="k">CREATE OR REFRESH STREAMING TABLE</span> cat.sch.bronze_events <span class="k">AS</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> read_files(<span class="s">'/Volumes/cat/sch/vol/landing'</span>, format => <span class="s">'json'</span>);</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: modes & features -->
+<section id="feat">
+  <h2>2 · Built-in features — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="schema">Schema evolution</button>
+    <button class="tab" data-t="rescue">_rescued_data</button>
+    <button class="tab" data-t="modes">Detection modes</button>
+    <button class="tab" data-t="ckpt">Checkpoint</button>
+  </div>
+  <div class="panel on" data-p="schema"><div class="card"><strong>Schema inference &amp; evolution</strong> — inferred schema stored at <code>schemaLocation</code>; behavior set by <code>cloudFiles.schemaEvolutionMode</code> (default <code>addNewColumns</code>: fail with <code>UnknownFieldException</code>, then restart resumes with the new column). Pin types with <code>schemaHints</code>; enable <code>inferColumnTypes</code>.</div></div>
+  <div class="panel" data-p="rescue"><div class="card"><strong><code>_rescued_data</code></strong> — values that don't match the schema (missing col, type/case mismatch) are preserved here instead of dropped. Rename via <code>cloudFiles.rescuedDataColumn</code>. Check it when rows look "missing".</div></div>
+  <div class="panel" data-p="modes"><div class="card"><strong>File detection:</strong> directory listing (default) → file notification (<code>cloudFiles.useNotifications=true</code>) → <strong>file events</strong> on UC external locations (recommended at scale; DBR 14.3 LTS+).</div></div>
+  <div class="panel" data-p="ckpt"><div class="card"><strong>Checkpoint</strong> — seen-file metadata in RocksDB → <strong>exactly-once</strong>, restart-safe. One checkpoint per stream; deleting it reprocesses everything.</div></div>
+</section>
+
+<section id="schema">
+  <h2>3 · Schema evolution modes</h2>
+  <table>
+    <tr><th>Mode</th><th>Behavior</th></tr>
+    <tr><td><code>addNewColumns</code> <em>(default)</em></td><td>New column → stream <strong>fails</strong> (<code>UnknownFieldException</code>), schema updated; <strong>restart resumes</strong>.</td></tr>
+    <tr><td><code>addNewColumnsWithTypeWidening</code></td><td>Same, plus widens types (e.g. int→long).</td></tr>
+    <tr><td><code>rescue</code></td><td>Never evolves, never fails — odd data → <code>_rescued_data</code>.</td></tr>
+    <tr><td><code>failOnNewColumns</code></td><td>Fails and won't restart until you update the schema.</td></tr>
+    <tr><td><code>none</code></td><td>Ignores new columns; does not rescue.</td></tr>
+  </table>
+  <pre class="code" style="margin-top:12px">.option(<span class="s">"cloudFiles.schemaEvolutionMode"</span>, <span class="s">"addNewColumns"</span>)
+.option(<span class="s">"cloudFiles.schemaHints"</span>, <span class="s">"id long, event_ts timestamp"</span>)
+.option(<span class="s">"cloudFiles.inferColumnTypes"</span>, <span class="s">"true"</span>)
+.option(<span class="s">"cloudFiles.rescuedDataColumn"</span>, <span class="s">"_rescued"</span>)</pre>
+  <div class="card" style="margin-top:10px">💡 The default fail-then-restart is intentional (clean, auditable schema change). Run under a <strong>job with retries</strong> so the restart is automatic in production.</div>
+</section>
+
+<section>
+  <h2>Detection modes at a glance</h2>
+  <table>
+    <tr><th></th><th>Directory listing</th><th>File notification</th><th>File events (UC)</th></tr>
+    <tr><td>Setup</td><td>none</td><td>cloud queue resources</td><td>enable on UC ext. location</td></tr>
+    <tr><td>Cost at scale</td><td>high (list calls)</td><td>low</td><td><strong>lowest</strong></td></tr>
+    <tr><td>Recommended</td><td>small dirs</td><td>large dirs</td><td><strong>default for scale</strong></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>"List the folder &amp; read everything" reprocesses old data and doesn't scale to millions of files. Auto Loader solves both.</li>
+    <li>It's the default answer for landing raw files into <strong>bronze</strong> — guaranteed interview territory.</li>
+  </ul>
+  <div class="card usecase">🖱️ <strong>Real-world use case:</strong> clickstream JSON lands in S3 every few minutes. Auto Loader streams only new files into a bronze Delta table, evolving the schema as fields appear and parking malformed records in <code>_rescued_data</code>.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> continuous or scheduled (<code>trigger(availableNow=True)</code>) bronze ingestion from S3/ADLS/GCS/UC Volumes; JSON, CSV, Parquet, Avro, XML…</li>
+    <li><strong>Edge cases:</strong> default <code>addNewColumns</code> fails-then-restarts on a new column (run under a retrying job); directory listing gets slow on huge dirs → file notification / file events; deleting the checkpoint reprocesses everything.</li>
+    <li><strong>Limitation:</strong> ingests <strong>files</strong> — for Kafka/Event Hubs use streaming connectors (4.4); not for OLTP row writes.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Two streams sharing one checkpoint — corrupts state. One checkpoint per stream.</li>
+    <li>❌ Expecting it to re-read old files — by design it won't; use a new checkpoint to reprocess.</li>
+    <li>❌ Ignoring <code>_rescued_data</code> — that's where malformed rows go.</li>
+    <li>❌ Directory listing at massive scale — switch to file notification / file events.</li>
+    <li>❌ Assuming a new column "just works" — default mode fails the batch first; ensure the job restarts.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/" target="_blank" rel="noopener">Auto Loader</a> ·
+  <a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema" target="_blank" rel="noopener">Schema evolution</a> ·
+  <a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/file-detection-modes" target="_blank" rel="noopener">File detection modes</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files" target="_blank" rel="noopener">read_files</a>
+  <p style="margin-top:10px">Topic 4.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — conveyor (scoped to #conv)
+const landEl=document.getElementById('land'), alstat=document.getElementById('alstat');
+let counter=0;
+function landFiles(){
+  for(let i=0;i<3;i++){
+    counter++;
+    const f=document.createElement('div');
+    f.className='file new'; f.textContent='f'+counter;
+    landEl.appendChild(f);
+  }
+  const news=landEl.querySelectorAll('.file.new').length;
+  alstat.textContent=news+' new file(s) waiting · '+landEl.querySelectorAll('.file.done').length+' already ingested';
+}
+function runAL(){
+  const news=landEl.querySelectorAll('.file.new');
+  if(news.length===0){ alstat.textContent='Nothing new to ingest — Auto Loader skips already-seen files (checkpoint).'; return; }
+  news.forEach(f=>{f.className='file done';});
+  alstat.textContent='Ingested '+news.length+' new file(s) → bronze. Old files untouched (exactly-once via checkpoint).';
+}
+function resetAL(){ landEl.innerHTML=''; counter=0; alstat.textContent='No files yet.'; }
+// Diagram 2 — feature tabs (scoped to #feat)
+document.querySelectorAll('#feat .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#feat .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#feat .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

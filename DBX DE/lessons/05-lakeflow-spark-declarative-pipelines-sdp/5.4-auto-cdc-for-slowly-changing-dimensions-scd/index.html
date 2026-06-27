@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUTO CDC & SCD 1/2 · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.84rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: SCD1 vs SCD2 apply */
+  .scdbtns{display:flex;gap:8px;margin-bottom:10px}
+  .sb{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .sb:hover{border-color:var(--teal)}.sb.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .feed{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#48555f;margin-bottom:6px}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;margin-bottom:8px}
+  .btn:hover{background:var(--brand);color:#fff}
+  /* diagram 2: triggered vs continuous */
+  .modes{display:flex;flex-direction:column;gap:8px}
+  .md{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .md:hover{border-color:var(--brand-2)}.md.open{border-color:var(--teal)}
+  .md .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .md .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.md.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 5.4</p>
+  <h1><em>AUTO CDC</em> — SCD Type 1 &amp; 2</h1>
+  <p class="lede">Apply a change feed to build slowly changing dimensions declaratively. SCD1 overwrites; SCD2 keeps versioned history with start/end timestamps. (Replaces APPLY CHANGES INTO.) This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">AUTO CDC</span><span class="pill">SCD 1 / 2</span><span class="pill">SEQUENCE BY</span><span class="pill">APPLY AS DELETE</span><span class="pill">parametrized</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>AUTO CDC</strong> applies inserts/updates/deletes to a target by <code>KEYS</code> + <code>SEQUENCE BY</code>, <code>STORED AS SCD TYPE 1</code> (overwrite) or <code>TYPE 2</code> (history with <code>__START_AT</code>/<code>__END_AT</code>). It replaces <code>APPLY CHANGES INTO</code>.</div>
+  <div class="card analogy" style="margin-top:10px">🏠 <strong>Analogy:</strong> tracking a customer's address. <strong>SCD1</strong> = a phone contact — editing the address <em>erases</em> the old one. <strong>SCD2</strong> = an address-history logbook — each move adds a dated entry.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: SCD1 vs SCD2 apply -->
+<section id="scd">
+  <h2>Apply a change — SCD1 vs SCD2</h2>
+  <p class="hint">▸ pick a type, then apply an address change for customer 7</p>
+  <div class="scdbtns">
+    <div class="sb on" data-s="1">SCD Type 1 (overwrite)</div>
+    <div class="sb" data-s="2">SCD Type 2 (history)</div>
+  </div>
+  <div class="feed">change feed: <code>{id:7, city:"Austin", ts:2026-06-20}</code> already applied. Now apply <code>{id:7, city:"Denver", ts:2026-06-24}</code>:</div>
+  <button class="btn" onclick="applyChange()">Apply change</button>
+  <div id="scdtable"></div>
+</section>
+
+<section id="mech">
+  <h2>1 · The mechanism &amp; SCD1 vs SCD2</h2>
+  <p><strong>KEYS</strong> = the unique business key; <strong>SEQUENCE BY</strong> = a sortable column whose <em>highest value wins regardless of arrival order</em> — that's what makes AUTO CDC robust to late/out-of-order events vs a naive MERGE.</p>
+  <table>
+    <tr><th></th><th>SCD Type 1</th><th>SCD Type 2</th></tr>
+    <tr><td>History</td><td>none (overwrite)</td><td>full (versioned rows)</td></tr>
+    <tr><td>Extra columns</td><td>—</td><td><code>__START_AT</code>, <code>__END_AT</code></td></tr>
+    <tr><td>Use for</td><td>"current value only" dims</td><td>audited / point-in-time joins</td></tr>
+    <tr><td>Table growth</td><td>flat</td><td>grows (row per change per key)</td></tr>
+  </table>
+</section>
+
+<section id="sql">
+  <h2>2 · SQL — AUTO CDC INTO</h2>
+  <pre class="code"><span class="k">CREATE OR REFRESH STREAMING TABLE</span> dim_customers;
+
+<span class="k">CREATE FLOW</span> cdc_flow <span class="k">AS AUTO CDC INTO</span> dim_customers
+<span class="k">FROM</span> stream(customers_changes)
+<span class="k">KEYS</span> (customer_id)
+<span class="k">APPLY AS DELETE WHEN</span> operation = <span class="s">'DELETE'</span>      <span class="c">-- handle deletes explicitly</span>
+<span class="k">SEQUENCE BY</span> change_ts                            <span class="c">-- ordering; late events resequenced</span>
+<span class="k">COLUMNS</span> * <span class="k">EXCEPT</span> (operation)
+<span class="k">STORED AS SCD TYPE 2</span>                             <span class="c">-- or SCD TYPE 1 (overwrite)</span>
+<span class="k">TRACK HISTORY ON</span> * <span class="k">EXCEPT</span> (last_seen_ts);        <span class="c">-- skip versioning noisy cols</span></pre>
+</section>
+
+<section id="py">
+  <h2>3 · Python — create_auto_cdc_flow</h2>
+  <pre class="code"><span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+<span class="k">from</span> pyspark.sql.functions <span class="k">import</span> col, expr
+
+dp.create_streaming_table(<span class="s">"dim_customers"</span>)
+
+dp.create_auto_cdc_flow(                          <span class="c"># replaces legacy dlt.apply_changes</span>
+    target=<span class="s">"dim_customers"</span>,
+    source=<span class="s">"customers_changes"</span>,
+    keys=[<span class="s">"customer_id"</span>],
+    sequence_by=col(<span class="s">"change_ts"</span>),
+    stored_as_scd_type=<span class="f">2</span>,                          <span class="c"># 1 or 2</span>
+    apply_as_deletes=expr(<span class="s">"operation = 'DELETE'"</span>))</pre>
+  <p class="codecap">Sources that arrive as full snapshots (Python-only)</p>
+  <pre class="code">dp.create_auto_cdc_from_snapshot_flow(
+    target=<span class="s">"dim_customers"</span>, source=<span class="s">"daily_snapshot"</span>,
+    keys=[<span class="s">"customer_id"</span>], stored_as_scd_type=<span class="f">2</span>)</pre>
+</section>
+
+<section id="param">
+  <h2>4 · Parametrized pipelines</h2>
+  <p>Read <strong>pipeline configuration</strong> values (set in pipeline settings or an Asset Bundle) at runtime so one pipeline serves many environments.</p>
+  <pre class="code"><span class="c"># pipeline setting:  {"source_path": "/Volumes/main/raw/customers"}</span>
+src = spark.conf.get(<span class="s">"source_path"</span>)               <span class="c"># read the parameter</span>
+
+<span class="f">@dp.table</span>
+<span class="k">def</span> bronze_customers():
+    <span class="k">return</span> spark.readStream.format(<span class="s">"cloudFiles"</span>).option(<span class="s">"cloudFiles.format"</span>,<span class="s">"json"</span>).load(src)</pre>
+  <pre class="code" style="margin-top:8px"><span class="c">-- in SQL, reference a pipeline config value with ${...}</span>
+<span class="k">CREATE OR REFRESH STREAMING TABLE</span> bronze_customers
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> read_files(<span class="s">'${source_path}'</span>, format => <span class="s">'json'</span>);</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: pipeline modes -->
+<section id="modes">
+  <h2>5 · Pipeline modes &amp; monitoring — click each</h2>
+  <div class="modes">
+    <div class="md open" onclick="this.classList.toggle('open')"><div class="h"><span>Triggered (batch)</span><span>▸</span></div><div class="d">Runs to completion, then stops. Cheaper — compute spins down between runs. Use for scheduled batch updates.</div></div>
+    <div class="md" onclick="this.classList.toggle('open')"><div class="h"><span>Continuous (streaming)</span><span>▸</span></div><div class="d">Keeps running for low-latency updates. Higher cost (compute stays up). Use when freshness matters.</div></div>
+    <div class="md" onclick="this.classList.toggle('open')"><div class="h"><span>Monitoring</span><span>▸</span></div><div class="d">The pipeline UI shows the DAG, per-dataset row counts, expectation (data-quality) metrics, and an <strong>event log</strong> for debugging failures.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Hand-coding SCD2 MERGE logic (close old row, open new, handle late data) is notoriously error-prone — AUTO CDC does it declaratively.</li>
+    <li>"Implement SCD Type 2" is a classic interview task — on Databricks the answer is <strong>AUTO CDC … STORED AS SCD TYPE 2</strong>.</li>
+  </ul>
+  <div class="card usecase">🗺️ <strong>Real-world use case:</strong> a customers change feed builds <code>dim_customers</code> as <strong>SCD2</strong> — every address change is versioned with start/end timestamps, so historical orders join to the address current at the time.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> dimension tables from CDC feeds; SCD1 for "current only", SCD2 for audited history; <code>create_auto_cdc_from_snapshot_flow</code> to derive changes by comparing snapshots; parametrized pipelines for multi-env reuse.</li>
+    <li><strong>Edge cases:</strong> <code>SEQUENCE BY</code> must be sortable (else wrong winner on out-of-order data); deletes need <code>APPLY AS DELETE WHEN</code> or they're missed; <code>TRACK HISTORY ON *</code> versions on every column change — exclude noisy columns.</li>
+    <li><strong>Limitation:</strong> triggered vs continuous trades latency for cost; SCD2 tables grow over time; <code>FROM SNAPSHOT</code> is Python-only.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using <strong>SCD1</strong> when the business needs history → use SCD2.</li>
+    <li>❌ Bad/omitted <code>SEQUENCE BY</code> → late events overwrite newer data.</li>
+    <li>❌ Forgetting <code>APPLY AS DELETE WHEN</code> → deletes in the feed are ignored.</li>
+    <li>❌ Running <strong>continuous</strong> when <strong>triggered</strong> would do → wasted cost.</li>
+    <li>❌ Re-implementing SCD2 with manual MERGE, or using legacy <code>dlt.apply_changes</code> — prefer AUTO CDC / <code>create_auto_cdc_flow</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ldp/cdc" target="_blank" rel="noopener">AUTO CDC (replaces APPLY CHANGES)</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/pipeline-mode" target="_blank" rel="noopener">Pipeline modes</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/parameters" target="_blank" rel="noopener">Pipeline parameters</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/observability" target="_blank" rel="noopener">Monitor pipelines</a>
+  <p style="margin-top:10px">Topic 5.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — SCD1 vs SCD2 (scoped to #scd)
+let scdType='1', applied=false;
+const tEl=document.getElementById('scdtable');
+function renderSCD(){
+  document.querySelectorAll('#scd .sb').forEach(b=>b.classList.toggle('on',b.dataset.s===scdType));
+  let html='<table><tr><th>customer_id</th><th>city</th><th>__START_AT</th><th>__END_AT</th></tr>';
+  if(scdType==='1'){
+    const city = applied ? 'Denver' : 'Austin';
+    html+='<tr><td>7</td><td>'+city+'</td><td>—</td><td>—</td></tr>';
+    html+='</table><p class="hint" style="margin-top:8px">'+(applied?'Old value Austin is GONE — SCD1 overwrote it.':'Apply the change to overwrite.')+'</p>';
+  } else {
+    html+='<tr><td>7</td><td>Austin</td><td>2026-06-20</td><td>'+(applied?'2026-06-24':'<b>NULL (current)</b>')+'</td></tr>';
+    if(applied) html+='<tr><td>7</td><td>Denver</td><td>2026-06-24</td><td><b>NULL (current)</b></td></tr>';
+    html+='</table><p class="hint" style="margin-top:8px">'+(applied?'Austin row closed (__END_AT set); Denver added as new current row — full history kept.':'Apply the change to add a new versioned row.')+'</p>';
+  }
+  tEl.innerHTML=html;
+}
+function applyChange(){ applied=true; renderSCD(); }
+document.querySelectorAll('#scd .sb').forEach(b=>b.addEventListener('click',()=>{scdType=b.dataset.s; applied=false; renderSCD();}));
+renderSCD();
+// Diagram 2 (#modes) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

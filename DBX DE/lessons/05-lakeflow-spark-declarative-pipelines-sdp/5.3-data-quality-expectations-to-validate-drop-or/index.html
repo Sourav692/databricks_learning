@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data-Quality Expectations · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: action simulator */
+  .actbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .ab{font-family:"Spline Sans Mono",monospace;font-size:.8rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;transition:.15s}
+  .ab:hover{border-color:var(--teal)}.ab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .rows{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+  .row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;font-family:"Spline Sans Mono",monospace;font-size:.82rem;transition:.25s}
+  .row .v{margin-left:auto;font-size:.72rem}
+  .row.bad{border-color:#f0b3a8}
+  .row.dropped{opacity:.35;text-decoration:line-through}
+  .row.warned .v{color:var(--brand)}
+  .outcome{margin-top:10px;font-family:"Spline Sans Mono",monospace;font-size:.8rem;padding:10px 12px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+  /* diagram 2: syntax tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 5.3</p>
+  <h1>Data-Quality <em>Expectations</em></h1>
+  <p class="lede">Boolean rules on each row in an SDP pipeline. On violation: warn (keep + metric), drop (remove), or fail (abort) — plus the quarantine pattern. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">warn / drop / fail</span><span class="pill">expect_all (dict)</span><span class="pill">quarantine pattern</span><span class="pill">event-log metrics</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Expectations</strong> validate each record against a SQL boolean. Choose the action: <strong>warn</strong> (keep + record metric), <strong>drop</strong> (remove bad rows), <strong>fail</strong> (abort the update), or <strong>quarantine</strong> (route bad rows aside).</div>
+  <div class="card analogy" style="margin-top:10px">🛂 <strong>Analogy:</strong> expectations are a <strong>bouncer checking IDs</strong>. Warn = let them in but note it in the logbook; Drop = turn them away quietly; Fail = shut the whole door until the problem's sorted.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: action simulator -->
+<section id="sim">
+  <h2>Pick an action — see what happens to bad rows</h2>
+  <p class="hint">▸ rule: <code>amount &gt;= 0</code> · two rows violate it</p>
+  <div class="actbtns">
+    <button class="ab on" data-a="warn">WARN</button>
+    <button class="ab" data-a="drop">DROP</button>
+    <button class="ab" data-a="fail">FAIL</button>
+  </div>
+  <div class="rows" id="rows"></div>
+  <div class="outcome" id="outcome"></div>
+</section>
+
+<section id="actions">
+  <h2>1 · The three actions</h2>
+  <table>
+    <tr><th>Action</th><th>Bad row is…</th><th>Update</th><th>Metric?</th><th>Use for</th></tr>
+    <tr><td><strong>Warn</strong> (default)</td><td>kept &amp; written</td><td>continues</td><td>✅ yes</td><td>track quality without blocking</td></tr>
+    <tr><td><strong>Drop</strong></td><td>removed before write</td><td>continues</td><td>✅ yes</td><td>keep the table clean</td></tr>
+    <tr><td><strong>Fail</strong></td><td>—</td><td>aborts / rolls back</td><td>❌ no</td><td>truly critical invariants</td></tr>
+  </table>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: SQL vs Python syntax -->
+<section id="syntax">
+  <h2>2 · Syntax — click a language</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="sql">SQL</button>
+    <button class="tab" data-t="py">Python (current API)</button>
+  </div>
+  <div class="panel on" data-p="sql">
+    <pre class="code"><span class="k">CREATE OR REFRESH STREAMING TABLE</span> silver_orders (
+  <span class="k">CONSTRAINT</span> valid_id  <span class="k">EXPECT</span> (order_id <span class="k">IS NOT NULL</span>) <span class="k">ON VIOLATION DROP ROW</span>,    <span class="c">-- drop</span>
+  <span class="k">CONSTRAINT</span> valid_amt <span class="k">EXPECT</span> (amount &gt;= 0),                                  <span class="c">-- warn (default)</span>
+  <span class="k">CONSTRAINT</span> has_date  <span class="k">EXPECT</span> (order_date <span class="k">IS NOT NULL</span>) <span class="k">ON VIOLATION FAIL UPDATE</span> <span class="c">-- fail</span>
+) <span class="k">AS SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> bronze_orders;</pre>
+  </div>
+  <div class="panel" data-p="py">
+    <pre class="code"><span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+
+<span class="f">@dp.table</span>
+<span class="f">@dp.expect</span>(<span class="s">"valid_amt"</span>, <span class="s">"amount >= 0"</span>)                 <span class="c"># warn</span>
+<span class="f">@dp.expect_or_drop</span>(<span class="s">"valid_id"</span>, <span class="s">"order_id IS NOT NULL"</span>) <span class="c"># drop</span>
+<span class="f">@dp.expect_or_fail</span>(<span class="s">"has_date"</span>, <span class="s">"order_date IS NOT NULL"</span>)<span class="c"># fail</span>
+<span class="k">def</span> silver_orders():
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_orders"</span>)
+
+<span class="c"># group many with a dict: @dp.expect_all / _all_or_drop / _all_or_fail</span>
+RULES = {<span class="s">"valid_id"</span>: <span class="s">"order_id IS NOT NULL"</span>, <span class="s">"valid_amt"</span>: <span class="s">"amount >= 0"</span>}
+<span class="f">@dp.table</span>
+<span class="f">@dp.expect_all_or_drop</span>(RULES)               <span class="c"># drop a row failing ANY rule</span>
+<span class="k">def</span> silver_orders2():
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_orders"</span>)</pre>
+  </div>
+  <p style="margin-top:8px">Conditions are <strong>SQL booleans</strong> — no Python UDFs, external calls, or subqueries referencing other tables. <em>(Legacy <code>@dlt.expect*</code> still works; prefer <code>pyspark.pipelines</code>.)</em></p>
+</section>
+
+<section id="quarantine">
+  <h2>3 · The quarantine pattern — keep bad rows</h2>
+  <p>Drop discards bad rows; fail halts the pipeline. To <strong>retain</strong> suspect rows, split the stream on the rules: clean → silver, bad → quarantine.</p>
+  <pre class="code"><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> expr
+RULES = {<span class="s">"valid_id"</span>: <span class="s">"order_id IS NOT NULL"</span>, <span class="s">"valid_amt"</span>: <span class="s">"amount >= 0"</span>}
+valid = <span class="s">" AND "</span>.join(RULES.values())
+
+<span class="f">@dp.table</span>
+<span class="k">def</span> silver_orders():                      <span class="c"># clean rows only</span>
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_orders"</span>).filter(expr(valid))
+
+<span class="f">@dp.table</span>
+<span class="k">def</span> quarantined_orders():                 <span class="c"># bad rows kept for review/replay</span>
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_orders"</span>).filter(expr(f<span class="s">"NOT({valid})"</span>))</pre>
+</section>
+
+<section id="metrics">
+  <h2>4 · Metrics &amp; monitoring</h2>
+  <ul>
+    <li><strong>Warn</strong> and <strong>drop</strong> emit per-expectation metrics (failing-row counts) to the pipeline UI and the <strong>event log</strong> — trend quality over time or alert on spikes.</li>
+    <li><strong>Fail</strong> aborts the update, so <strong>no metric is recorded</strong> for that run — you see the failure, not a count.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Bad data silently flowing to gold breaks dashboards &amp; models — expectations catch it at the pipeline boundary with visible metrics.</li>
+    <li>"How do you enforce data quality in a pipeline?" → <strong>Expectations</strong> (warn/drop/fail/quarantine).</li>
+  </ul>
+  <div class="card usecase">🧾 <strong>Real-world use case:</strong> an orders pipeline <strong>drops</strong> rows with null <code>order_id</code>, <strong>warns</strong> on <code>amount &lt; 0</code> (tracked so analysts notice), and <strong>fails</strong> the update if a critical reference table is empty.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> validate ingest at bronze/silver; track quality trends (warn metrics); hard-stop critical loads (fail); quarantine suspect rows.</li>
+    <li><strong>Edge cases:</strong> <strong>fail</strong> rolls back the whole update (use sparingly); <strong>quarantine</strong> is a pattern (split the stream), not a keyword; a row failing <strong>any</strong> rule in an <code>expect_all_or_drop/_or_fail</code> dict triggers the action.</li>
+    <li><strong>Limitation:</strong> SQL-only boolean logic — no UDFs/external calls/subqueries referencing other tables; applies within SDP pipelines only. Warn &amp; drop produce metrics; fail does not (it aborts).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using <strong>fail</strong> for non-critical rules → one bad row halts the pipeline.</li>
+    <li>❌ Expecting <strong>drop</strong> to keep bad rows somewhere — it discards them; use the quarantine pattern.</li>
+    <li>❌ Calling a Python UDF/subquery in an expectation — only SQL booleans.</li>
+    <li>❌ Forgetting <strong>warn</strong> still writes the bad rows (only records a metric).</li>
+    <li>❌ Using legacy <code>@dlt.expect*</code> in new code — prefer <code>from pyspark import pipelines</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ldp/expectations" target="_blank" rel="noopener">Pipeline expectations</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/developer/python-ref" target="_blank" rel="noopener">Python reference (pyspark.pipelines)</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/" target="_blank" rel="noopener">Declarative Pipelines (SDP)</a>
+  <p style="margin-top:10px">Topic 5.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — action simulator (scoped to #sim)
+const DATA=[{id:1,amount:100,ok:true},{id:2,amount:-5,ok:false},{id:3,amount:40,ok:true},{id:4,amount:-20,ok:false}];
+const rowsEl=document.getElementById('rows'), outEl=document.getElementById('outcome');
+function renderSim(action){
+  document.querySelectorAll('#sim .ab').forEach(b=>b.classList.toggle('on',b.dataset.a===action));
+  rowsEl.innerHTML='';
+  if(action==='fail'){
+    DATA.forEach(r=>{
+      const d=document.createElement('div'); d.className='row'+(r.ok?'':' bad');
+      d.innerHTML='id='+r.id+' amount='+r.amount+'<span class="v">'+(r.ok?'ok':'✗ violates')+'</span>';
+      rowsEl.appendChild(d);
+    });
+    outEl.innerHTML='⛔ <b>FAIL</b>: a violating row aborts the update — transaction rolls back, table NOT updated until fixed. (No metric.)';
+    return;
+  }
+  DATA.forEach(r=>{
+    const d=document.createElement('div');
+    let cls='row';
+    if(!r.ok && action==='drop') cls+=' bad dropped';
+    else if(!r.ok && action==='warn') cls+=' bad warned';
+    d.className=cls;
+    const tag = r.ok?'ok':(action==='drop'?'dropped':'kept + flagged');
+    d.innerHTML='id='+r.id+' amount='+r.amount+'<span class="v">'+(r.ok?'ok':'✗ '+tag)+'</span>';
+    rowsEl.appendChild(d);
+  });
+  if(action==='warn') outEl.innerHTML='⚠️ <b>WARN</b>: bad rows are <b>kept</b> and written, but a metric records 2 violations for monitoring.';
+  else outEl.innerHTML='🧹 <b>DROP</b>: 2 bad rows removed before writing; 2 clean rows written. Metric records the dropped count.';
+}
+document.querySelectorAll('#sim .ab').forEach(b=>b.addEventListener('click',()=>renderSim(b.dataset.a)));
+renderSim('warn');
+// Diagram 2 — syntax tabs (scoped to #syntax)
+document.querySelectorAll('#syntax .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#syntax .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#syntax .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

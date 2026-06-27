@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Sharing · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: zero-copy flow */
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0}
+  .box{border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;text-align:center;min-width:130px}
+  .box .s{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#8a939c;margin-top:3px}
+  .box.provider{border-color:var(--teal)}
+  .ar{color:var(--brand);font-family:"Spline Sans Mono",monospace;font-size:.8rem;text-align:center}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer;margin-top:6px}
+  .btn:hover{background:var(--brand);color:#fff}
+  .rstat{font-family:"Spline Sans Mono",monospace;font-size:.78rem;margin-top:8px}
+  /* diagram 2: d2d vs open */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 9.1</p>
+  <h1><em>Delta Sharing</em></h1>
+  <p class="lede">An open protocol for sharing live data with other organizations — zero-copy, read-only, governed, and revocable. Share to Databricks (D2D) or any client (open sharing). This deep dive walks both sides with the code.</p>
+  <div class="pills"><span class="pill">zero-copy</span><span class="pill">D2D vs open</span><span class="pill">deltaSharing reader</span><span class="pill">Marketplace · Clean Rooms</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Delta Sharing</strong> gives recipients <strong>read-only, live access</strong> to your data <strong>without copying it</strong>. <strong>D2D</strong> shares to another Databricks org (no tokens); <strong>open sharing</strong> shares tabular data to any client via a token profile. Objects: provider · share · recipient.</div>
+  <div class="card analogy" style="margin-top:10px">📖 <strong>Analogy:</strong> a <strong>library card for your data</strong>, not photocopies. You don't mail copies of the book (no data movement) — you issue a read-only card (the recipient) to read the live book where it sits, and you can cancel the card anytime.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: zero-copy + revoke -->
+<section id="zc">
+  <h2>Zero-copy sharing — and instant revoke</h2>
+  <p class="hint">▸ no data moves; access is a grant you can pull back</p>
+  <div class="flow">
+    <div class="box provider">Provider<div class="s">owns the data (stays here)</div></div>
+    <div class="ar">— share (no copy) →</div>
+    <div class="box" id="recipient">Recipient<div class="s" id="rstate">read-only live access</div></div>
+  </div>
+  <button class="btn" onclick="toggleAccess()">Revoke / re-grant access</button>
+  <div class="rstat" id="rstat">Access granted — recipient reads live data in place.</div>
+</section>
+
+<section id="provider">
+  <h2>1 · Provider side — build &amp; grant a share</h2>
+  <pre class="code"><span class="k">CREATE SHARE</span> sales_share <span class="k">COMMENT</span> <span class="s">'Curated sales for partners'</span>;
+<span class="k">ALTER SHARE</span> sales_share <span class="k">ADD TABLE</span> prod.sales.orders;
+
+<span class="c">-- D2D recipient: bind to the partner's Databricks sharing identifier (no tokens)</span>
+<span class="k">CREATE RECIPIENT</span> partner_db <span class="k">USING ID</span> <span class="s">'aws:us-east-1:&lt;sharing-identifier&gt;'</span>;
+<span class="c">-- Open recipient: omit USING ID → Databricks generates an activation link/token</span>
+<span class="k">CREATE RECIPIENT</span> partner_bi;
+
+<span class="k">GRANT SELECT</span> <span class="k">ON SHARE</span> sales_share <span class="k">TO RECIPIENT</span> partner_db;
+<span class="k">GRANT SELECT</span> <span class="k">ON SHARE</span> sales_share <span class="k">TO RECIPIENT</span> partner_bi;</pre>
+</section>
+
+<section id="recipientside">
+  <h2>2 · Recipient side — consume the share</h2>
+  <p class="codecap">D2D — appears as a read-only catalog</p>
+  <pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> partner_inbound.sales.orders;   <span class="c">-- query like any UC table</span></pre>
+  <p class="codecap">Open — credential profile + deltaSharing reader (any client)</p>
+  <pre class="code">df = (spark.read.format(<span class="s">"deltaSharing"</span>)
+        .load(<span class="s">"/path/to/config.share#sales_share.sales.orders"</span>))   <span class="c"># profile#share.schema.table</span></pre>
+</section>
+
+<!-- diagram 2: d2d vs open -->
+<section id="cmp">
+  <h2>3 · D2D vs Open sharing — click each</h2>
+  <div class="switch">
+    <div class="opt on" data-o="d2d">Databricks-to-Databricks</div>
+    <div class="opt" data-o="open">Open sharing</div>
+  </div>
+  <div class="view on" data-v="d2d"><div class="card"><strong>D2D</strong> — recipient is another UC-enabled Databricks account.
+    <ul><li>No token management — identity flows through the platform</li><li>Can share tables, notebooks, volumes, models</li><li>Consumed as a read-only catalog; use when the partner is on Databricks</li></ul></div></div>
+  <div class="view" data-v="open"><div class="card"><strong>Open sharing</strong> — recipient is any client (pandas, Power BI, Spark…).
+    <ul><li>Auth via bearer token / OIDC profile</li><li>Tabular data, read with the <code>deltaSharing</code> connector</li><li>Use when the partner is NOT on Databricks</li></ul></div></div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>D2D</th><th>Open</th></tr>
+    <tr><td>Recipient</td><td>Databricks org</td><td class="win">Any client</td></tr>
+    <tr><td>Auth</td><td class="win">No tokens</td><td>Bearer token / OIDC</td></tr>
+    <tr><td>Consumed as</td><td>read-only catalog</td><td><code>deltaSharing</code> reader</td></tr>
+    <tr><td>Shareable</td><td class="win">Tables + notebooks/volumes/models</td><td>Tabular data</td></tr>
+  </table>
+</section>
+
+<section id="eco">
+  <h2>4 · Governance &amp; ecosystem</h2>
+  <ul>
+    <li><strong>Fine-grained limits:</strong> a share grants whole tables — layer <strong>dynamic views</strong> (8.3) for row/column restrictions before sharing.</li>
+    <li><strong>Revoke</strong> instantly (REVOKE / drop recipient); rotate open-sharing <strong>tokens</strong>.</li>
+    <li><strong>Databricks Marketplace</strong> is built on Delta Sharing — publish/consume data products. <strong>Clean Rooms</strong> let two parties run joint analysis <strong>without either seeing the other's raw rows</strong>.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Traditional sharing = FTP/export copies → stale, ungoverned, costly. Delta Sharing is <strong>zero-copy, live, governed, revocable</strong>.</li>
+    <li>"Share with a non-Databricks partner?" → open sharing; "with another Databricks org?" → D2D.</li>
+  </ul>
+  <div class="card usecase">🤝 <strong>Real-world use case:</strong> a provider shares a curated <code>sales</code> table to a partner's BI tool via <strong>open sharing</strong> and to a sister BU's workspace via <strong>D2D</strong> — both read the same live data, no copies, revocable instantly.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> B2B exchange, cross-region/cloud sharing, internal cross-org sharing, distributing datasets to non-Databricks tools, Marketplace publishing, Clean Rooms collaboration.</li>
+    <li><strong>Edge cases:</strong> open-sharing <strong>tokens</strong> must be rotated/secured; row/column limits need <strong>dynamic views</strong>; the D2D sharing identifier must be exchanged correctly.</li>
+    <li><strong>Limitation:</strong> recipients are <strong>read-only</strong>; notebooks/volumes/models are <strong>D2D only</strong>; it's sharing, not <strong>Lakehouse Federation</strong> (querying external sources — 9.2).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Thinking it <strong>copies</strong> data — it's zero-copy, live access in place.</li>
+    <li>❌ Using <strong>open sharing</strong> for a Databricks recipient when D2D (no tokens) is simpler.</li>
+    <li>❌ Leaking / never-rotating open-sharing tokens.</li>
+    <li>❌ Expecting fine-grained row/column control from the share alone — add dynamic views.</li>
+    <li>❌ Confusing Delta Sharing (share out) with <strong>Lakehouse Federation</strong> (query external in) — opposite directions.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta-sharing/" target="_blank" rel="noopener">Delta Sharing</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta-sharing/share-data-databricks" target="_blank" rel="noopener">Share data (D2D)</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta-sharing/share-data-open" target="_blank" rel="noopener">Open sharing</a> ·
+  <a href="https://docs.databricks.com/aws/en/marketplace/" target="_blank" rel="noopener">Marketplace</a> ·
+  <a href="https://docs.databricks.com/aws/en/clean-rooms/" target="_blank" rel="noopener">Clean Rooms</a>
+  <p style="margin-top:10px">Topic 9.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — zero-copy + revoke (scoped to #zc)
+let granted=true;
+const rec=document.getElementById('recipient'), rstate=document.getElementById('rstate'), rstat=document.getElementById('rstat');
+function toggleAccess(){
+  granted=!granted;
+  if(granted){ rec.style.opacity='1'; rstate.textContent='read-only live access'; rstat.textContent='Access granted — recipient reads live data in place.'; }
+  else { rec.style.opacity='.35'; rstate.textContent='access revoked'; rstat.textContent='⛔ Access revoked instantly — no data was ever copied, so nothing lingers.'; }
+}
+// Diagram 2 — d2d vs open (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+</script>
+</body>
+</html>

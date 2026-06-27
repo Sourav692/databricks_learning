@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Managed vs External Tables · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,5vw,3rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: toggle managed/external */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}
+  .opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  .drop{margin-top:10px;font-family:"Spline Sans Mono",monospace;font-size:.82rem;padding:10px 12px;border-radius:8px}
+  .drop.bad{background:#fdecea;border:1px solid #f0b3a8;color:#9a2b1a}
+  .drop.ok{background:#eef9f1;border:1px solid #b6e0c2;color:#1f6b3a}
+  /* diagram 2: DROP simulator */
+  .sim{display:flex;flex-direction:column;gap:10px}
+  .sim .row{display:flex;gap:10px;flex-wrap:wrap}
+  .box{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;text-align:center}
+  .box .lbl{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:#8a939c}
+  .box .state{font-weight:600;margin-top:4px}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.8rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer}
+  .btn:hover{background:var(--brand);color:#fff}
+  .gone{opacity:.4;text-decoration:line-through}
+  /* diagram 3: properties accordion */
+  .acc{display:flex;flex-direction:column;gap:8px}
+  .ai{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .ai:hover{border-color:var(--brand-2)}.ai.open{border-color:var(--teal)}
+  .ai .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .ai .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .ai.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 2.3</p>
+  <h1>Managed vs External Tables <em>(& properties)</em></h1>
+  <p class="lede">The difference is who owns the data files. Managed = Unity Catalog owns storage, lifecycle &amp; optimization (DROP deletes data). External = you own the files (DROP keeps them). Plus the table/column properties that make a table validated and discoverable.</p>
+  <div class="pills"><span class="pill">Managed = default</span><span class="pill">DROP differs</span><span class="pill">Predictive Optimization</span><span class="pill">TBLPROPERTIES</span><span class="pill">constraints</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Managed</strong> tables let Unity Catalog own storage, optimization, and lifecycle — dropping one <strong>deletes the data</strong>. <strong>External</strong> tables store files at a location you specify — UC governs access only, and dropping one <strong>keeps the files</strong>. Managed is the default &amp; recommended.</div>
+  <div class="card analogy" style="margin-top:10px">🏨 <strong>Analogy:</strong> managed = a <strong>hotel room</strong> (cleaned &amp; cleared at checkout); external = a <strong>rented apartment with your own lock</strong> — the landlord (UC) controls who enters, but your furniture (data) stays when the lease ends.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: managed/external toggle -->
+<section id="cmp">
+  <h2>Compare — click a type</h2>
+  <p class="hint">▸ toggle managed / external</p>
+  <div class="switch">
+    <div class="opt on" data-o="m">Managed</div>
+    <div class="opt" data-o="e">External</div>
+  </div>
+  <div class="view on" data-v="m">
+    <div class="card"><strong>Managed table</strong> — <code>CREATE TABLE x (...)</code>, no location.
+      <ul><li>UC picks storage + runs Predictive Optimization (auto OPTIMIZE/VACUUM/ANALYZE)</li><li>UC controls the file lifecycle</li><li>Best for almost everything you build in Databricks</li></ul></div>
+    <pre class="code"><span class="k">CREATE TABLE</span> main.sales.orders (order_id <span class="k">BIGINT</span>, amount <span class="k">DECIMAL</span>(10,2));
+<span class="k">DROP TABLE</span> main.sales.orders;   <span class="c">-- ⚠️ data files DELETED</span></pre>
+    <div class="drop bad">DROP TABLE x → ⚠️ data files DELETED (UNDROP within 7 days)</div>
+  </div>
+  <div class="view" data-v="e">
+    <div class="card"><strong>External table</strong> — <code>CREATE TABLE x (...) LOCATION 's3://...'</code>.
+      <ul><li>You own file layout &amp; cleanup; UC governs access only</li><li>Path must sit under a UC external location; formats: Delta, Parquet, CSV, JSON, Avro, ORC</li><li>No Predictive Optimization — you run maintenance</li></ul></div>
+    <pre class="code"><span class="k">CREATE TABLE</span> main.sales.orders_ext (order_id <span class="k">BIGINT</span>)
+<span class="k">LOCATION</span> <span class="s">'s3://acme-lake/sales/orders/'</span>;
+<span class="k">DROP TABLE</span> main.sales.orders_ext;  <span class="c">-- ✅ metadata only; files REMAIN</span></pre>
+    <div class="drop ok">DROP TABLE x → ✅ metadata removed, data files REMAIN</div>
+  </div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: DROP simulator -->
+<section id="sim">
+  <h2>DROP simulator — see what survives</h2>
+  <p class="hint">▸ click "Run DROP" on each</p>
+  <div class="sim">
+    <div class="row">
+      <div class="box"><div class="lbl">MANAGED table</div><div class="state" id="m-meta">metadata: present</div><div class="state" id="m-data">data files: present</div></div>
+      <button class="btn" onclick="dropManaged()">Run DROP on managed</button>
+    </div>
+    <div class="row">
+      <div class="box"><div class="lbl">EXTERNAL table</div><div class="state" id="e-meta">metadata: present</div><div class="state" id="e-data">data files: present</div></div>
+      <button class="btn" onclick="dropExternal()">Run DROP on external</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== DEEP DIVE ===================== -->
+<section id="create">
+  <h2>1 · Creating managed &amp; external tables</h2>
+  <p>The presence of <code>LOCATION</code> (SQL) or <code>.option("path", …)</code> (PySpark) is the only switch between managed and external. UC recovers a dropped <em>managed</em> table for 7 days via <code>UNDROP</code> (privileges &amp; properties restored; PK/FK not).</p>
+  <p class="codecap">Managed — SQL & PySpark</p>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.sales.orders (order_id <span class="k">BIGINT</span>, amount <span class="k">DECIMAL</span>(10,2), order_ts <span class="k">TIMESTAMP</span>);
+<span class="k">UNDROP TABLE</span> main.sales.orders;   <span class="c">-- recover within the 7-day window</span></pre>
+  <pre class="code" style="margin-top:8px">(df.write.format(<span class="s">"delta"</span>).saveAsTable(<span class="s">"main.sales.orders"</span>))   <span class="c"># no path → managed</span></pre>
+  <p class="codecap">External — SQL & PySpark</p>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.sales.orders_ext (order_id <span class="k">BIGINT</span>, amount <span class="k">DECIMAL</span>(10,2))
+<span class="k">LOCATION</span> <span class="s">'s3://acme-lake/sales/orders/'</span>;   <span class="c">-- under a UC external location</span></pre>
+  <pre class="code" style="margin-top:8px">(df.write.format(<span class="s">"delta"</span>).option(<span class="s">"path"</span>, <span class="s">"s3://acme-lake/sales/orders/"</span>)
+   .saveAsTable(<span class="s">"main.sales.orders_ext"</span>))   <span class="c"># path → external</span></pre>
+</section>
+
+<section>
+  <h2>2 · Why managed wins by default — Predictive Optimization</h2>
+  <p>On managed UC tables, Databricks automatically identifies and runs <code>OPTIMIZE</code>, <code>VACUUM</code>, and <code>ANALYZE</code> — no schedules to maintain. It's enabled by default for newer accounts and <strong>does not run on external tables</strong>, which is the single biggest reason to prefer managed.</p>
+  <div class="card usecase">🗂️ <strong>Real-world use case:</strong> use <strong>managed</strong> for everything built inside Databricks; reach for <strong>external</strong> only when files are shared with other engines/tools or already live in a fixed cloud location you must keep.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 3: properties accordion -->
+<section id="props">
+  <h2>3 · Table &amp; column properties — click each</h2>
+  <p class="hint">▸ expand each property type</p>
+  <div class="acc">
+    <div class="ai open" onclick="this.classList.toggle('open')"><div class="h"><span>TBLPROPERTIES (Delta flags)</span><span>▸</span></div><div class="d">Key-value settings: Delta feature flags + retention horizons + free-form business tags.
+      <pre class="code" style="margin-top:8px"><span class="k">ALTER TABLE</span> main.sales.orders <span class="k">SET TBLPROPERTIES</span> (
+  <span class="s">'delta.enableDeletionVectors'</span> = <span class="s">'true'</span>,        <span class="c">-- merge-on-read</span>
+  <span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'interval 7 days'</span>,
+  <span class="s">'quality'</span> = <span class="s">'gold'</span>);</pre></div></div>
+    <div class="ai" onclick="this.classList.toggle('open')"><div class="h"><span>Constraints (NOT NULL / CHECK)</span><span>▸</span></div><div class="d">Reject bad rows at write time. NOT NULL inline; CHECK via ALTER TABLE.
+      <pre class="code" style="margin-top:8px">amount <span class="k">DECIMAL</span>(10,2) <span class="k">NOT NULL</span>
+<span class="c">-- and:</span>
+<span class="k">ALTER TABLE</span> main.sales.orders <span class="k">ADD CONSTRAINT</span> amount_positive <span class="k">CHECK</span> (amount &gt;= 0);</pre></div></div>
+    <div class="ai" onclick="this.classList.toggle('open')"><div class="h"><span>Generated &amp; identity columns</span><span>▸</span></div><div class="d">Auto-computed values and surrogate keys.
+      <pre class="code" style="margin-top:8px">order_id   <span class="k">BIGINT</span> <span class="k">GENERATED ALWAYS AS IDENTITY</span>,
+order_date <span class="k">DATE</span>   <span class="k">GENERATED ALWAYS AS</span> (<span class="k">CAST</span>(order_ts <span class="k">AS</span> <span class="k">DATE</span>))</pre></div></div>
+    <div class="ai" onclick="this.classList.toggle('open')"><div class="h"><span>Comments &amp; tags (discovery)</span><span>▸</span></div><div class="d">Power Catalog search &amp; governance. (Column masking/row filters → Topic 8.)
+      <pre class="code" style="margin-top:8px"><span class="k">COMMENT ON TABLE</span> main.sales.orders <span class="k">IS</span> <span class="s">'Curated order facts (gold).'</span>;
+<span class="k">ALTER TABLE</span> main.sales.orders <span class="k">SET TAGS</span> (<span class="s">'domain'</span> = <span class="s">'sales'</span>, <span class="s">'pii'</span> = <span class="s">'false'</span>);</pre></div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Managed vs external — the decision</h2>
+  <table>
+    <tr><th></th><th>Managed</th><th>External</th></tr>
+    <tr><td>Storage location</td><td class="win">UC-managed</td><td>You specify (LOCATION)</td></tr>
+    <tr><td>Lifecycle / optimization</td><td class="win">Unity Catalog (Predictive Optimization)</td><td>You / external system</td></tr>
+    <tr><td><strong>DROP deletes data?</strong></td><td>Yes ⚠️</td><td class="win">No (metadata only)</td></tr>
+    <tr><td>Governance (access, lineage)</td><td>UC</td><td>UC</td></tr>
+    <tr><td>Best for</td><td class="win">Default — most tables</td><td>Shared / fixed-location files</td></tr>
+  </table>
+  <div class="card" style="margin-top:12px"><strong>Decision rule:</strong> default to <strong>managed</strong>; choose <strong>external</strong> only when another engine reads the same files or the data must live at a fixed external path.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> managed = default for new tables; external = shared/fixed-location files; properties (<code>TBLPROPERTIES</code>, constraints, generated/identity columns, comments, tags) = Delta features + column quality + documentation/discovery.</li>
+    <li><strong>Edge cases:</strong> dropping a managed table is destructive (recoverable only via UNDROP within ~7 days; PK/FK not restored). Two external tables on the same path → overlapping governance. Adding NOT NULL/CHECK validates existing data and fails if rows violate it.</li>
+    <li><strong>Limitations:</strong> external tables miss Predictive Optimization — you run OPTIMIZE/VACUUM yourself; some newer features assume managed tables; you can't INSERT arbitrary values into a GENERATED ALWAYS identity column.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Dropping a <strong>managed</strong> table expecting files to survive — they don't.</li>
+    <li>❌ Defaulting to <strong>external</strong> "to be safe" — you lose Predictive Optimization &amp; add ops burden. Prefer managed.</li>
+    <li>❌ Hand-deleting files under an external table — the metastore still expects them; queries break.</li>
+    <li>❌ Expecting an inline <code>CHECK</code> in CREATE TABLE — add it with <code>ALTER TABLE ... ADD CONSTRAINT</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/tables/managed" target="_blank" rel="noopener">Managed tables</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/managed-versus-external" target="_blank" rel="noopener">Managed vs external</a> ·
+  <a href="https://docs.databricks.com/aws/en/tables/external" target="_blank" rel="noopener">External tables</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-undrop-table" target="_blank" rel="noopener">UNDROP TABLE</a> ·
+  <a href="https://docs.databricks.com/aws/en/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive Optimization</a>
+  <p style="margin-top:10px">Topic 2.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — managed/external toggle (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+// Diagram 2 — DROP simulator (scoped to #sim)
+function dropManaged(){
+  const meta=document.getElementById('m-meta'), data=document.getElementById('m-data');
+  meta.textContent='metadata: removed'; meta.classList.add('gone');
+  data.textContent='data files: DELETED'; data.classList.add('gone');
+}
+function dropExternal(){
+  const meta=document.getElementById('e-meta'), data=document.getElementById('e-data');
+  meta.textContent='metadata: removed'; meta.classList.add('gone');
+  data.textContent='data files: REMAIN ✅';
+}
+// Diagram 3 (#props) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Incremental Load with COPY INTO · Databricks Data Engineering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;
+    --paper:#f5f1ea;
+    --paper-2:#ece5d8;
+    --brand:#c2410c;       /* burnt orange */
+    --brand-2:#ea7c3c;
+    --teal:#16707f;
+    --teal-2:#2a98a8;
+    --line:#dccfb9;
+    --green:#2f8f4e;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.65;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal);text-decoration:none}
+  a:hover{text-decoration:underline}
+
+  /* header */
+  header{padding:74px 0 24px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brand);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.4rem,6.3vw,4.2rem);line-height:1.0;margin:0 0 16px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.18rem;max-width:64ch;color:#3a4654}
+  .meta{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#48555f}
+  .pill b{color:var(--brand);font-weight:600}
+
+  /* sections */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.9rem;margin:0 0 6px;letter-spacing:-.01em}
+  h2 .num{font-family:"Spline Sans Mono",monospace;font-size:.95rem;color:var(--brand);font-weight:500;margin-right:10px;vertical-align:middle}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.25rem;margin:22px 0 6px}
+  p{margin:10px 0;color:#28323d}
+  .muted{color:#5c6770}
+
+  .callout{background:#fff;border:1px solid var(--line);border-left:4px solid var(--teal);border-radius:12px;padding:14px 18px;margin:18px 0;box-shadow:var(--shadow)}
+  .callout.warn{border-left-color:var(--brand)}
+  .callout b{color:var(--ink)}
+
+  /* code */
+  pre{background:#0f1722;color:#e8eef6;border-radius:14px;padding:18px 20px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.86rem;line-height:1.6;box-shadow:var(--shadow);margin:16px 0}
+  pre .k{color:#ff9d6b}      /* keyword */
+  pre .s{color:#8fd6a0}      /* string */
+  pre .c{color:#7c8a99;font-style:italic} /* comment */
+  pre .o{color:#9ad0ff}      /* option */
+  p code{background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px;font-size:.85em}
+
+  /* table */
+  table{width:100%;border-collapse:collapse;margin:16px 0;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);font-size:.92rem;vertical-align:top}
+  th{background:var(--paper-2);font-weight:600;font-size:.82rem;letter-spacing:.02em}
+  tr:last-child td{border-bottom:none}
+  td code{font-size:.82rem;background:var(--paper-2);padding:1px 5px;border-radius:5px}
+
+  /* ---- interactive simulator ---- */
+  .sim{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:22px;box-shadow:var(--shadow);margin:18px 0}
+  .sim-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:6px}
+  .sim-head .title{font-family:"Fraunces",serif;font-weight:600;font-size:1.15rem}
+  .runbadge{font-family:"Spline Sans Mono",monospace;font-size:.78rem;background:var(--ink);color:#fff;border-radius:999px;padding:4px 12px}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:14px 0 6px}
+  button.btn{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.9rem;border:none;border-radius:10px;padding:10px 16px;cursor:pointer;transition:transform .08s ease,filter .15s ease}
+  button.btn:active{transform:translateY(1px)}
+  .btn-run{background:var(--brand);color:#fff}
+  .btn-run:hover{filter:brightness(1.06)}
+  .btn-add{background:var(--teal);color:#fff}
+  .btn-add:hover{filter:brightness(1.06)}
+  .btn-reset{background:var(--paper-2);color:#48555f;border:1px solid var(--line)}
+  .toggle{display:inline-flex;align-items:center;gap:7px;font-family:"Spline Sans Mono",monospace;font-size:.82rem;color:#48555f;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--brand);width:15px;height:15px}
+
+  .panels{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:14px;margin-top:14px}
+  @media(max-width:760px){.panels{grid-template-columns:1fr}}
+  .panel{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .panel h4{margin:0 0 10px;font-size:.78rem;letter-spacing:.12em;text-transform:uppercase;color:#7a868f;font-family:"Spline Sans Mono",monospace}
+  .files{display:flex;flex-direction:column;gap:8px;min-height:40px}
+  .file{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid var(--line);border-radius:9px;padding:8px 11px;font-family:"Spline Sans Mono",monospace;font-size:.8rem;transition:all .35s ease}
+  .file .nm{display:flex;align-items:center;gap:8px}
+  .file .dot{width:9px;height:9px;border-radius:50%;background:var(--brand-2);flex:none}
+  .file.loaded{opacity:.6}
+  .file.loaded .dot{background:var(--green)}
+  .file .tag{font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:#94a0a8}
+  .file.just{box-shadow:0 0 0 3px rgba(47,143,78,.35);opacity:1;border-color:var(--green)}
+  .file.skip{box-shadow:0 0 0 3px rgba(194,65,12,.18)}
+  .rows{font-size:.7rem}
+  .log{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#3a4654;display:flex;flex-direction:column;gap:6px}
+  .log .row{display:flex;gap:8px}
+  .log .row .c{color:var(--green)}
+  .count{font-family:"Fraunces",serif;font-weight:900;font-size:3rem;line-height:1;color:var(--teal)}
+  .count small{display:block;font-family:"Spline Sans Mono",monospace;font-size:.72rem;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:#7a868f;margin-top:6px}
+  .narrate{margin-top:14px;background:var(--ink);color:#e8eef6;border-radius:10px;padding:12px 15px;font-family:"Spline Sans Mono",monospace;font-size:.82rem;min-height:20px}
+  .narrate b{color:var(--brand-2)}
+
+  footer{padding:34px 0 70px;border-top:1px solid var(--line);color:#6b7680;font-size:.85rem}
+  footer a{color:var(--teal)}
+  .src{font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <p class="eyebrow">Databricks Data Engineering · Ingestion</p>
+    <h1>Incremental Load<br>with <em>COPY INTO</em></h1>
+    <p class="lede">A SQL command that loads files from cloud storage into a Delta table — and remembers what it already loaded, so re-runs pick up <em>only the new files</em>.</p>
+    <div class="meta">
+      <span class="pill"><b>Idempotent</b> &nbsp;re-runnable</span>
+      <span class="pill"><b>Delta</b> &nbsp;target table</span>
+      <span class="pill"><b>SQL</b> &nbsp;native</span>
+      <span class="pill">Docs updated <b>2026-05-08</b></span>
+    </div>
+  </header>
+
+  <!-- ============ THE IDEA ============ -->
+  <section>
+    <h2><span class="num">01</span>The plain-English idea</h2>
+    <p><code>COPY INTO</code> loads files from a folder in cloud storage into a Delta table. Its superpower: it <b>keeps a logbook of which files it has already loaded</b>. Run it again and it skips the old files, ingesting only what's new.</p>
+    <p>Picture a mailroom clerk with a logbook. Each time letters (files) arrive, the clerk checks the book, delivers only the unlogged letters, and updates the book. Run it every morning and no letter is ever delivered twice. That repeatable, no-duplicates behavior is what we call an <b>incremental load</b>.</p>
+    <div class="callout">
+      <b>Idempotent</b> means running the command many times has the same result as running it once. Already-loaded files are skipped — even if the file was modified after it was first loaded.
+    </div>
+  </section>
+
+  <!-- ============ SIMULATOR ============ -->
+  <section>
+    <h2><span class="num">02</span>Try it — the idempotent load loop</h2>
+    <p class="muted">Add files to the source folder, then run <code>COPY INTO</code>. Watch it load only the new files and skip the rest. Toggle <code>force=true</code> to reload everything.</p>
+
+    <div class="sim" id="sim">
+      <div class="sim-head">
+        <span class="title">COPY INTO simulator</span>
+        <span class="runbadge" id="runBadge">runs: 0</span>
+      </div>
+
+      <div class="controls">
+        <button class="btn btn-add" id="addBtn">+ New file lands in source</button>
+        <button class="btn btn-run" id="runBtn">▶ Run COPY INTO</button>
+        <label class="toggle"><input type="checkbox" id="forceChk"> COPY_OPTIONS ('force'='true')</label>
+        <button class="btn btn-reset" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="panels">
+        <div class="panel">
+          <h4>Source folder</h4>
+          <div class="files" id="srcFiles"></div>
+        </div>
+        <div class="panel">
+          <h4>Load history (Delta log)</h4>
+          <div class="log" id="histLog"><span class="muted" style="font-family:inherit;color:#94a0a8">No files loaded yet.</span></div>
+        </div>
+        <div class="panel" style="text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center">
+          <h4 style="align-self:flex-start">Target Delta table</h4>
+          <div class="count"><span id="rowCount">0</span><small>rows total</small></div>
+        </div>
+      </div>
+
+      <div class="narrate" id="narrate">Click <b>“+ New file lands in source”</b> a few times, then <b>“Run COPY INTO”</b>.</div>
+    </div>
+    <p class="muted" style="font-size:.85rem">Note: <code>COPY INTO</code> only <i>appends</i>. With <code>force=true</code> it reloads files it already loaded, which is why the row count can grow past the number of unique source rows — that's how duplicates happen.</p>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2><span class="num">03</span>How it works &amp; the syntax</h2>
+    <p>Each run does four things: list the source files → compare against the load history in the Delta log → read &amp; append only the unseen files → record the newly loaded files. The target <b>must already exist</b> as a Delta table; <code>COPY INTO</code> appends into it.</p>
+<pre><span class="c">-- Re-run this on a schedule; only new files get loaded.</span>
+<span class="k">COPY INTO</span> databricksansh.bronze.orders_copyinto
+  <span class="k">FROM</span> <span class="s">'/Volumes/databricksansh/bronze/autovol/copyinto_demo'</span>
+  <span class="k">FILEFORMAT</span> = PARQUET            <span class="c">-- CSV|JSON|AVRO|ORC|PARQUET|TEXT|BINARYFILE</span>
+  [ <span class="k">VALIDATE</span> [ <span class="k">ALL</span> | n <span class="k">ROWS</span> ] ]   <span class="c">-- dry-run (DBR 10.4 LTS+)</span>
+  [ <span class="k">FILES</span> = (...) | <span class="k">PATTERN</span> = <span class="s">'glob'</span> ]
+  [ <span class="k">FORMAT_OPTIONS</span> (<span class="o">'reader option'</span> = <span class="s">'value'</span>) ]
+  [ <span class="k">COPY_OPTIONS</span> (<span class="o">'force'</span> = <span class="s">'false'</span>, <span class="o">'mergeSchema'</span> = <span class="s">'false'</span>) ]</pre>
+    <div class="callout warn">
+      <b>FORMAT_OPTIONS vs COPY_OPTIONS.</b> <code>FORMAT_OPTIONS</code> are passed to the <i>Spark data-source reader</i> (how each file is parsed). <code>COPY_OPTIONS</code> control <code>COPY INTO</code> <i>itself</i> (its load behavior). They are not interchangeable.
+    </div>
+  </section>
+
+  <!-- ============ OPTIONS ============ -->
+  <section>
+    <h2><span class="num">04</span>The options that matter</h2>
+    <table>
+      <tr><th>Option / clause</th><th>Default</th><th>What it does</th></tr>
+      <tr><td><code>COPY_OPTIONS('force')</code></td><td><code>false</code></td><td>Set <code>true</code> to <b>disable idempotency</b> — reload all matching files, ignoring history. Appends, so it can duplicate rows.</td></tr>
+      <tr><td><code>COPY_OPTIONS('mergeSchema')</code></td><td><code>false</code></td><td>Set <code>true</code> to evolve the <b>target table</b> schema (add new columns) as incoming data changes.</td></tr>
+      <tr><td><code>FORMAT_OPTIONS('mergeSchema')</code></td><td><code>false</code></td><td>Spark reader option that reconciles schemas <b>across the source files</b> (e.g. Parquet part files that differ).</td></tr>
+      <tr><td><code>PATTERN = 'glob'</code></td><td>—</td><td>Load only files matching a wildcard (e.g. <code>'*.parquet'</code>). Can't combine with <code>FILES</code>.</td></tr>
+      <tr><td><code>FILES = (...)</code></td><td>—</td><td>Explicit list of file names, up to 1000.</td></tr>
+      <tr><td><code>VALIDATE [n ROWS]</code></td><td>ALL</td><td>Dry-run (DBR 10.4 LTS+): checks parsing, schema &amp; constraints and previews data <b>without writing</b>.</td></tr>
+      <tr><td><code>SELECT ... FROM '&lt;path&gt;'</code></td><td>—</td><td>Transform on the way in: cast, rename, add columns, or capture <code>_metadata.file_path</code>.</td></tr>
+    </table>
+  </section>
+
+  <!-- ============ VS AUTO LOADER ============ -->
+  <section>
+    <h2><span class="num">05</span>COPY INTO vs Auto Loader</h2>
+    <table>
+      <tr><th></th><th>COPY INTO</th><th>Auto Loader (<code>cloudFiles</code>)</th></tr>
+      <tr><td>Style</td><td>SQL command, batch</td><td>Structured Streaming source</td></tr>
+      <tr><td>Best for</td><td>Periodic batches, up to ~thousands of files</td><td>Continuous ingestion; millions of files over time</td></tr>
+      <tr><td>Tracks "new files" via</td><td>Delta load history on the table</td><td>Checkpoint (+ optional file-notification queue)</td></tr>
+      <tr><td>Schema evolution</td><td><code>mergeSchema</code> option</td><td>Built-in, richer (<code>schemaEvolutionMode</code>)</td></tr>
+      <tr><td>Mental model</td><td>"Run it on a schedule"</td><td>"Leave it running / trigger it"</td></tr>
+    </table>
+    <p class="muted">Rule of thumb: <code>COPY INTO</code> for simple scheduled batch loads; switch to Auto Loader when file volume gets large or you want near-real-time, hands-off ingestion.</p>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2><span class="num">06</span>Common gotchas</h2>
+    <table>
+      <tr><th>Gotcha</th><th>What to know</th></tr>
+      <tr><td>Two <code>mergeSchema</code> options</td><td>One evolves the target table (<code>COPY_OPTIONS</code>), the other reconciles source files (<code>FORMAT_OPTIONS</code>). Different jobs; sometimes you need both.</td></tr>
+      <tr><td><code>force=true</code> duplicates rows</td><td><code>COPY INTO</code> only appends; it never de-duplicates. Truncate first, or use <code>MERGE</code> for upserts.</td></tr>
+      <tr><td>Target must exist</td><td>It must already be a Delta table — <code>COPY INTO</code> won't create it for you.</td></tr>
+      <tr><td>Modified files are still skipped</td><td>Idempotency is by file identity, not contents. Re-saving the same path won't reload it — use <code>force</code>.</td></tr>
+      <tr><td>Root paths need a trailing slash</td><td>e.g. <code>s3://my-bucket/</code>.</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    <p><b>Sources (official Databricks docs):</b></p>
+    <p class="src">
+      <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-copy-into">COPY INTO — SQL language reference</a><br>
+      <a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/copy-into">Get started using COPY INTO to load data</a><br>
+      <a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/copy-into/examples">Common data loading patterns using COPY INTO</a>
+    </p>
+    <p style="margin-top:18px">Companion notebook: <code>Databricks_Bootcamp/Autoloader/Incremental_Load_with_COPY_INTO.ipynb</code></p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var files = [];      // {id, name, rows, loaded}
+  var history = [];    // file names recorded in the Delta log
+  var rowCount = 0;
+  var runs = 0;
+  var nextId = 1;
+
+  var srcFiles = document.getElementById('srcFiles');
+  var histLog  = document.getElementById('histLog');
+  var rowCountEl = document.getElementById('rowCount');
+  var runBadge = document.getElementById('runBadge');
+  var narrate  = document.getElementById('narrate');
+  var forceChk = document.getElementById('forceChk');
+
+  function pad(n){ return String(n).padStart(3,'0'); }
+
+  function addFile(){
+    var rows = [2,3,1,4,2][Math.floor(Math.random()*5)];
+    files.push({ id: nextId, name: 'orders_' + pad(nextId) + '.parquet', rows: rows, loaded:false });
+    nextId++;
+    render();
+    narrate.innerHTML = 'A new file landed in the source folder. It is <b>unloaded</b> — the next run will pick it up.';
+  }
+
+  function run(){
+    if(files.length === 0){
+      narrate.innerHTML = 'Source folder is empty. Click <b>“+ New file lands in source”</b> first.';
+      return;
+    }
+    runs++;
+    var force = forceChk.checked;
+    var loadedNow = 0, rowsNow = 0, skipped = 0;
+
+    files.forEach(function(f){
+      f._just = false; f._skip = false;
+      var alreadyLoaded = f.loaded;
+      if(!alreadyLoaded || force){
+        f.loaded = true;
+        f._just = true;
+        loadedNow++; rowsNow += f.rows;
+        rowCount += f.rows;
+        if(history.indexOf(f.name) === -1) history.push(f.name);
+      } else {
+        f._skip = true;
+        skipped++;
+      }
+    });
+
+    render();
+
+    var msg = '<b>Run #' + runs + ':</b> ';
+    if(loadedNow === 0){
+      msg += 'no new files — <b>0 rows</b> loaded. Nothing changed (that’s idempotency).';
+    } else {
+      msg += loadedNow + ' file' + (loadedNow>1?'s':'') + ' loaded → <b>' + rowsNow + ' rows</b>. ';
+      msg += skipped + ' file' + (skipped===1?'':'s') + ' skipped' + (force ? ' — wait, force is ON, so none were skipped.' : '.');
+    }
+    if(force && loadedNow>0){ msg += ' <b>force=true</b> reloaded everything → duplicates likely.'; }
+    narrate.innerHTML = msg;
+
+    // clear highlight after a moment
+    setTimeout(function(){
+      files.forEach(function(f){ f._just=false; f._skip=false; });
+      render();
+    }, 1500);
+  }
+
+  function reset(){
+    files = []; history = []; rowCount = 0; runs = 0; nextId = 1;
+    forceChk.checked = false;
+    render();
+    narrate.innerHTML = 'Reset. Click <b>“+ New file lands in source”</b> a few times, then <b>“Run COPY INTO”</b>.';
+  }
+
+  function render(){
+    runBadge.textContent = 'runs: ' + runs;
+    rowCountEl.textContent = rowCount;
+
+    // source files
+    if(files.length === 0){
+      srcFiles.innerHTML = '<span class="muted" style="color:#94a0a8">Empty folder.</span>';
+    } else {
+      srcFiles.innerHTML = files.map(function(f){
+        var cls = 'file' + (f.loaded?' loaded':'') + (f._just?' just':'') + (f._skip?' skip':'');
+        var tag = f._just ? 'loaded now' : (f.loaded ? 'in history' : 'new');
+        return '<div class="'+cls+'">'+
+          '<span class="nm"><span class="dot"></span>'+f.name+'</span>'+
+          '<span><span class="rows">'+f.rows+' rows</span> &middot; <span class="tag">'+tag+'</span></span>'+
+        '</div>';
+      }).join('');
+    }
+
+    // history
+    if(history.length === 0){
+      histLog.innerHTML = '<span class="muted" style="color:#94a0a8">No files loaded yet.</span>';
+    } else {
+      histLog.innerHTML = history.map(function(n){
+        return '<div class="row"><span class="c">✓</span><span>'+n+'</span></div>';
+      }).join('');
+    }
+  }
+
+  document.getElementById('addBtn').addEventListener('click', addFile);
+  document.getElementById('runBtn').addEventListener('click', run);
+  document.getElementById('resetBtn').addEventListener('click', reset);
+
+  // seed with two files so it's not empty on load
+  addFile(); addFile();
+  narrate.innerHTML = 'Two files are waiting in the source. Click <b>“Run COPY INTO”</b> to load them — then add more and run again.';
+})();
+</script>
+</body>
+</html>

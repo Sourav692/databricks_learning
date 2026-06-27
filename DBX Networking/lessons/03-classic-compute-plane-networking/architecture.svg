@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 600" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="600" fill="#FAFAF9"/>
+  <text x="24" y="32" font-size="19" font-weight="700" fill="#1B3139">Stage 3 — Classic Compute Plane Networking (Azure-first)</text>
+  <text x="24" y="51" font-size="11.5" fill="#6B7280">VNet injection (your sub) + SCC (no public IP) + NSG/UDR/NAT egress + storage firewall with Service / Private Endpoint. Clusters always dial OUT.</text>
+
+  <!-- Databricks control plane -->
+  <rect x="700" y="74" width="256" height="150" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="828" y="95" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1B3139">Databricks-owned subscription</text>
+  <rect x="722" y="108" width="212" height="50" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="828" y="128" text-anchor="middle" font-size="12" font-weight="700" fill="#FF3621">SCC relay (:443)</text>
+  <text x="828" y="145" text-anchor="middle" font-size="9.5" fill="#4A5860">public IP until back-end Private Link</text>
+  <rect x="722" y="166" width="212" height="46" rx="8" fill="#fff" stroke="#FF3621" stroke-width="1.6"/>
+  <text x="828" y="184" text-anchor="middle" font-size="11" font-weight="700" fill="#FF3621">Web app / REST / Unity Catalog</text>
+  <text x="828" y="200" text-anchor="middle" font-size="9.5" fill="#4A5860">cluster &amp; jobs manager · metadata only</text>
+
+  <!-- Customer subscription -->
+  <rect x="24" y="74" width="640" height="500" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="40" y="94" font-size="11.5" font-weight="700" fill="#2272B4">YOUR Azure subscription</text>
+
+  <!-- VNet (injection) -->
+  <rect x="44" y="106" width="600" height="232" rx="10" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="60" y="126" font-size="11.5" font-weight="700" fill="#2272B4">Customer VNet — VNet injection (3.1)  ·  /16–/24, subnets ≥ /26 (3.2)</text>
+
+  <!-- Host subnet -->
+  <rect x="62" y="140" width="200" height="84" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="162" y="162" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Host subnet ("public")</text>
+  <text x="162" y="179" text-anchor="middle" font-size="9.5" fill="#4A5860">VM host IP · delegated to</text>
+  <text x="162" y="193" text-anchor="middle" font-size="9.5" fill="#4A5860">Microsoft.Databricks/workspaces</text>
+  <text x="162" y="210" text-anchor="middle" font-size="9.5" fill="#4A5860">NO public IP (SCC)</text>
+
+  <!-- Container subnet -->
+  <rect x="280" y="140" width="210" height="84" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="385" y="162" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet ("private")</text>
+  <text x="385" y="179" text-anchor="middle" font-size="9.5" fill="#4A5860">cluster VMs · 2 IPs/node</text>
+  <text x="385" y="193" text-anchor="middle" font-size="9.5" fill="#4A5860">NO public IP · no inbound ports (3.3)</text>
+  <text x="385" y="210" text-anchor="middle" font-size="9.5" fill="#4A5860">delegated · managed NSG rules</text>
+
+  <!-- PE subnet -->
+  <rect x="508" y="140" width="120" height="84" rx="8" fill="#fff" stroke="#00A972" stroke-width="1.6" stroke-dasharray="4,3"/>
+  <text x="568" y="166" text-anchor="middle" font-size="10.5" font-weight="700" fill="#00A972">PE subnet /28</text>
+  <text x="568" y="183" text-anchor="middle" font-size="9" fill="#4A5860">NOT delegated</text>
+  <text x="568" y="197" text-anchor="middle" font-size="9" fill="#4A5860">Private Endpoint</text>
+  <text x="568" y="211" text-anchor="middle" font-size="9" fill="#4A5860">NIC (3.5)</text>
+
+  <!-- Egress chain (3.4) -->
+  <rect x="62" y="250" width="566" height="74" rx="9" fill="#FFFCF5" stroke="#FFC107" stroke-width="1.5"/>
+  <text x="76" y="269" font-size="11" font-weight="700" fill="#1B3139">Egress chain (3.4):  NSG = allowed?  ·  UDR = which path?  ·  NAT = what public IP?</text>
+  <rect x="76" y="278" width="150" height="36" rx="7" fill="#fff" stroke="#6B7280" stroke-width="1.4"/>
+  <text x="151" y="300" text-anchor="middle" font-size="10" font-weight="600" fill="#1B3139">Managed NSG + your DENY</text>
+  <rect x="238" y="278" width="150" height="36" rx="7" fill="#fff" stroke="#6B7280" stroke-width="1.4"/>
+  <text x="313" y="300" text-anchor="middle" font-size="10" font-weight="600" fill="#1B3139">Route table (UDRs)</text>
+  <rect x="400" y="278" width="210" height="36" rx="7" fill="#fff" stroke="#FFC107" stroke-width="1.8"/>
+  <text x="505" y="300" text-anchor="middle" font-size="10" font-weight="700" fill="#B7791F">NAT Gateway — stable egress IP</text>
+
+  <!-- Storage -->
+  <rect x="44" y="356" width="600" height="200" rx="10" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="60" y="376" font-size="11.5" font-weight="700" fill="#00A972">Your storage — ADLS Gen2 (3.5)  ·  storage firewall: default DENY</text>
+  <rect x="62" y="390" width="250" height="70" rx="8" fill="#fff" stroke="#00A972" stroke-width="2"/>
+  <text x="187" y="414" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2 account</text>
+  <text x="187" y="430" text-anchor="middle" font-size="9.5" fill="#4A5860">&lt;acct&gt;.dfs.core.windows.net</text>
+  <text x="187" y="445" text-anchor="middle" font-size="9.5" fill="#4A5860">Unity Catalog external location</text>
+  <rect x="330" y="390" width="298" height="70" rx="8" fill="#fff" stroke="#DC2626" stroke-width="1.4" stroke-dasharray="4,3"/>
+  <text x="479" y="412" text-anchor="middle" font-size="10.5" font-weight="700" fill="#DC2626">Service Endpoint Policy — CANNOT attach</text>
+  <text x="479" y="430" text-anchor="middle" font-size="9" fill="#4A5860">delegated subnet hosts a managed service;</text>
+  <text x="479" y="444" text-anchor="middle" font-size="9" fill="#4A5860">a SEP would deny the infra storage → use Firewall+UDR or PE</text>
+  <text x="60" y="486" font-size="9.5" fill="#6B7280">B) Service Endpoint = backbone + VNet rule (free, DNS unchanged)   ·   C) Private Endpoint = private IP + privatelink.dfs.core.windows.net (paid)</text>
+  <text x="60" y="503" font-size="9.5" fill="#6B7280">A) Public endpoint via NAT (identity only) is the insecure default.</text>
+
+  <!-- arrows -->
+  <!-- 2: container -> SCC relay -->
+  <path d="M490 158 C 600 150, 640 135, 720 133" fill="none" stroke="#FF3621" stroke-width="2.6" marker-end="url(#aho)"/>
+  <text x="560" y="120" font-size="10.5" font-weight="700" fill="#FF3621">② OUTBOUND only · SCC relay · 443</text>
+  <path d="M720 145 C 640 175, 560 185, 492 188" fill="none" stroke="#FF3621" stroke-width="1.4" stroke-dasharray="4,3" marker-end="url(#aho)"/>
+  <text x="560" y="240" font-size="9" fill="#FF3621" opacity="0">cmd down tunnel</text>
+
+  <!-- container -> egress chain -->
+  <path d="M385 224 L 385 250" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <!-- NAT -> internet/storage public -->
+  <path d="M505 314 C 420 340, 300 360, 200 388" fill="none" stroke="#FFC107" stroke-width="2" marker-end="url(#ah)"/>
+  <!-- 3 container -> storage via SE (backbone) -->
+  <path d="M330 224 C 300 300, 250 350, 200 388" fill="none" stroke="#00A972" stroke-width="2.2" marker-end="url(#ahg)"/>
+  <text x="120" y="356" font-size="10" font-weight="700" fill="#00A972">③ Service Endpoint (backbone)</text>
+  <!-- 3 PE subnet -> storage via Private Link -->
+  <path d="M568 224 C 560 320, 360 360, 250 392" fill="none" stroke="#00A972" stroke-width="1.6" stroke-dasharray="5,3" marker-end="url(#ahg)"/>
+  <text x="430" y="346" font-size="9.5" fill="#00A972">③ Private Link (private IP)</text>
+
+  <!-- User path 1 (out of Stage 3 scope) -->
+  <rect x="30" y="74" width="0" height="0"/>
+  <text x="700" y="250" font-size="9.5" fill="#9CA3AF">① user → workspace = Stage 4 (IP ACL / front-end PL) — not in Stage 3</text>
+
+  <!-- legend -->
+  <rect x="700" y="356" width="256" height="120" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="712" y="376" font-size="10.5" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="712" y1="392" x2="738" y2="392" stroke="#FF3621" stroke-width="2.6"/>
+  <text x="744" y="396" font-size="9.5" fill="#4A5860">② compute ↔ control (outbound, SCC)</text>
+  <line x1="712" y1="410" x2="738" y2="410" stroke="#00A972" stroke-width="2.2"/>
+  <text x="744" y="414" font-size="9.5" fill="#4A5860">③ compute → storage (SE / PE)</text>
+  <line x1="712" y1="428" x2="738" y2="428" stroke="#FFC107" stroke-width="2"/>
+  <text x="744" y="432" font-size="9.5" fill="#4A5860">egress via NAT gateway</text>
+  <line x1="712" y1="446" x2="738" y2="446" stroke="#6B7280" stroke-width="2"/>
+  <text x="744" y="450" font-size="9.5" fill="#4A5860">internal / chain hop</text>
+  <text x="712" y="468" font-size="9" fill="#6B7280">Data never flows through the control plane.</text>
+</svg>

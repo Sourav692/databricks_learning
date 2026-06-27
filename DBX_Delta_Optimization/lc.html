@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquid Clustering · Databricks Data Engineering</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .file .corner{position:absolute;top:3px;left:4px;font-size:.5rem;color:rgba(0,0,0,.35)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.scan{background:linear-gradient(135deg,var(--frost-2),var(--frost))}
+  .sw.skp{background:var(--paper-2);opacity:.5}
+  .sw.clu{background:linear-gradient(135deg,#bfeaf3,#8fd6e8)}
+
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Databricks · Data Engineering · Stage 2 + Stage 9</p>
+    <h1>Liquid<br><span class="drip">Clustering.</span></h1>
+    <p class="lede">The modern way to lay out Delta tables for fast queries — it replaces partitioning and Z-ordering, and you can change the layout later without rewriting your data.</p>
+    <div class="meta">
+      <span class="pill">GA on <b>DBR 15.2+</b></span>
+      <span class="pill">Replaces <b>partitioning + ZORDER</b></span>
+      <span class="pill">Up to <b>4 keys</b></span>
+      <span class="pill">Verified <b>Apr 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>The problem it solves</h2>
+    <p>When a table is small, the engine just reads all of it. When a table grows to billions of rows, a query like <code>WHERE country = 'IN'</code> shouldn't have to scan everything — it should read only the files that <em>could</em> contain matching rows and skip the rest. That skipping is the whole game, and it's called <strong>data skipping</strong>.</p>
+    <p>Data skipping only works if related rows are physically stored <em>near each other</em> on disk. The old tools for arranging that were <strong>partitioning</strong> and <strong>Z-ordering</strong>. Both work, but both are rigid and high-maintenance. Liquid clustering is the replacement.</p>
+  </section>
+
+  <section>
+    <h2>Why it beats the old ways</h2>
+    <ul>
+      <li><strong>No upfront guessing.</strong> With partitioning you chose the column at table creation, and changing it later meant rewriting the whole table. With liquid clustering you can <strong>change the clustering columns anytime, no rewrite of existing data required</strong>.</li>
+      <li><strong>Handles high-cardinality &amp; skew.</strong> Partitioning on something like <code>customer_id</code> creates millions of tiny partitions. Liquid clustering is built for exactly those columns.</li>
+      <li><strong>Incremental maintenance.</strong> <code>OPTIMIZE</code> only reorganizes new or changed data, so routine upkeep stays cheap and fast.</li>
+      <li><strong>It's the default recommendation.</strong> Databricks recommends liquid clustering for <strong>all new tables</strong> — including streaming tables and materialized views.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Liquid clustering is <strong>not compatible</strong> with partitioning or <code>ZORDER</code>. You use it <em>instead of</em> them — never alongside.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE ============ -->
+  <section>
+    <h2>See it work</h2>
+    <p>Below is a table stored as 64 files. Pick a layout, then run a filter and watch which files get <strong>scanned</strong> vs. <strong>skipped</strong>. The fewer files scanned, the faster and cheaper the query.</p>
+
+    <div class="lab">
+      <div class="lab-head">
+        <span class="lab-title">Data-skipping simulator</span>
+      </div>
+      <p class="lab-sub">A 64-file Delta table of customer rows, colored by <code>country</code>.</p>
+
+      <div class="controls">
+        <div class="seg" id="layoutSeg" role="group" aria-label="Table layout">
+          <button data-layout="none" aria-pressed="true">No clustering</button>
+          <button data-layout="clustered" aria-pressed="false">CLUSTER&nbsp;BY (country)</button>
+        </div>
+      </div>
+
+      <div class="filterbar">
+        <label for="filterSel">Run query:</label>
+        <select id="filterSel">
+          <option value="ALL">no filter (full scan)</option>
+          <option value="IN" selected>WHERE country = 'IN'</option>
+          <option value="US">WHERE country = 'US'</option>
+          <option value="UK">WHERE country = 'UK'</option>
+          <option value="DE">WHERE country = 'DE'</option>
+        </select>
+      </div>
+      <div class="qstr" id="qstr"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="gridLabel">Files on disk</div>
+        <div class="grid" id="grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw scan"></i> scanned (must read)</span>
+        <span><i class="sw skp"></i> skipped (data skipping)</span>
+        <span><i class="sw clu"></i> clustered file</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="statScan">—</div><div class="lbl">files scanned</div></div>
+        <div class="stat"><div class="big" id="statSkip">—</div><div class="lbl">files skipped</div></div>
+        <div class="stat win"><div class="big" id="statSave">—</div><div class="lbl">data read avoided</div></div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">This is a simplified illustration of the concept. Real data skipping uses per-file min/max statistics on clustering keys; results depend on data distribution and file sizes.</p>
+  </section>
+
+  <section>
+    <h2>Two flavors</h2>
+    <table class="tbl">
+      <thead><tr><th>Flavor</th><th>Syntax</th><th>When to use</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Manual</strong></td><td class="mono">CLUSTER BY (c1, c2)</td><td>You already know which columns you filter on most. Pick up to 4.</td></tr>
+        <tr><td><strong>Automatic</strong></td><td class="mono">CLUSTER BY AUTO</td><td>Let Databricks analyze query history and choose. Needs a Unity Catalog managed table + predictive optimization (DBR 15.4 LTS+).</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Choosing good keys</h3>
+    <ul>
+      <li>Columns you <strong>filter or join on most often</strong>.</li>
+      <li>High-cardinality columns are fine — that's a strength.</li>
+      <li>Keys must have <strong>statistics collected</strong> (by default the first 32 columns of the table).</li>
+      <li>Supported types: date, timestamp, string, the integer family, and float/decimal.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>The commands you'll actually use</h2>
+
+    <h3>Create a table with clustering</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- CLUSTER BY goes right after the table name</span>
+<span class="k">CREATE OR REPLACE TABLE</span> customers (
+  customer_id <span class="k">BIGINT</span>,
+  country     <span class="k">STRING</span>,
+  signup_date <span class="k">DATE</span>
+)
+<span class="k">CLUSTER BY</span> (country, signup_date);</pre>
+
+    <h3>Enable on an existing (unpartitioned) table</h3>
+    <pre><span class="tag">SQL</span><span class="k">ALTER TABLE</span> customers <span class="k">CLUSTER BY</span> (country, signup_date);</pre>
+
+    <h3>Trigger clustering (incremental)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- only rewrites what's needed; cheap to run often</span>
+<span class="k">OPTIMIZE</span> customers;</pre>
+
+    <h3>Change the keys later — no full rewrite</h3>
+    <pre><span class="tag">SQL</span><span class="k">ALTER TABLE</span> customers <span class="k">CLUSTER BY</span> (customer_id);
+<span class="c">-- reorganize ALL existing data to the new keys (can be slow on huge tables)</span>
+<span class="k">OPTIMIZE</span> customers <span class="k">FULL</span>;</pre>
+
+    <h3>Let Databricks pick the keys</h3>
+    <pre><span class="tag">SQL</span><span class="k">ALTER TABLE</span> customers <span class="k">CLUSTER BY AUTO</span>;
+<span class="k">SHOW TBLPROPERTIES</span> customers;  <span class="c">-- look for clusterByAuto = true</span></pre>
+
+    <h3>Inspect / turn off</h3>
+    <pre><span class="tag">SQL</span><span class="k">DESCRIBE DETAIL</span> customers;        <span class="c">-- see clusteringColumns</span>
+<span class="k">ALTER TABLE</span> customers <span class="k">CLUSTER BY NONE</span>;  <span class="c">-- stop clustering</span></pre>
+  </section>
+
+  <section>
+    <h2>Quick gotchas</h2>
+    <ul>
+      <li><strong>Don't mix</strong> with partitioning or <code>ZORDER</code> — pick one approach.</li>
+      <li><code>OPTIMIZE</code> after changing keys only affects <em>new</em> data; use <code>OPTIMIZE FULL</code> to rewrite existing data to the new keys.</li>
+      <li>Clustering on write only kicks in past a size threshold, so <strong>run <code>OPTIMIZE</code> regularly</strong> (or rely on predictive optimization on managed tables).</li>
+      <li>Tables with liquid clustering use newer Delta reader/writer protocols — very old Delta clients may not read them, and you <strong>can't downgrade</strong> the protocol.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Databricks documentation (AWS):</strong></p>
+    <div class="doclinks">
+      <a href="https://docs.databricks.com/aws/en/delta/clustering" target="_blank" rel="noopener">Use liquid clustering for tables</a>
+      <a href="https://docs.databricks.com/aws/en/delta/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE)</a>
+      <a href="https://docs.databricks.com/aws/en/tables/partitions" target="_blank" rel="noopener">When to partition tables</a>
+      <a href="https://docs.databricks.com/aws/en/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Databricks docs, April 2026. Part of your Databricks Data Engineering learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  const COUNTRIES = ["IN","US","UK","DE","SG"];
+  const COLORS = {IN:"#e07a2f", US:"#1f6f8b", UK:"#5b8c5a", DE:"#8a5fb0", SG:"#c0392b"};
+  const N = 64;
+  const grid = document.getElementById('grid');
+  let layout = 'none';
+  let filter = 'IN';
+
+  // Build a fixed dataset: each file gets a dominant country.
+  // "none" layout = random scatter; "clustered" = sorted so same country files are contiguous.
+  const seed = [];
+  for(let i=0;i<N;i++){ seed.push(COUNTRIES[Math.floor((Math.pow(i*7+3,1.3))%COUNTRIES.length)]); }
+  // ensure all countries appear reasonably
+  for(let i=0;i<N;i++){ if(i%5===0) seed[i]=COUNTRIES[(i/5)%COUNTRIES.length|0]; }
+
+  function currentOrder(){
+    const idx = [...Array(N).keys()];
+    if(layout==='clustered'){
+      // sort by country -> contiguous blocks
+      idx.sort((a,b)=> COUNTRIES.indexOf(seed[a]) - COUNTRIES.indexOf(seed[b]) || a-b);
+    }
+    return idx;
+  }
+
+  function render(){
+    const order = currentOrder();
+    grid.innerHTML='';
+    let scanned=0;
+    // In "none" layout a file is scanned if ANY country could be in it.
+    // We model each file as holding ~1 country for the demo. With scatter, the engine
+    // can't skip well because matching rows are spread across many files (so it scans more).
+    // Realistic-ish model:
+    //   clustered: scan only files whose country == filter
+    //   none: scan files whose country == filter PLUS neighbors (poor skipping) -> approximate by scanning files of that country but they're spread out; to show the contrast we add "noise" files.
+    order.forEach((fileIdx,pos)=>{
+      const c = seed[fileIdx];
+      const cell = document.createElement('div');
+      cell.className='file';
+      const match = (filter==='ALL') || (c===filter);
+
+      let willScan;
+      if(filter==='ALL'){ willScan = true; }
+      else if(layout==='clustered'){
+        willScan = match;             // perfect skipping
+      } else {
+        // poor skipping: matching files scanned, plus ~ every 3rd non-matching file
+        // (simulates min/max ranges overlapping because data is scattered)
+        willScan = match || (pos % 3 === 0);
+      }
+
+      if(layout==='clustered') cell.classList.add('clustered');
+      if(willScan){ cell.classList.add('hit'); scanned++; }
+      else cell.classList.add('skip');
+
+      const v=document.createElement('span');
+      v.className='v'; v.textContent=c;
+      if(!willScan){ v.textContent=''; }
+      cell.appendChild(v);
+      grid.appendChild(cell);
+
+      // stagger the reveal
+      cell.style.opacity=0;
+      cell.style.transform='scale(.7)';
+      setTimeout(()=>{ cell.style.opacity = willScan?1:.32; cell.style.transform=''; }, pos*7);
+    });
+
+    const skipped = N - scanned;
+    document.getElementById('statScan').textContent = scanned;
+    document.getElementById('statSkip').textContent = skipped;
+    const save = Math.round(skipped/N*100);
+    document.getElementById('statSave').textContent = save + '%';
+
+    const q = filter==='ALL'
+      ? "SELECT * FROM customers;"
+      : "SELECT * FROM customers WHERE country = '"+filter+"';";
+    document.getElementById('qstr').textContent = q;
+    document.getElementById('gridLabel').textContent =
+      layout==='clustered' ? 'Files on disk — grouped by country (clustered)' : 'Files on disk — scattered (no clustering)';
+
+    const vd=document.getElementById('verdict');
+    if(filter==='ALL'){
+      vd.innerHTML="A query with <b>no filter</b> reads the whole table — clustering can't help here. Data skipping only kicks in when you filter on a clustering key.";
+    } else if(layout==='clustered'){
+      vd.innerHTML="Because rows for <b>"+filter+"</b> sit together in a few files, the engine skips "+skipped+" of 64 files. <b>"+save+"% of the data is never read.</b> This is the win.";
+    } else {
+      vd.innerHTML="With a scattered layout, matching rows are spread everywhere, so the engine's min/max stats overlap and it must scan far more files — only "+save+"% skipped. Clustering on <code>country</code> fixes this.";
+    }
+  }
+
+  document.querySelectorAll('#layoutSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      layout=btn.dataset.layout;
+      document.querySelectorAll('#layoutSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render();
+    });
+  });
+  document.getElementById('filterSel').addEventListener('change',e=>{ filter=e.target.value; render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

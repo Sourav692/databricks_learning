@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Warehouses · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  ol{margin:.4em 0;padding-left:1.3em}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .y{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.84rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: sizing vs scaling */
+  .ctrl{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}
+  .crow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .crow label{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#48555f;min-width:130px}
+  input[type=range]{flex:1}
+  .readout{border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;font-family:"Spline Sans Mono",monospace;font-size:.82rem}
+  .bar{height:14px;background:var(--paper-2);border-radius:999px;overflow:hidden;margin-top:6px}
+  .bar > span{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-2));border-radius:999px;transition:width .3s}
+  /* diagram 2: warehouse types + lifecycle */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 10.1</p>
+  <h1>SQL <em>Warehouses</em></h1>
+  <p class="lede">Compute optimized for SQL &amp; BI — serverless/pro/classic, t-shirt sized, autoscaling for concurrency, auto-stop for cost, Photon-accelerated. This deep dive pairs the mechanism with config-as-code.</p>
+  <div class="pills"><span class="pill">serverless</span><span class="pill">size vs scale</span><span class="pill">auto_stop_mins</span><span class="pill">Asset Bundle</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">A <strong>SQL Warehouse</strong> is purpose-built compute for SQL/BI: pick a <strong>type</strong> (serverless recommended), a <strong>size</strong> (power per query), and <strong>autoscaling</strong> (clusters for concurrency); it <strong>auto-starts</strong> on demand and <strong>auto-stops</strong> when idle, with Photon for speed.</div>
+  <div class="card analogy" style="margin-top:10px">☕ <strong>Analogy:</strong> an <strong>espresso machine for the analytics café</strong> — sized for the rush, spins up more machines when the queue grows (autoscaling), switches off when empty (auto-stop). The all-purpose cluster is the full kitchen; the warehouse does one fast job.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: sizing vs scaling -->
+<section id="tune">
+  <h2>Size vs scale — tune the right knob</h2>
+  <p class="hint">▸ size = power per query · max clusters = concurrent users</p>
+  <div class="ctrl">
+    <div class="crow"><label>Size (per query):</label><input type="range" id="size" min="0" max="4" value="1"><span class="mono" id="sizev"></span></div>
+    <div class="crow"><label>Max clusters:</label><input type="range" id="clusters" min="1" max="8" value="2"><span class="mono" id="clv"></span></div>
+  </div>
+  <div class="readout" id="readout"></div>
+</section>
+
+<!-- diagram 2: types + lifecycle -->
+<section id="types">
+  <h2>Types &amp; lifecycle — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="serverless">Serverless</button>
+    <button class="tab" data-t="pro">Pro</button>
+    <button class="tab" data-t="classic">Classic</button>
+    <button class="tab" data-t="life">Auto-start / stop</button>
+  </div>
+  <div class="panel on" data-p="serverless"><div class="card"><strong>Serverless</strong> (recommended) — starts in seconds, elastic, fully Databricks-managed in their account; Intelligent Workload Management routes queries. Lowest ops &amp; idle cost.</div></div>
+  <div class="panel" data-p="pro"><div class="card"><strong>Pro</strong> — runs in your account with more control; slower start than serverless.</div></div>
+  <div class="panel" data-p="classic"><div class="card"><strong>Classic</strong> — legacy, manual provisioning. Use only when serverless/pro aren't options.</div></div>
+  <div class="panel" data-p="life"><div class="card"><strong>Auto-start / auto-stop</strong> — a query, job, JDBC/ODBC connection, or dashboard <strong>auto-starts</strong> the warehouse; idle past <code>auto_stop_mins</code> <strong>auto-stops</strong> it (cold start next time; serverless cold starts are seconds).</div></div>
+</section>
+
+<section id="ui">
+  <h2>1 · Configure in the UI</h2>
+  <ol>
+    <li><strong>SQL → SQL Warehouses → Create</strong>.</li>
+    <li>Set <strong>name</strong>, <strong>size</strong> (per-query power), <strong>scaling</strong> (min/max clusters), <strong>auto-stop</strong>.</li>
+    <li>Toggle <strong>Serverless</strong> (recommended) for instant start &amp; lowest idle cost.</li>
+    <li>It <strong>auto-starts</strong> on a query/job/JDBC connection/dashboard.</li>
+  </ol>
+</section>
+
+<section id="code">
+  <h2>2 · …or as code (Asset Bundle + CLI)</h2>
+  <pre class="code"><span class="c"># databricks.yml (resources)</span>
+<span class="y">resources:</span>
+  <span class="y">sql_warehouses:</span>
+    <span class="y">bi_wh:</span>
+      <span class="y">name:</span> bi_serverless
+      <span class="y">cluster_size:</span> <span class="s">"Small"</span>            <span class="c"># per-query power (2X-Small…4X-Large)</span>
+      <span class="y">min_num_clusters:</span> 1
+      <span class="y">max_num_clusters:</span> 4              <span class="c"># concurrency (autoscale; max 40)</span>
+      <span class="y">auto_stop_mins:</span> 10               <span class="c"># idle shutdown</span>
+      <span class="y">warehouse_type:</span> PRO
+      <span class="y">enable_serverless_compute:</span> true   <span class="c"># → Serverless</span></pre>
+  <pre class="code" style="margin-top:8px">databricks bundle deploy -t prod
+<span class="c"># or imperatively:</span>
+databricks warehouses create --json '{"name":"bi_serverless","cluster_size":"Small","enable_serverless_compute":true,"auto_stop_mins":10}'</pre>
+  <p class="codecap">Point a job's sql_task at it</p>
+  <pre class="code"><span class="y">sql_task:</span> { <span class="y">warehouse_id:</span> <span class="s">"${resources.sql_warehouses.bi_wh.id}"</span>, <span class="y">file:</span> { <span class="y">path:</span> ../sql/report.sql } }</pre>
+</section>
+
+<section>
+  <h2>Types at a glance</h2>
+  <table>
+    <tr><th></th><th>Serverless</th><th>Pro</th><th>Classic</th></tr>
+    <tr><td>Startup</td><td class="win">Seconds</td><td>Slower</td><td>Slower</td></tr>
+    <tr><td>Managed by</td><td class="win">Databricks</td><td>You</td><td>You (legacy)</td></tr>
+    <tr><td>Use when</td><td class="win">Default SQL/BI</td><td>In-account control</td><td>Legacy only</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>BI/SQL demand is bursty &amp; concurrent — warehouses scale and auto-stop to balance speed vs cost far better than a manual cluster.</li>
+    <li>"What compute powers a dashboard / SQL query?" → <strong>SQL Warehouse (serverless)</strong>, not an all-purpose cluster.</li>
+  </ul>
+  <div class="card usecase">📈 <strong>Real-world use case:</strong> a dashboard hits a <strong>serverless</strong> warehouse — auto-starts on first query, autoscales during the 9am rush, auto-stops after hours so you don't pay for idle compute.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> dashboards, ad-hoc SQL, BI tools, scheduled SQL in jobs, Genie.</li>
+    <li><strong>Edge cases:</strong> don't confuse <strong>size</strong> (power per query) with <strong>max clusters</strong> (concurrency, ≤ 40); aggressive auto-stop trades cost for cold-start latency.</li>
+    <li><strong>Limitation:</strong> warehouses run <strong>SQL</strong> — for arbitrary Python/Spark ETL use jobs/all-purpose compute; serverless availability varies by region.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Running SQL/dashboards on an <strong>all-purpose cluster</strong> instead of a SQL Warehouse.</li>
+    <li>❌ Bumping <strong>size</strong> when the problem is <strong>concurrency</strong> (raise max clusters) — or vice versa.</li>
+    <li>❌ Disabling <strong>auto-stop</strong> → paying for an idle warehouse overnight.</li>
+    <li>❌ Assuming Classic is current — <strong>serverless</strong> is the recommended default.</li>
+    <li>❌ Clicking the warehouse together in prod and never capturing it as a bundle.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/" target="_blank" rel="noopener">SQL Warehouses</a> ·
+  <a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/create" target="_blank" rel="noopener">Create a warehouse</a> ·
+  <a href="https://docs.databricks.com/aws/en/compute/sql-warehouse/warehouse-behavior" target="_blank" rel="noopener">Sizing &amp; scaling</a> ·
+  <a href="https://docs.databricks.com/aws/en/compute/photon" target="_blank" rel="noopener">Photon</a>
+  <p style="margin-top:10px">Topic 10.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — size vs scale (scoped to #tune)
+const SIZES=['2X-Small','X-Small','Small','Medium','Large'];
+const size=document.getElementById('size'), clusters=document.getElementById('clusters'),
+      sizev=document.getElementById('sizev'), clv=document.getElementById('clv'), readout=document.getElementById('readout');
+function tune(){
+  const s=+size.value, c=+clusters.value;
+  sizev.textContent=SIZES[s];
+  clv.textContent=c+(c===1?' cluster':' clusters');
+  const power=(s+1), conc=c;
+  readout.innerHTML='<b>Per-query power:</b> '+SIZES[s]+' → bigger = faster single query'+
+    '<div class="bar"><span style="width:'+(power/5*100)+'%"></span></div>'+
+    '<b style="display:block;margin-top:8px">Concurrency:</b> up to ~'+(conc*10)+' simultaneous queries (autoscale to '+conc+' clusters)'+
+    '<div class="bar"><span style="width:'+(conc/8*100)+'%"></span></div>'+
+    '<div style="margin-top:8px;color:#48555f">Slow single query → raise <b>size</b>. Queries queuing under load → raise <b>max clusters</b>.</div>';
+}
+size.addEventListener('input',tune); clusters.addEventListener('input',tune); tune();
+// Diagram 2 — types tabs (scoped to #types)
+document.querySelectorAll('#types .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#types .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#types .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

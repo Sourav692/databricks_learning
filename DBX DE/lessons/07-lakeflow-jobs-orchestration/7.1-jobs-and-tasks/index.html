@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakeflow Jobs & Tasks · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .y{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: DAG runner */
+  .dag{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0}
+  .tk{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;text-align:center;min-width:120px;transition:.3s}
+  .tk .ty{font-family:"Spline Sans Mono",monospace;font-size:.68rem;color:#8a939c}
+  .tk.run{border-color:var(--brand-2);background:#fff3e8}
+  .tk.done{border-color:#9ed3b2;background:#dff0e6}
+  .ar{color:var(--brand);font-family:"Spline Sans Mono",monospace}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer;margin-top:6px}
+  .btn:hover{background:var(--brand);color:#fff}
+  .rstat{font-family:"Spline Sans Mono",monospace;font-size:.76rem;color:#48555f;margin-top:6px}
+  /* diagram 2: jobs vs sdp */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 7.1</p>
+  <h1>Lakeflow <em>Jobs</em> &amp; Tasks</h1>
+  <p class="lede">Orchestrate multiple tasks — notebooks, SQL, and pipelines — as one workflow DAG, scheduled and monitored, defined in the UI or as an Asset Bundle. (Formerly Databricks Workflows / Jobs.) This deep dive walks the model and the config-as-code.</p>
+  <div class="pills"><span class="pill">job = workflow</span><span class="pill">task = step</span><span class="pill">depends_on DAG</span><span class="pill">Asset Bundle</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Lakeflow Jobs</strong> coordinates and runs multiple <strong>tasks</strong> (notebook / SQL / Python / SDP pipeline) as one workflow, wired into a <strong>DAG</strong> with dependencies, schedules, retries, and monitoring — defined in the UI or as code (Asset Bundle).</div>
+  <div class="card analogy" style="margin-top:10px">🍳 <strong>Analogy:</strong> a job is a <strong>recipe</strong>; tasks are the <strong>steps</strong>. The DAG is the order — "make the sauce <em>before</em> you plate" — and the runner makes each step wait for the ones it depends on.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: DAG runner -->
+<section id="run">
+  <h2>Run a job — watch the task DAG</h2>
+  <p class="hint">▸ click Run; tasks execute in dependency order</p>
+  <div class="dag">
+    <div class="tk" id="t1">Ingest<div class="ty">notebook</div></div>
+    <span class="ar">▸</span>
+    <div class="tk" id="t2">Transform<div class="ty">SDP pipeline</div></div>
+    <span class="ar">▸</span>
+    <div class="tk" id="t3">DQ check<div class="ty">SQL</div></div>
+    <span class="ar">▸</span>
+    <div class="tk" id="t4">Notify<div class="ty">notebook</div></div>
+  </div>
+  <button class="btn" onclick="runJob()">▶ Run job</button>
+  <button class="btn" onclick="resetJob()">Reset</button>
+  <div class="rstat" id="rstat">Idle.</div>
+</section>
+
+<section id="types">
+  <h2>1 · Task types (mix them in one job)</h2>
+  <table>
+    <tr><th>Task type</th><th>YAML key</th><th>Runs</th></tr>
+    <tr><td>Notebook</td><td><code>notebook_task</code></td><td>a notebook</td></tr>
+    <tr><td>SDP pipeline</td><td><code>pipeline_task</code></td><td>a Lakeflow Declarative Pipeline</td></tr>
+    <tr><td>SQL</td><td><code>sql_task</code></td><td>query / file / dashboard / alert on a warehouse</td></tr>
+    <tr><td>Python wheel</td><td><code>python_wheel_task</code></td><td>an entry point in a packaged wheel</td></tr>
+    <tr><td>Python file / dbt / Run-job</td><td><code>spark_python_task</code> / <code>dbt_task</code> / …</td><td>scripts, dbt, nested jobs</td></tr>
+  </table>
+</section>
+
+<section id="bundle">
+  <h2>2 · Config-as-code — a multi-task job (Asset Bundle)</h2>
+  <p><code>resources.jobs.&lt;key&gt;.tasks[]</code> — each task has a <code>task_key</code>, a task-type block, and <code>depends_on</code> to wire the DAG.</p>
+  <pre class="code"><span class="c"># databricks.yml (resources)</span>
+<span class="y">resources:</span>
+  <span class="y">jobs:</span>
+    <span class="y">nightly_etl:</span>
+      <span class="y">name:</span> nightly_etl
+      <span class="y">tasks:</span>
+        - <span class="y">task_key:</span> ingest                         <span class="c"># task 1</span>
+          <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/autoloader_ingest.py }
+          <span class="y">job_cluster_key:</span> etl_cluster
+        - <span class="y">task_key:</span> transform                      <span class="c"># task 2: runs an SDP pipeline</span>
+          <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> ingest }]
+          <span class="y">pipeline_task:</span> { <span class="y">pipeline_id:</span> ${resources.pipelines.silver_gold.id} }
+        - <span class="y">task_key:</span> dq_check                       <span class="c"># task 3: SQL on a warehouse</span>
+          <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> transform }]
+          <span class="y">sql_task:</span> { <span class="y">warehouse_id:</span> ${var.warehouse_id}, <span class="y">file:</span> { <span class="y">path:</span> ../src/dq_checks.sql } }
+        - <span class="y">task_key:</span> notify                         <span class="c"># task 4</span>
+          <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> dq_check }]
+          <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/notify.py }
+      <span class="y">job_clusters:</span>                                 <span class="c"># reusable cluster for the job</span>
+        - <span class="y">job_cluster_key:</span> etl_cluster
+          <span class="y">new_cluster:</span>
+            <span class="y">spark_version:</span> 15.4.x-scala2.12
+            <span class="y">node_type_id:</span> i3.xlarge
+            <span class="y">num_workers:</span> 2</pre>
+  <p class="codecap">Deploy &amp; run (CLI)</p>
+  <pre class="code">databricks bundle deploy -t prod        <span class="c"># create/update the job</span>
+databricks bundle run nightly_etl       <span class="c"># trigger a run</span></pre>
+</section>
+
+<section id="compute">
+  <h2>3 · Which cluster runs a task?</h2>
+  <ul>
+    <li><strong>Job clusters</strong> (<code>job_clusters</code> + <code>job_cluster_key</code>) — created for the run, torn down after; cheapest for scheduled jobs, isolated per run.</li>
+    <li><strong>Serverless</strong> — no cluster to manage; fast start, good default for many tasks.</li>
+    <li><strong>All-purpose (shared)</strong> — avoid for production (cost + noisy neighbors); fine for dev.</li>
+  </ul>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: jobs vs sdp -->
+<section id="cmp">
+  <h2>4 · Jobs vs SDP — click each</h2>
+  <p class="hint">▸ a job can run an SDP pipeline as a task</p>
+  <div class="switch">
+    <div class="opt on" data-o="jobs">Lakeflow Jobs</div>
+    <div class="opt" data-o="sdp">Declarative Pipelines (SDP)</div>
+  </div>
+  <div class="view on" data-v="jobs">
+    <div class="card"><strong>Lakeflow Jobs — orchestrate.</strong>
+      <ul><li>Unit = task (notebook / SQL / Python / pipeline)</li><li>You define the DAG of steps + schedule</li><li>Runs an SDP pipeline via <code>pipeline_task</code></li></ul></div>
+  </div>
+  <div class="view" data-v="sdp">
+    <div class="card"><strong>SDP — build one pipeline.</strong>
+      <ul><li>Unit = dataset (streaming table / MV)</li><li>You declare desired tables; SDP derives its own DAG</li><li>Runs inside / alongside Jobs</li></ul></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Lakeflow Jobs</th><th>SDP</th></tr>
+    <tr><td>Role</td><td class="win">Orchestrate tasks</td><td>Build a pipeline</td></tr>
+    <tr><td>Unit</td><td>Task</td><td>Dataset</td></tr>
+    <tr><td>DAG</td><td>You define it (<code>depends_on</code>)</td><td>Derived from datasets</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Real pipelines are multi-step (ingest → transform → publish → notify) — Jobs run them reliably, scheduled, with dependencies &amp; retries.</li>
+    <li>"How do you orchestrate a pipeline on Databricks?" → <strong>Lakeflow Jobs</strong> (and knowing it ≠ SDP).</li>
+  </ul>
+  <div class="card usecase">🌙 <strong>Real-world use case:</strong> a nightly job runs ingest notebook → SDP pipeline → SQL DQ check → notify, as one DAG, retried on failure, deployed via an Asset Bundle.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> scheduling end-to-end pipelines; chaining ingest → SDP → checks → notify; mixing notebooks, SQL, ML, pipelines; CI/CD via Asset Bundles.</li>
+    <li><strong>Edge case:</strong> the DAG must be <strong>acyclic</strong> (no cyclic <code>depends_on</code>); a failed upstream task blocks dependents — configure retries / conditional if-else; libraries can't be declared on a shared job cluster.</li>
+    <li><strong>Limitation:</strong> Jobs orchestrate, they don't replace SDP's incremental engine; one giant task loses per-task retry/observability — split into tasks.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Confusing <strong>Jobs</strong> (orchestration) with <strong>SDP</strong> (pipeline building) — a job can <em>run</em> an SDP pipeline via <code>pipeline_task</code>.</li>
+    <li>❌ Calling it "Workflows" as current — it's <strong>Lakeflow Jobs</strong> now.</li>
+    <li>❌ One monolithic task instead of a task DAG → no granular retries/monitoring.</li>
+    <li>❌ Creating a dependency cycle — the DAG must be acyclic.</li>
+    <li>❌ Running production jobs on an all-purpose cluster — use job clusters or serverless.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/jobs/" target="_blank" rel="noopener">Lakeflow Jobs</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/job-task-types" target="_blank" rel="noopener">Task types (bundles)</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/jobs-tutorial" target="_blank" rel="noopener">Job with Asset Bundles</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/configure-task" target="_blank" rel="noopener">Configure a task</a>
+  <p style="margin-top:10px">Topic 7.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — DAG runner (scoped to #run)
+const ids=['t1','t2','t3','t4'];
+let timer=null;
+function resetJob(){ if(timer)clearInterval(timer); ids.forEach(i=>document.getElementById(i).className='tk'); document.getElementById('rstat').textContent='Idle.'; }
+function runJob(){
+  resetJob();
+  let i=0;
+  document.getElementById('rstat').textContent='Running…';
+  timer=setInterval(()=>{
+    if(i>0) document.getElementById(ids[i-1]).className='tk done';
+    if(i<ids.length){ document.getElementById(ids[i]).className='tk run'; i++; }
+    else { clearInterval(timer); document.getElementById('rstat').textContent='✅ Job succeeded — all tasks ran in dependency order.'; }
+  },700);
+}
+resetJob();
+// Diagram 2 — jobs vs sdp (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+</script>
+</body>
+</html>

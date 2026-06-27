@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data Discoverability — Unity Catalog | Data Governance</title>
+<style>
+  :root{
+    --orange:#FF3621;
+    --orange-soft:#FFE9E5;
+    --ink:#1B1B1F;
+    --muted:#5B6068;
+    --line:#E4E7EC;
+    --bg:#F7F8FA;
+    --card:#FFFFFF;
+    --blue:#1B6FB3;
+    --green:#1A7F4B;
+    --purple:#6B4FBB;
+    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.6;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px 80px}
+  header.hero{
+    background:linear-gradient(135deg,#FF3621 0%,#FF6A4D 100%);
+    color:#fff;padding:46px 20px 40px;margin-bottom:34px;
+  }
+  header.hero .inner{max-width:980px;margin:0 auto}
+  .crumb{font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.9;margin-bottom:10px}
+  header.hero h1{margin:0 0 10px;font-size:34px;line-height:1.2}
+  header.hero p{margin:0;font-size:17px;max-width:680px;opacity:.96}
+  .pill-row{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:999px;font-size:13px}
+  h2{font-size:23px;margin:38px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--orange-soft)}
+  h3{font-size:18px;margin:24px 0 8px}
+  p{margin:10px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px;margin:16px 0}
+  .lead{font-size:17px}
+  .muted{color:var(--muted)}
+  .tag{display:inline-block;background:var(--orange-soft);color:var(--orange);font-weight:600;font-size:12px;padding:2px 9px;border-radius:6px;vertical-align:middle}
+  code{background:#F0F1F3;padding:2px 6px;border-radius:5px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+  ul.clean{margin:10px 0;padding-left:20px}
+  ul.clean li{margin:6px 0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:#FAFBFC;font-weight:600}
+  .note{border-left:4px solid var(--orange);background:#FFF7F5;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+  .gotcha{border-left:4px solid #E0A100;background:#FFFBEE;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0}
+
+  /* ---------- Interactive: Catalog Explorer tree ---------- */
+  .explorer{display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+  @media(max-width:720px){.explorer{grid-template-columns:1fr}}
+  .tree{background:#FBFBFC;border-right:1px solid var(--line);padding:12px 8px;font-size:14px}
+  .tree .node{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;cursor:pointer;user-select:none}
+  .tree .node:hover{background:#F0F1F3}
+  .tree .node.active{background:var(--orange-soft);color:var(--orange);font-weight:600}
+  .tree .ico{width:16px;text-align:center;font-size:13px}
+  .tree .children{margin-left:14px;border-left:1px dashed var(--line);padding-left:6px;display:none}
+  .tree .children.open{display:block}
+  .tree .twist{transition:transform .15s;display:inline-block;color:var(--muted);font-size:11px;width:10px}
+  .tree .twist.open{transform:rotate(90deg)}
+  .detail{padding:18px 20px;min-height:330px}
+  .detail .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:14px;flex-wrap:wrap}
+  .detail .tab{padding:8px 13px;cursor:pointer;font-size:13.5px;border-radius:7px 7px 0 0;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .detail .tab.active{color:var(--orange);border-bottom-color:var(--orange);font-weight:600}
+  .detail .panel{display:none;animation:fade .2s}
+  .detail .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .kv{display:grid;grid-template-columns:160px 1fr;gap:6px 12px;font-size:14px}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .placeholder{color:var(--muted);font-size:14px;padding:40px 10px;text-align:center}
+  .mini-table{font-size:13px}
+  .mini-table th,.mini-table td{padding:6px 9px}
+
+  /* ---------- Interactive: lineage graph ---------- */
+  .lineage{position:relative;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:24px;overflow-x:auto}
+  .flow{display:flex;align-items:center;gap:0;min-width:760px}
+  .lcol{display:flex;flex-direction:column;gap:14px;align-items:center;flex:1}
+  .lcol .col-label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
+  .lnode{border:2px solid var(--line);border-radius:10px;padding:10px 12px;font-size:13px;cursor:pointer;background:#fff;text-align:center;min-width:120px;transition:.15s}
+  .lnode .nt{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+  .lnode:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .lnode.center{border-color:var(--orange);background:var(--orange-soft);font-weight:700;color:var(--orange)}
+  .lnode.up{border-color:var(--blue)}
+  .lnode.down{border-color:var(--green)}
+  .lnode.sel{outline:3px solid rgba(255,54,33,.25)}
+  .arrow{flex:0 0 40px;text-align:center;color:var(--muted);font-size:22px}
+  .lineage-info{margin-top:16px;border-top:1px dashed var(--line);padding-top:14px;font-size:14px;min-height:46px}
+  .lineage-info b{color:var(--orange)}
+  .btn-reset{font-size:12px;color:var(--muted);cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 10px;float:right}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:12px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  footer{margin-top:40px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+  footer a{color:var(--orange)}
+  a{color:var(--orange)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="inner">
+    <div class="crumb">Data Governance · Pillar 1 of the Series</div>
+    <h1>Data Discoverability</h1>
+    <p>How efficiently can people <em>find</em> and <em>understand</em> the data they need — the data itself, its metadata, its meaning, and its dependencies — all from Unity Catalog.</p>
+    <div class="pill-row">
+      <span class="pill">Catalog Explorer</span>
+      <span class="pill">Search</span>
+      <span class="pill">AI-generated descriptions</span>
+      <span class="pill">Tags & metadata</span>
+      <span class="pill">Lineage</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card lead">
+    <strong>In one sentence:</strong> Data discoverability is how easily a person can locate the data they need and understand what it is — whether that's the actual rows and columns, the metadata (owner, type, tags), the latest updates on a table, or where the data comes from and where it flows. If people can't find or trust your data, they re-build it, mis-use it, or stop using it. Discoverability prevents that.
+  </div>
+
+  <h2>1 · What "data" means here</h2>
+  <p>The word <em>data</em> in "data discoverability" is broader than tables. As your lesson put it, it can be almost anything you might need to find out <em>about</em> the data:</p>
+  <table>
+    <tr><th>Type</th><th>Example question it answers</th></tr>
+    <tr><td><strong>Actual data</strong></td><td>"Show me sample rows from the products table."</td></tr>
+    <tr><td><strong>Metadata</strong></td><td>"Who owns this table? What format is it? When was it created?"</td></tr>
+    <tr><td><strong>Updates / freshness</strong></td><td>"What changed on this table recently? Is it still maintained?"</td></tr>
+    <tr><td><strong>Upstream</strong></td><td>"Where does this data come from?"</td></tr>
+    <tr><td><strong>Downstream</strong></td><td>"Who and what depends on this data?"</td></tr>
+    <tr><td><strong>Meaning</strong></td><td>"What is this column? What does this table represent?"</td></tr>
+  </table>
+  <div class="note"><strong>Why it's pillar #1:</strong> every other governance task (access, quality, lineage, audit) starts with someone <em>finding</em> the right object first. Discovery is the front door to governance.</div>
+
+  <h2>2 · Why discoverability matters</h2>
+  <ul class="clean">
+    <li><strong>Stops duplicate work.</strong> If analysts can't find an existing "revenue" table, they build a sixth one. Search + a catalog kills this.</li>
+    <li><strong>Builds trust.</strong> Seeing the owner, description, and sample data lets a consumer judge whether a table is the right, trustworthy source.</li>
+    <li><strong>Enables impact analysis.</strong> Before you change a table, lineage tells you what downstream dashboards will break.</li>
+    <li><strong>Respects security.</strong> In Unity Catalog, search and browsing only return objects the user has permission to see — discovery never leaks restricted data.</li>
+  </ul>
+
+  <h2>3 · Try it: Catalog Explorer (interactive)</h2>
+  <p class="muted">Click items in the tree to expand the <code>catalog → schema → table</code> hierarchy, then click a table to explore its tabs — exactly like the Catalog Explorer UI. This mirrors the three-level namespace <code>catalog.schema.table</code>.</p>
+
+  <div class="explorer">
+    <div class="tree" id="tree"></div>
+    <div class="detail" id="detail">
+      <div class="placeholder">← Select a catalog, schema, or table to see its details.</div>
+    </div>
+  </div>
+
+  <h2>4 · What you can discover on a table</h2>
+  <p>When you open a table in Catalog Explorer, discoverability shows up as a set of tabs. The most important pieces:</p>
+  <table>
+    <tr><th>Tab / feature</th><th>What it gives you</th></tr>
+    <tr><td><strong>Overview + AI description</strong></td><td>A plain-language summary of the table. Catalog Explorer can generate an <em>AI-generated comment</em> using a large language model that reads the table schema and column names; an owner reviews and <code>Accept</code>s it so everyone sees it.</td></tr>
+    <tr><td><strong>Columns</strong></td><td>Each column's name, data type, and comment (also AI-suggestable).</td></tr>
+    <tr><td><strong>Sample Data</strong></td><td>A preview of real rows so you can judge content at a glance.</td></tr>
+    <tr><td><strong>Details</strong></td><td>Managed vs. external, storage location, table format (e.g. Delta), created date.</td></tr>
+    <tr><td><strong>Permissions</strong></td><td>Who can read/write/use the object — the access-control view.</td></tr>
+    <tr><td><strong>Lineage</strong></td><td>Upstream and downstream dependencies, as a list or a graph (see below).</td></tr>
+    <tr><td><strong>Ask Genie / AI</strong></td><td>Natural-language Q&amp;A over the data asset.</td></tr>
+  </table>
+  <div class="note"><strong>Search:</strong> beyond browsing, Catalog Explorer supports keyword <em>and</em> semantic search across tables and columns — and only returns results you're permitted to see.</div>
+
+  <h2>5 · Lineage: upstream &amp; downstream (interactive)</h2>
+  <p>Lineage is the map of dependencies. <strong>Upstream</strong> = where this table's data <em>comes from</em>. <strong>Downstream</strong> = what <em>consumes</em> it. Unity Catalog captures this automatically at runtime, down to the column level, across notebooks, jobs, queries, and dashboards.</p>
+
+  <div class="lineage">
+    <span class="btn-reset" onclick="resetLineage()">Reset</span>
+    <div class="flow">
+      <div class="lcol">
+        <div class="col-label">Upstream</div>
+        <div class="lnode up" data-info="up">
+          <span class="nt">Volume</span>raw_products (files)
+        </div>
+        <div class="lnode up" data-info="up2">
+          <span class="nt">Notebook</span>build_silver_products
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="lcol">
+        <div class="col-label">This object</div>
+        <div class="lnode center" data-info="center">
+          <span class="nt">Delta table</span>silver.products
+        </div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="lcol">
+        <div class="col-label">Downstream</div>
+        <div class="lnode down" data-info="d1"><span class="nt">Notebook</span>build_gold_sales</div>
+        <div class="lnode down" data-info="d2"><span class="nt">SQL query</span>top_products_q</div>
+        <div class="lnode down" data-info="d3"><span class="nt">Dashboard</span>Sales Overview</div>
+      </div>
+    </div>
+    <div class="lineage-info" id="linfo">Click any node to see what it means for <b>silver.products</b>.</div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--blue)"></span> Upstream (sources)</span>
+      <span><span class="dot" style="background:var(--orange)"></span> Selected table</span>
+      <span><span class="dot" style="background:var(--green)"></span> Downstream (consumers)</span>
+    </div>
+  </div>
+  <p class="muted" style="margin-top:10px">In the real UI, click <code>See lineage graph</code> to view this as a connected diagram of volumes, tables, notebooks, queries, and dashboards.</p>
+
+  <h2>6 · Common mistakes &amp; gotchas</h2>
+  <div class="gotcha"><strong>Empty descriptions.</strong> A catalog full of un-described tables is technically discoverable but practically useless. Accept/edit AI comments and add column comments.</div>
+  <div class="gotcha"><strong>Assuming lineage is retroactive.</strong> Lineage is captured when queries run on Databricks. Work done entirely outside Databricks won't appear.</div>
+  <div class="gotcha"><strong>Confusing "all account users" with "everyone."</strong> The <code>browse</code> privilege for "all account users" means all users in your <em>metastore/account</em> — not the entire internet.</div>
+  <div class="gotcha"><strong>Skipping tags.</strong> Tags (e.g. <code>pii</code>, <code>domain:finance</code>) make search and classification far stronger. Untagged data is harder to find and govern.</div>
+
+  <h2>7 · Quick recap</h2>
+  <ul class="clean">
+    <li>Discoverability = finding <em>and</em> understanding data: rows, metadata, updates, meaning, and dependencies.</li>
+    <li>Unity Catalog's <strong>Catalog Explorer</strong> is the UI: browse the <code>catalog → schema → table</code> tree, search, and inspect tabs.</li>
+    <li><strong>AI-generated descriptions</strong>, <strong>sample data</strong>, <strong>tags</strong>, and <strong>permissions</strong> make objects understandable and trustworthy.</li>
+    <li><strong>Lineage</strong> (upstream/downstream, list or graph) answers "where from?" and "who depends on this?" — captured automatically.</li>
+    <li>Discovery is permission-aware: you only see what you're allowed to.</li>
+  </ul>
+
+  <footer>
+    <strong>Official sources</strong><br>
+    <a href="https://docs.databricks.com/aws/en/discover/" target="_blank">Discover data (AWS)</a> ·
+    <a href="https://docs.databricks.com/aws/en/catalog-explorer/" target="_blank">What is Catalog Explorer?</a> ·
+    <a href="https://docs.databricks.com/aws/en/comments/ai-comments" target="_blank">Add AI-generated comments to Unity Catalog objects</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage" target="_blank">View data lineage using Unity Catalog</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/" target="_blank">What is Unity Catalog?</a><br><br>
+    <span class="muted">Built as a learning aid for the Databricks Data Engineering series · Pillar 1: Data Discoverability.</span>
+  </footer>
+</div>
+
+<script>
+/* ---------- Catalog Explorer tree data ---------- */
+const model = {
+  name:"main", type:"catalog", ico:"📚",
+  meta:{Owner:"sourav.banerjee", Metastore:"prod-metastore", Created:"2025-08-12", "Default storage":"managed", Privilege:"All account users: BROWSE"},
+  desc:"Top-level container. A catalog groups schemas. This is the first level of the three-level namespace catalog.schema.table.",
+  children:[
+    {name:"bronze", type:"schema", ico:"🗂️", desc:"Raw ingested data.", meta:{Owner:"data_eng", Tables:"6"}, children:[
+      {name:"raw_events", type:"table", ico:"▦"}
+    ]},
+    {name:"silver", type:"schema", ico:"🗂️", desc:"Cleaned, conformed tables. Most tables live here.", meta:{Owner:"data_eng", Tables:"12"}, children:[
+      {name:"products", type:"table", ico:"▦", featured:true},
+      {name:"customers", type:"table", ico:"▦"},
+      {name:"orders", type:"table", ico:"▦"}
+    ]},
+    {name:"gold", type:"schema", ico:"🗂️", desc:"Business-level aggregates for analysts & BI.", meta:{Owner:"analytics", Tables:"4"}, children:[
+      {name:"sales_summary", type:"table", ico:"▦"}
+    ]}
+  ]
+};
+
+/* table detail content (focus on silver.products as the worked example) */
+const tableDetail = {
+  products:{
+    overview:`<p><span class="tag">AI-generated · Accepted</span></p>
+      <p><strong>silver.products</strong> contains one row per product with cleaned attributes — product id, name, category, and price — conformed from the raw products volume. Used as a dimension for sales reporting.</p>`,
+    columns:`<table class="mini-table"><tr><th>Column</th><th>Type</th><th>Comment</th></tr>
+      <tr><td>product_id</td><td>STRING</td><td>Primary key</td></tr>
+      <tr><td>name</td><td>STRING</td><td>Product display name</td></tr>
+      <tr><td>category</td><td>STRING</td><td>Merchandising category</td></tr>
+      <tr><td>price</td><td>DECIMAL(10,2)</td><td>List price (USD)</td></tr></table>`,
+    sample:`<table class="mini-table"><tr><th>product_id</th><th>name</th><th>category</th><th>price</th></tr>
+      <tr><td>P-1001</td><td>Aero Mug</td><td>Kitchen</td><td>14.00</td></tr>
+      <tr><td>P-1002</td><td>Trail Bottle</td><td>Outdoor</td><td>22.50</td></tr>
+      <tr><td>P-1003</td><td>Desk Lamp</td><td>Home</td><td>39.99</td></tr></table>
+      <p class="muted">Sample preview — permission-checked.</p>`,
+    details:`<div class="kv">
+      <div>Type</div><div>Managed table</div>
+      <div>Data source format</div><div>Delta</div>
+      <div>Storage</div><div>Default (managed) storage</div>
+      <div>Created</div><div>2025-09-03</div>
+      <div>Popularity</div><div>High</div></div>`,
+    permissions:`<div class="kv">
+      <div>data_eng</div><div>ALL PRIVILEGES (owner)</div>
+      <div>analytics_group</div><div>SELECT</div>
+      <div>All account users</div><div>BROWSE</div></div>`,
+    lineage:`<p><strong>Upstream:</strong> volume <code>raw_products</code> → notebook <code>build_silver_products</code>.</p>
+      <p><strong>Downstream:</strong> notebook <code>build_gold_sales</code>, query <code>top_products_q</code>, dashboard <code>Sales Overview</code>.</p>
+      <p class="muted">Scroll down to section 5 for the interactive graph.</p>`
+  }
+};
+
+/* generic detail for non-products objects */
+function genericDetail(node){
+  let rows = Object.entries(node.meta||{}).map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");
+  return `<h3 style="margin-top:0">${node.ico} ${node.name} <span class="muted" style="font-weight:400;font-size:13px">· ${node.type}</span></h3>
+    <p>${node.desc||""}</p>${rows?`<div class="kv">${rows}</div>`:""}`;
+}
+
+/* ---------- render tree ---------- */
+const treeEl=document.getElementById('tree');
+const detailEl=document.getElementById('detail');
+
+function makeNode(node, depth){
+  const wrap=document.createElement('div');
+  const row=document.createElement('div');
+  row.className='node';
+  const hasKids=node.children&&node.children.length;
+  row.innerHTML=`<span class="twist">${hasKids?'▶':''}</span><span class="ico">${node.ico}</span><span>${node.name}</span>`;
+  wrap.appendChild(row);
+  let kids;
+  if(hasKids){
+    kids=document.createElement('div');
+    kids.className='children';
+    node.children.forEach(c=>kids.appendChild(makeNode(c,depth+1)));
+    wrap.appendChild(kids);
+  }
+  row.addEventListener('click',e=>{
+    e.stopPropagation();
+    document.querySelectorAll('.tree .node').forEach(n=>n.classList.remove('active'));
+    row.classList.add('active');
+    if(hasKids){
+      const tw=row.querySelector('.twist');
+      kids.classList.toggle('open');
+      tw.classList.toggle('open');
+    }
+    showDetail(node);
+  });
+  return wrap;
+}
+treeEl.appendChild(makeNode(model,0));
+
+/* ---------- detail panels ---------- */
+function showDetail(node){
+  if(node.type==='table' && tableDetail[node.name]){
+    const d=tableDetail[node.name];
+    detailEl.innerHTML=`
+      <h3 style="margin-top:0">▦ ${node.name} <span class="muted" style="font-weight:400;font-size:13px">· table · Delta</span></h3>
+      <div class="tabs">
+        <div class="tab active" data-p="overview">Overview</div>
+        <div class="tab" data-p="columns">Columns</div>
+        <div class="tab" data-p="sample">Sample Data</div>
+        <div class="tab" data-p="details">Details</div>
+        <div class="tab" data-p="permissions">Permissions</div>
+        <div class="tab" data-p="lineage">Lineage</div>
+      </div>
+      <div class="panel active" id="p-overview">${d.overview}</div>
+      <div class="panel" id="p-columns">${d.columns}</div>
+      <div class="panel" id="p-sample">${d.sample}</div>
+      <div class="panel" id="p-details">${d.details}</div>
+      <div class="panel" id="p-permissions">${d.permissions}</div>
+      <div class="panel" id="p-lineage">${d.lineage}</div>`;
+    detailEl.querySelectorAll('.tab').forEach(t=>{
+      t.addEventListener('click',()=>{
+        detailEl.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+        detailEl.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+        t.classList.add('active');
+        detailEl.querySelector('#p-'+t.dataset.p).classList.add('active');
+      });
+    });
+  } else if(node.type==='table'){
+    detailEl.innerHTML=`<h3 style="margin-top:0">▦ ${node.name} <span class="muted" style="font-weight:400;font-size:13px">· table</span></h3>
+      <p class="muted">A Delta table. Open <code>silver.products</code> for the fully worked example with all tabs.</p>`;
+  } else {
+    detailEl.innerHTML=genericDetail(node);
+  }
+}
+
+/* ---------- lineage interactivity ---------- */
+const linfo=document.getElementById('linfo');
+const lineageText={
+  up:"<b>Upstream — Volume raw_products.</b> The raw files this table is built from. This is where silver.products gets its data.",
+  up2:"<b>Upstream — Notebook build_silver_products.</b> The job that reads the raw volume, cleans it, and writes silver.products. Change it and the table content changes.",
+  center:"<b>silver.products.</b> The Delta table in focus. Everything to its left feeds it; everything to its right depends on it.",
+  d1:"<b>Downstream — Notebook build_gold_sales.</b> Reads silver.products to build a gold aggregate. If you alter products' schema, check this first.",
+  d2:"<b>Downstream — SQL query top_products_q.</b> Queries this table directly. Could break if columns are renamed or dropped.",
+  d3:"<b>Downstream — Dashboard Sales Overview.</b> Surfaces the data to business users. A bad change here is visible to executives."
+};
+document.querySelectorAll('.lnode').forEach(n=>{
+  n.addEventListener('click',()=>{
+    document.querySelectorAll('.lnode').forEach(x=>x.classList.remove('sel'));
+    n.classList.add('sel');
+    linfo.innerHTML=lineageText[n.dataset.info];
+  });
+});
+function resetLineage(){
+  document.querySelectorAll('.lnode').forEach(x=>x.classList.remove('sel'));
+  linfo.innerHTML="Click any node to see what it means for <b>silver.products</b>.";
+}
+</script>
+</body>
+</html>

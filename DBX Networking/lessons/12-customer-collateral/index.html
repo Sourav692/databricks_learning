@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 12 — Customer-Facing Collateral · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626; --db-purple:#7C3AED;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"✓";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"✕";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 12</div>
+  <h1>Customer-Facing Collateral</h1>
+  <div class="subtitle">The three artifacts an FDE/RSA puts on the table: the <strong>sizing &amp; architecture
+    decision guide</strong> (12.1), the <strong>six-pillar security overview</strong> (12.2), and the
+    <strong>deployment &amp; hardening checklist</strong> (12.3). This module doesn't teach new controls — it
+    <em>assembles</em> Stages 1–11 into deliverables a customer's security team can sign off.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">12.1 Sizing &amp; topology</span>
+    <span class="badge">12.2 Six pillars</span>
+    <span class="badge">12.3 Hardening checklist</span>
+    <span class="badge">Architect altitude</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t121">12.1 · Sizing &amp; Architecture</button>
+  <button data-tab="t122">12.2 · Security Overview</button>
+  <button data-tab="t123">12.3 · Hardening Checklist</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Design it, pitch it, sign it off — the same building</h2>
+  <p>Stage 12 is the <strong>meta layer</strong>: it doesn't add a new connectivity path, it decides
+    <em>how hard to lock down all three at once</em> and proves it. <strong>12.1</strong> pours the foundation
+    (sizing you can't redo) and counts the doors (Managed → Hardened → Isolated). <strong>12.2</strong> is the
+    guided tour of six trust pillars. <strong>12.3</strong> is the pre-flight checklist where every switch has a
+    confirmation light (the <em>verify</em> step).</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>Design, pitch, and sign-off for one building.</strong> A fixed-size plot of land (the VNet —
+      footings you can't widen), wrapped in a progression of gates you bolt on only when needed, explained
+      through six pillars, and signed off with a 13-item inspection. <em>Secure by default, hardened by
+      configuration, sized once for peak — and we prove every control is on, not just configured.</em></p>
+  </div>
+
+  <h3>The three artifacts mapped to the three paths</h3>
+  <table>
+    <thead><tr><th>Artifact</th><th>What it delivers</th><th>Touches</th></tr></thead>
+    <tbody>
+      <tr><td><strong>12.1 Sizing &amp; decision guide</strong></td><td>CIDR/subnet worksheet + Managed/Hardened/Isolated tree</td><td>Shapes the VNet (paths ②③); chooses controls across all three</td></tr>
+      <tr><td><strong>12.2 Security overview</strong></td><td>Six pillars: isolation, network, encryption, identity, compliance, audit</td><td>Overlays all three paths; default vs opt-in</td></tr>
+      <tr><td><strong>12.3 Hardening checklist</strong></td><td>13 items, each with why / how / verify</td><td>One control bolted onto each hop of ①②③</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks Stage 12 customer collateral: a peak-sized VNet-injection
+      workspace with host/container subnets, a Private Link subnet and Private DNS, a transit/hub VNet with
+      front-end and web-auth private endpoints, the control plane and serverless plane in the Databricks
+      subscription, ADLS Gen2 and Key Vault in the customer subscription, with the three connectivity paths and
+      the numbered hardening-checklist controls labelled." />
+    <figcaption class="caption">The same map as the interactive diagrams — sized VNet (12.1), six pillars (12.2),
+      numbered hardening controls ☐n (12.3) along paths ①②③.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"We size the network once for your peak so you never rebuild, we add exactly the locked doors your
+      regulator requires, and we hand you a checklist where every control has a confirmation light — not a
+      marketing claim, a verifiable control with a doc behind it."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive lives in the owning module)</h4>
+    <dl>
+      <dt>VNet injection</dt><dd>Classic compute in <em>your</em> VNet so you own subnets/NSGs/routes. → M2.1</dd>
+      <dt>SCC / No Public IP</dt><dd>Clusters dial <em>outbound</em> :443; no inbound ports. → M2.3</dd>
+      <dt>Private Endpoint / Link</dt><dd>Private NIC+IP mapping a service to a private address; needs DNS. → M2.5/M3.1</dd>
+      <dt>Private DNS zone</dt><dd><code>privatelink.azuredatabricks.net</code> — resolves the URL to the PE IP. → M3.2</dd>
+      <dt>NCC</dt><dd>Account-level, regional object giving <em>serverless</em> stable egress + private endpoints. → M4a.2</dd>
+      <dt>CMK</dt><dd>Your keys in Key Vault / Managed HSM; revoke to cut access. → M4b.4</dd>
+      <dt>CSP</dt><dd>Compliance Security Profile — CIS-L1 image, ESM, auto-update, TLS 1.2+. → M4b.6</dd>
+      <dt>IPAM</dt><dd>The customer's IP Address Management team — source of a non-overlapping CIDR block.</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 12.1 -->
+<section class="panel" id="t121">
+  <h2>12.1 · Sizing &amp; architecture decision guide</h2>
+  <p>Two deliverables: a <strong>CIDR/subnet worksheet</strong> (size once for peak — subnet CIDR is immutable)
+    and a <strong>topology tree</strong> (Managed → Hardened → Isolated). Switch the diagram between the
+    <strong>sized VNet</strong> and the <strong>three reference architectures</strong>; click any box for the
+    "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d121','sizing',this)">Sized VNet (worksheet)</button>
+    <button onclick="switchView('d121','topology',this)">Three architectures (tree)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d121" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d121" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d121" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d121" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d121info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout warn">
+    <h4>The two unfixable mistakes</h4>
+    <p><strong>Subnet CIDR is immutable</strong> after the workspace deploys — size for peak (+~30%), equal
+      host/container, VNet 2+ bits larger, a <code>/27</code> Private Link subnet reserved. And
+      <strong>over-building the topology</strong> (Isolated + firewall) when an IP access list was the ask burns
+      cost and weeks of DNS work. Match the architecture to the <em>requirement</em>.</p>
+  </div>
+
+  <h3>Subnet size → node ceiling (usable = 2^(32−n) − 5)</h3>
+  <table>
+    <thead><tr><th>Subnet CIDR</th><th>Usable IPs</th><th>≈ Max nodes (all clusters)</th><th>Good for</th></tr></thead>
+    <tbody>
+      <tr><td><code>/26</code></td><td>59</td><td>~59</td><td>Small/dev</td></tr>
+      <tr><td><code>/24</code></td><td>251</td><td>~251</td><td>Typical prod</td></tr>
+      <tr><td><code>/22</code></td><td>1,019</td><td>~1,019</td><td>Large prod / many jobs</td></tr>
+      <tr><td><code>/20</code></td><td>4,091</td><td>~4,091</td><td>Exceptional — usually split workspaces</td></tr>
+    </tbody>
+  </table>
+
+  <h3>The three reference architectures</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Managed</th><th>Hardened</th><th>Isolated</th></tr></thead>
+    <tbody>
+      <tr><td>Public endpoint</td><td>Open / NSG-limited</td><td>IP access lists</td><td><strong>Disabled</strong> (front-end PL)</td></tr>
+      <tr><td>Compute → control</td><td>SCC (backbone)</td><td>+ classic Private Link</td><td>classic Private Link</td></tr>
+      <tr><td>Exfiltration</td><td>minimal</td><td>egress control</td><td>+ Azure Firewall (hub-spoke)</td></tr>
+      <tr><td>Cost / effort</td><td>$</td><td>$$</td><td>$$$ (NAT+PE+firewall+DNS)</td></tr>
+      <tr><td>Tier</td><td>PE optional</td><td><strong>Premium</strong></td><td><strong>Premium</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="caption">SCC + VNet injection are in all three — the baseline, not an upgrade.</p>
+
+  <h3>Illustrative config — sized, delegated subnets (immutable)</h3>
+  <p class="caption">Terraform (azurerm) — the CIDRs that set the node ceiling. Full VNet/NSG/NAT module is in the M2/M3 hands-on artifacts.</p>
+  <pre><code>resource "azurerm_virtual_network" "adb" {
+  address_space = ["10.50.0.0/16"]          # /16: room for big subnets + a PL subnet
+}
+resource "azurerm_subnet" "container" {     # "private subnet" — MUST equal host size
+  address_prefixes = ["10.50.1.0/24"]       # /24 = 251 usable -> ~251 node ceiling
+  delegation { name = "databricks-del"
+    service_delegation { name = "Microsoft.Databricks/workspaces" } }   # required
+}
+# 10.50.2.0/27 left free for the back-end Private Link endpoint subnet.</code></pre>
+  <p class="caption">Portal: Virtual networks → + Create → set address space → + Add subnet ×2 (equal, non-overlapping)
+    → Azure Databricks → <em>Networking → Deploy to your VNet = Yes</em>. ⚠️ CIDR can't change after Create.</p>
+
+  <div class="callout warn">
+    <h4>2026 deadline to flag</h4>
+    <p>After <strong>2026-03-31</strong>, new Azure VNets default to <em>no</em> outbound internet — a new
+      workspace needs an <strong>Azure NAT Gateway</strong> on both subnets (also a stable egress IP) or clusters
+      can't reach the control plane.</p>
+  </div>
+</section>
+
+<!-- 12.2 -->
+<section class="panel" id="t122">
+  <h2>12.2 · Customer security &amp; networking overview</h2>
+  <p>The "is it secure?" briefing — six pillars, each a named, verifiable control. Switch the diagram between
+    the <strong>six pillars</strong> view (where each pillar attaches) and the <strong>default vs opt-in</strong>
+    view; click a box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d122','pillars',this)">Six pillars (where they attach)</button>
+    <button onclick="switchView('d122','tiers',this)">Default vs opt-in</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d122" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d122" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d122" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d122" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d122info"><strong>Tip</strong>Click any component to see the pillar it anchors and why.</div>
+
+  <div class="callout key">
+    <h4>The one sentence</h4>
+    <p><strong>"Secure by default, hardened by configuration."</strong> The baseline (isolation, SCC, TLS, Entra
+      ID, Unity Catalog, audit) is on out of the box on Premium; Private Link, CMK, and CSP are opt-in controls
+      you add only when a <em>named</em> requirement justifies the cost. Every claim must match the deployed config.</p>
+  </div>
+
+  <h3>Default vs opt-in</h3>
+  <table>
+    <thead><tr><th>Control</th><th>Default (Premium)</th><th>Opt-in</th><th>Answers</th></tr></thead>
+    <tbody>
+      <tr><td>Plane separation / SCC</td><td>✅</td><td>—</td><td>"Where does data run? Inbound exposure?"</td></tr>
+      <tr><td>Encryption at rest</td><td>✅ platform-managed</td><td><strong>CMK</strong></td><td>"Can we hold the keys?"</td></tr>
+      <tr><td>Entra ID SSO / SCIM / UC</td><td>✅</td><td>Conditional Access · ABAC (Preview)</td><td>"One identity? Row/column control?"</td></tr>
+      <tr><td>Front/back-end Private Link · NCC</td><td>—</td><td>✅ Premium</td><td>"Off the internet? Trust serverless egress?"</td></tr>
+      <tr><td>Compliance Security Profile</td><td>—</td><td>✅ Add-on</td><td>"PCI/HIPAA-ready?"</td></tr>
+      <tr><td>Audit (<code>system.access.audit</code>)</td><td>✅ (Preview)</td><td>SIEM export</td><td>"Who did what?"</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — prove the audit trail live</h3>
+  <p class="caption">SQL — the query an FDE runs in front of the security team. Nothing lands better than showing the log.</p>
+  <pre><code>SELECT event_time, user_identity.email AS who, service_name, action_name,
+       source_ip_address, response.status_code
+FROM system.access.audit
+WHERE event_date >= current_date() - INTERVAL 7 DAYS
+  AND response.status_code >= 400          -- 4xx/5xx = denied or errored
+ORDER BY event_time DESC LIMIT 100;</code></pre>
+
+  <div class="callout warn">
+    <h4>Be precise — three over-claims that lose trust</h4>
+    <p><strong>CMK scope:</strong> covers managed services / DBFS root / managed disks — <em>not</em> serverless
+      ephemeral disks. <strong>Serverless ≠ classic</strong> for CSP standard/region coverage. And don't say
+      "fully isolated" unless front+back-end Private Link <em>and</em> public access Disabled are deployed.</p>
+  </div>
+</section>
+
+<!-- 12.3 -->
+<section class="panel" id="t123">
+  <h2>12.3 · Deployment &amp; hardening checklist</h2>
+  <p>The pre-flight checklist — 13 items, each with <strong>why · how · verify</strong>. The whole list is the
+    three-path scaffold with one control bolted onto each hop. Switch the diagram between the
+    <strong>three connectivity paths</strong> to see which checklist items lock each; click a box for the proof.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d123','path1',this)">① Users → Databricks</button>
+    <button onclick="switchView('d123','path2',this)">② Compute ↔ Control</button>
+    <button onclick="switchView('d123','path3',this)">③ Compute → Storage</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d123" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d123" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d123" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d123" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d123info"><strong>Tip</strong>Pick a path, then click a box to see the checklist item, why it matters, and how to verify it.</div>
+
+  <div class="callout warn">
+    <h4>"Configured" ≠ "effective" — the discipline</h4>
+    <p>Half of field incidents are a control that was <em>configured</em> but silently <em>not effective</em> (an
+      NSG rule overwritten, a Private DNS zone not linked, an audit schema never enabled). Every item has a
+      one-command/one-click <strong>verify</strong> — read the light, don't assume the gear is down.</p>
+  </div>
+
+  <h3>The 13 items (why / verify)</h3>
+  <table>
+    <thead><tr><th>#</th><th>Item</th><th>Why</th><th>Verify</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>VNet injection + sizing</td><td>Own NSGs/UDRs/DNS; foundation for PL. CIDR immutable.</td><td>Subnet shows NSG + delegation; cluster IPs in container range.</td></tr>
+      <tr><td>2</td><td>SCC / No Public IP</td><td>No inbound attack surface.</td><td>NICs have no public IP; <code>enableNoPublicIp = true</code>.</td></tr>
+      <tr><td>3</td><td>Back-end Private Link</td><td>Removes last public hop for classic.</td><td>PE <code>databricks_ui_api</code> Approved; <code>nslookup</code> → private IP.</td></tr>
+      <tr><td>4</td><td>Front-end PL + web-auth</td><td>Private user path; SSO over private. 1 web-auth/region.</td><td>URL → transit PE IP; SSO completes.</td></tr>
+      <tr><td>5</td><td>Private DNS</td><td>PE useless if DNS returns public IP.</td><td><code>nslookup</code> from VNet → private IP.</td></tr>
+      <tr><td>6</td><td>NCC (serverless)</td><td>VNet injection doesn't cover serverless.</td><td>NCC binding + PE rules Established; serverless query succeeds.</td></tr>
+      <tr><td>7</td><td>Public access = Disabled</td><td>Rejects all public connections.</td><td>Outside corp net: URL unreachable.</td></tr>
+      <tr><td>8</td><td>CMK</td><td>You hold/revoke keys.</td><td>Encryption blade shows Key Vault URI.</td></tr>
+      <tr><td>9</td><td>IP access lists</td><td>Restrict front-end to known IPs.</td><td>Off-list blocked; <strong>egress IP in ALLOW</strong>.</td></tr>
+      <tr><td>10</td><td>Entra ID SSO+SCIM+MFA</td><td>Central identity; auto-deprovision.</td><td>Test user syncs/de-syncs; MFA enforced.</td></tr>
+      <tr><td>11</td><td>Cluster policies + access modes</td><td>Forbid legacy No Isolation Shared.</td><td>Legacy mode rejected for non-admins.</td></tr>
+      <tr><td>12</td><td>Audit logging</td><td>Immutable who-did-what. (Preview.)</td><td>Query returns rows; schema enabled.</td></tr>
+      <tr><td>13</td><td>Terraform IaC</td><td>Reproducible, drift-detectable.</td><td><code>terraform plan</code> = no diff.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the SCC + VNet-injection workspace</h3>
+  <pre><code>resource "azurerm_databricks_workspace" "this" {
+  sku = "premium"                            # Premium -> PL, CMK, IP ACLs, CSP
+  custom_parameters {
+    no_public_ip       = true                # SCC / NPIP (item 2)
+    virtual_network_id = azurerm_virtual_network.adb.id   # VNet injection (item 1)
+  }
+  public_network_access_enabled = false      # item 7 (with front+back-end PL in place)
+}</code></pre>
+  <p class="caption">IP ACLs: <code>databricks workspace-conf set-status --json '{"enableIpAccessLists":"true"}'</code>.
+    NCC: Account Console → Cloud resources → Network Connectivity Configurations.</p>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Managed security</h3>
+      <ul>
+        <li>Startup / internal analytics, no regulatory driver</li>
+        <li>Baseline: VNet injection + SCC + UC + Entra ID + audit</li>
+        <li>Public endpoints OK; classic PE optional</li>
+        <li>Dev/sandbox: checklist items 1–2 + 10–13</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Hardened connectivity</h3>
+      <ul>
+        <li>Must restrict <em>who</em> connects / control serverless egress</li>
+        <li>+ IP access lists + serverless egress control</li>
+        <li>+ classic &amp; serverless Private Link (Premium)</li>
+        <li>Add CMK if "hold our own keys"</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Isolated environment</h3>
+      <ul>
+        <li>Regulated (FSI / healthcare / gov) or "no public internet" mandate</li>
+        <li>Front+back-end PL + NCC + public access Disabled</li>
+        <li>Hub-spoke + Azure Firewall; CSP for the regime</li>
+        <li>Full checklist; <strong>Premium</strong>; accept NAT/PE/firewall cost</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Size subnets for today (CIDR is immutable — size for peak)</li>
+        <li>Sell Isolated when an IP access list was the requirement</li>
+        <li>Say "fully isolated" without front+back-end PL + public access Disabled</li>
+        <li>Claim "everything encrypted with your key" — CMK has defined scopes</li>
+        <li>Treat "configured" as "effective" — run the verify step</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Start at the baseline, step up only when a named requirement justifies the cost — and prove every
+      control is on, not just configured.</strong> Size once for peak (the cheapest insurance against a rebuild),
+      and tie every opt-in control (Private Link, CMK, CSP — all Premium) to a regulatory or data-residency
+      requirement, never "nice to have."</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"We size the network once for your peak so you never rebuild, we add exactly the locked
+      doors your regulator requires — no more — and we hand you a 13-item checklist where every control has a
+      confirmation light. Secure by default, hardened by configuration, and proven, not asserted."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"How big should subnets be — can we change them later?"</td><td>Size for peak via the worksheet; <strong>no</strong>, subnet CIDR is immutable — a rebuild is the only redo.</td></tr>
+      <tr><td>"Which architecture do we need?"</td><td>Run the tree: regulated/exfiltration → Isolated; ingress/egress control → Hardened; else Managed. Don't over-build.</td></tr>
+      <tr><td>"Does any traffic touch the public internet?"</td><td>With SCC + front+back-end PL + public access Disabled + NCC for serverless — <strong>no public path</strong>.</td></tr>
+      <tr><td>"Can we hold and revoke our own keys?"</td><td>Yes — CMK from Key Vault across managed services, workspace storage, and disks (not serverless disks).</td></tr>
+      <tr><td>"Are you PCI/HIPAA-ready, and what do we do?"</td><td>Enable CSP + the right standard; it's <strong>shared responsibility</strong> — config + free-text fields are yours.</td></tr>
+      <tr><td>"Prove the audit trail."</td><td>Run a live <code>system.access.audit</code> query in front of them.</td></tr>
+      <tr><td>"How do we prove each control is on?"</td><td>The <strong>verify</strong> column — each is one command or Portal check.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>"Cluster failed to start — insufficient IPs"</h4><p>Container subnet too small for peak autoscale.<span class="fix">First check: container subnet free-IP count vs peak nodes, minus the 5 reserved.</span></p></div>
+    <div class="scenario"><h4>Clusters won't launch after enabling IP ACLs</h4><p>The compute stable-egress IP isn't in the ALLOW list.<span class="fix">First check: egress IP in ALLOW (or back-end PL configured) — not quota.</span></p></div>
+    <div class="scenario"><h4>Workspace URL unreachable / SSO fails after Private Link</h4><p>DNS still returns the public IP, or web-auth missing.<span class="fix">First check: <code>nslookup</code> the host + the single regional <code>browser_authentication</code> endpoint.</span></p></div>
+    <div class="scenario"><h4>Serverless can't reach firewalled ADLS</h4><p>A classic NSG/UDR was applied; serverless needs NCC.<span class="fix">First check: NCC binding + private-endpoint rule, not classic networking.</span></p></div>
+    <div class="scenario"><h4>"Audit table is empty"</h4><p>The system schema was never turned on.<span class="fix">First check: <code>system.access</code> schema is enabled at the account.</span></p></div>
+    <div class="scenario"><h4>"The overview doesn't match what we deployed"</h4><p>PL/CMK/CSP are opt-in, not automatic.<span class="fix">First check: workspace tier + which add-ons are actually enabled.</span></p></div>
+  </div>
+
+  <h3>Three questions before recommending an architecture</h3>
+  <ol>
+    <li>Is there a named regulatory mandate for <em>no public-IP hop</em> / data exfiltration protection — or is backbone-private enough?</li>
+    <li>Do they need to restrict <em>who</em> connects and control serverless egress, or just secure defaults?</li>
+    <li>What's the five-year peak node count (sizing), and are they on Premium (Private Link / CMK / IP ACLs / CSP are Premium-only)?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks docs — 2026-06-26)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/vnet-inject" target="_blank">Deploy in your VNet (VNet injection) — CIDR limits, 5 reserved IPs, 2 IPs/node, NAT after 2026-03-31</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/deployment-architecture/" target="_blank">Network reference architecture (Managed / Hardened / Isolated)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/private-link-standard" target="_blank">Classic compute plane Private Link (databricks_ui_api, browser_authentication, hub-spoke)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/concepts/private-link" target="_blank">Azure Private Link concepts (front/back/serverless, NCC limits, public access Disabled)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/keys/customer-managed-keys" target="_blank">Customer-managed keys (managed services / DBFS root / disks)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/privacy/security-profile" target="_blank">Compliance security profile (CIS L1, ESM, TLS 1.2+)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/front-end/ip-access-list-workspace" target="_blank">IP access lists (Premium, IPv4, egress-IP requirement)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/system-tables/audit-logs" target="_blank">Audit log system table (system.access.audit — Public Preview)</a></li>
+    <li>· <a href="https://www.databricks.com/trust" target="_blank">Databricks Security &amp; Trust Center (current certifications)</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive: default-outbound retirement (2026-03-31), HIPAA/HITRUST/IRAP CSP-required (2026-09-01),
+    NCC quotas, Managed/Hardened/Isolated names, Private Link sub-resource names, and GA-vs-Preview status
+    (<code>system.access.audit</code>, ABAC, <em>Update network configuration</em>) — reconfirm before quoting a customer.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- shared nodes ----------
+const CP = {id:'cp',x:360,y:30,w:210,h:80,color:'#FF3621',label:'Control plane',sub:'Databricks sub · metadata only',
+  info:'<strong>Control plane (Databricks subscription)</strong>Web app, REST API, Unity Catalog metastore, scheduler, and the SCC relay. Holds metadata + orchestration only, never your table data. You secure the paths to/from it, not the inside.'};
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 12.1 sizing & topology ----
+  d121:{ info:'d121info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      sizing:{ nodes:[
+        {id:'vnet',x:30,y:24,w:300,h:46,color:'#2272B4',label:'VNet 10.50.0.0/16',sub:'65,536 addresses — size 2+ bits > subnets',
+          info:'<strong>VNet (the footings)</strong>VNet CIDR must be /16–/24. Size it 2+ bits larger than the subnets so there is room for a /27 Private Link subnet you will need in Hardened/Isolated. Overlapping with on-prem/peered/hub VNets silently blackholes routing — get the block from the customer\'s IPAM team.'},
+        {id:'host',x:40,y:120,w:230,h:64,color:'#6B7280',label:'Host subnet 10.50.0.0/24',sub:'251 usable · 1 host IP / node',
+          info:'<strong>Host subnet ("public" in the Portal)</strong>One of the two delegated subnets. Each cluster node burns 1 host IP here + 1 container IP. Azure reserves 5 IPs per subnet, so usable = 2^(32−n) − 5. Delegated to Microsoft.Databricks/workspaces.'},
+        {id:'cont',x:40,y:206,w:230,h:74,color:'#2272B4',label:'Container subnet 10.50.1.0/24',sub:'251 usable · MUST match host · NPIP',
+          info:'<strong>Container subnet ("private" in the Portal)</strong>Where the Databricks Runtime runs. MUST be the same size as the host subnet — the smaller of the two becomes the hidden node ceiling. /24 = 251 usable → ~251 nodes across ALL running clusters. CIDR is IMMUTABLE after deploy: size for peak (+~30%).'},
+        {id:'pl',x:330,y:120,w:230,h:64,color:'#2272B4',label:'Private Link subnet /27',sub:'10.50.2.0/27 · reserved headroom',
+          info:'<strong>Private Link subnet</strong>A small /27–/28 carved from headroom, reserved for the back-end (and front-end) Private Endpoint you add in Hardened/Isolated. If you max the VNet you have nowhere to put this — a classic sizing mistake.'},
+        {id:'ceiling',x:330,y:206,w:230,h:74,color:'#FF3621',label:'Node ceiling',sub:'usable IPs − 5 = max nodes',
+          info:'<strong>The node ceiling = one subnet\'s usable IPs</strong>"Max nodes" is every driver + worker across every running cluster at once — they all draw from the same two subnets. IP exhaustion ("cluster failed to start, insufficient IP addresses") is the #1 avoidable incident. Fix = Update network configuration (Preview) or account-team CIDR increase — neither instant.'},
+        {id:'nat',x:610,y:160,w:250,h:70,color:'#00A972',label:'Azure NAT Gateway',sub:'stable egress IP · required after 2026-03-31',
+          info:'<strong>NAT Gateway (stable egress)</strong>Gives clusters a stable egress IP for partner allowlists. After 2026-03-31 new Azure VNets default to NO outbound internet — a new workspace needs NAT (or a UDR→firewall) on both subnets or clusters cannot reach the control plane.'}
+      ], arrows:[
+        {from:'vnet',to:'host',cls:'',label:'carve'},
+        {from:'vnet',to:'pl',cls:'',label:'carve'},
+        {from:'host',to:'ceiling',cls:'hot',label:'limits'},
+        {from:'cont',to:'ceiling',cls:'hot'},
+        {from:'cont',to:'nat',cls:'cold',label:'egress'}
+      ]},
+      topology:{ nodes:[
+        {id:'base',x:30,y:150,w:200,h:80,color:'#1B3139',label:'Baseline (all 3)',sub:'SCC + VNet injection',
+          info:'<strong>Baseline — in every architecture</strong>SCC (No Public IP) + VNet injection + serverless stable IPs. This is the floor, not an upgrade. The decision tree only adds ingress lockdown and private connectivity on top.'},
+        {id:'man',x:300,y:30,w:240,h:74,color:'#00A972',label:'Managed security',sub:'public endpoints OK · $',
+          info:'<strong>Managed security</strong>Secure defaults; public endpoints acceptable; classic Private Endpoint optional. The right answer for a startup or internal analytics with no regulatory driver. Don\'t over-build past this.'},
+        {id:'hard',x:300,y:140,w:240,h:74,color:'#2272B4',label:'Hardened connectivity',sub:'IP ACLs + PL · $$ · Premium',
+          info:'<strong>Hardened connectivity</strong>Lock ingress/egress without going fully private: + IP access lists, + serverless egress control, + classic & serverless Private Link. Premium for Private Link. For enterprises needing auditability.'},
+        {id:'iso',x:300,y:250,w:240,h:80,color:'#FF3621',label:'Isolated environment',sub:'all private · $$$ · Premium',
+          info:'<strong>Isolated environment</strong>Everything private: + inbound (front-end) Private Link, + PL for performance-intensive services, + external Azure Firewall (hub-spoke), public network access Disabled. For FSI/healthcare/gov with strict exfiltration rules. Costs NAT + PE per-GB + firewall + DNS effort.'},
+        {id:'pe',x:600,y:90,w:260,h:70,color:'#2272B4',label:'Back-end Private Link',sub:'databricks_ui_api · Premium',
+          info:'<strong>Back-end Private Link essentials</strong>Premium workspace; sub-resources databricks_ui_api (back-end cluster→control + front-end user→UI/API) and browser_authentication (SSO callback, host on a dedicated web-auth workspace). Private DNS zone privatelink.azuredatabricks.net. Required NSG rules = NoAzureDatabricksRules.'},
+        {id:'fw',x:600,y:240,w:260,h:74,color:'#FF3621',label:'Azure Firewall (hub-spoke)',sub:'UDR 0.0.0.0/0 + FQDN allowlist',
+          info:'<strong>External firewall (DEP)</strong>Data exfiltration protection: a UDR forces all egress through an Azure Firewall in the hub VNet with an FQDN allowlist, so a compromised cluster can\'t dial arbitrary destinations. The top tier of the Isolated architecture.'}
+      ], arrows:[
+        {from:'base',to:'man',cls:'',label:'no controls'},
+        {from:'base',to:'hard',cls:'',label:'restrict ingress/egress'},
+        {from:'base',to:'iso',cls:'hot',label:'regulated'},
+        {from:'hard',to:'pe',cls:'cold'},
+        {from:'iso',to:'fw',cls:'hot'}
+      ]}
+    }},
+
+  // ---- 12.2 six pillars ----
+  d122:{ info:'d122info', tip:'<strong>Tip</strong>Click any component to see the pillar it anchors and why.',
+    views:{
+      pillars:{ nodes:[
+        {id:'user',x:30,y:150,w:140,h:64,color:'#7C3AED',label:'User / BI / REST',sub:'Entra ID SSO · P4',
+          info:'<strong>Pillar 4 — Identity & access (path ①)</strong>Microsoft Entra ID SSO + Conditional Access/MFA, SCIM provisioning + identity federation, service principals/OAuth. Unity Catalog enforces least-privilege grants, row filters, column masks, ABAC (Preview) on the data itself.'},
+        CP,
+        {id:'cont',x:360,y:220,w:210,h:64,color:'#2272B4',label:'Classic cluster',sub:'No Public IP · P2',
+          info:'<strong>Pillar 2 — Network isolation (path ②)</strong>SCC: no public IP, no inbound ports; the cluster dials OUTBOUND to the relay. Answer to "can anyone reach our clusters?" → No. Back-end Private Link removes the last public hop; NCC does the same for serverless.'},
+        {id:'svr',x:640,y:30,w:230,h:80,color:'#00A972',label:'Serverless plane',sub:'network-isolated · NCC · P1',
+          info:'<strong>Pillar 1 — Architecture & isolation</strong>Classic runs in YOUR subscription; serverless runs in a network-isolated boundary in the Databricks account (layered isolation between customers/clusters). Bounds blast radius and answers "where does my data run?"'},
+        {id:'adls',x:640,y:210,w:230,h:74,color:'#00A972',label:'ADLS Gen2 + Key Vault',sub:'CMK · TLS · P3 · P6',
+          info:'<strong>Pillars 3 & 6 — Encryption + auditability (path ③)</strong>TLS 1.2+ in transit; platform-managed at rest with optional CMK (Key Vault / Managed HSM) across managed services / DBFS root / managed disks. system.access.audit (Preview) records who/what/when/where for the audit pillar.'}
+      ], arrows:[
+        {from:'user',to:'cp',cls:'',label:'① Entra ID SSO / IP ACL / front-end PL'},
+        {from:'cont',to:'cp',cls:'hot',label:'② SCC outbound · back-end PL'},
+        {from:'svr',to:'cp',cls:'cold',label:'② backbone + TLS'},
+        {from:'cont',to:'adls',cls:'',label:'③ SE / PE · CMK · TLS'},
+        {from:'svr',to:'adls',cls:'cold',label:'③ NCC PE'}
+      ]},
+      tiers:{ nodes:[
+        {id:'def',x:40,y:40,w:380,h:120,color:'#00A972',label:'Default on Premium (no extra cost)',sub:'the baseline you lead with',
+          info:'<strong>Default (Premium baseline)</strong>Plane separation + isolation (P1), SCC/No Public IP (P2), TLS 1.2+ in transit + platform-managed encryption at rest (P3), Entra ID SSO/SCIM + Unity Catalog (P4), system.access.audit (P6, Preview). Usually enough for a standard enterprise — don\'t over-engineer cost.'},
+        {id:'opt',x:40,y:200,w:380,h:130,color:'#FF3621',label:'Opt-in (named requirement only)',sub:'Private Link · CMK · CSP',
+          info:'<strong>Opt-in / add-on</strong>Front/back-end Private Link + NCC (P2, Premium), CMK (P3, Premium), Compliance Security Profile + ESM (P5, paid add-on). Add ONLY when a named regulatory/residency requirement justifies the cost — each maps to a specific control and doc, not a marketing claim.'},
+        {id:'rule',x:470,y:120,w:390,h:130,color:'#1B3139',label:'Secure by default,',sub:'hardened by configuration',
+          info:'<strong>The framing</strong>Lead every security conversation with the six pillars + the diagram. Match every claim to the deployed config — don\'t say "fully isolated" without front+back-end PL + public access Disabled; don\'t say "everything encrypted with your key" (CMK has scopes); don\'t treat serverless = classic for compliance. Compliance is shared responsibility.'}
+      ], arrows:[
+        {from:'def',to:'rule',cls:'cold',label:'usually enough'},
+        {from:'opt',to:'rule',cls:'hot',label:'when mandated'}
+      ]}
+    }},
+
+  // ---- 12.3 checklist on the three paths ----
+  d123:{ info:'d123info', tip:'<strong>Tip</strong>Pick a path, then click a box for the checklist item, why, and how to verify.',
+    views:{
+      path1:{ nodes:'BASE123', arrows:[
+        {from:'user',to:'fe',cls:'hot',label:'① ☐4 front-end PL + web-auth · ☐9 IP ACL · ☐7 public access Disabled'},
+        {from:'fe',to:'cp',cls:'hot',label:'☐10 Entra ID SSO/SCIM/MFA'},
+        {from:'cont',to:'cp',cls:'muted'},
+        {from:'cont',to:'adls',cls:'muted'},
+        {from:'svr',to:'adls',cls:'muted'}
+      ]},
+      path2:{ nodes:'BASE123', arrows:[
+        {from:'user',to:'fe',cls:'muted'},
+        {from:'fe',to:'cp',cls:'muted'},
+        {from:'cont',to:'cp',cls:'hot',label:'② ☐2 SCC outbound :443 · ☐3 back-end PL · ☐5 Private DNS'},
+        {from:'svr',to:'cp',cls:'cold',label:'② backbone (managed)'},
+        {from:'cont',to:'adls',cls:'muted'},
+        {from:'svr',to:'adls',cls:'muted'}
+      ]},
+      path3:{ nodes:'BASE123', arrows:[
+        {from:'user',to:'fe',cls:'muted'},
+        {from:'fe',to:'cp',cls:'muted'},
+        {from:'cont',to:'cp',cls:'muted'},
+        {from:'cont',to:'adls',cls:'hot',label:'③ Service / Private Endpoint · CMK ☐8'},
+        {from:'svr',to:'adls',cls:'cold',label:'③ ☐6 NCC private endpoint'}
+      ]}
+    }}
+};
+
+// shared base node set for the 12.3 path diagrams
+const BASE123 = [
+  {id:'user',x:24,y:150,w:130,h:60,color:'#7C3AED',label:'User / BI / REST',sub:'☐10 Entra ID',
+    info:'<strong>User / BI / REST (path ①)</strong>Reaches the workspace over 443. Hardened by ☐9 IP access lists (Premium, IPv4 — the compute egress IP MUST be in the ALLOW list or clusters won\'t launch), ☐10 Entra ID SSO+SCIM+MFA, and ☐4 front-end Private Link for a fully private user path.'},
+  {id:'fe',x:210,y:150,w:140,h:60,color:'#7C3AED',label:'Front-end + web-auth PE',sub:'☐4 · transit VNet',
+    info:'<strong>Front-end PE + web-auth (☐4, path ①)</strong>Private endpoints in the transit/hub VNet: databricks_ui_api (front-end) and browser_authentication (makes browser SSO work over the private path). Only ONE browser_authentication per region per DNS zone — deleting its host workspace breaks regional SSO. Verify: URL → transit PE IP; SSO completes.'},
+  {id:'cp',x:400,y:28,w:210,h:80,color:'#FF3621',label:'Control plane',sub:'☐12 audit · ☐8 CMK svcs',
+    info:'<strong>Control plane</strong>Where paths ① and ② terminate. Hosts the SCC relay, Unity Catalog, system.access.audit (☐12, Preview — enable the system.access schema), and CMK for managed services (☐8). Public network access can be Disabled (☐7) once front+back-end PL are in place.'},
+  {id:'svr',x:660,y:28,w:220,h:80,color:'#00A972',label:'Serverless plane',sub:'☐6 NCC',
+    info:'<strong>Serverless plane (☐6)</strong>VNet injection and back-end Private Link DON\'T apply to serverless. NCC (account-level, regional) gives stable egress (for storage-firewall allowlists) and private endpoints. Verify: NCC binding + PE rules Established; a serverless query of firewalled ADLS succeeds.'},
+  {id:'cont',x:400,y:220,w:210,h:64,color:'#2272B4',label:'Classic cluster',sub:'☐1 VNet inj · ☐2 NPIP · ☐11',
+    info:'<strong>Classic cluster (path ②)</strong>Runs in your VNet-injected subnet (☐1, foundation, CIDR immutable), with No Public IP (☐2 SCC — dials out :443). Back-end Private Link (☐3) + Private DNS (☐5) remove the last public hop. Cluster policies + UC access modes (☐11) forbid the legacy No Isolation Shared mode.'},
+  {id:'adls',x:660,y:210,w:220,h:74,color:'#00A972',label:'ADLS Gen2 + Key Vault',sub:'☐8 CMK · firewall · SE/PE',
+    info:'<strong>ADLS Gen2 + Key Vault (path ③)</strong>Storage firewall + Service/Private Endpoint; UC external location brokered by a managed identity (no embedded keys). CMK (☐8) from Key Vault / Managed HSM for at-rest control (not serverless disks). DNS (☐5) is the #1 Private Link failure — always test resolution first.'}
+];
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes==='BASE123' ? BASE123 : view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d121','sizing');
+renderDiagram('d122','pillars');
+renderDiagram('d123','path1');
+</script>
+</body>
+</html>

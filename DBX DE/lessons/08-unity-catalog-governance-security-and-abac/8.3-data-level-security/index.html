@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data-Level Security · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .warn{border-left:4px solid #d4452f;background:#fdecea}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.78rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: role-based view simulator */
+  .roles{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .role{font-family:"Spline Sans Mono",monospace;font-size:.8rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;transition:.15s}
+  .role:hover{border-color:var(--teal)}.role.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .qhint{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:#8a939c;margin:6px 0}
+  .vtbl{border-collapse:collapse;width:100%;background:#fff;border-radius:10px;overflow:hidden;font-size:.84rem;box-shadow:var(--shadow)}
+  .vtbl th,.vtbl td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  .vtbl th{background:var(--paper-2)}
+  /* diagram 2: mechanism tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 8.3</p>
+  <h1>Data-Level <em>Security</em></h1>
+  <p class="lede">Control which rows and column values each user sees — row filters, column masks, and dynamic views, all keyed off user/group identity. This deep dive walks each with the verified SQL.</p>
+  <div class="pills"><span class="pill">row filter</span><span class="pill">column mask</span><span class="pill">dynamic view</span><span class="pill">is_account_group_member</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Row filters</strong> hide rows (UDF <code>RETURNS BOOLEAN</code>), <strong>column masks</strong> redact values (transform UDF), and <strong>dynamic views</strong> wrap a table to filter/mask — all varying by <code>current_user()</code> / <code>is_account_group_member()</code>. Object GRANT can't do this.</div>
+  <div class="card analogy" style="margin-top:10px">📄 <strong>Analogy:</strong> a <strong>redacted document</strong> — everyone gets "the same file," but a row filter removes whole paragraphs you're not cleared for, and a column mask blacks out specific words (emails) based on your clearance.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: role-based view simulator -->
+<section id="view">
+  <h2>Same table, different view per role — click a role</h2>
+  <p class="qhint">query: <code>SELECT id, region, email FROM customers</code></p>
+  <div class="roles">
+    <div class="role on" data-r="auditor">Auditor (admin)</div>
+    <div class="role" data-r="support">Support (no PII)</div>
+    <div class="role" data-r="mgr_west">Manager — West</div>
+  </div>
+  <table class="vtbl" id="vtable"></table>
+  <div class="qhint" id="vnote"></div>
+</section>
+
+<!-- diagram 2: mechanisms -->
+<section id="mech">
+  <h2>Three mechanisms — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="rf">Row filter</button>
+    <button class="tab" data-t="cm">Column mask</button>
+    <button class="tab" data-t="dv">Dynamic view</button>
+  </div>
+  <div class="panel on" data-p="rf"><div class="card"><strong>Row filter</strong> — UDF <code>RETURNS BOOLEAN</code> attached to the table; rows returning FALSE are hidden.
+    <pre class="code"><span class="k">CREATE FUNCTION</span> region_filter(region <span class="k">STRING</span>) <span class="k">RETURNS BOOLEAN</span>
+  <span class="k">RETURN</span> is_account_group_member(<span class="s">'admins'</span>)
+      <span class="k">OR</span> is_account_group_member(<span class="s">'region_'</span> || region);
+<span class="k">ALTER TABLE</span> prod.sales.customers <span class="k">SET ROW FILTER</span> region_filter <span class="k">ON</span> (region);</pre></div></div>
+  <div class="panel" data-p="cm"><div class="card"><strong>Column mask</strong> — UDF that transforms a column value per user; <code>USING COLUMNS</code> can reference other columns.
+    <pre class="code"><span class="k">CREATE FUNCTION</span> mask_email(e <span class="k">STRING</span>) <span class="k">RETURNS STRING</span>
+  <span class="k">RETURN CASE WHEN</span> is_account_group_member(<span class="s">'pii_readers'</span>) <span class="k">THEN</span> e <span class="k">ELSE</span> <span class="s">'***@***'</span> <span class="k">END</span>;
+<span class="k">ALTER TABLE</span> prod.sales.customers <span class="k">ALTER COLUMN</span> email <span class="k">SET MASK</span> mask_email;</pre></div></div>
+  <div class="panel" data-p="dv"><div class="card"><strong>Dynamic view</strong> — a view that filters/masks; grant the view instead of the table. Best for curated/shared slices.
+    <pre class="code"><span class="k">CREATE VIEW</span> prod.sales.cust_safe <span class="k">AS</span>
+<span class="k">SELECT</span> id, region,
+  <span class="k">CASE WHEN</span> is_account_group_member(<span class="s">'pii_readers'</span>) <span class="k">THEN</span> email <span class="k">ELSE</span> <span class="s">'***'</span> <span class="k">END</span> <span class="k">AS</span> email
+<span class="k">FROM</span> prod.sales.customers
+<span class="k">WHERE</span> is_account_group_member(<span class="s">'admins'</span>) <span class="k">OR</span> is_account_group_member(<span class="s">'region_'</span> || region);</pre></div></div>
+</section>
+
+<section id="compose">
+  <h2>How it composes with GRANT (8.2)</h2>
+  <div class="card">Grants decide <strong>whether</strong> you can touch the table; filters/masks decide <strong>what you see</strong> once you can. A user still needs <code>USE CATALOG</code> + <code>USE SCHEMA</code> + <code>SELECT</code> — <em>and then</em> the row filter/mask shapes the result.</div>
+</section>
+
+<section>
+  <h2>Row filter / mask vs dynamic view</h2>
+  <table>
+    <tr><th></th><th>Row filter / column mask</th><th>Dynamic view</th></tr>
+    <tr><td>Attaches to</td><td>the base table (<code>ALTER TABLE</code>)</td><td>a separate view object</td></tr>
+    <tr><td>Users query</td><td>the table directly</td><td>the view (grant on view)</td></tr>
+    <tr><td>Best for</td><td>universal table-level enforcement</td><td>curated/shared data slices</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Real data has PII and tenant boundaries — you can't just GRANT the whole table. This is how one table safely serves many audiences.</li>
+    <li>"Mask the email column / hide other regions' rows" → <strong>column mask + row filter</strong>.</li>
+  </ul>
+  <div class="card usecase">🔏 <strong>Real-world use case:</strong> one <code>customers</code> table — support sees all rows but <strong>email masked</strong>; regional managers see <strong>only their region's rows</strong>; auditors see everything.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> PII masking, multi-tenant/region row isolation, "same table, different view per role."</li>
+    <li><strong>Edge cases:</strong> keep UDFs <strong>simple</strong> — they run per row/query and the optimizer "always makes the secure choice" (perf cost); limit distinct masks; drive rules from <code>is_account_group_member()</code> or a mapping table (no invented helper functions).</li>
+    <li><strong>Limitation (verified):</strong> a table with row filters/column masks <strong>does not support time travel, CLONE (deep/shallow), or Delta Lake API access</strong>. At scale, prefer <strong>ABAC by tag</strong> (8.4).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using object <strong>GRANT</strong> to hide rows/columns — it can't; use filters/masks/dynamic views.</li>
+    <li>❌ Omitting <code>RETURNS BOOLEAN</code> (row filter) / <code>RETURNS &lt;type&gt;</code> (mask) in the signature.</li>
+    <li>❌ Inventing a per-user helper — use <code>is_account_group_member()</code> / <code>current_user()</code> or a mapping table.</li>
+    <li>❌ Forgetting filters/masks <strong>disable time travel &amp; CLONE</strong> on that table.</li>
+    <li>❌ Hand-managing masks on hundreds of tables when <strong>ABAC by tag</strong> would scale.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/tables/row-and-column-filters" target="_blank" rel="noopener">Row filters &amp; column masks</a> ·
+  <a href="https://docs.databricks.com/aws/en/views/dynamic" target="_blank" rel="noopener">Dynamic views</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/is_account_group_member" target="_blank" rel="noopener">is_account_group_member</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/" target="_blank" rel="noopener">ABAC</a>
+  <p style="margin-top:10px">Topic 8.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — role-based view simulator (scoped to #view)
+const ROWS=[
+  {id:1, region:'West', email:'ada@corp.com'},
+  {id:2, region:'East', email:'lin@corp.com'},
+  {id:3, region:'West', email:'sam@corp.com'}
+];
+const vt=document.getElementById('vtable'), vnote=document.getElementById('vnote');
+function renderView(role){
+  document.querySelectorAll('#view .role').forEach(r=>r.classList.toggle('on',r.dataset.r===role));
+  let rows=ROWS, maskEmail=false, note='';
+  if(role==='support'){ maskEmail=true; note='Column mask hides email; all rows visible.'; }
+  else if(role==='mgr_west'){ rows=ROWS.filter(r=>r.region==='West'); note='Row filter: only West rows; email visible.'; }
+  else { note='Auditor (admin): all rows, no masking.'; }
+  let h='<tr><th>id</th><th>region</th><th>email</th></tr>';
+  rows.forEach(r=>{ h+='<tr><td>'+r.id+'</td><td>'+r.region+'</td><td>'+(maskEmail?'***@***':r.email)+'</td></tr>'; });
+  vt.innerHTML=h; vnote.textContent=note;
+}
+document.querySelectorAll('#view .role').forEach(r=>r.addEventListener('click',()=>renderView(r.dataset.r)));
+renderView('auditor');
+// Diagram 2 — mechanism tabs (scoped to #mech)
+document.querySelectorAll('#mech .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#mech .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#mech .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

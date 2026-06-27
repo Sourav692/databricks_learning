@@ -1,0 +1,157 @@
+# Databricks DE — Lesson Build Tracker
+
+> **Loop driver.** This markdown is the single source of truth for the
+> create → review → approve loop. Each iteration: pick the first `⬜ pending`
+> subtopic (top to bottom), generate its artifacts with **databricks-de-tutor**,
+> run **databricks-de-reviewer** (auto-fix loop to ✅ Approved), then update that
+> row's Status / Artifacts / Verdict / Rounds and save this file.
+>
+> Companion visual: `learning-plan.html`. Scope excludes workspace basics &
+> Apache Spark core (see the HTML "Scope" section).
+
+## How to read a row
+- **Status:** `⬜ pending` · `🔄 in-progress` · `✅ approved` · `⏸ paused (needs input)`
+- **Artifacts:** the subtopic folder holding `lesson.md` + `index.html`
+- **Verdict:** final reviewer verdict · **Rounds:** review→fix rounds used
+
+**Folder layout** (one topic folder → subtopic subfolders → artifacts inside):
+
+```
+DBX DE/lessons/
+  <NN>-<topic-name>/                  ← one folder per stage/topic
+    <id>-<subtopic-name>/             ← one subfolder per subtopic
+      lesson.md                       ← concise interview-focused lesson
+      index.html                      ← self-contained interactive page
+      (notebook only where it adds value; 1–2 per topic, per tutor rules)
+```
+
+**Progress:** 42 / 42 approved. ✅ ALL DONE.
+
+**Progress (enhanced):** 42 / 42 ✅ COMPLETE  (every lesson rebuilt to the enterprise deep-dive + code standard)
+
+
+## Stage 1 — Lakehouse & Medallion Foundations  `Start here`
+
+Topic folder: `lessons/01-lakehouse-and-medallion-foundations/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 1.1 | What a Lakehouse is | ✅ approved | [md](../lessons/01-lakehouse-and-medallion-foundations/1.1-what-a-lakehouse-is/lesson.md) · [html](../lessons/01-lakehouse-and-medallion-foundations/1.1-what-a-lakehouse-is/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 1.2 | Databricks architecture at a glance | ✅ approved | [md](../lessons/01-lakehouse-and-medallion-foundations/1.2-databricks-architecture-at-a-glance/lesson.md) · [html](../lessons/01-lakehouse-and-medallion-foundations/1.2-databricks-architecture-at-a-glance/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 1.3 | Medallion architecture | ✅ approved | [md](../lessons/01-lakehouse-and-medallion-foundations/1.3-medallion-architecture/lesson.md) · [html](../lessons/01-lakehouse-and-medallion-foundations/1.3-medallion-architecture/index.html) | ✅ Approved | 1 | ✨ enhanced |
+
+## Stage 2 — Delta Lake — the storage foundation  `Core`
+
+Topic folder: `lessons/02-delta-lake-the-storage-foundation/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 2.1 | Delta tables & the transaction log | ✅ approved | [md](../lessons/02-delta-lake-the-storage-foundation/2.1-delta-tables-and-the-transaction-log/lesson.md) · [html](../lessons/02-delta-lake-the-storage-foundation/2.1-delta-tables-and-the-transaction-log/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 2.2 | MERGE (upserts), INSERT OVERWRITE, CREATE OR REPLACE and CTAS. | ✅ approved | [md](../lessons/02-delta-lake-the-storage-foundation/2.2-merge-upserts-insert-overwrite-create-or-replace/lesson.md) · [html](../lessons/02-delta-lake-the-storage-foundation/2.2-merge-upserts-insert-overwrite-create-or-replace/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 2.3 | Table & column properties; managed vs | ✅ approved | [md](../lessons/02-delta-lake-the-storage-foundation/2.3-table-and-column-properties-managed-vs/lesson.md) · [html](../lessons/02-delta-lake-the-storage-foundation/2.3-table-and-column-properties-managed-vs/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 2.4 | Time travel | ✅ approved | [md](../lessons/02-delta-lake-the-storage-foundation/2.4-time-travel/lesson.md) · [html](../lessons/02-delta-lake-the-storage-foundation/2.4-time-travel/index.html) · [📓 notebook](../lessons/02-delta-lake-the-storage-foundation/delta_lake_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 3 — Delta Lake Optimization & Performance  `Tune`
+
+Topic folder: `lessons/03-delta-lake-optimization-and-performance/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 3.1 | OPTIMIZE (compaction) and Z-ORDER to collocate related data. | ✅ approved | [md](../lessons/03-delta-lake-optimization-and-performance/3.1-optimize-compaction-and-z-order-to-collocate/lesson.md) · [html](../lessons/03-delta-lake-optimization-and-performance/3.1-optimize-compaction-and-z-order-to-collocate/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 3.2 | Liquid Clustering | ✅ approved | [md](../lessons/03-delta-lake-optimization-and-performance/3.2-liquid-clustering/lesson.md) · [html](../lessons/03-delta-lake-optimization-and-performance/3.2-liquid-clustering/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 3.3 | VACUUM to remove unused files; data versioning and time-travel UNDO. | ✅ approved | [md](../lessons/03-delta-lake-optimization-and-performance/3.3-vacuum-to-remove-unused-files-data-versioning/lesson.md) · [html](../lessons/03-delta-lake-optimization-and-performance/3.3-vacuum-to-remove-unused-files-data-versioning/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 3.4 | Deep vs shallow CLONE; Predictive Optimization | ✅ approved | [md](../lessons/03-delta-lake-optimization-and-performance/3.4-deep-vs/lesson.md) · [html](../lessons/03-delta-lake-optimization-and-performance/3.4-deep-vs/index.html) · [📓 notebook](../lessons/03-delta-lake-optimization-and-performance/delta_optimization_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 4 — Ingestion — Auto Loader, COPY INTO & Lakeflow Connect  `Load`
+
+Topic folder: `lessons/04-ingestion-auto-loader-copy-into-and/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 4.1 | Auto Loader (cloudFiles) | ✅ approved | [md](../lessons/04-ingestion-auto-loader-copy-into-and/4.1-auto-loader-cloudfiles/lesson.md) · [html](../lessons/04-ingestion-auto-loader-copy-into-and/4.1-auto-loader-cloudfiles/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 4.2 | COPY INTO for simpler, idempotent batch loads. | ✅ approved | [md](../lessons/04-ingestion-auto-loader-copy-into-and/4.2-copy-into-for-simpler-idempotent-batch-loads/lesson.md) · [html](../lessons/04-ingestion-auto-loader-copy-into-and/4.2-copy-into-for-simpler-idempotent-batch-loads/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 4.3 | Lakeflow Connect managed connectors (Salesforce, Workday, ServiceNow,… | ✅ approved | [md](../lessons/04-ingestion-auto-loader-copy-into-and/4.3-lakeflow-connect-managed-connectors-salesforce-workday-servicenow/lesson.md) · [html](../lessons/04-ingestion-auto-loader-copy-into-and/4.3-lakeflow-connect-managed-connectors-salesforce-workday-servicenow/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 4.4 | Database/CDC ingestion, REST API & JSON sources, and streaming ingesti… | ✅ approved | [md](../lessons/04-ingestion-auto-loader-copy-into-and/4.4-database-cdc-ingestion-rest-api-and-json/lesson.md) · [html](../lessons/04-ingestion-auto-loader-copy-into-and/4.4-database-cdc-ingestion-rest-api-and-json/index.html) · [📓 notebook](../lessons/04-ingestion-auto-loader-copy-into-and/ingestion_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 5 — Lakeflow Spark Declarative Pipelines (SDP)  `Transform · was DLT`
+
+Topic folder: `lessons/05-lakeflow-spark-declarative-pipelines-sdp/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 5.1 | Declarative pipelines | ✅ approved | [md](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.1-declarative-pipelines/lesson.md) · [html](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.1-declarative-pipelines/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 5.2 | Streaming tables, materialized views, flows, and external sinks (Kafka… | ✅ approved | [md](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.2-streaming-tables-materialized-views-flows-and-external/lesson.md) · [html](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.2-streaming-tables-materialized-views-flows-and-external/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 5.3 | Data-quality Expectations to validate, drop or quarantine bad rows. | ✅ approved | [md](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.3-data-quality-expectations-to-validate-drop-or/lesson.md) · [html](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.3-data-quality-expectations-to-validate-drop-or/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 5.4 | AUTO CDC for Slowly Changing Dimensions (SCD Type 1 & 2); parametrized… | ✅ approved | [md](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.4-auto-cdc-for-slowly-changing-dimensions-scd/lesson.md) · [html](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/5.4-auto-cdc-for-slowly-changing-dimensions-scd/index.html) · [📓 notebook](../lessons/05-lakeflow-spark-declarative-pipelines-sdp/sdp_pipeline_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 6 — Lakeflow Designer — visual & no-code pipelines  `No-code · NEW`
+
+Topic folder: `lessons/06-lakeflow-designer-visual-and-no-code/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 6.1 | Build transformation workflows on a drag-and-drop canvas | ✅ approved | [md](../lessons/06-lakeflow-designer-visual-and-no-code/6.1-build-transformation-workflows-on-a-drag-and/lesson.md) · [html](../lessons/06-lakeflow-designer-visual-and-no-code/6.1-build-transformation-workflows-on-a-drag-and/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 6.2 | Built-in operators for filtering, aggregating, joining and reshaping d… | ✅ approved | [md](../lessons/06-lakeflow-designer-visual-and-no-code/6.2-built-in-operators-for-filtering-aggregating-joining/lesson.md) · [html](../lessons/06-lakeflow-designer-visual-and-no-code/6.2-built-in-operators-for-filtering-aggregating-joining/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 6.3 | Generate or update transformations with natural-language prompts (Geni… | ✅ approved | [md](../lessons/06-lakeflow-designer-visual-and-no-code/6.3-generate-or-update-transformations-with-natural-language/lesson.md) · [html](../lessons/06-lakeflow-designer-visual-and-no-code/6.3-generate-or-update-transformations-with-natural-language/index.html) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 7 — Lakeflow Jobs — orchestration  `Schedule · was Workflows`
+
+Topic folder: `lessons/07-lakeflow-jobs-orchestration/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 7.1 | Jobs & tasks | ✅ approved | [md](../lessons/07-lakeflow-jobs-orchestration/7.1-jobs-and-tasks/lesson.md) · [html](../lessons/07-lakeflow-jobs-orchestration/7.1-jobs-and-tasks/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 7.2 | Control flow | ✅ approved | [md](../lessons/07-lakeflow-jobs-orchestration/7.2-control-flow/lesson.md) · [html](../lessons/07-lakeflow-jobs-orchestration/7.2-control-flow/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 7.3 | Schedules, event triggers and CRON; retries, monitoring, notifications… | ✅ approved | [md](../lessons/07-lakeflow-jobs-orchestration/7.3-schedules-event-triggers-and-cron-retries-monitoring/lesson.md) · [html](../lessons/07-lakeflow-jobs-orchestration/7.3-schedules-event-triggers-and-cron-retries-monitoring/index.html) · [📓 notebook](../lessons/07-lakeflow-jobs-orchestration/jobs_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 8 — Unity Catalog — Governance, Security & ABAC  `Govern`
+
+Topic folder: `lessons/08-unity-catalog-governance-security-and-abac/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 8.1 | The 3-level namespace catalog.schema.table; Volumes for files; discove… | ✅ approved | [md](../lessons/08-unity-catalog-governance-security-and-abac/8.1-the-3-level-namespace-catalog-schema-table/lesson.md) · [html](../lessons/08-unity-catalog-governance-security-and-abac/8.1-the-3-level-namespace-catalog-schema-table/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 8.2 | Access control | ✅ approved | [md](../lessons/08-unity-catalog-governance-security-and-abac/8.2-access-control/lesson.md) · [html](../lessons/08-unity-catalog-governance-security-and-abac/8.2-access-control/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 8.3 | Data-level security | ✅ approved | [md](../lessons/08-unity-catalog-governance-security-and-abac/8.3-data-level-security/lesson.md) · [html](../lessons/08-unity-catalog-governance-security-and-abac/8.3-data-level-security/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 8.4 | Attribute-Based Access Control (ABAC) | ✅ approved | [md](../lessons/08-unity-catalog-governance-security-and-abac/8.4-attribute-based-access-control-abac/lesson.md) · [html](../lessons/08-unity-catalog-governance-security-and-abac/8.4-attribute-based-access-control-abac/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 8.5 | Unity Catalog Functions | ✅ approved | [md](../lessons/08-unity-catalog-governance-security-and-abac/8.5-unity-catalog-functions/lesson.md) · [html](../lessons/08-unity-catalog-governance-security-and-abac/8.5-unity-catalog-functions/index.html) · [📓 notebook](../lessons/08-unity-catalog-governance-security-and-abac/governance_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 9 — Delta Sharing & Lakehouse Federation  `Share & query`
+
+Topic folder: `lessons/09-delta-sharing-and-lakehouse-federation/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 9.1 | Delta Sharing | ✅ approved | [md](../lessons/09-delta-sharing-and-lakehouse-federation/9.1-delta-sharing/lesson.md) · [html](../lessons/09-delta-sharing-and-lakehouse-federation/9.1-delta-sharing/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 9.2 | Lakehouse Federation | ✅ approved | [md](../lessons/09-delta-sharing-and-lakehouse-federation/9.2-lakehouse-federation/lesson.md) · [html](../lessons/09-delta-sharing-and-lakehouse-federation/9.2-lakehouse-federation/index.html) · [📓 notebook](../lessons/09-delta-sharing-and-lakehouse-federation/sharing_federation_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 10 — Databricks SQL — Warehouses, Genie & BI  `Analytics`
+
+Topic folder: `lessons/10-databricks-sql-warehouses-genie-and-bi/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 10.1 | SQL Warehouses | ✅ approved | [md](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.1-sql-warehouses/lesson.md) · [html](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.1-sql-warehouses/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 10.2 | SQL editor, parameterized queries, CTEs and query snippets; query cach… | ✅ approved | [md](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.2-sql-editor-parameterized-queries-ctes-and-query/lesson.md) · [html](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.2-sql-editor-parameterized-queries-ctes-and-query/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 10.3 | SQL Alerts, scheduled queries and AI/BI Dashboards. | ✅ approved | [md](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.3-sql-alerts-scheduled-queries-and-ai-bi/lesson.md) · [html](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.3-sql-alerts-scheduled-queries-and-ai-bi/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 10.4 | Databricks Genie | ✅ approved | [md](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.4-databricks-genie/lesson.md) · [html](../lessons/10-databricks-sql-warehouses-genie-and-bi/10.4-databricks-genie/index.html) · [📓 notebook](../lessons/10-databricks-sql-warehouses-genie-and-bi/databricks_sql_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 11 — Production Engineering — CI/CD with DABs  `Ship it`
+
+Topic folder: `lessons/11-production-engineering-ci-cd-with-dabs/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 11.1 | Databricks Asset Bundles (DABs) | ✅ approved | [md](../lessons/11-production-engineering-ci-cd-with-dabs/11.1-databricks-asset-bundles-dabs/lesson.md) · [html](../lessons/11-production-engineering-ci-cd-with-dabs/11.1-databricks-asset-bundles-dabs/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 11.2 | Git integration with Databricks Repos / Git Folders for source control… | ✅ approved | [md](../lessons/11-production-engineering-ci-cd-with-dabs/11.2-git-integration-with-databricks-repos-git-folders/lesson.md) · [html](../lessons/11-production-engineering-ci-cd-with-dabs/11.2-git-integration-with-databricks-repos-git-folders/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 11.3 | Databricks Connect for local-IDE development against a remote cluster. | ✅ approved | [md](../lessons/11-production-engineering-ci-cd-with-dabs/11.3-databricks-connect-for-local-ide-development-against/lesson.md) · [html](../lessons/11-production-engineering-ci-cd-with-dabs/11.3-databricks-connect-for-local-ide-development-against/index.html) · [📓 notebook](../lessons/11-production-engineering-ci-cd-with-dabs/production_cicd_hands_on.py) | ✅ Approved | 0 | ✨ enhanced |
+
+## Stage 12 — Certification Prep — DE Associate exam  `Capstone`
+
+Topic folder: `lessons/12-certification-prep-de-associate-exam/`
+
+| ID | Subtopic | Status | Subtopic folder | Verdict | Rounds | Enhanced |
+|----|----------|--------|-----------------|---------|--------|----------|
+| 12.1 | Map your skills to the Databricks Certified Data Engineer Associate ex… | ✅ approved | [md](../lessons/12-certification-prep-de-associate-exam/12.1-map-your-skills-to-the-databricks-certified/lesson.md) · [html](../lessons/12-certification-prep-de-associate-exam/12.1-map-your-skills-to-the-databricks-certified/index.html) | ✅ Approved | 0 | ✨ enhanced |
+| 12.2 | Practice with full-length exams and review weak areas before you book. | ✅ approved | [md](../lessons/12-certification-prep-de-associate-exam/12.2-practice-with-full-length-exams-and-review/lesson.md) · [html](../lessons/12-certification-prep-de-associate-exam/12.2-practice-with-full-length-exams-and-review/index.html) | ✅ Approved | 1 | ✨ enhanced |
+| 12.3 | Latest exam updates emphasize Lakeflow naming, data-level security (ro… | ✅ approved | [md](../lessons/12-certification-prep-de-associate-exam/12.3-latest-exam-updates-emphasize-lakeflow-naming-data/lesson.md) · [html](../lessons/12-certification-prep-de-associate-exam/12.3-latest-exam-updates-emphasize-lakeflow-naming-data/index.html) | ✅ Approved | 0 | ✨ enhanced |

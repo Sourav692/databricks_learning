@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABAC · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: tag-and-cascade simulator */
+  .hier{display:flex;flex-direction:column;gap:6px}
+  .obj{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between;align-items:center;transition:.25s}
+  .obj.i1{margin-left:0}.obj.i2{margin-left:22px}.obj.i3{margin-left:44px}
+  .tagbtn{font-size:.7rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:3px 10px;cursor:pointer}
+  .tagbtn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .obj.masked{background:#dff0e6;border-color:#9ed3b2}
+  .state{font-size:.72rem;color:#8a939c}
+  .obj.masked .state{color:#1f6b3a}
+  .policy{margin:10px 0;padding:10px 12px;border:1px dashed var(--teal);border-radius:8px;background:#eef7f8;font-family:"Spline Sans Mono",monospace;font-size:.8rem}
+  /* diagram 2: abac vs per-table */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 8.4</p>
+  <h1>Attribute-Based Access Control <em>(ABAC)</em></h1>
+  <p class="lede">Govern by attribute, not by table: tag data with governed tags, write one CREATE POLICY targeting the tag, and it applies automatically — cascading through the catalog hierarchy. This deep dive walks the verified policy DDL.</p>
+  <div class="pills"><span class="pill">governed tags</span><span class="pill">CREATE POLICY</span><span class="pill">has_tag_value</span><span class="pill">cascades</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>ABAC</strong> = governed <strong>tags</strong> on data + <strong>policies</strong> (<code>CREATE POLICY … ROW FILTER / COLUMN MASK</code>) that target a tag via <code>has_tag_value()</code> and attach at catalog/schema/table level, applying <strong>automatically</strong> to any matching object. Define once, enforce everywhere.</div>
+  <div class="card analogy" style="margin-top:10px">🏷️ <strong>Analogy:</strong> instead of locking each cabinet (per-table masks from 8.3), you put a <strong>"CONFIDENTIAL" sticker</strong> on documents and write <strong>one rule</strong>: "mask anything tagged CONFIDENTIAL." Tag a new doc → the rule covers it instantly.</div>
+  <div class="card note" style="margin-top:10px">⚠️ ABAC DDL is evolving — row-filter/column-mask policies are the core offering; <strong>GRANT policies are Beta</strong>. Verify current status in the docs.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: tag-and-cascade -->
+<section id="cascade">
+  <h2>Tag a column → the policy fires automatically</h2>
+  <p class="hint">▸ click "tag pii" on a column; the catalog policy masks it</p>
+  <div class="policy">ABAC policy on CATALOG prod: &nbsp;mask columns tagged <b>pii</b> unless user ∈ pii_readers</div>
+  <div class="hier">
+    <div class="obj i1"><span>📁 catalog prod &nbsp;<span class="state">(policy attached)</span></span></div>
+    <div class="obj i2"><span>📂 schema sales</span></div>
+    <div class="obj i3" id="o-name"><span>📄 customers.name <span class="state">visible</span></span><span class="tagbtn" data-c="name">tag pii</span></div>
+    <div class="obj i3" id="o-ssn"><span>📄 customers.ssn <span class="state">visible</span></span><span class="tagbtn" data-c="ssn">tag pii</span></div>
+    <div class="obj i3" id="o-email"><span>📄 customers.email <span class="state">visible</span></span><span class="tagbtn" data-c="email">tag pii</span></div>
+  </div>
+  <div class="hint" id="cnote" style="margin-top:8px">Nothing tagged yet → nothing masked.</div>
+</section>
+
+<section id="tags">
+  <h2>1 · Governed tags (the attributes)</h2>
+  <p>Governed tags are defined at the <strong>account level with access controls</strong> (unlike ad-hoc ungoverned tags). ABAC matches on governed tags; apply them to schemas/tables/columns:</p>
+  <pre class="code"><span class="k">ALTER TABLE</span> prod.sales.customers <span class="k">ALTER COLUMN</span> ssn     <span class="k">SET TAGS</span> (<span class="s">'pii'</span> = <span class="s">'ssn'</span>);
+<span class="k">ALTER TABLE</span> prod.sales.customers <span class="k">ALTER COLUMN</span> address <span class="k">SET TAGS</span> (<span class="s">'pii'</span> = <span class="s">'address'</span>);</pre>
+</section>
+
+<section id="mask">
+  <h2>2 · Column-mask policy (mask any tagged column)</h2>
+  <pre class="code"><span class="k">CREATE FUNCTION</span> prod.sales.redact_ssn(s <span class="k">STRING</span>) <span class="k">RETURNS STRING</span>
+  <span class="k">RETURN CASE WHEN</span> is_account_group_member(<span class="s">'pii_readers'</span>) <span class="k">THEN</span> s <span class="k">ELSE</span> <span class="s">'***-**-****'</span> <span class="k">END</span>;
+
+<span class="k">CREATE POLICY</span> redact_ssn_policy
+  <span class="k">ON SCHEMA</span> prod.sales
+  <span class="k">COLUMN MASK</span> prod.sales.redact_ssn
+  <span class="k">TO</span> `account users`
+  <span class="k">FOR TABLES</span>
+  <span class="k">MATCH COLUMNS</span> has_tag_value(<span class="s">'pii'</span>, <span class="s">'ssn'</span>) <span class="k">AS</span> ssn_col
+  <span class="k">ON COLUMN</span> ssn_col;          <span class="c">-- every pii=ssn column in the schema is masked</span></pre>
+</section>
+
+<section id="filter">
+  <h2>3 · Row-filter policy (hide rows by tag)</h2>
+  <pre class="code"><span class="k">CREATE POLICY</span> hide_eu_customers
+  <span class="k">ON SCHEMA</span> prod.sales
+  <span class="k">ROW FILTER</span> prod.sales.is_not_eu_address
+  <span class="k">TO</span> `account users`
+  <span class="k">FOR TABLES</span>
+  <span class="k">MATCH COLUMNS</span> has_tag_value(<span class="s">'pii'</span>, <span class="s">'address'</span>) <span class="k">AS</span> addr_col
+  <span class="k">USING COLUMNS</span> (addr_col);   <span class="c">-- the filter receives the tagged column</span></pre>
+  <p style="margin-top:8px">Match with <code>has_tag('key')</code> / <code>has_tag_value('key','value')</code>, combinable with AND/OR/NOT. Scope <code>ON CATALOG</code>, <code>ON SCHEMA</code>, or <code>ON TABLE</code>; a higher-level policy <strong>cascades</strong> to current &amp; future matching objects.</p>
+</section>
+
+<!-- diagram 2: abac vs per-table -->
+<section id="cmp">
+  <h2>4 · ABAC vs per-table (8.3) — click each</h2>
+  <div class="switch">
+    <div class="opt" data-o="pt">Per-table (8.3)</div>
+    <div class="opt on" data-o="abac">ABAC (8.4)</div>
+  </div>
+  <div class="view" data-v="pt"><div class="card"><strong>Per-table row filters / column masks.</strong>
+    <ul><li>Configure each table with ALTER TABLE</li><li>New table → configure again</li><li>Fine for a few tables; doesn't scale</li></ul></div></div>
+  <div class="view on" data-v="abac"><div class="card"><strong>ABAC — by tag, hierarchical.</strong>
+    <ul><li>Define a policy once, targeting a tag</li><li>Attach at catalog/schema → cascades to matching objects</li><li>Tag a new column → auto-covered</li></ul></div></div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Per-table</th><th>ABAC</th></tr>
+    <tr><td>Defined</td><td>on each table</td><td class="win">once, by tag</td></tr>
+    <tr><td>New table/column</td><td>configure again</td><td class="win">auto-covered if tagged</td></tr>
+    <tr><td>Best for</td><td>a few tables</td><td class="win">enterprise-wide</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Per-table masks/filters don't scale to thousands of tables — ABAC governs <strong>by tag, hierarchically</strong>; tag a new column <code>pii</code> and the mask is already enforced.</li>
+    <li>"Enforce PII masking across a whole catalog?" → <strong>ABAC governed tags + policy</strong>.</li>
+  </ul>
+  <div class="card usecase">🏢 <strong>Real-world use case:</strong> tag every PII column <code>pii</code> and set one column-mask policy on the <code>prod</code> catalog — every current and future <code>pii</code>-tagged column is masked automatically, no per-table work.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> org-wide PII masking, region/tenant row isolation by tag, consistent governance across large catalogs with minimal admin.</li>
+    <li><strong>Edge cases:</strong> governance is only as good as your <strong>tagging</strong> — an untagged PII column won't be masked; mind policy precedence when multiple policies match.</li>
+    <li><strong>Limitation:</strong> built on row-filter/column-mask machinery (8.3), so those perf &amp; time-travel/CLONE constraints apply; <strong>verify feature availability</strong> (e.g. <strong>GRANT policies are Beta</strong>); ABAC DDL is still evolving.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Relying on ABAC while data is <strong>untagged</strong> — no tag, no protection.</li>
+    <li>❌ Re-doing per-table masks when a <strong>tag + policy</strong> covers all of them.</li>
+    <li>❌ Using <strong>ungoverned</strong> tags for policies — ABAC matches governed tags.</li>
+    <li>❌ Assuming every ABAC feature is GA — <strong>GRANT policies are Beta</strong>; confirm in docs.</li>
+    <li>❌ Ignoring policy <strong>overlap/precedence</strong> when multiple policies target an object.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/" target="_blank" rel="noopener">ABAC</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/policies" target="_blank" rel="noopener">CREATE POLICY</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/tutorial-sql" target="_blank" rel="noopener">ABAC with SQL (tutorial)</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/tags" target="_blank" rel="noopener">Governed tags</a>
+  <p style="margin-top:10px">Topic 8.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — tag-and-cascade (scoped to #cascade)
+const tagged={name:false,ssn:false,email:false};
+const cnote=document.getElementById('cnote');
+function refresh(){
+  let n=0;
+  ['name','ssn','email'].forEach(c=>{
+    const o=document.getElementById('o-'+c);
+    const btn=o.querySelector('.tagbtn');
+    const st=o.querySelector('.state');
+    if(tagged[c]){ o.classList.add('masked'); st.textContent='🏷️ pii → MASKED'; btn.classList.add('on'); btn.textContent='untag'; n++; }
+    else { o.classList.remove('masked'); st.textContent='visible'; btn.classList.remove('on'); btn.textContent='tag pii'; }
+  });
+  cnote.textContent = n===0 ? 'Nothing tagged yet → nothing masked.'
+    : n+' column(s) tagged pii → automatically masked by the catalog policy (no per-table config).';
+}
+document.querySelectorAll('#cascade .tagbtn').forEach(b=>b.addEventListener('click',()=>{ const c=b.dataset.c; tagged[c]=!tagged[c]; refresh(); }));
+refresh();
+// Diagram 2 — abac vs per-table (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Liquid Clustering · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: compare 3 approaches */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  /* diagram 2: change-keys timeline */
+  .steps{display:flex;flex-direction:column;gap:8px}
+  .st{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .st:hover{border-color:var(--brand-2)}.st.open{border-color:var(--teal)}
+  .st .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .st .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .st.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 3.2</p>
+  <h1><em>Liquid Clustering</em></h1>
+  <p class="lede">The modern Delta data layout — auto-organizes by clustering keys, replaces partitioning &amp; ZORDER, and lets you change keys without rewriting data. This deep dive walks each with the mechanism and the code.</p>
+  <div class="pills"><span class="pill">CLUSTER BY</span><span class="pill">CLUSTER BY AUTO</span><span class="pill">max 4 keys</span><span class="pill">OPTIMIZE FULL</span><span class="pill">DBR 15.4 LTS+</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Liquid Clustering</strong> replaces partitioning + ZORDER with automatic, key-based layout you can <strong>re-key without rewriting</strong>. Use <code>CLUSTER BY (cols)</code> or <code>CLUSTER BY AUTO</code>. Databricks recommends it for virtually all new tables (GA on DBR 15.4 LTS+).</div>
+  <div class="card analogy" style="margin-top:10px">🗄️ <strong>Analogy:</strong> partitioning is a filing cabinet with fixed labeled drawers — change the scheme, re-file everything. Liquid Clustering is a <strong>smart shelf</strong> that re-sorts as you add items, and you can change the sort rule anytime without re-shelving what's already there.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: compare approaches -->
+<section id="cmp">
+  <h2>Layout approaches — click to compare</h2>
+  <p class="hint">▸ partitioning vs ZORDER vs liquid clustering</p>
+  <div class="tabs">
+    <button class="tab" data-t="part">Partitioning</button>
+    <button class="tab" data-t="z">ZORDER</button>
+    <button class="tab on" data-t="lc">Liquid Clustering</button>
+  </div>
+  <div class="panel" data-p="part"><div class="card"><strong>Partitioning</strong> — rigid directory structure per partition value.
+    <ul><li>❌ Wrong key → small-file skew; changing it means a full rewrite</li><li>❌ Bad for high-cardinality columns</li></ul></div></div>
+  <div class="panel" data-p="z"><div class="card"><strong>ZORDER</strong> — sorts/colocates within files on OPTIMIZE.
+    <ul><li>⚠️ Must be re-applied on every OPTIMIZE</li><li>⚠️ Needs manual tuning</li></ul></div></div>
+  <div class="panel on" data-p="lc"><div class="card"><strong>Liquid Clustering</strong> — automatic key-based layout.
+    <ul><li>✅ Change keys without rewriting existing data</li><li>✅ Handles skew &amp; high cardinality; great for fast-growing tables</li><li>✅ <code>CLUSTER BY AUTO</code> picks keys from query history</li></ul></div></div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Partitioning</th><th>ZORDER</th><th>Liquid Clustering</th></tr>
+    <tr><td>Change layout key</td><td>Full rewrite</td><td>Re-run OPTIMIZE</td><td class="win">No rewrite</td></tr>
+    <tr><td>High cardinality</td><td>Poor</td><td>OK</td><td class="win">Good</td></tr>
+    <tr><td>Combine with others</td><td>—</td><td>+ partitioning only</td><td class="win">cannot mix</td></tr>
+    <tr><td>Recommended for new tables</td><td>No</td><td>No</td><td class="win">Yes</td></tr>
+  </table>
+</section>
+
+<!-- DEEP DIVE: create & choose keys -->
+<section id="create">
+  <h2>1 · Create a table &amp; choose keys</h2>
+  <p>Pick the 1–4 columns you filter/join on most. Keys must be simple types (nested struct fields OK via dot notation; Array/Map/Struct columns are not). <code>CLUSTER BY AUTO</code> lets Predictive Optimization choose &amp; adapt keys (DBR 15.4 LTS+, UC managed).</p>
+  <p class="codecap">SQL — explicit keys & AUTO</p>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.sales.events (id <span class="k">BIGINT</span>, event_date <span class="k">DATE</span>, region <span class="k">STRING</span>)
+  <span class="k">CLUSTER BY</span> (event_date, region);          <span class="c">-- up to 4 keys</span>
+
+<span class="k">CREATE OR REPLACE TABLE</span> main.sales.events2 (id <span class="k">BIGINT</span>, region <span class="k">STRING</span>)
+  <span class="k">CLUSTER BY AUTO</span>;                            <span class="c">-- Databricks picks & adapts keys</span></pre>
+  <p class="codecap">PySpark (DataFrameWriterV2)</p>
+  <pre class="code">(df.writeTo(<span class="s">"main.sales.events"</span>).using(<span class="s">"delta"</span>)
+   .clusterBy(<span class="s">"event_date"</span>, <span class="s">"region"</span>).create())</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: change keys without rewrite -->
+<section id="rekey">
+  <h2>2 · Change keys without rewriting — click each step</h2>
+  <pre class="code"><span class="k">CREATE TABLE</span> events (...) <span class="k">CLUSTER BY</span> (event_date, region);
+<span class="k">ALTER TABLE</span> events <span class="k">CLUSTER BY</span> (region);   <span class="c">-- re-key, no rewrite</span>
+<span class="k">OPTIMIZE</span> events <span class="k">FULL</span>;                      <span class="c">-- optional: recluster old data now (DBR 16.4 LTS+)</span></pre>
+  <div class="steps" style="margin-top:10px">
+    <div class="st open" onclick="this.classList.toggle('open')"><div class="h"><span>1 · CLUSTER BY (event_date, region)</span><span>▸</span></div><div class="d">Table is clustered by two keys. Writes &amp; OPTIMIZE lay data out by these columns. (Up to 4 keys; simple types only.)</div></div>
+    <div class="st" onclick="this.classList.toggle('open')"><div class="h"><span>2 · ALTER … CLUSTER BY (region)</span><span>▸</span></div><div class="d">Query patterns shifted to <code>region</code>. Re-key instantly — <strong>existing data is NOT rewritten</strong>; new writes use the new key. Impossible with partitioning.</div></div>
+    <div class="st" onclick="this.classList.toggle('open')"><div class="h"><span>3 · OPTIMIZE events FULL</span><span>▸</span></div><div class="d">Optional (DBR 16.4 LTS+). Forces immediate reclustering of legacy data to the new key when you don't want to wait for incremental writes.</div></div>
+  </div>
+</section>
+
+<section id="maintain">
+  <h2>3 · Clustering on write &amp; maintenance</h2>
+  <p>Clustering on write is <strong>automatic</strong> but only triggers once a write reaches a size threshold (≈64 MB–1 GB depending on key count). Small/streaming writes may land unclustered until <code>OPTIMIZE</code> runs.</p>
+  <div class="card note">💡 Because not every operation clusters, <strong>run <code>OPTIMIZE</code> regularly</strong> — or rely on <strong>Predictive Optimization</strong> to do it automatically on UC managed tables. Structured Streaming to clustered tables needs DBR 16.4 LTS+.</div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Partitioning is rigid (skew + costly rewrites); ZORDER must be re-applied each OPTIMIZE. Liquid Clustering fixes both.</li>
+    <li><strong>Recommended for virtually all new tables</strong> — a go-to "what would you choose today?" answer.</li>
+  </ul>
+  <div class="card usecase">📅 <strong>Real-world use case:</strong> a fast-growing events table is filtered by <code>event_date</code> now, by <code>region</code> next quarter. Just <code>ALTER TABLE … CLUSTER BY (region)</code> — no full rewrite; future writes re-cluster.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> default for new tables; high-cardinality filters; skewed / fast-growing tables; shifting access patterns; concurrent writes.</li>
+    <li><strong>Edge case:</strong> up to 4 keys recommended (small tables &lt;10 TB can degrade past ~2); clustering-on-write triggers only past a size threshold — tiny/streaming writes may need OPTIMIZE; <code>ALTER … CLUSTER BY</code> doesn't touch old data (use <code>OPTIMIZE FULL</code>).</li>
+    <li><strong>Limitations:</strong> GA on <strong>DBR 15.4 LTS+</strong>; <code>OPTIMIZE FULL</code> &amp; streaming need <strong>16.4 LTS+</strong>; <strong>cannot combine with partitioning or ZORDER</strong>; keys must be simple types (nested struct fields via dot notation OK; Array/Map/Struct columns not).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using partitioning <strong>and</strong> Liquid Clustering together — incompatible.</li>
+    <li>❌ Expecting <code>ALTER … CLUSTER BY</code> to instantly reorganize old data — it applies going forward; use <code>OPTIMIZE FULL</code> (DBR 16.4 LTS+) to recluster now.</li>
+    <li>❌ Picking 5+ clustering columns — keep to the most-filtered 1–4.</li>
+    <li>❌ Clustering on a complex (Array/Map/Struct) column — unsupported.</li>
+    <li>❌ Assuming every write clusters — small writes may need <code>OPTIMIZE</code>; lean on Predictive Optimization for managed tables.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/clustering" target="_blank" rel="noopener">Liquid clustering</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-optimize" target="_blank" rel="noopener">OPTIMIZE / OPTIMIZE FULL</a> ·
+  <a href="https://docs.databricks.com/aws/en/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization</a>
+  <p style="margin-top:10px">Topic 3.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — compare tabs (scoped to #cmp)
+document.querySelectorAll('#cmp .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#cmp .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#cmp .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+// Diagram 2 (#rekey) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

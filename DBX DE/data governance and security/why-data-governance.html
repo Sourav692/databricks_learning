@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why Do We Need Data Governance? | Unity Catalog</title>
+<style>
+  :root{
+    --orange:#FF3621;
+    --orange-soft:#FFE9E5;
+    --ink:#1B1B1F;
+    --muted:#5B6068;
+    --line:#E4E7EC;
+    --bg:#F7F8FA;
+    --card:#FFFFFF;
+    --blue:#1B6FB3;
+    --green:#1A7F4B;
+    --red:#C2371F;
+    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px 80px}
+  header.hero{background:linear-gradient(135deg,#FF3621 0%,#FF6A4D 100%);color:#fff;padding:46px 20px 40px;margin-bottom:34px}
+  header.hero .inner{max-width:980px;margin:0 auto}
+  .crumb{font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.9;margin-bottom:10px}
+  header.hero h1{margin:0 0 10px;font-size:34px;line-height:1.2}
+  header.hero p{margin:0;font-size:17px;max-width:700px;opacity:.96}
+  .pill-row{margin-top:18px;display:flex;gap:8px;flex-wrap:wrap}
+  .pill{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);padding:5px 12px;border-radius:999px;font-size:13px}
+  h2{font-size:23px;margin:38px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--orange-soft)}
+  h3{font-size:18px;margin:24px 0 8px}
+  p{margin:10px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px;margin:16px 0}
+  .lead{font-size:17px}
+  .muted{color:var(--muted)}
+  code{background:#F0F1F3;padding:2px 6px;border-radius:5px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+  ul.clean{margin:10px 0;padding-left:20px}
+  ul.clean li{margin:7px 0}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:#FAFBFC;font-weight:600}
+  .note{border-left:4px solid var(--orange);background:#FFF7F5;padding:12px 16px;border-radius:0 8px 8px 0;margin:14px 0}
+  .gotcha{border-left:4px solid #E0A100;background:#FFFBEE;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0}
+
+  /* ---------- with / without toggle ---------- */
+  .toggle-wrap{text-align:center;margin:18px 0 6px}
+  .switch{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+  .switch button{border:0;background:#fff;padding:10px 22px;font-size:14.5px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .switch button.on[data-mode="without"]{background:var(--red);color:#fff}
+  .switch button.on[data-mode="with"]{background:var(--green);color:#fff}
+  .scenario{margin-top:8px}
+  .scenario .row{display:flex;gap:12px;align-items:flex-start;padding:13px 16px;border:1px solid var(--line);border-radius:10px;margin:10px 0;background:#fff;box-shadow:var(--shadow)}
+  .scenario .face{font-size:22px;line-height:1.2}
+  .scenario .row b{display:block;margin-bottom:2px}
+  .scenario.without .row{border-left:4px solid var(--red)}
+  .scenario.with .row{border-left:4px solid var(--green)}
+
+  /* ---------- pillar hub ---------- */
+  .hub{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0}
+  .pillar{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px 14px;cursor:pointer;text-align:center;box-shadow:var(--shadow);transition:.15s}
+  .pillar:hover{transform:translateY(-3px);border-color:var(--orange)}
+  .pillar.active{border-color:var(--orange);background:var(--orange-soft)}
+  .pillar .pico{font-size:26px}
+  .pillar .pname{font-weight:600;margin-top:6px;font-size:14.5px}
+  .pillar .pq{font-size:12px;color:var(--muted);margin-top:3px}
+  .pillar-detail{border:1px solid var(--line);border-left:4px solid var(--orange);border-radius:10px;background:#FFF7F5;padding:16px 18px;margin-top:6px;min-height:80px}
+  .pillar-detail h3{margin:0 0 6px}
+  .pillar-detail .ph{color:var(--muted);font-size:13px;margin-bottom:8px}
+
+  /* ---------- questions matcher ---------- */
+  .q-list{display:flex;flex-direction:column;gap:8px;margin:14px 0}
+  .q-item{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px 16px;cursor:pointer;box-shadow:var(--shadow);transition:.15s}
+  .q-item:hover{border-color:var(--orange)}
+  .q-item .answer{display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:14px;color:var(--ink)}
+  .q-item.open .answer{display:block}
+  .q-item .qx{font-weight:600}
+  .q-item .badge{display:inline-block;background:var(--orange-soft);color:var(--orange);font-size:12px;font-weight:600;padding:2px 8px;border-radius:6px;margin-right:6px}
+  .q-item .arrow{float:right;color:var(--muted);transition:transform .15s}
+  .q-item.open .arrow{transform:rotate(90deg)}
+
+  footer{margin-top:40px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+  footer a{color:var(--orange)}
+  a{color:var(--orange)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="inner">
+    <div class="crumb">Data Governance · The "Why"</div>
+    <h1>Why Do We Need Data Governance?</h1>
+    <p>Analytics, engineering, and science all <em>use</em> data. Governance is what keeps that data findable, trustworthy, secure, and accountable as your platform grows — and Unity Catalog is where you do it.</p>
+    <div class="pill-row">
+      <span class="pill">Discoverability</span>
+      <span class="pill">Access control</span>
+      <span class="pill">Lineage</span>
+      <span class="pill">Auditing</span>
+      <span class="pill">Quality</span>
+      <span class="pill">Security</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="card lead">
+    <strong>In one sentence:</strong> Data governance is the set of rules, processes, and tools that make sure the right people can <em>find, trust, use, and safely access</em> the right data — and that you can always prove who did what with it. It's the discipline that lets a data solution <strong>scale and survive</strong> after the exciting build phase is over.
+  </div>
+
+  <h2>1 · What breaks without it (interactive)</h2>
+  <p>The easiest way to feel <em>why</em> governance matters is to compare a platform with it to one without it. Flip the switch.</p>
+
+  <div class="toggle-wrap">
+    <div class="switch">
+      <button data-mode="without" class="on" onclick="setMode('without')">Without governance</button>
+      <button data-mode="with" onclick="setMode('with')">With governance</button>
+    </div>
+  </div>
+  <div class="scenario without" id="scenario"></div>
+
+  <h2>2 · The questions only governance answers (click each)</h2>
+  <p>Your data analysts, engineers, and scientists <em>use</em> data — but these questions aren't answered by any of them. They're answered by governance:</p>
+  <div class="q-list" id="qlist"></div>
+
+  <h2>3 · Governance is many pillars, not one thing (interactive)</h2>
+  <p>Governance is an umbrella made of several capabilities. Click a pillar to see what it means and the question it answers.</p>
+  <div class="hub" id="hub"></div>
+  <div class="pillar-detail" id="pdetail">
+    <h3>Pick a pillar above ↑</h3>
+    <div class="ph">Each one is a piece of governance. Combined, they <em>are</em> data governance.</div>
+  </div>
+
+  <h2>4 · Why it maps to Unity Catalog</h2>
+  <p>This is why you're "already doing governance." Per Databricks' docs, <strong>Unity Catalog is the unified governance layer built into Databricks</strong> — it sits beneath every data interaction and automatically enforces access control when you query a table, tracks lineage as data moves, and logs activity for auditing. It governs structured <em>and</em> unstructured data, plus AI assets like ML models.</p>
+  <div class="note">Instead of bolting on six separate tools for six pillars, Unity Catalog gives you <strong>one place</strong> for discovery, access control, lineage, auditing, and quality — which is why it's described as a one-stop governance solution.</div>
+
+  <h2>5 · Why data engineers especially own it</h2>
+  <p>You build the data that analysts and scientists consume. That puts you closest to the hard governance questions:</p>
+  <ul class="clean">
+    <li>You decide structure, naming, and where data lives → you shape <strong>discoverability</strong>.</li>
+    <li>You build the pipelines → you're responsible for <strong>lineage and quality</strong>.</li>
+    <li>You grant and design access → you own a big part of <strong>access control and security</strong>.</li>
+  </ul>
+  <p>It's everyone's responsibility, but the engineer is closest to the data — so the questions land on your desk first.</p>
+
+  <h2>6 · Common mistakes &amp; gotchas</h2>
+  <div class="gotcha"><strong>Governance as an afterthought.</strong> Bolting it on after the platform is built is painful. Design the catalog/schema structure and access model from day one.</div>
+  <div class="gotcha"><strong>"We have a catalog" ≠ "we have governance."</strong> The catalog is the tool; governance is the <em>practice</em> of using it consistently — naming standards, ownership, tagging.</div>
+  <div class="gotcha"><strong>Over-locking or under-locking access.</strong> Too tight blocks productivity; too loose causes breaches. Least-privilege plus groups is the balance.</div>
+
+  <h2>7 · Quick recap</h2>
+  <ul class="clean">
+    <li>Governance = find, trust, use, secure, and account for data over time.</li>
+    <li>Without it: duplicate work, distrust, broken downstreams, breaches, failed audits.</li>
+    <li>It's a bundle of pillars — discoverability, access control, lineage, auditing, quality, security.</li>
+    <li>Unity Catalog is the single, built-in governance layer for all of them.</li>
+    <li>Data engineers carry the most responsibility because they build the data.</li>
+  </ul>
+
+  <footer>
+    <strong>Official sources</strong><br>
+    <a href="https://docs.databricks.com/aws/en/data-governance/" target="_blank">Data governance with Databricks (AWS)</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/" target="_blank">What is Unity Catalog?</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage" target="_blank">View data lineage using Unity Catalog</a><br><br>
+    <span class="muted">Built as a learning aid for the Databricks Data Engineering series · The "Why" of Data Governance.</span>
+  </footer>
+</div>
+
+<script>
+/* ---------- with / without toggle ---------- */
+const scenarios={
+  without:[
+    {f:"🔍",b:"Nobody can find anything",t:"Five teams build five versions of \"revenue.\" Analysts waste days re-deriving data that already exists."},
+    {f:"❓",b:"Nobody trusts the data",t:"A dashboard looks wrong and no one can tell if the source is bad or the join double-counts — so trust in all data erodes."},
+    {f:"💥",b:"You can't trace impact",t:"A source table changes and silently breaks 40 downstream dashboards. You find out when an exec's report is wrong."},
+    {f:"🔓",b:"Access is a free-for-all",t:"Either everyone can see PII/salary data (a breach waiting to happen) or every request is a week-long ticket."},
+    {f:"📋",b:"You fail the audit",t:"A regulator asks \"who accessed this customer table in 90 days?\" With no trail, you have no answer — and possible fines."}
+  ],
+  with:[
+    {f:"✅",b:"Data is findable",t:"Search + a catalog with descriptions means one canonical \"revenue\" table everyone can locate in seconds."},
+    {f:"✅",b:"Data is trusted",t:"Owner, description, sample data, and quality signals let consumers judge a source confidently."},
+    {f:"✅",b:"Impact is visible",t:"Lineage shows every downstream object before you change anything — no silent breakage."},
+    {f:"✅",b:"Access is controlled",t:"Least-privilege via groups: the right eyes only, granted quickly, revoked cleanly."},
+    {f:"✅",b:"You pass the audit",t:"Audit logs answer \"who did what, when\" instantly — compliance and forensics covered."}
+  ]
+};
+function setMode(m){
+  document.querySelectorAll('.switch button').forEach(b=>b.classList.toggle('on',b.dataset.mode===m));
+  const el=document.getElementById('scenario');
+  el.className='scenario '+m;
+  el.innerHTML=scenarios[m].map(s=>`<div class="row"><div class="face">${s.f}</div><div><b>${s.b}</b>${s.t}</div></div>`).join('');
+}
+setMode('without');
+
+/* ---------- questions matcher ---------- */
+const questions=[
+  {q:"Who is using this data?",a:"Access control + audit logs",d:"Permissions show who <em>can</em> use it; audit logs show who actually <em>did</em>."},
+  {q:"Where did it come from? (upstream)",a:"Data lineage",d:"Lineage traces the data back through notebooks/jobs to its source volumes and tables."},
+  {q:"What depends on it? (downstream)",a:"Data lineage",d:"Lineage lists every consuming notebook, query, and dashboard — your impact map."},
+  {q:"What is this data made of / what does it mean?",a:"Discoverability + metadata",d:"Descriptions, column comments, and tags explain the contents and meaning."},
+  {q:"Can this person be allowed to see it?",a:"Access control + security",d:"Privileges and masking decide and enforce who sees what."},
+  {q:"Is it correct and fresh?",a:"Data quality",d:"Quality checks and monitoring tell you whether the data can be trusted right now."}
+];
+const ql=document.getElementById('qlist');
+ql.innerHTML=questions.map(x=>`
+  <div class="q-item">
+    <span class="arrow">▶</span><span class="qx">${x.q}</span>
+    <div class="answer"><span class="badge">${x.a}</span>${x.d}</div>
+  </div>`).join('');
+ql.querySelectorAll('.q-item').forEach(it=>it.addEventListener('click',()=>it.classList.toggle('open')));
+
+/* ---------- pillar hub ---------- */
+const pillars=[
+  {ico:"🧭",name:"Discoverability",q:"Can people find it?",full:"Search and a catalog so users can locate and understand data — rows, metadata, meaning, dependencies.",why:"Stops duplicate work and speeds up every team."},
+  {ico:"🔐",name:"Access control",q:"Who can use it?",full:"Fine-grained permissions deciding who can read, write, or use each object.",why:"Enforces least-privilege — the right eyes only."},
+  {ico:"🛡️",name:"Security",q:"Is it protected?",full:"Encryption, masking of PII, and safeguards around sensitive data.",why:"Prevents breaches and legal exposure."},
+  {ico:"🔗",name:"Lineage",q:"Where from / to?",full:"The map of upstream sources and downstream consumers, captured automatically.",why:"Enables impact analysis, debugging, and trust."},
+  {ico:"📋",name:"Auditing",q:"Who did what?",full:"A log of every access and action, with timestamps.",why:"Required for compliance, forensics, and accountability."},
+  {ico:"✔️",name:"Data quality",q:"Is it correct?",full:"Checks on completeness, accuracy, and freshness of the data.",why:"Makes decisions built on the data trustworthy."},
+  {ico:"🏷️",name:"Metadata mgmt",q:"What does it mean?",full:"Descriptions, tags, and ownership attached to objects.",why:"Makes data understandable, not just present."}
+];
+const hub=document.getElementById('hub');
+const pdetail=document.getElementById('pdetail');
+hub.innerHTML=pillars.map((p,i)=>`
+  <div class="pillar" data-i="${i}">
+    <div class="pico">${p.ico}</div>
+    <div class="pname">${p.name}</div>
+    <div class="pq">${p.q}</div>
+  </div>`).join('');
+hub.querySelectorAll('.pillar').forEach(el=>{
+  el.addEventListener('click',()=>{
+    hub.querySelectorAll('.pillar').forEach(x=>x.classList.remove('active'));
+    el.classList.add('active');
+    const p=pillars[el.dataset.i];
+    pdetail.innerHTML=`<h3>${p.ico} ${p.name}</h3>
+      <div class="ph">Answers: ${p.q}</div>
+      <p style="margin:6px 0">${p.full}</p>
+      <p style="margin:6px 0"><strong>Why it matters:</strong> ${p.why}</p>`;
+  });
+});
+</script>
+</body>
+</html>

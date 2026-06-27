@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deletion Vectors · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .seg button:disabled{opacity:.4;cursor:not-allowed}
+  .btn{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:var(--paper-2);color:var(--ink);padding:8px 16px;border-radius:9px;cursor:pointer;transition:.18s}
+  .btn:hover{border-color:var(--frost-2);background:#fff}
+  .btn.primary{background:var(--frost);color:#fff;border-color:var(--frost)}
+  .btn.primary:hover{background:#18647e}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .file.rewritten{background:linear-gradient(135deg,#f3c48f,#e07a2f);border-color:#c9651f;color:#3a1d05;box-shadow:0 6px 16px -6px rgba(224,122,47,.7)}
+  .file.untouched{background:linear-gradient(135deg,#cfeef5,#9fdcec);border-color:#6fc3da;color:#0d4d5e}
+  .file .corner{position:absolute;top:3px;left:4px;font-size:.5rem;color:rgba(0,0,0,.35)}
+  /* deletion-vector badge that appears on a file in merge-on-read mode */
+  .file .dv{position:absolute;bottom:2px;right:2px;background:var(--amber);color:#fff;font-family:"Spline Sans Mono",monospace;font-size:.5rem;font-weight:600;padding:1px 3px;border-radius:4px;line-height:1.2;box-shadow:0 1px 4px rgba(224,122,47,.6)}
+
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.scan{background:linear-gradient(135deg,var(--frost-2),var(--frost))}
+  .sw.skp{background:var(--paper-2);opacity:.5}
+  .sw.clu{background:linear-gradient(135deg,#bfeaf3,#8fd6e8)}
+  .sw.rw{background:linear-gradient(135deg,#f3c48f,#e07a2f)}
+  .sw.un{background:linear-gradient(135deg,#cfeef5,#9fdcec)}
+
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+
+  /* ---------- clickable step / accordion (lifecycle diagrams) ---------- */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+  .step .code{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:8px}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 09</p>
+    <h1>Deletion<br><span class="drip">Vectors.</span></h1>
+    <p class="lede">Merge-on-read for Delta: a <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> marks rows as gone in a tiny side-file instead of rewriting the whole Parquet file — cheap writes, with a small read-time cost.</p>
+    <div class="meta">
+      <span class="pill">Write <b>DBR 14.3 LTS+</b></span>
+      <span class="pill">Read <b>DBR 12.2 LTS+</b></span>
+      <span class="pill">Property <b>delta.enableDeletionVectors</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>The problem it solves</h2>
+    <p>Parquet files are <strong>immutable</strong> — you can't edit rows in place. So by default, when you delete or update even <em>one</em> row, Delta uses <strong>copy-on-write</strong>: it reads the <em>entire</em> Parquet file holding that row, writes a brand-new file <strong>minus</strong> the row, and swaps it in. One changed row can rewrite hundreds of megabytes.</p>
+    <p><strong>Deletion vectors</strong> flip this to <strong>merge-on-read</strong>. A <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> just <strong>marks</strong> the affected rows as gone (a "soft delete") in a small side-file and leaves the big data file alone. The cost moves to read time: every reader <strong>applies</strong> the deletion vector to hide the marked rows and return the correct, current state.</p>
+    <p><span class="chip analogy">Analogy</span><br>Copy-on-write is <strong>photocopying a 300-page book to remove one sentence</strong>. A deletion vector is a <strong>sticky note on the cover</strong> — "skip line 12 on page 88." The book is untouched; anyone reading it just honors the note.</p>
+    <p><span class="chip usecase">Use case</span><br>A GDPR/CDC pipeline doing many small <code>DELETE</code>s and <code>MERGE</code> upserts into a large <code>customers</code> table all day. With copy-on-write each delete rewrites whole files; with deletion vectors those writes are near-instant, and you periodically run <code>OPTIMIZE</code> or <code>REORG … APPLY (PURGE)</code> to fold the soft deletes into the files for good.</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Cheap modifications.</strong> No full-file rewrite per <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> — only a small vector is written.</li>
+      <li><strong>Less write amplification.</strong> Copy-on-write can rewrite a 256 MB file to delete one row; deletion vectors keep the write proportional to the <em>change</em>, not the file.</li>
+      <li><strong>Photon predictive I/O.</strong> Photon uses deletion vectors to <strong>accelerate</strong> <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code>, reading and rewriting less data.</li>
+      <li><strong>Already on for modern tables.</strong> <strong>Liquid clustering enables deletion vectors by default</strong> (it ships the writer&nbsp;v7 / reader&nbsp;v3 protocol that includes them) — so your Lesson&nbsp;08 clustered tables already have them. All Apache Iceberg v3 tables include DVs by default; Delta tables opt in.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Deletion vectors trade a <strong>cheap write</strong> for a <strong>small read-time cost</strong> (applying the vector). Data is <em>soft-deleted</em> until <code>OPTIMIZE</code> / auto compaction / <code>REORG … APPLY (PURGE)</code> rewrites the file — and only <code>VACUUM</code> (Lesson&nbsp;10) actually removes the old files from storage.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: COW vs MOR SIMULATOR ============ -->
+  <section>
+    <h2>See it work — copy-on-write vs merge-on-read</h2>
+    <p>A 24-file Delta table. The 3 rows you'll delete live in <strong>3 different files</strong>. Pick a mode, then click <strong>DELETE 3 rows</strong> and watch what the engine has to write.</p>
+
+    <div class="lab" id="lab-cow">
+      <div class="lab-head">
+        <span class="lab-title">Copy-on-write vs deletion vectors</span>
+      </div>
+      <p class="lab-sub">Each cell is a ~256 MB Parquet file. The 3 target files are marked <code>•</code>.</p>
+
+      <div class="controls">
+        <div class="seg" id="modeSeg" role="group" aria-label="Delete mode">
+          <button data-mode="cow" aria-pressed="true">Copy-on-write (default)</button>
+          <button data-mode="dv" aria-pressed="false">Deletion vectors</button>
+        </div>
+        <button class="btn primary" id="cowDelete">DELETE 3 rows</button>
+        <button class="btn" id="cowReset">Reset</button>
+      </div>
+
+      <div class="qstr" id="cowCmd">DELETE FROM customers WHERE customer_id IN (42, 88, 130);</div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="cowLabel">24 files on disk · 3 target files marked •</div>
+        <div class="grid" id="cowGrid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw un"></i> file untouched</span>
+        <span><i class="sw rw"></i> file rewritten (copy-on-write)</span>
+        <span><i class="sw" style="background:var(--paper-2)"></i> unaffected file</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="cowFiles">0</div><div class="lbl">files rewritten</div></div>
+        <div class="stat win"><div class="big" id="cowBytes">0&nbsp;MB</div><div class="lbl">bytes written</div></div>
+      </div>
+      <div class="verdict" id="cowVerdict">Pick a mode and click <b>DELETE 3 rows</b>.</div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real files vary in size; a deletion vector is a small bitmap-style side-file (kilobytes), not zero bytes. Copy-on-write rewrites whole files containing affected rows.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: DELETION-VECTOR LIFECYCLE ============ -->
+  <section>
+    <h2>See it work — the deletion-vector lifecycle</h2>
+    <p>Soft-delete is not the end of the story. Click each step to see what happens from the cheap write all the way through to bytes leaving storage.</p>
+
+    <div class="lab" id="lab-life">
+      <div class="lab-head">
+        <span class="lab-title">Soft-delete → read → purge → vacuum</span>
+      </div>
+      <p class="lab-sub">Click a step to expand it. Each one explains what the command touches.</p>
+
+      <div class="step" data-step="0">
+        <div class="head"><span class="ix">1</span> <span><code>DELETE</code> marks rows (soft-delete) — file untouched</span></div>
+        <div class="detail">
+          The <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> writes a tiny <strong>deletion vector</strong> recording which row positions are gone. The Parquet file is <strong>not</strong> rewritten — the write is proportional to the change, not the file size.
+          <br><span class="code">DELETE FROM catalog.schema.customers WHERE customer_id = 42;</span>
+        </div>
+      </div>
+
+      <div class="step" data-step="1">
+        <div class="head"><span class="ix">2</span> <span>Reads <strong>apply</strong> the deletion vector to hide marked rows</span></div>
+        <div class="detail">
+          Every scan reads the data file <em>and</em> its deletion vector, then filters out the marked rows so you always see current state. This is the small <strong>read-time cost</strong> of merge-on-read — minimized by Photon predictive I/O.
+          <br><span class="code">SELECT * FROM catalog.schema.customers;  -- DV applied, row 42 hidden</span>
+        </div>
+      </div>
+
+      <div class="step" data-step="2">
+        <div class="head"><span class="ix">3</span> <span><code>OPTIMIZE</code> / <code>REORG … APPLY (PURGE)</code> physically rewrites files</span></div>
+        <div class="detail">
+          To fold soft-deletes into the data, a file with a deletion vector is <strong>physically rewritten without the dead rows</strong> when <code>OPTIMIZE</code> runs, auto compaction touches it, or you run <code>REORG TABLE … APPLY (PURGE)</code> (rewrites all files with DV-recorded changes). On big tables, <code>purgeMode = rows</code> only touches files that actually have soft-deletes.
+          <br><span class="code">REORG TABLE catalog.schema.customers APPLY (PURGE);</span>
+        </div>
+      </div>
+
+      <div class="step" data-step="3">
+        <div class="head"><span class="ix">4</span> <span><code>VACUUM</code> removes the now-unreferenced old files (Lesson 10)</span></div>
+        <div class="detail">
+          Rewriting only <em>replaces</em> the file; the old file still sits in storage until <code>VACUUM</code> deletes it after the retention window (<code>delta.deletedFileRetentionDuration</code>, default 7 days). This is the step that actually reclaims space and makes a GDPR delete physical — covered in <strong>Lesson 10</strong>.
+          <br><span class="code">VACUUM catalog.schema.customers;  -- removes files past the retention threshold</span>
+        </div>
+      </div>
+
+      <div class="verdict" id="lifeVerdict">A <code>DELETE</code> is cheap, but the bytes don't leave storage until <b>step 3 (rewrite)</b> then <b>step 4 (VACUUM)</b>.</div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of the lifecycle. Exact triggers and timing depend on maintenance schedules, retention settings, and (on UC managed tables) predictive optimization.</p>
+  </section>
+
+  <section>
+    <h2>The commands you'll actually use</h2>
+
+    <h3>Enable deletion vectors (SQL)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- At creation (Delta is the default format, so no USING DELTA)</span>
+<span class="k">CREATE TABLE</span> catalog.schema.customers (
+  customer_id <span class="k">BIGINT</span>,
+  email       <span class="k">STRING</span>,
+  region      <span class="k">STRING</span>
+)
+<span class="k">TBLPROPERTIES</span> (<span class="s">'delta.enableDeletionVectors'</span> = <span class="k">true</span>);   <span class="c">-- opt in to merge-on-read</span>
+
+<span class="c">-- Or on an existing table (normal tables only — NOT materialized views / streaming tables)</span>
+<span class="k">ALTER TABLE</span> catalog.schema.customers
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.enableDeletionVectors'</span> = <span class="k">true</span>);</pre>
+
+    <h3>Modify rows — writes a vector, not a rewrite (SQL)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- A small DELETE writes a tiny deletion vector; the Parquet file is untouched</span>
+<span class="k">DELETE FROM</span> catalog.schema.customers <span class="k">WHERE</span> customer_id = <span class="s">42</span>;
+
+<span class="c">-- UPDATE and MERGE behave the same way: soft-delete old row + write new value</span>
+<span class="k">UPDATE</span> catalog.schema.customers <span class="k">SET</span> region = <span class="s">'EU'</span> <span class="k">WHERE</span> customer_id = <span class="s">99</span>;</pre>
+
+    <h3>Enable + modify via the DeltaTable API (PySpark)</h3>
+    <pre><span class="tag">PYSPARK</span><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+
+<span class="c"># ALTER works on normal tables (not MV / streaming tables)</span>
+spark.sql(<span class="s">"""
+  ALTER TABLE catalog.schema.customers
+  SET TBLPROPERTIES ('delta.enableDeletionVectors' = true)
+"""</span>)
+
+dt = DeltaTable.forName(spark, <span class="s">"catalog.schema.customers"</span>)
+dt.delete(<span class="s">"customer_id = 42"</span>)                       <span class="c"># writes a deletion vector</span>
+dt.update(<span class="s">"customer_id = 99"</span>, {<span class="s">"region"</span>: <span class="s">"'EU'"</span>})   <span class="c"># soft-delete old + write new value</span></pre>
+
+    <h3>Physically apply the soft-deletes (SQL)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- Fold deletion vectors into data files (rewrite files that carry DV changes)</span>
+<span class="k">REORG TABLE</span> catalog.schema.customers <span class="k">APPLY</span> (<span class="k">PURGE</span>);
+
+<span class="c">-- Faster purge on a large table: only touch files that actually have soft-deletes</span>
+<span class="k">SET</span> spark.databricks.delta.reorg.purgeMode = <span class="s">rows</span>;   <span class="c">-- vs default 'all' (scan all footers)</span>
+<span class="k">REORG TABLE</span> catalog.schema.customers <span class="k">APPLY</span> (<span class="k">PURGE</span>);
+
+<span class="c">-- OPTIMIZE also physically applies DVs as it bin-packs / reclusters</span>
+<span class="k">OPTIMIZE</span> catalog.schema.customers;</pre>
+
+    <h3>Then remove the old files (Lesson 10)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- Rewriting only replaces files; VACUUM removes the old ones after retention (default 7 days)</span>
+<span class="k">VACUUM</span> catalog.schema.customers;</pre>
+
+    <h3>Downgrade the protocol (DBR 14.1+)</h3>
+    <pre><span class="tag">SQL</span><span class="c">-- Drop the feature so older clients can read again (normal tables; not MV/streaming)</span>
+<span class="k">ALTER TABLE</span> catalog.schema.customers <span class="k">DROP FEATURE</span> deletionVectors;</pre>
+  </section>
+
+  <section>
+    <h2>Copy-on-write vs merge-on-read</h2>
+    <table class="tbl">
+      <thead><tr><th>Aspect</th><th>Copy-on-write (default)</th><th>Merge-on-read (deletion vectors)</th></tr></thead>
+      <tbody>
+        <tr><td>What a <code>DELETE</code>/<code>UPDATE</code> does</td><td>Rewrites the <strong>whole</strong> Parquet file(s)</td><td>Writes a <strong>tiny deletion vector</strong>; file untouched</td></tr>
+        <tr><td>Write cost</td><td>Proportional to <strong>file size</strong> (high)</td><td>Proportional to the <strong>change</strong> (low)</td></tr>
+        <tr><td>Read cost</td><td>None extra</td><td>Small — readers <strong>apply</strong> the vector</td></tr>
+        <tr><td>Storage reclaimed</td><td>At write time (old file unreferenced)</td><td>After <code>OPTIMIZE</code>/<code>REORG … PURGE</code> <strong>then</strong> <code>VACUUM</code></td></tr>
+        <tr><td>Best for</td><td>Read-heavy tables with rare edits</td><td>High-churn DML, many small deletes, CDC/GDPR, <code>MERGE</code> upserts</td></tr>
+        <tr><td>Enable</td><td>Default — nothing to do</td><td><code>delta.enableDeletionVectors = true</code> (or via liquid clustering)</td></tr>
+        <tr><td>Protocol</td><td>Unchanged</td><td>Upgraded (writer v7 / reader v3); old clients can't read</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Runtime support</h2>
+    <p>Deletion vectors upgrade the protocol, so <strong>old clients can't read the table</strong>. Know the version floors before enabling broadly.</p>
+    <table class="tbl">
+      <thead><tr><th>Capability</th><th>Minimum runtime</th></tr></thead>
+      <tbody>
+        <tr><td>WRITE with all optimizations</td><td><strong>DBR 14.3 LTS+</strong></td></tr>
+        <tr><td>READ a DV-enabled table</td><td><strong>DBR 12.2 LTS+</strong></td></tr>
+        <tr><td>Row-level concurrency with DVs</td><td>DBR 14.2+</td></tr>
+        <tr><td>Non-Photon <code>DELETE</code> / <code>UPDATE</code> / <code>MERGE</code></td><td>12.2 LTS+ / 14.1+ / 14.3 LTS+</td></tr>
+        <tr><td>Photon <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code></td><td>all three from 12.2 LTS+</td></tr>
+        <tr><td><code>DROP FEATURE deletionVectors</code> (downgrade)</td><td>DBR 14.1+</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES, EDGE CASES & LIMITATIONS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+
+    <h3>Uses — when to reach for it (and when not)</h3>
+    <ul>
+      <li><strong>High-churn tables with frequent small <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code></strong> — CDC ingestion, GDPR "right to be forgotten", dedup/upsert pipelines.</li>
+      <li><strong><code>MERGE</code>-heavy upserts</strong> into large tables where copy-on-write rewrite cost dominates.</li>
+      <li><strong>Any liquid-clustered table</strong> — DVs come on for free with the protocol (Lesson 08).</li>
+      <li><strong>When NOT to (or be deliberate):</strong> tables that must stay readable by very old Delta clients (the protocol upgrade blocks them); <strong>materialized views / streaming tables</strong> where you can't <code>ALTER</code>-toggle or later downgrade; purely read-only tables see only the read-apply cost, no benefit.</li>
+    </ul>
+
+    <h3>Edge cases interviewers probe</h3>
+    <ul>
+      <li><strong>"Where did my space go?"</strong> A <code>DELETE</code> with DVs frees <strong>no storage</strong> until <code>OPTIMIZE</code>/<code>REORG … PURGE</code> rewrites the file <em>and</em> <code>VACUUM</code> removes the old one.</li>
+      <li><strong>Compliance deletes:</strong> soft-delete ≠ erased. For GDPR you must <code>REORG … APPLY (PURGE)</code> then <code>VACUUM</code> after retention (Lesson 10).</li>
+      <li><strong>Mixed-version readers:</strong> a DBR 11.x cluster can't read a DV-enabled table — read floor is <strong>12.2 LTS+</strong>.</li>
+      <li><strong>Non-Photon floors:</strong> <code>UPDATE</code> needs <strong>14.1+</strong>, <code>MERGE</code> needs <strong>14.3 LTS+</strong> (all three from 12.2 LTS+ on Photon).</li>
+      <li><strong>Purge cost on huge tables:</strong> prefer <code>purgeMode = rows</code> so <code>REORG … PURGE</code> only touches files that carry soft-deletes.</li>
+    </ul>
+
+    <h3>Limitations (honest constraints)</h3>
+    <ul>
+      <li><strong>UniForm Iceberg v2 is unsupported</strong> with deletion vectors (Iceberg <strong>v3 is OK</strong>).</li>
+      <li><strong><code>GENERATE</code> manifest</strong> requires a <code>REORG … APPLY (PURGE)</code> first; there is <strong>no incremental manifest generation</strong> with DVs.</li>
+      <li><strong>Cannot <code>ALTER</code>-enable/remove</strong> DVs on a <strong>materialized view or streaming table</strong>, and you <strong>cannot downgrade the protocol</strong> after enabling on an MV/streaming table.</li>
+      <li><strong>Enabling upgrades the protocol</strong> (writer v7 / reader v3) — old clients lose read access; <code>DROP FEATURE deletionVectors</code> (DBR 14.1+) downgrades normal tables.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Quick gotchas</h2>
+    <ul>
+      <li><strong>Soft delete is not physical delete.</strong> Storage and time-travel history persist until <code>REORG … APPLY (PURGE)</code> + <code>VACUUM</code>. Don't claim GDPR compliance after just a <code>DELETE</code>.</li>
+      <li><strong><code>DELETE</code> looks free but isn't, later.</strong> You deferred the rewrite to <code>OPTIMIZE</code>/<code>PURGE</code>; schedule that maintenance (or use predictive optimization, <strong>Lesson 11</strong>, which applies DVs automatically).</li>
+      <li><strong>Protocol upgrade is broadly one-way.</strong> Standardize readers on <strong>DBR 12.2 LTS+</strong> first; MV/streaming tables can't be downgraded.</li>
+      <li><strong>Don't toggle it on a materialized view or streaming table</strong> — <code>ALTER</code> is not allowed there.</li>
+      <li><strong>Manifest-based external readers</strong> need a <code>REORG … APPLY (PURGE)</code> before <code>GENERATE</code>, with no incremental option.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/features/deletion-vectors" target="_blank" rel="noopener">What are deletion vectors?</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/vacuum" target="_blank" rel="noopener">Remove unused data files with VACUUM</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: copy-on-write vs merge-on-read (scoped to #lab-cow) ---------- */
+(function(){
+  const root = document.getElementById('lab-cow');
+  if(!root) return;
+  const N = 24;
+  const FILE_MB = 256;             // each cell models a ~256 MB Parquet file
+  const DV_KB = 4;                 // a deletion vector is a few KB, not megabytes
+  const TARGETS = [3, 11, 18];     // the 3 files that contain the rows being deleted
+  const grid = root.querySelector('#cowGrid');
+  let mode = 'cow';
+  let done = false;
+
+  function build(){
+    grid.innerHTML='';
+    for(let i=0;i<N;i++){
+      const cell=document.createElement('div');
+      cell.className='file untouched';
+      cell.dataset.i=i;
+      const corner=document.createElement('span');
+      corner.className='corner'; corner.textContent = TARGETS.includes(i)?'•':'';
+      cell.appendChild(corner);
+      const v=document.createElement('span');
+      v.className='v'; v.textContent='256MB';
+      cell.appendChild(v);
+      grid.appendChild(cell);
+    }
+  }
+
+  function reset(){
+    done=false;
+    build();
+    root.querySelector('#cowFiles').textContent='0';
+    root.querySelector('#cowBytes').textContent='0 MB';
+    root.querySelector('#cowLabel').textContent='24 files on disk · 3 target files marked •';
+    root.querySelector('#cowVerdict').innerHTML='Pick a mode and click <b>DELETE 3 rows</b>.';
+  }
+
+  function run(){
+    if(done) return;
+    done=true;
+    const cells = grid.querySelectorAll('.file');
+    if(mode==='cow'){
+      // copy-on-write: the 3 whole files containing those rows are rewritten
+      TARGETS.forEach((idx,k)=>{
+        const cell=cells[idx];
+        setTimeout(()=>{
+          cell.classList.remove('untouched');
+          cell.classList.add('rewritten');
+          cell.querySelector('.v').textContent='rewritten';
+        }, k*220);
+      });
+      const bytes = TARGETS.length * FILE_MB;     // 3 * 256 MB
+      root.querySelector('#cowFiles').textContent = TARGETS.length;
+      root.querySelector('#cowBytes').textContent = bytes + ' MB';
+      root.querySelector('#cowLabel').textContent='Copy-on-write — 3 whole files rewritten';
+      root.querySelector('#cowVerdict').innerHTML =
+        "Deleting 3 rows rewrote <b>3 entire files = "+bytes+" MB</b>. The work scaled with <b>file size</b>, not the 3 rows. Multiply this by thousands of daily deletes and you have a rewrite storm.";
+    } else {
+      // merge-on-read: files stay, a tiny DV badge appears
+      TARGETS.forEach((idx,k)=>{
+        const cell=cells[idx];
+        setTimeout(()=>{
+          const dv=document.createElement('span');
+          dv.className='dv'; dv.textContent='DV';
+          cell.appendChild(dv);
+          cell.style.boxShadow='0 6px 16px -6px rgba(224,122,47,.5)';
+        }, k*220);
+      });
+      const bytes = (TARGETS.length * DV_KB)/1024;   // 3 * 4 KB, in MB
+      root.querySelector('#cowFiles').textContent = '0';
+      root.querySelector('#cowBytes').textContent = bytes.toFixed(2) + ' MB';
+      root.querySelector('#cowLabel').textContent='Deletion vectors — files untouched, tiny DV side-files written';
+      root.querySelector('#cowVerdict').innerHTML =
+        "Deleting 3 rows wrote <b>0 data files</b> — just three tiny deletion vectors (~"+(TARGETS.length*DV_KB)+" KB total). The big files stay put; reads apply the vector to hide rows 42, 88, 130. <b>Cheap write, small read-time cost.</b>";
+    }
+  }
+
+  root.querySelectorAll('#modeSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      mode=btn.dataset.mode;
+      root.querySelectorAll('#modeSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      reset();
+    });
+  });
+  root.querySelector('#cowDelete').addEventListener('click',run);
+  root.querySelector('#cowReset').addEventListener('click',reset);
+
+  reset();
+})();
+
+/* ---------- Interactive 2: deletion-vector lifecycle accordion (scoped to #lab-life) ---------- */
+(function(){
+  const root = document.getElementById('lab-life');
+  if(!root) return;
+  const steps = root.querySelectorAll('.step');
+  const verdict = root.querySelector('#lifeVerdict');
+  const MSG = [
+    "<b>Step 1 — soft-delete.</b> Cheap: a tiny deletion vector is written, the Parquet file is untouched.",
+    "<b>Step 2 — read.</b> Every scan applies the vector to hide marked rows. This is the small read-time cost of merge-on-read.",
+    "<b>Step 3 — purge / OPTIMIZE.</b> Files with deletion vectors are physically rewritten without the dead rows. Real work — schedule it.",
+    "<b>Step 4 — VACUUM.</b> The old, now-unreferenced files are removed after the retention window. Only now is the space reclaimed (Lesson 10)."
+  ];
+  steps.forEach(st=>{
+    st.addEventListener('click',()=>{
+      const open = st.classList.contains('open');
+      steps.forEach(s=>s.classList.remove('open'));
+      if(!open){
+        st.classList.add('open');
+        verdict.innerHTML = MSG[+st.dataset.step];
+      } else {
+        verdict.innerHTML = "A <code>DELETE</code> is cheap, but the bytes don't leave storage until <b>step 3 (rewrite)</b> then <b>step 4 (VACUUM)</b>.";
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>

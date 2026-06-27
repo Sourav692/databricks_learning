@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity Catalog Functions · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: scalar vs UDTF */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  /* diagram 2: execute-chain */
+  .steps{display:flex;flex-direction:column;gap:8px}
+  .st{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff;cursor:pointer;transition:.18s;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between;align-items:center}
+  .st .badge{font-size:.7rem;padding:3px 9px;border-radius:999px;background:#fdecea;color:#9a2b1a;border:1px solid #f0b3a8}
+  .st.on .badge{background:#dff0e6;color:#1f6b3a;border-color:#9ed3b2}
+  .door{margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:11px;border-radius:8px;text-align:center;font-weight:600}
+  .door.deny{background:#fdecea;color:#9a2b1a;border:1px solid #f0b3a8}
+  .door.allow{background:#dff0e6;color:#1f6b3a;border:1px solid #9ed3b2}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 8.5</p>
+  <h1>Unity Catalog <em>Functions</em></h1>
+  <p class="lede">Reusable, governed functions registered in UC by 3-level name — scalar UDFs (a value), table functions/UDTFs (a table), and Python UDFs — shared across queries and controlled by GRANT EXECUTE. This deep dive walks each with verified SQL.</p>
+  <div class="pills"><span class="pill">scalar UDF</span><span class="pill">RETURNS TABLE (UDTF)</span><span class="pill">LANGUAGE PYTHON</span><span class="pill">GRANT EXECUTE</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>UC functions</strong> persist business logic in Unity Catalog (<code>catalog.schema.fn</code>): a <strong>scalar UDF</strong> returns one value (SELECT/WHERE), a <strong>UDTF</strong> (<code>RETURNS TABLE</code>) returns a table (FROM). Governed by <code>GRANT EXECUTE</code>; they also power column masks &amp; row filters.</div>
+  <div class="card analogy" style="margin-top:10px">📐 <strong>Analogy:</strong> a <strong>saved formula in a shared spreadsheet</strong> — define <code>bmi(weight,height)</code> once, everyone reuses it by name, and you control who can run it. A <strong>UDTF</strong> returns a whole sheet, not one cell.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: scalar vs UDTF -->
+<section id="kind">
+  <h2>Scalar vs table function — click each</h2>
+  <div class="switch">
+    <div class="opt on" data-o="scalar">Scalar UDF (a value)</div>
+    <div class="opt" data-o="udtf">UDTF (a table)</div>
+  </div>
+  <div class="view on" data-v="scalar">
+    <div class="card">Returns one value per row → use in <code>SELECT</code>/<code>WHERE</code>.
+      <pre class="code"><span class="k">CREATE FUNCTION</span> prod.util.bmi(w <span class="k">DOUBLE</span>, h <span class="k">DOUBLE</span>)
+<span class="k">RETURNS DOUBLE</span> <span class="k">DETERMINISTIC</span> <span class="k">RETURN</span> w/(h*h);
+<span class="k">SELECT</span> id, prod.util.bmi(weight, height) <span class="k">AS</span> bmi <span class="k">FROM</span> patients;</pre></div>
+  </div>
+  <div class="view" data-v="udtf">
+    <div class="card">Returns a whole table (<code>RETURNS TABLE</code>) → use in <code>FROM</code> like a parameterized view.
+      <pre class="code"><span class="k">CREATE FUNCTION</span> prod.util.top_orders(region <span class="k">STRING</span>, n <span class="k">INT</span>)
+<span class="k">RETURNS TABLE</span> (order_id <span class="k">BIGINT</span>, amount <span class="k">DECIMAL</span>(10,2))
+<span class="k">RETURN SELECT</span> order_id, amount <span class="k">FROM</span> prod.sales.orders
+  <span class="k">WHERE</span> region = top_orders.region <span class="k">ORDER BY</span> amount <span class="k">DESC LIMIT</span> n;
+<span class="k">SELECT</span> * <span class="k">FROM</span> prod.util.top_orders(<span class="s">'West'</span>, <span class="f">10</span>);</pre></div>
+  </div>
+</section>
+
+<section id="python">
+  <h2>1 · Python UDF (governed, persistent)</h2>
+  <p>For logic SQL can't express; the body is dollar-quoted. Runs per-row in Python → slower than SQL/built-ins, keep off hot paths.</p>
+  <pre class="code"><span class="k">CREATE OR REPLACE FUNCTION</span> prod.util.normalize_phone(p <span class="k">STRING</span>)
+<span class="k">RETURNS STRING</span>
+<span class="k">LANGUAGE PYTHON</span>
+<span class="k">AS</span> $$
+  import re
+  return re.sub(r'\D', '', p) if p else None      <span class="c"># strip non-digits</span>
+$$;</pre>
+</section>
+
+<section id="govern">
+  <h2>2 · Governance &amp; masks/filters</h2>
+  <p>Calling a function needs <code>USE CATALOG</code> + <code>USE SCHEMA</code> + <code>EXECUTE</code> (same chain as 8.2). The same kind of UDF is what column masks (8.3) &amp; ABAC policies (8.4) attach.</p>
+  <pre class="code"><span class="k">GRANT EXECUTE</span> <span class="k">ON FUNCTION</span> prod.util.bmi <span class="k">TO</span> `analysts`;
+
+<span class="c">-- a mask function consumed by 8.3 column masks / 8.4 ABAC policies</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> prod.util.mask_email(e <span class="k">STRING</span>) <span class="k">RETURNS STRING</span>
+<span class="k">RETURN CASE WHEN</span> is_account_group_member(<span class="s">'pii_readers'</span>) <span class="k">THEN</span> e <span class="k">ELSE</span> <span class="s">'***@***'</span> <span class="k">END</span>;</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: execute chain -->
+<section id="exec">
+  <h2>3 · Can you run it? — toggle the grants</h2>
+  <p class="hint">▸ calling <code>prod.util.bmi(...)</code> needs the USE chain + EXECUTE</p>
+  <div class="steps">
+    <div class="st" data-g="cat"><span>USE CATALOG prod</span><span class="badge">no</span></div>
+    <div class="st" data-g="sch"><span>USE SCHEMA prod.util</span><span class="badge">no</span></div>
+    <div class="st" data-g="exe"><span>EXECUTE ON FUNCTION prod.util.bmi</span><span class="badge">no</span></div>
+  </div>
+  <div class="door deny" id="door">🔒 cannot execute function</div>
+</section>
+
+<section>
+  <h2>Scalar vs UDTF vs Python</h2>
+  <table>
+    <tr><th></th><th>Scalar UDF</th><th>Table function (UDTF)</th><th>Python UDF</th></tr>
+    <tr><td>Returns</td><td>one value</td><td>a table (<code>RETURNS TABLE</code>)</td><td>one value</td></tr>
+    <tr><td>Used in</td><td>SELECT/WHERE</td><td>FROM</td><td>SELECT/WHERE</td></tr>
+    <tr><td>Language</td><td>SQL or Python</td><td>SQL</td><td>Python</td></tr>
+    <tr><td>Perf</td><td class="win">fast (SQL)</td><td class="win">fast (SQL)</td><td>slower (per-row)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Business logic lives in <strong>one governed place</strong> instead of copy-pasted into every notebook — consistent, permissioned, auditable.</li>
+    <li>They're the <strong>building block for column masks &amp; row filters</strong> (8.3/8.4) — those <em>are</em> UC functions.</li>
+  </ul>
+  <div class="card usecase">🧮 <strong>Real-world use case:</strong> define <code>prod.util.mask_email(email)</code> once; reuse in queries <strong>and</strong> attach it as a column mask. A UDTF <code>prod.util.top_orders(region, n)</code> lets analysts call <code>SELECT * FROM prod.util.top_orders('West', 10)</code>.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> centralizing business rules; powering masks/filters; parameterized result sets (UDTFs); sharing logic across teams.</li>
+    <li><strong>Edge cases:</strong> Python UDFs are slower than built-ins (per-row Python) — prefer SQL/built-ins on hot paths; mark <code>DETERMINISTIC</code> only if it truly is (don't mark functions using <code>current_*</code>).</li>
+    <li><strong>Limitation:</strong> governed by EXECUTE + USE chain (same as 8.2); heavy UDFs in masks/filters hit the 8.3 perf notes.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Re-defining logic as a <strong>notebook UDF</strong> everywhere — register in UC once and GRANT EXECUTE.</li>
+    <li>❌ Forgetting <strong>EXECUTE</strong> (and USE CATALOG/SCHEMA) → permission denied calling it.</li>
+    <li>❌ Heavy <strong>Python</strong> UDF on a hot path where SQL/built-in would do.</li>
+    <li>❌ Confusing a <strong>scalar</strong> UDF (value, in SELECT) with a <strong>UDTF</strong> (<code>RETURNS TABLE</code>, in FROM).</li>
+    <li>❌ Marking a non-deterministic function <code>DETERMINISTIC</code> → wrong cached results.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/udf/unity-catalog" target="_blank" rel="noopener">UC functions</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-sql-function" target="_blank" rel="noopener">CREATE FUNCTION</a> ·
+  <a href="https://docs.databricks.com/aws/en/udf/unity-catalog-python" target="_blank" rel="noopener">Python UDFs</a>
+  <p style="margin-top:10px">Topic 8.5 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — scalar vs UDTF (scoped to #kind)
+document.querySelectorAll('#kind .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#kind .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#kind .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+// Diagram 2 — execute chain (scoped to #exec)
+const g={cat:false,sch:false,exe:false};
+const door=document.getElementById('door');
+document.querySelectorAll('#exec .st').forEach(s=>{
+  s.addEventListener('click',()=>{
+    const k=s.dataset.g; g[k]=!g[k];
+    s.classList.toggle('on',g[k]);
+    s.querySelector('.badge').textContent=g[k]?'granted':'no';
+    const ok=g.cat&&g.sch&&g.exe;
+    door.className='door '+(ok?'allow':'deny');
+    door.textContent= ok ? '🔓 prod.util.bmi(...) runs' : '🔒 cannot execute function';
+  });
+});
+</script>
+</body>
+</html>

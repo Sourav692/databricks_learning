@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Optimize &amp; File-Size Autotuning · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 07</p>
+    <h1>Auto Optimize<br><span class="drip">&amp; autotuning.</span></h1>
+    <p class="lede">Two settings — optimized writes and auto compaction — keep your files a healthy size automatically. And when you don't pick a size, Databricks autotunes it by how big the table is.</p>
+    <div class="meta">
+      <span class="pill">= optimizeWrite <b>+ autoCompact</b></span>
+      <span class="pill">Autotune <b>256 MB → 1 GB</b></span>
+      <span class="pill">&gt; 1 TB? <b>still OPTIMIZE</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p><strong>"Auto optimize"</strong> is an umbrella name for <strong>two settings working together</strong> so you don't drown in tiny files:</p>
+    <ul>
+      <li><strong><code>delta.autoOptimize.optimizeWrite</code></strong> — the <strong>write-time</strong> half (Lesson 05). Before data lands, Spark shuffles it so each write produces <strong>fewer, larger files</strong>.</li>
+      <li><strong><code>delta.autoOptimize.autoCompact</code></strong> — the <strong>post-write</strong> half (Lesson 06). After a write commits, a quick compaction pass merges leftover small files <strong>within partitions</strong>.</li>
+    </ul>
+    <p>This lesson ties the two together and answers the next question: <strong>how big should a "right-sized" file be?</strong> That's the <strong>target file size</strong> — either an explicit number you set (<code>delta.targetFileSize</code>), or, when you set nothing, an <strong>autotuned size based on how big the table is</strong> (256&nbsp;MB for most tables, scaling to 1&nbsp;GB for very large ones).</p>
+    <p><span class="chip analogy">Analogy</span><br>Auto optimize is the <strong>self-cleaning kitchen</strong>. Optimized writes plates food onto a few big plates instead of dozens of tiny ramekins (write-time); auto compaction is the busser who clears and consolidates leftover small plates right after the meal (post-write). <strong>Target file size</strong> is "use dinner plates, not saucers" — and <strong>autotuning</strong> is "the bigger the banquet, the bigger the platters."</p>
+    <p><span class="chip usecase">Real-world use case</span><br>A streaming-fed <code>bronze.events</code> table getting hundreds of tiny micro-batch commits per hour. Turn on <strong>both</strong> settings so each commit writes larger files <em>and</em> gets compacted right after — the small-file problem never builds up. For long-term consolidation and skipping you still schedule <code>OPTIMIZE</code> / use liquid clustering.</p>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>The small-file problem never sleeps.</strong> Streaming and frequent MERGE/UPDATE/DELETE commit constantly; without help, every commit drips more tiny files and scans get slower and pricier.</li>
+      <li><strong>Auto optimize handles the routine case for you.</strong> Optimized writes prevents many small files at the source; auto compaction mops up the rest right after each write — no separate job, no scheduling.</li>
+      <li><strong>It REDUCES, but does not REPLACE, <code>OPTIMIZE</code>.</strong> It keeps a <em>single</em> write's files healthy; it does <strong>not</strong> globally consolidate the whole table or give skipping locality.</li>
+      <li><strong>File size is a real tuning knob.</strong> Too small → metadata bloat and slow scans; too big → expensive rewrites on small updates and weaker skipping. Databricks picks a sensible target automatically, but you can override it per table.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Auto optimize is for <strong>routine, automatic small-file control</strong>. For tables larger than <strong>1&nbsp;TB</strong>, you still <strong>schedule <code>OPTIMIZE</code></strong> to consolidate — and prefer <strong>liquid clustering</strong> when you need data laid out for fast filtering.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: AUTOTUNE CURVE ============ -->
+  <section>
+    <h2>See it work — the autotune curve</h2>
+    <p>When <code>delta.targetFileSize</code> is <strong>not</strong> set, Databricks picks the target file size from the <strong>table's size</strong>. Drag the slider to a table size and watch the target — and the rough file count — change.</p>
+
+    <div class="lab" id="lab-autotune">
+      <div class="lab-head">
+        <span class="lab-title">Autotune target-file-size curve</span>
+      </div>
+      <p class="lab-sub">No explicit <code>targetFileSize</code> → target scales with table size: 256&nbsp;MB below 2.56&nbsp;TB, linearly 256&nbsp;MB→1&nbsp;GB from 2.56–10&nbsp;TB, 1&nbsp;GB above 10&nbsp;TB.</p>
+
+      <div class="filterbar">
+        <label for="at-range">Table size:</label>
+        <input id="at-range" type="range" min="0" max="1000" value="120" step="1" style="flex:1;min-width:200px;accent-color:#1f6f8b">
+        <span class="qstr" id="at-size">—</span>
+      </div>
+
+      <div class="gridwrap">
+        <div class="glabel">Autotune curve — target file size vs table size</div>
+        <div id="at-bars" style="display:flex;align-items:flex-end;gap:3px;height:120px;padding:6px;background:var(--paper);border:1px solid var(--line);border-radius:10px"></div>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="at-target">—</div><div class="lbl">autotuned target / file</div></div>
+        <div class="stat"><div class="big" id="at-files">—</div><div class="lbl">approx. file count</div></div>
+        <div class="stat win"><div class="big" id="at-band">—</div><div class="lbl">autotune band</div></div>
+      </div>
+      <div class="verdict" id="at-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. The real target is computed from table size by Databricks; file count here is target-implied (size ÷ target) and ignores partitioning, the growing-target caveat, and any explicit <code>targetFileSize</code>.</p>
+  </section>
+
+  <!-- ============ THE TARGET / AUTOTUNE DEEP DIVE ============ -->
+  <section>
+    <h2>Target file size &amp; autotuning</h2>
+
+    <h3>1 · <code>delta.targetFileSize</code> — the explicit target</h3>
+    <p>Sets the size each file should aim for. Accept a readable size like <code>'100mb'</code> or raw bytes like <code>104857600</code>. <strong>Default is None</strong> (unset → autotuning). When set, it's honored by <strong>OPTIMIZE, liquid clustering, auto compaction, and optimized writes</strong>.</p>
+    <div class="callout">
+      <span class="lbl">Managed-table caveat</span>
+      On <strong>UC managed tables with a SQL warehouse, or DBR 11.3 LTS+</strong>, <strong>only <code>OPTIMIZE</code> respects <code>targetFileSize</code></strong> — the write-time / auto-compaction paths autosize. Setting it won't change every write path; run <code>OPTIMIZE</code> to apply it.
+    </div>
+    <pre><span class="tag">SQL</span><span class="c">-- Pin an explicit target. Accepts '100mb' or a raw byte count (104857600).</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.targetFileSize'</span> = <span class="s">'128mb'</span>);  <span class="c">-- honored by OPTIMIZE, LC, autoCompact, optimizeWrite</span>
+
+<span class="c">-- Equivalent using raw bytes (128 MB = 134217728). Same effect.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.targetFileSize'</span> = <span class="s">'134217728'</span>);</pre>
+
+    <h3>2 · File-size autotuning by table size (when no explicit target)</h3>
+    <p>When <code>targetFileSize</code> is <strong>not set</strong>, Databricks autotunes the target from the table's size:</p>
+    <table class="tbl">
+      <thead><tr><th>Table size</th><th>Autotuned target file size</th></tr></thead>
+      <tbody>
+        <tr><td>&lt; 2.56 TB</td><td><strong>256 MB</strong></td></tr>
+        <tr><td>2.56–10 TB</td><td>grows <strong>linearly 256 MB → 1 GB</strong></td></tr>
+        <tr><td>&gt; 10 TB</td><td><strong>1 GB</strong></td></tr>
+      </tbody>
+    </table>
+    <div class="callout">
+      <span class="lbl">The autotune gotcha</span>
+      A <strong>growing target does NOT re-optimize existing files.</strong> As a table crosses size thresholds the target rises, but files already written keep their old size — so <strong>large tables may keep some small files</strong> unless you set a fixed <code>targetFileSize</code> (or run <code>OPTIMIZE</code> to rewrite them).
+    </div>
+    <pre><span class="tag">SQL</span><span class="c">-- Autotuning is the DEFAULT (no targetFileSize set) — nothing to enable.</span>
+<span class="c">-- To AVOID the "growing target leaves old small files" caveat on a huge table,</span>
+<span class="c">-- pin a fixed target and OPTIMIZE so existing files are rewritten to it:</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.targetFileSize'</span> = <span class="s">'512mb'</span>);  <span class="c">-- fixed target for a very large table</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;                  <span class="c">-- rewrite existing files to the new target</span></pre>
+
+    <h3>3 · <code>delta.tuneFileSizesForRewrites</code></h3>
+    <p>Biases sizing toward <strong>rewrite-friendly</strong> sizes for tables that see frequent rewrites (heavy MERGE/UPDATE/DELETE), where smaller files make each rewrite cheaper. Niche — most workloads are fine with autotuning or one <code>targetFileSize</code>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- For very rewrite-heavy tables, bias toward rewrite-friendly file sizes.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.tuneFileSizesForRewrites'</span> = <span class="s">'true'</span>);</pre>
+
+    <h3>4 · UC managed tables autotune by default</h3>
+    <p><span class="chip usecase">Managed = self-sizing</span><br><strong>Unity Catalog managed tables</strong> get automatic file-size tuning by default (DBR 11.3 LTS+ / SQL warehouse), and can benefit from <strong>background auto compaction</strong> that does <strong>not</strong> require predictive optimization. EXTERNAL tables don't get the same automatic behavior.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- On UC MANAGED tables, file-size tuning is automatic by default. Inspect:</span>
+<span class="k">DESCRIBE EXTENDED</span> main.delta_opt_demo.events;   <span class="c">-- properties + Predictive Optimization field</span>
+<span class="k">SHOW TBLPROPERTIES</span> main.delta_opt_demo.events;  <span class="c">-- see autoOptimize.* and targetFileSize if set</span></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: DECISION MAP ============ -->
+  <section>
+    <h2>Auto-optimize decision map</h2>
+    <p>Pick a scenario and see which levers apply — and which fall to <code>OPTIMIZE</code> / liquid clustering / predictive optimization. The point: auto optimize handles the routine; the rest handle whole-table layout.</p>
+
+    <div class="lab" id="lab-decision">
+      <div class="lab-head">
+        <span class="lab-title">Which levers apply?</span>
+      </div>
+      <p class="lab-sub">Choose an operation / scenario.</p>
+
+      <div class="controls">
+        <div class="seg" id="dm-seg" role="group" aria-label="Scenario">
+          <button data-scn="merge" aria-pressed="true">MERGE / UPDATE / DELETE</button>
+          <button data-scn="partins" aria-pressed="false">Partitioned INSERT</button>
+          <button data-scn="batch" aria-pressed="false">Big batch append</button>
+          <button data-scn="huge" aria-pressed="false">Table &gt; 1 TB</button>
+        </div>
+      </div>
+
+      <div class="readout" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-top:18px">
+        <div class="stat" id="dm-ow"><div class="big">—</div><div class="lbl">optimizeWrite</div></div>
+        <div class="stat" id="dm-ac"><div class="big">—</div><div class="lbl">autoCompact</div></div>
+        <div class="stat" id="dm-op"><div class="big">—</div><div class="lbl">scheduled OPTIMIZE</div></div>
+        <div class="stat" id="dm-lc"><div class="big">—</div><div class="lbl">liquid clustering</div></div>
+      </div>
+      <div class="verdict" id="dm-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. "Applies" is a guidance signal, not a guarantee for every table/runtime; for MERGE/UPDATE/DELETE optimized writes &amp; auto compaction are always on (can't disable).</p>
+  </section>
+
+  <!-- ============ DEEP DIVE: THE UMBRELLA + RELATIONSHIP ============ -->
+  <section>
+    <h2>How it works — the umbrella &amp; what it doesn't do</h2>
+
+    <h3>"Auto optimize" = optimizeWrite + autoCompact</h3>
+    <p>It's not a single switch — it's the <strong>pair</strong> that runs at <strong>different moments</strong> of the same write: <code>optimizeWrite</code> shuffles <em>before</em> the write (fewer, larger files); <code>autoCompact</code> compacts <em>after</em> the commit (within partitions). They're <strong>independent</strong> — you can enable either alone. "Auto optimize" is a legacy umbrella term; modern guidance thinks in the individual settings.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Enable BOTH halves of "auto optimize" on a table.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (
+    <span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>,   <span class="c">-- write-time: fewer, larger files (Lesson 05)</span>
+    <span class="s">'delta.autoOptimize.autoCompact'</span>   = <span class="s">'auto'</span>    <span class="c">-- post-write: compact small files; 'auto' autotunes size</span>
+  );
+<span class="k">SHOW TBLPROPERTIES</span> main.delta_opt_demo.events;       <span class="c">-- confirm both are set</span></pre>
+    <pre><span class="tag">PYSPARK</span><span class="c"># Session-level equivalents (apply to writes from this Spark session).</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.optimizeWrite.enabled"</span>, <span class="s">"true"</span>)   <span class="c"># write-time half</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.autoCompact.enabled"</span>,  <span class="s">"auto"</span>)    <span class="c"># post-write half ('auto' autotunes)</span></pre>
+
+    <h3>Reduce, don't replace OPTIMIZE — and the 1 TB rule</h3>
+    <p>These settings keep <em>each write's</em> files healthy, operating per-write / within partitions. They don't do a global whole-table consolidation, and they don't give data-skipping <strong>locality</strong> on filter columns. On a large, long-lived table, many independent writes still leave it sub-optimal overall.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Auto optimize handles routine sizing; for big tables ALSO consolidate periodically.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events
+<span class="k">WHERE</span> event_date &gt;= <span class="k">DATE</span><span class="s">'2026-06-01'</span>;   <span class="c">-- scope to recent data to keep the job cheap</span>
+
+<span class="c">-- For NEW tables, prefer liquid clustering so data is laid out for fast filtering</span>
+<span class="c">-- (same OPTIMIZE triggers clustering incrementally). See Lesson 08.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events <span class="k">CLUSTER BY</span> (event_type, event_date);</pre>
+
+    <h3>Where auto optimize ends and the rest begins</h3>
+    <ul>
+      <li><strong>Auto optimize</strong> (optimizeWrite + autoCompact) → routine, automatic small-file control on every write. Set-and-forget for streaming / frequent DML.</li>
+      <li><strong>Scheduled <code>OPTIMIZE</code></strong> → whole-table consolidation; needed past <strong>1 TB</strong>.</li>
+      <li><strong>Liquid clustering</strong> (Lesson 08) → lays data out for fast filtering; consolidates incrementally via <code>OPTIMIZE</code>; the modern default.</li>
+      <li><strong>Predictive optimization</strong> (Lesson 09) → on UC managed tables, runs <code>OPTIMIZE</code> / <code>VACUUM</code> / <code>ANALYZE</code> for you.</li>
+    </ul>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Who does what</h2>
+    <table class="tbl">
+      <thead><tr><th>Lever</th><th>When it runs</th><th>Scope</th><th>Honors targetFileSize?</th><th>Reach for it when</th></tr></thead>
+      <tbody>
+        <tr><td><strong>optimizeWrite</strong> (L05)</td><td>Write-time (shuffle before write)</td><td>This write</td><td>Yes (managed/SQL-warehouse path may autosize)</td><td>Prevent small files at the source</td></tr>
+        <tr><td><strong>autoCompact</strong> (L06)</td><td>Post-commit, synchronous</td><td>Within partitions of this write</td><td>Yes (<code>'auto'</code> autotunes)</td><td>Mop up small files after frequent commits</td></tr>
+        <tr><td><strong>targetFileSize</strong></td><td>Consumed by the above + OPTIMIZE/LC</td><td>Per table</td><td>— (it <em>is</em> the target)</td><td>You know the size, or to pin a huge table</td></tr>
+        <tr><td><strong>Autotuning</strong> (default)</td><td>When no targetFileSize set</td><td>Per table, by table size</td><td>n/a</td><td>Let the platform size (256 MB → 1 GB)</td></tr>
+        <tr><td><strong>Scheduled OPTIMIZE</strong> (L04)</td><td>On demand / scheduled</td><td>Whole table or <code>WHERE</code> subset</td><td>Yes</td><td>Whole-table consolidation; <strong>&gt; 1 TB</strong></td></tr>
+        <tr><td><strong>Liquid clustering</strong> (L08)</td><td><code>OPTIMIZE</code> triggers it</td><td>Whole table, by keys</td><td>Yes</td><td>Lay data out for fast filtering on new tables</td></tr>
+        <tr><td><strong>Predictive optimization</strong> (L09)</td><td>Async, serverless, automatic</td><td>Whole table (UC managed)</td><td>via OPTIMIZE</td><td>Hands-off maintenance on managed tables</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Both auto-optimize settings:</strong> streaming / frequent MERGE-UPDATE-DELETE tables where small commits pile up. Set-and-forget.</li>
+      <li><strong><code>delta.targetFileSize</code>:</strong> when you know the ideal size, or to <strong>pin a fixed size on a very large table</strong> so a growing autotune target doesn't leave old small files.</li>
+      <li><strong>Autotuning (default):</strong> virtually all tables — leave it unset and let the platform scale 256 MB → 1 GB.</li>
+      <li><strong><code>tuneFileSizesForRewrites</code>:</strong> rewrite-heavy tables where each rewrite cost dominates.</li>
+    </ul>
+
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Table grows past a threshold</strong> → autotune target rises, but <strong>existing files are NOT re-optimized</strong>; old small files remain until you <code>OPTIMIZE</code> or pin a fixed target.</li>
+      <li><strong>You set <code>targetFileSize</code> on a UC managed table + SQL warehouse / DBR 11.3 LTS+ and writes don't change</strong> → only <strong><code>OPTIMIZE</code></strong> respects it there; run <code>OPTIMIZE</code> to apply.</li>
+      <li><strong>Tiny table</strong> → autotune still targets 256 MB; auto compaction won't fire below its small-file count threshold.</li>
+      <li><strong>Table &gt; 1 TB on auto optimize alone</strong> → no global consolidation; schedule <code>OPTIMIZE</code> / use liquid clustering.</li>
+      <li><strong>MERGE/UPDATE/DELETE</strong> → optimized writes + auto compaction are <strong>always on</strong> (can't disable) — sizing already applies.</li>
+    </ul>
+
+    <h3>Limitations</h3>
+    <ul>
+      <li>Auto optimize <strong>reduces but does not replace <code>OPTIMIZE</code></strong> — no whole-table consolidation or skipping locality.</li>
+      <li>A <strong>growing autotune target does not re-optimize existing files</strong> (large tables may keep small files unless you set a fixed <code>targetFileSize</code>).</li>
+      <li>On <strong>UC managed + SQL warehouse / DBR 11.3 LTS+, only <code>OPTIMIZE</code> respects <code>targetFileSize</code></strong>.</li>
+      <li>Automatic file-size tuning by default is a <strong>UC managed-table</strong> behavior (DBR 11.3 LTS+ / SQL warehouse); EXTERNAL tables differ.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>"Auto optimize" is two settings, not one</strong> — <code>optimizeWrite</code> (write-time) + <code>autoCompact</code> (post-write).</li>
+      <li><strong>It reduces, doesn't replace, <code>OPTIMIZE</code>.</strong> For tables <strong>&gt; 1 TB</strong>, schedule <code>OPTIMIZE</code> (and prefer liquid clustering for skipping).</li>
+      <li><strong>The autotune target grows but doesn't backfill.</strong> A big table can keep small files from when it was smaller — pin a fixed <code>targetFileSize</code> and <code>OPTIMIZE</code> to rewrite them.</li>
+      <li><strong><code>targetFileSize</code> isn't honored everywhere on managed tables</strong> — on UC managed + SQL warehouse / DBR 11.3 LTS+, only <code>OPTIMIZE</code> respects it.</li>
+      <li><strong>Default is autotuning, not a fixed size.</strong> <code>delta.targetFileSize</code> defaults to None — don't assume 128 MB everywhere (that's the optimized-writes / <code>autoCompact='true'</code> target, not the table-size autotune).</li>
+      <li><strong>MERGE/UPDATE/DELETE already optimize writes + auto compact</strong> (always on).</li>
+      <li><strong>For new tables, think liquid clustering + predictive optimization</strong> — auto optimize is routine plumbing; the modern story is Lessons 08–09.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Configure Delta Lake to control data file size (auto optimize, targetFileSize, autotuning)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE — optimize data file layout</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization for Unity Catalog managed tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: autotune target-file-size curve ---------- */
+(function(){
+  const root = document.getElementById('lab-autotune');
+  const range = root.querySelector('#at-range');
+  const barsEl = root.querySelector('#at-bars');
+
+  // Slider 0..1000 maps log-scale to table size 10 GB .. 100 TB (in GB).
+  const MIN_GB = 10, MAX_GB = 100000;           // 10 GB .. 100 TB
+  const T1 = 2560;                              // 2.56 TB in GB
+  const T2 = 10000;                             // 10 TB in GB
+  function posToGB(p){ const f=p/1000; return MIN_GB*Math.pow(MAX_GB/MIN_GB, f); }
+
+  // Autotune rule (MB) from table size in GB.
+  function targetMB(gb){
+    if(gb < T1) return 256;
+    if(gb > T2) return 1024;
+    // linear 256 -> 1024 across 2.56TB -> 10TB
+    const frac = (gb - T1) / (T2 - T1);
+    return 256 + frac * (1024 - 256);
+  }
+  function fmtSize(gb){
+    if(gb >= 1000) return (gb/1000).toFixed(gb>=10000?0:2) + ' TB';
+    return Math.round(gb) + ' GB';
+  }
+  function fmtTarget(mb){
+    return mb >= 1024 ? (mb/1024).toFixed(2).replace(/\.00$/,'') + ' GB' : Math.round(mb) + ' MB';
+  }
+  function bandOf(gb){
+    if(gb < T1) return '256 MB';
+    if(gb > T2) return '1 GB';
+    return 'ramp';
+  }
+
+  // Build the static curve as bars (target file size across the size range).
+  const NB = 48;
+  function buildBars(){
+    barsEl.innerHTML='';
+    for(let i=0;i<NB;i++){
+      const gb = posToGB(i/(NB-1)*1000);
+      const mb = targetMB(gb);
+      const h = 12 + (mb/1024)*100;            // height ∝ target
+      const bar = document.createElement('div');
+      bar.style.flex='1';
+      bar.style.height = h+'px';
+      bar.style.borderRadius='3px 3px 0 0';
+      bar.style.transition='background .2s';
+      bar.style.background = 'linear-gradient(180deg,#8fd6e8,#1f6f8b)';
+      bar.dataset.gb = gb;
+      barsEl.appendChild(bar);
+    }
+  }
+  buildBars();
+
+  function highlightBar(gb){
+    const bars=[...barsEl.children];
+    let best=0,bd=Infinity;
+    bars.forEach((b,i)=>{ const d=Math.abs(parseFloat(b.dataset.gb)-gb); if(d<bd){bd=d;best=i;} });
+    bars.forEach((b,i)=>{ b.style.background = i===best
+        ? 'linear-gradient(180deg,#f0b070,#e07a2f)'
+        : 'linear-gradient(180deg,#8fd6e8,#1f6f8b)'; });
+  }
+
+  function render(){
+    const gb = posToGB(+range.value);
+    const mb = targetMB(gb);
+    const target = fmtTarget(mb);
+    const files = Math.max(1, Math.round((gb*1024) / mb));   // size/target -> approx files
+    root.querySelector('#at-size').textContent = 'table ≈ ' + fmtSize(gb);
+    root.querySelector('#at-target').textContent = target;
+    root.querySelector('#at-files').textContent = files.toLocaleString();
+    root.querySelector('#at-band').textContent = bandOf(gb);
+    highlightBar(gb);
+
+    const vd = root.querySelector('#at-verdict');
+    if(gb < T1){
+      vd.innerHTML = "Below <b>2.56 TB</b> the autotuned target is a flat <b>256 MB</b>. Most tables live here — leave <code>targetFileSize</code> unset and let the platform size files.";
+    } else if(gb > T2){
+      vd.innerHTML = "Above <b>10 TB</b> the target caps at <b>1 GB</b> so the file <i>count</i> and metadata stay manageable. Note: a growing target doesn't re-optimize old files — pin a fixed <code>targetFileSize</code> and <code>OPTIMIZE</code> to rewrite them.";
+    } else {
+      vd.innerHTML = "Between <b>2.56–10 TB</b> the target ramps <b>linearly 256 MB → 1 GB</b> — here ≈ <b>"+target+"</b>. Bigger table ⇒ bigger files, so the file count grows slower than the data.";
+    }
+  }
+
+  range.addEventListener('input', render);
+  render();
+})();
+</script>
+
+<script>
+/* ---------- Interactive 2: auto-optimize decision map ---------- */
+(function(){
+  const root = document.getElementById('lab-decision');
+  const YES='✓', NO='—', AUTO='auto';
+
+  // For each scenario: state per lever + note. "applies" drives the color.
+  const SCN = {
+    merge: {
+      ow:{v:'always', on:true}, ac:{v:'always', on:true}, op:{v:NO, on:false}, lc:{v:'optional', on:false},
+      note:"For <b>MERGE / UPDATE / DELETE</b>, optimized writes <b>and</b> auto compaction are <b>always on</b> — you can't disable them. File sizing already applies. Add liquid clustering only if you also need fast filtering."
+    },
+    partins: {
+      ow:{v:YES, on:true}, ac:{v:AUTO, on:true}, op:{v:'periodic', on:false}, lc:{v:'preferred', on:true},
+      note:"A <b>partitioned INSERT</b> benefits most from optimized writes (shuffle so each partition gets fewer, larger files). Auto compaction mops up leftovers. For new tables, <b>liquid clustering</b> replaces partitioning + gives skipping."
+    },
+    batch: {
+      ow:{v:YES, on:true}, ac:{v:AUTO, on:true}, op:{v:'if large', on:false}, lc:{v:'optional', on:false},
+      note:"A <b>big batch append</b> is sized well by optimized writes; auto compaction cleans up the last under-filled files. Schedule <code>OPTIMIZE</code> only if the table is large or you query it with selective filters."
+    },
+    huge: {
+      ow:{v:YES, on:true}, ac:{v:AUTO, on:true}, op:{v:'REQUIRED', on:true}, lc:{v:'preferred', on:true},
+      note:"For a <b>table &gt; 1 TB</b>, auto optimize keeps per-write files healthy but <b>won't globally consolidate</b>. <b>Schedule <code>OPTIMIZE</code></b> (or let predictive optimization run it), and prefer <b>liquid clustering</b> for skipping. Consider pinning <code>targetFileSize</code> so the growing autotune target doesn't leave old small files."
+    }
+  };
+
+  function paint(id, cell){
+    const box = root.querySelector(id);
+    const big = box.querySelector('.big');
+    big.textContent = cell.v;
+    box.classList.toggle('win', !!cell.on);
+    big.style.color = cell.on ? '' : '#9aa6ad';
+  }
+
+  function render(scn){
+    const s = SCN[scn];
+    paint('#dm-ow', s.ow);
+    paint('#dm-ac', s.ac);
+    paint('#dm-op', s.op);
+    paint('#dm-lc', s.lc);
+    root.querySelector('#dm-verdict').innerHTML = s.note;
+  }
+
+  root.querySelectorAll('#dm-seg button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      root.querySelectorAll('#dm-seg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render(btn.dataset.scn);
+    });
+  });
+
+  render('merge');
+})();
+</script>
+</body>
+</html>

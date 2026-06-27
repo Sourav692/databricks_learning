@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks DE — Lesson Index</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;--teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed}
+  .wrap{max-width:920px;margin:0 auto;padding:0 22px}
+  a{color:var(--teal);text-decoration:none}
+  header{padding:60px 0 24px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.2rem,6vw,3.6rem);line-height:1.02;margin:0 0 14px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.12rem;max-width:60ch;color:#3a4654;margin:0}
+  .stats{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 16px;box-shadow:var(--shadow)}
+  .stat b{font-family:"Fraunces",serif;font-size:1.5rem;color:var(--brand);display:block;line-height:1}
+  .stat span{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#6a7780;text-transform:uppercase;letter-spacing:.08em}
+  .controls{margin:24px 0 6px;display:flex;gap:10px}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 13px;cursor:pointer}
+  .btn:hover{border-color:var(--teal)}
+  main{padding-bottom:70px}
+  .topic{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:12px 0;overflow:hidden}
+  .thead{display:flex;align-items:center;gap:12px;padding:15px 18px;cursor:pointer;user-select:none}
+  .tnum{font-family:"Fraunces",serif;font-weight:900;font-size:1.1rem;color:var(--brand);background:var(--paper);border:1px solid var(--line);border-radius:9px;width:38px;height:38px;display:flex;align-items:center;justify-content:center}
+  .ttitle{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;flex:1}
+  .ttag{font-family:"Spline Sans Mono",monospace;font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:#8a939c}
+  .tmeta{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#48555f}
+  .caret{color:#b6a98f;transition:transform .25s}
+  .topic.open .caret{transform:rotate(90deg)}
+  .sublist{list-style:none;margin:0;padding:0;max-height:0;overflow:hidden;transition:max-height .35s ease}
+  .topic.open .sublist{max-height:900px}
+  .sublist li{display:flex;align-items:center;gap:10px;padding:9px 18px 9px 56px;border-top:1px solid var(--paper-2);font-size:.93rem}
+  .sid{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);min-width:30px}
+  .slabel{flex:1;color:#3f4b55}
+  .links{display:flex;gap:6px}
+  .lk{font-family:"Spline Sans Mono",monospace;font-size:.7rem;border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--paper)}
+  .lk.html{border-color:var(--teal);color:var(--teal)}
+  .lk.nb{border-color:var(--brand-2);color:var(--brand)}
+  .lk:hover{background:#fff}
+  footer{padding:30px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <p class="eyebrow">Databricks · Data Intelligence Platform</p>
+  <h1>Data Engineering<br><em>Lesson Index.</em></h1>
+  <p class="lede">42 interview-focused lessons across 12 topics — each with an interactive HTML page, a concise markdown companion, and a runnable notebook where hands-on practice adds value. Click a topic to expand.</p>
+  <div class="stats">
+    <div class="stat"><b>12</b><span>topics</span></div>
+    <div class="stat"><b>42</b><span>lessons</span></div>
+    <div class="stat"><b>9</b><span>notebooks</span></div>
+    <div class="stat"><b>100%</b><span>approved</span></div>
+  </div>
+  <div class="controls">
+    <button class="btn" onclick="document.querySelectorAll(.topic).forEach(t=>t.classList.add(open))">Expand all</button>
+    <button class="btn" onclick="document.querySelectorAll(.topic).forEach(t=>t.classList.remove(open))">Collapse all</button>
+    <a class="btn" href="../learning plan/learning-plan.html">Roadmap ↗</a>
+  </div>
+</header>
+<main>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">01</span>
+      <span class="ttitle">Lakehouse & Medallion Foundations</span>
+      <span class="ttag">Start here</span>
+      <span class="tmeta">3 lessons</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">1.1</span><span class="slabel">What a Lakehouse is</span><span class="links"><a class="lk html" href="01-lakehouse-and-medallion-foundations/1.1-what-a-lakehouse-is/index.html">html</a> <a class="lk md" href="01-lakehouse-and-medallion-foundations/1.1-what-a-lakehouse-is/lesson.md">md</a></span></li>
+      <li><span class="sid">1.2</span><span class="slabel">Databricks architecture at a glance</span><span class="links"><a class="lk html" href="01-lakehouse-and-medallion-foundations/1.2-databricks-architecture-at-a-glance/index.html">html</a> <a class="lk md" href="01-lakehouse-and-medallion-foundations/1.2-databricks-architecture-at-a-glance/lesson.md">md</a></span></li>
+      <li><span class="sid">1.3</span><span class="slabel">Medallion architecture</span><span class="links"><a class="lk html" href="01-lakehouse-and-medallion-foundations/1.3-medallion-architecture/index.html">html</a> <a class="lk md" href="01-lakehouse-and-medallion-foundations/1.3-medallion-architecture/lesson.md">md</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">02</span>
+      <span class="ttitle">Delta Lake — the storage foundation</span>
+      <span class="ttag">Core</span>
+      <span class="tmeta">4 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">2.1</span><span class="slabel">Delta tables & the transaction log</span><span class="links"><a class="lk html" href="02-delta-lake-the-storage-foundation/2.1-delta-tables-and-the-transaction-log/index.html">html</a> <a class="lk md" href="02-delta-lake-the-storage-foundation/2.1-delta-tables-and-the-transaction-log/lesson.md">md</a></span></li>
+      <li><span class="sid">2.2</span><span class="slabel">MERGE (upserts), INSERT OVERWRITE, CREATE OR REPLACE and CTAS.</span><span class="links"><a class="lk html" href="02-delta-lake-the-storage-foundation/2.2-merge-upserts-insert-overwrite-create-or-replace/index.html">html</a> <a class="lk md" href="02-delta-lake-the-storage-foundation/2.2-merge-upserts-insert-overwrite-create-or-replace/lesson.md">md</a></span></li>
+      <li><span class="sid">2.3</span><span class="slabel">Table & column properties; managed vs</span><span class="links"><a class="lk html" href="02-delta-lake-the-storage-foundation/2.3-table-and-column-properties-managed-vs/index.html">html</a> <a class="lk md" href="02-delta-lake-the-storage-foundation/2.3-table-and-column-properties-managed-vs/lesson.md">md</a></span></li>
+      <li><span class="sid">2.4</span><span class="slabel">Time travel</span><span class="links"><a class="lk html" href="02-delta-lake-the-storage-foundation/2.4-time-travel/index.html">html</a> <a class="lk md" href="02-delta-lake-the-storage-foundation/2.4-time-travel/lesson.md">md</a> <a class="lk nb" href="02-delta-lake-the-storage-foundation/delta_lake_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">03</span>
+      <span class="ttitle">Delta Lake Optimization & Performance</span>
+      <span class="ttag">Tune</span>
+      <span class="tmeta">4 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">3.1</span><span class="slabel">OPTIMIZE (compaction) and Z-ORDER to collocate related data.</span><span class="links"><a class="lk html" href="03-delta-lake-optimization-and-performance/3.1-optimize-compaction-and-z-order-to-collocate/index.html">html</a> <a class="lk md" href="03-delta-lake-optimization-and-performance/3.1-optimize-compaction-and-z-order-to-collocate/lesson.md">md</a></span></li>
+      <li><span class="sid">3.2</span><span class="slabel">Liquid Clustering</span><span class="links"><a class="lk html" href="03-delta-lake-optimization-and-performance/3.2-liquid-clustering/index.html">html</a> <a class="lk md" href="03-delta-lake-optimization-and-performance/3.2-liquid-clustering/lesson.md">md</a></span></li>
+      <li><span class="sid">3.3</span><span class="slabel">VACUUM to remove unused files; data versioning and time-travel UNDO.</span><span class="links"><a class="lk html" href="03-delta-lake-optimization-and-performance/3.3-vacuum-to-remove-unused-files-data-versioning/index.html">html</a> <a class="lk md" href="03-delta-lake-optimization-and-performance/3.3-vacuum-to-remove-unused-files-data-versioning/lesson.md">md</a></span></li>
+      <li><span class="sid">3.4</span><span class="slabel">Deep vs shallow CLONE; Predictive Optimization</span><span class="links"><a class="lk html" href="03-delta-lake-optimization-and-performance/3.4-deep-vs/index.html">html</a> <a class="lk md" href="03-delta-lake-optimization-and-performance/3.4-deep-vs/lesson.md">md</a> <a class="lk nb" href="03-delta-lake-optimization-and-performance/delta_optimization_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">04</span>
+      <span class="ttitle">Ingestion — Auto Loader, COPY INTO & Lakeflow Connect</span>
+      <span class="ttag">Load</span>
+      <span class="tmeta">4 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">4.1</span><span class="slabel">Auto Loader (cloudFiles)</span><span class="links"><a class="lk html" href="04-ingestion-auto-loader-copy-into-and/4.1-auto-loader-cloudfiles/index.html">html</a> <a class="lk md" href="04-ingestion-auto-loader-copy-into-and/4.1-auto-loader-cloudfiles/lesson.md">md</a></span></li>
+      <li><span class="sid">4.2</span><span class="slabel">COPY INTO for simpler, idempotent batch loads.</span><span class="links"><a class="lk html" href="04-ingestion-auto-loader-copy-into-and/4.2-copy-into-for-simpler-idempotent-batch-loads/index.html">html</a> <a class="lk md" href="04-ingestion-auto-loader-copy-into-and/4.2-copy-into-for-simpler-idempotent-batch-loads/lesson.md">md</a></span></li>
+      <li><span class="sid">4.3</span><span class="slabel">Lakeflow Connect managed connectors (Salesforce, Workday, ServiceNow,</span><span class="links"><a class="lk html" href="04-ingestion-auto-loader-copy-into-and/4.3-lakeflow-connect-managed-connectors-salesforce-workday-servicenow/index.html">html</a> <a class="lk md" href="04-ingestion-auto-loader-copy-into-and/4.3-lakeflow-connect-managed-connectors-salesforce-workday-servicenow/lesson.md">md</a></span></li>
+      <li><span class="sid">4.4</span><span class="slabel">Database/CDC ingestion, REST API & JSON sources, and streaming ingesti</span><span class="links"><a class="lk html" href="04-ingestion-auto-loader-copy-into-and/4.4-database-cdc-ingestion-rest-api-and-json/index.html">html</a> <a class="lk md" href="04-ingestion-auto-loader-copy-into-and/4.4-database-cdc-ingestion-rest-api-and-json/lesson.md">md</a> <a class="lk nb" href="04-ingestion-auto-loader-copy-into-and/ingestion_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">05</span>
+      <span class="ttitle">Lakeflow Spark Declarative Pipelines (SDP)</span>
+      <span class="ttag">Transform · was DLT</span>
+      <span class="tmeta">4 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">5.1</span><span class="slabel">Declarative pipelines</span><span class="links"><a class="lk html" href="05-lakeflow-spark-declarative-pipelines-sdp/5.1-declarative-pipelines/index.html">html</a> <a class="lk md" href="05-lakeflow-spark-declarative-pipelines-sdp/5.1-declarative-pipelines/lesson.md">md</a></span></li>
+      <li><span class="sid">5.2</span><span class="slabel">Streaming tables, materialized views, flows, and external sinks (Kafka</span><span class="links"><a class="lk html" href="05-lakeflow-spark-declarative-pipelines-sdp/5.2-streaming-tables-materialized-views-flows-and-external/index.html">html</a> <a class="lk md" href="05-lakeflow-spark-declarative-pipelines-sdp/5.2-streaming-tables-materialized-views-flows-and-external/lesson.md">md</a></span></li>
+      <li><span class="sid">5.3</span><span class="slabel">Data-quality Expectations to validate, drop or quarantine bad rows.</span><span class="links"><a class="lk html" href="05-lakeflow-spark-declarative-pipelines-sdp/5.3-data-quality-expectations-to-validate-drop-or/index.html">html</a> <a class="lk md" href="05-lakeflow-spark-declarative-pipelines-sdp/5.3-data-quality-expectations-to-validate-drop-or/lesson.md">md</a></span></li>
+      <li><span class="sid">5.4</span><span class="slabel">AUTO CDC for Slowly Changing Dimensions (SCD Type 1 & 2); parametrized</span><span class="links"><a class="lk html" href="05-lakeflow-spark-declarative-pipelines-sdp/5.4-auto-cdc-for-slowly-changing-dimensions-scd/index.html">html</a> <a class="lk md" href="05-lakeflow-spark-declarative-pipelines-sdp/5.4-auto-cdc-for-slowly-changing-dimensions-scd/lesson.md">md</a> <a class="lk nb" href="05-lakeflow-spark-declarative-pipelines-sdp/sdp_pipeline_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">06</span>
+      <span class="ttitle">Lakeflow Designer — visual & no-code pipelines</span>
+      <span class="ttag">No-code · NEW</span>
+      <span class="tmeta">3 lessons</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">6.1</span><span class="slabel">Build transformation workflows on a drag-and-drop canvas</span><span class="links"><a class="lk html" href="06-lakeflow-designer-visual-and-no-code/6.1-build-transformation-workflows-on-a-drag-and/index.html">html</a> <a class="lk md" href="06-lakeflow-designer-visual-and-no-code/6.1-build-transformation-workflows-on-a-drag-and/lesson.md">md</a></span></li>
+      <li><span class="sid">6.2</span><span class="slabel">Built-in operators for filtering, aggregating, joining and reshaping d</span><span class="links"><a class="lk html" href="06-lakeflow-designer-visual-and-no-code/6.2-built-in-operators-for-filtering-aggregating-joining/index.html">html</a> <a class="lk md" href="06-lakeflow-designer-visual-and-no-code/6.2-built-in-operators-for-filtering-aggregating-joining/lesson.md">md</a></span></li>
+      <li><span class="sid">6.3</span><span class="slabel">Generate or update transformations with natural-language prompts (Geni</span><span class="links"><a class="lk html" href="06-lakeflow-designer-visual-and-no-code/6.3-generate-or-update-transformations-with-natural-language/index.html">html</a> <a class="lk md" href="06-lakeflow-designer-visual-and-no-code/6.3-generate-or-update-transformations-with-natural-language/lesson.md">md</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">07</span>
+      <span class="ttitle">Lakeflow Jobs — orchestration</span>
+      <span class="ttag">Schedule · was Workflows</span>
+      <span class="tmeta">3 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">7.1</span><span class="slabel">Jobs & tasks</span><span class="links"><a class="lk html" href="07-lakeflow-jobs-orchestration/7.1-jobs-and-tasks/index.html">html</a> <a class="lk md" href="07-lakeflow-jobs-orchestration/7.1-jobs-and-tasks/lesson.md">md</a></span></li>
+      <li><span class="sid">7.2</span><span class="slabel">Control flow</span><span class="links"><a class="lk html" href="07-lakeflow-jobs-orchestration/7.2-control-flow/index.html">html</a> <a class="lk md" href="07-lakeflow-jobs-orchestration/7.2-control-flow/lesson.md">md</a></span></li>
+      <li><span class="sid">7.3</span><span class="slabel">Schedules, event triggers and CRON; retries, monitoring, notifications</span><span class="links"><a class="lk html" href="07-lakeflow-jobs-orchestration/7.3-schedules-event-triggers-and-cron-retries-monitoring/index.html">html</a> <a class="lk md" href="07-lakeflow-jobs-orchestration/7.3-schedules-event-triggers-and-cron-retries-monitoring/lesson.md">md</a> <a class="lk nb" href="07-lakeflow-jobs-orchestration/jobs_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">08</span>
+      <span class="ttitle">Unity Catalog — Governance, Security & ABAC</span>
+      <span class="ttag">Govern</span>
+      <span class="tmeta">5 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">8.1</span><span class="slabel">The 3-level namespace catalog.schema.table; Volumes for files; discove</span><span class="links"><a class="lk html" href="08-unity-catalog-governance-security-and-abac/8.1-the-3-level-namespace-catalog-schema-table/index.html">html</a> <a class="lk md" href="08-unity-catalog-governance-security-and-abac/8.1-the-3-level-namespace-catalog-schema-table/lesson.md">md</a></span></li>
+      <li><span class="sid">8.2</span><span class="slabel">Access control</span><span class="links"><a class="lk html" href="08-unity-catalog-governance-security-and-abac/8.2-access-control/index.html">html</a> <a class="lk md" href="08-unity-catalog-governance-security-and-abac/8.2-access-control/lesson.md">md</a></span></li>
+      <li><span class="sid">8.3</span><span class="slabel">Data-level security</span><span class="links"><a class="lk html" href="08-unity-catalog-governance-security-and-abac/8.3-data-level-security/index.html">html</a> <a class="lk md" href="08-unity-catalog-governance-security-and-abac/8.3-data-level-security/lesson.md">md</a></span></li>
+      <li><span class="sid">8.4</span><span class="slabel">Attribute-Based Access Control (ABAC)</span><span class="links"><a class="lk html" href="08-unity-catalog-governance-security-and-abac/8.4-attribute-based-access-control-abac/index.html">html</a> <a class="lk md" href="08-unity-catalog-governance-security-and-abac/8.4-attribute-based-access-control-abac/lesson.md">md</a></span></li>
+      <li><span class="sid">8.5</span><span class="slabel">Unity Catalog Functions</span><span class="links"><a class="lk html" href="08-unity-catalog-governance-security-and-abac/8.5-unity-catalog-functions/index.html">html</a> <a class="lk md" href="08-unity-catalog-governance-security-and-abac/8.5-unity-catalog-functions/lesson.md">md</a> <a class="lk nb" href="08-unity-catalog-governance-security-and-abac/governance_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">09</span>
+      <span class="ttitle">Delta Sharing & Lakehouse Federation</span>
+      <span class="ttag">Share & query</span>
+      <span class="tmeta">2 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">9.1</span><span class="slabel">Delta Sharing</span><span class="links"><a class="lk html" href="09-delta-sharing-and-lakehouse-federation/9.1-delta-sharing/index.html">html</a> <a class="lk md" href="09-delta-sharing-and-lakehouse-federation/9.1-delta-sharing/lesson.md">md</a></span></li>
+      <li><span class="sid">9.2</span><span class="slabel">Lakehouse Federation</span><span class="links"><a class="lk html" href="09-delta-sharing-and-lakehouse-federation/9.2-lakehouse-federation/index.html">html</a> <a class="lk md" href="09-delta-sharing-and-lakehouse-federation/9.2-lakehouse-federation/lesson.md">md</a> <a class="lk nb" href="09-delta-sharing-and-lakehouse-federation/sharing_federation_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">10</span>
+      <span class="ttitle">Databricks SQL — Warehouses, Genie & BI</span>
+      <span class="ttag">Analytics</span>
+      <span class="tmeta">4 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">10.1</span><span class="slabel">SQL Warehouses</span><span class="links"><a class="lk html" href="10-databricks-sql-warehouses-genie-and-bi/10.1-sql-warehouses/index.html">html</a> <a class="lk md" href="10-databricks-sql-warehouses-genie-and-bi/10.1-sql-warehouses/lesson.md">md</a></span></li>
+      <li><span class="sid">10.2</span><span class="slabel">SQL editor, parameterized queries, CTEs and query snippets; query cach</span><span class="links"><a class="lk html" href="10-databricks-sql-warehouses-genie-and-bi/10.2-sql-editor-parameterized-queries-ctes-and-query/index.html">html</a> <a class="lk md" href="10-databricks-sql-warehouses-genie-and-bi/10.2-sql-editor-parameterized-queries-ctes-and-query/lesson.md">md</a></span></li>
+      <li><span class="sid">10.3</span><span class="slabel">SQL Alerts, scheduled queries and AI/BI Dashboards.</span><span class="links"><a class="lk html" href="10-databricks-sql-warehouses-genie-and-bi/10.3-sql-alerts-scheduled-queries-and-ai-bi/index.html">html</a> <a class="lk md" href="10-databricks-sql-warehouses-genie-and-bi/10.3-sql-alerts-scheduled-queries-and-ai-bi/lesson.md">md</a></span></li>
+      <li><span class="sid">10.4</span><span class="slabel">Databricks Genie</span><span class="links"><a class="lk html" href="10-databricks-sql-warehouses-genie-and-bi/10.4-databricks-genie/index.html">html</a> <a class="lk md" href="10-databricks-sql-warehouses-genie-and-bi/10.4-databricks-genie/lesson.md">md</a> <a class="lk nb" href="10-databricks-sql-warehouses-genie-and-bi/databricks_sql_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">11</span>
+      <span class="ttitle">Production Engineering — CI/CD with DABs</span>
+      <span class="ttag">Ship it</span>
+      <span class="tmeta">3 lessons · 1📓</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">11.1</span><span class="slabel">Databricks Asset Bundles (DABs)</span><span class="links"><a class="lk html" href="11-production-engineering-ci-cd-with-dabs/11.1-databricks-asset-bundles-dabs/index.html">html</a> <a class="lk md" href="11-production-engineering-ci-cd-with-dabs/11.1-databricks-asset-bundles-dabs/lesson.md">md</a></span></li>
+      <li><span class="sid">11.2</span><span class="slabel">Git integration with Databricks Repos / Git Folders for source control</span><span class="links"><a class="lk html" href="11-production-engineering-ci-cd-with-dabs/11.2-git-integration-with-databricks-repos-git-folders/index.html">html</a> <a class="lk md" href="11-production-engineering-ci-cd-with-dabs/11.2-git-integration-with-databricks-repos-git-folders/lesson.md">md</a></span></li>
+      <li><span class="sid">11.3</span><span class="slabel">Databricks Connect for local-IDE development against a remote cluster.</span><span class="links"><a class="lk html" href="11-production-engineering-ci-cd-with-dabs/11.3-databricks-connect-for-local-ide-development-against/index.html">html</a> <a class="lk md" href="11-production-engineering-ci-cd-with-dabs/11.3-databricks-connect-for-local-ide-development-against/lesson.md">md</a> <a class="lk nb" href="11-production-engineering-ci-cd-with-dabs/production_cicd_hands_on.py">📓</a></span></li>
+    </ul>
+  </section>
+  <section class="topic">
+    <div class="thead" onclick="this.parentElement.classList.toggle(open)">
+      <span class="tnum">12</span>
+      <span class="ttitle">Certification Prep — DE Associate exam</span>
+      <span class="ttag">Capstone</span>
+      <span class="tmeta">3 lessons</span>
+      <span class="caret">▸</span>
+    </div>
+    <ul class="sublist">
+      <li><span class="sid">12.1</span><span class="slabel">Map your skills to the Databricks Certified Data Engineer Associate ex</span><span class="links"><a class="lk html" href="12-certification-prep-de-associate-exam/12.1-map-your-skills-to-the-databricks-certified/index.html">html</a> <a class="lk md" href="12-certification-prep-de-associate-exam/12.1-map-your-skills-to-the-databricks-certified/lesson.md">md</a></span></li>
+      <li><span class="sid">12.2</span><span class="slabel">Practice with full-length exams and review weak areas before you book.</span><span class="links"><a class="lk html" href="12-certification-prep-de-associate-exam/12.2-practice-with-full-length-exams-and-review/index.html">html</a> <a class="lk md" href="12-certification-prep-de-associate-exam/12.2-practice-with-full-length-exams-and-review/lesson.md">md</a></span></li>
+      <li><span class="sid">12.3</span><span class="slabel">Latest exam updates emphasize Lakeflow naming, data-level security (ro</span><span class="links"><a class="lk html" href="12-certification-prep-de-associate-exam/12.3-latest-exam-updates-emphasize-lakeflow-naming-data/index.html">html</a> <a class="lk md" href="12-certification-prep-de-associate-exam/12.3-latest-exam-updates-emphasize-lakeflow-naming-data/lesson.md">md</a></span></li>
+    </ul>
+  </section>
+</main>
+<footer>
+  <p>Databricks Certified Data Engineer Associate study set · grounded against official docs (June 2026) · current Lakeflow naming. Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+</div>
+<script>
+// open the first topic by default
+const first=document.querySelector(".topic"); if(first) first.classList.add("open");
+</script>
+</body>
+</html>

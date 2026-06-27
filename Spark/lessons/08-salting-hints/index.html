@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Data skew: salting &amp; SQL hints · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul,ol{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  /* skew bar-chart simulator */
+  .partlabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a;margin:10px 0 6px}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:10px 8px;background:var(--paper);border:1px solid var(--line);border-radius:11px}
+  .bar{flex:1;border-radius:5px 5px 0 0;min-height:3px;background:linear-gradient(180deg,var(--flame-2),var(--flame));transition:height .45s cubic-bezier(.2,.9,.3,1.4),background .3s;position:relative}
+  .bar.hot{background:linear-gradient(180deg,#fb7185,#be123c)}
+  .bar.salted{background:linear-gradient(180deg,#a78bfa,var(--violet))}
+  .explodebox{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .copy{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:#ece2ff;border:1px solid #d8c9f5;color:#4c1d95;border-radius:7px;padding:5px 9px;transition:transform .3s,opacity .3s}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.bars{height:140px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 08</p>
+    <h1>Data skew:<br>salting &amp; <span class="drip">SQL hints.</span></h1>
+    <p class="lede">When one key holds most of the rows, one task does most of the work and the whole stage waits on it. Salting breaks the hot key into many pieces; SQL hints steer the planner by hand. Here's the mechanism for each — and how to prove it worked.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">AQE skew join <b>first defence</b></span>
+      <span class="pill">Skew factor <b>5× · 256 MB</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Data skew</strong> is when rows are <em>unevenly</em> distributed across keys. After a <strong>shuffle</strong> — Spark moving rows across the network so all rows with the same key land in the same partition — a few "hot" keys land in a few huge partitions while the rest stay tiny. The task that processes a huge partition runs for minutes after every other task finished: a <strong>straggler</strong>. The stage is only as fast as that slowest task.</p>
+    <p>Two manual cures, after AQE has done what it can:</p>
+    <ul>
+      <li><strong>Salting</strong> — add a small random suffix to the hot key so its rows spread across <code>N</code> partitions instead of one. Used for a skewed <strong>aggregation</strong> (two-stage group-by) and a skewed <strong>join</strong> (salt one side, explode the other).</li>
+      <li><strong>SQL hints</strong> — <code>/*+ … */</code> annotations right after <code>SELECT</code> that <em>tell the planner what to do</em>: which <strong>join strategy</strong> to use, or how to <strong>repartition</strong> the data.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Skew is a <strong>data</strong> problem, not a memory problem. Throwing a bigger executor at one giant partition just delays the OOM. The fix is to <strong>break the hot key into many smaller pieces</strong> so the work spreads across tasks.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li>A shuffle splits a stage into one <strong>task per partition</strong>. If 199 partitions hold 1 GB each and one holds 80 GB, 199 tasks finish in seconds and one runs for an hour — <strong>and may spill or OOM</strong> because a single partition no longer fits in execution memory. Your cluster sits idle waiting on one core.</li>
+      <li>Skew is the recurring villain of this track: it makes joins slow (Lesson 02), causes spill and executor OOM (Lesson 04), and is exactly what AQE's skew-join split (Lesson 05) exists to fight. When AQE can't fix it, <strong>salting is the manual lever</strong>.</li>
+      <li>Interviewers probe it constantly: <em>"Your join's last task runs 50× longer than the median — what's happening and how do you fix it?"</em> The answer is <strong>"skew — check AQE skew join, then salt the hot key,"</strong> and you must be able to write the salted join.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: SKEW VISUALIZER ============ -->
+  <section>
+    <h2>See it work — the skew visualizer</h2>
+    <p>One key (<code>US</code>, in red) towers over the rest: a classic straggler. Drag the <strong>salt N</strong> slider to split that hot key across <code>N</code> partitions and watch the bars rebalance — then see the other side of a join get <strong>exploded ×N</strong> so every salted row still finds its match.</p>
+    <div class="lab" id="lab-skew">
+      <div class="lab-head"><span class="lab-title">Salt the hot key</span></div>
+      <p class="lab-sub">A <code>groupBy(country)</code> / join key where <code>US</code> is ~90% of rows. Salt splits it across partitions.</p>
+      <div class="controls">
+        <div class="filterbar"><label>Salt N <input type="range" id="sk-n" min="1" max="16" value="1"><span class="sizeval" id="sk-nval">1 (no salt)</span></label></div>
+      </div>
+      <div class="partlabel">Shuffle partitions — bar height = rows in that partition (= that task's work)</div>
+      <div class="bars" id="sk-bars"></div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="sk-max">—</div><div class="lbl">busiest task (rows)</div></div>
+        <div class="stat win"><div class="big" id="sk-ratio">—</div><div class="lbl">max ÷ median</div></div>
+        <div class="stat"><div class="big" id="sk-explode">—</div><div class="lbl">dimension blow-up</div></div>
+      </div>
+      <div class="partlabel" style="margin-top:18px">Join side: the small dimension exploded into one copy per salt value</div>
+      <div class="explodebox" id="sk-copies"></div>
+      <div class="verdict" id="sk-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real partition counts and hashing vary; the point is how salt flattens a skewed key and what it costs the joined side.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>Quick recap: how to <em>see</em> skew in the Spark UI</h3>
+    <p><span class="chip analogy">analogy</span> Skew is a supermarket where everyone happens to need the one cashier who handles loyalty cards — 9 lanes empty, 1 lane 200 people deep. A bigger till for that lane doesn't help; opening more lanes for those customers does.</p>
+    <ul>
+      <li><strong>Stages tab → slow stage → task table:</strong> the <strong>Max</strong> task duration is far above the <strong>Median</strong> (a 50×–500× gap is classic skew), and <strong>Max</strong> "Shuffle Read Size / Records" is far above the 75th percentile.</li>
+      <li><strong>SQL / DataFrame tab:</strong> the slow node is an aggregate or join right after an <code>Exchange</code>; per-task <strong>spill (memory)/(disk)</strong> appears on the straggler.</li>
+      <li>If <strong>Max ≈ Median</strong>, you don't have skew — look elsewhere. Salting always adds shuffle work, so it only pays off when one key truly dominates.</li>
+    </ul>
+
+    <h3>1 · What is salting?</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> the shuffle picks a row's partition from <code>hash(key) % numPartitions</code>, so equal keys collide into one partition. <strong>Salting</strong> appends a random integer <code>0..N-1</code> to the key, so the combined key <code>(key, salt)</code> hashes to <code>N</code> different partitions. The hot key's rows now spread across <code>N</code> tasks.</li>
+      <li><strong>Why it works:</strong> you trade "one task does 100% of a hot key" for "<code>N</code> tasks each do <code>~1/N</code> of it." Skew flattens; the straggler disappears.</li>
+      <li><strong>Trade-off:</strong> you changed the grouping key, so you must <strong>undo the salt</strong> afterwards — the second stage of a salted aggregation, the <em>explode</em> step of a salted join. Salting also adds a shuffle, so use it only on genuinely skewed keys.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A <code>clickstream</code> where 90% of rows are <code>country = 'US'</code>. Group-by-country sends nearly all rows to one partition; salting splits <code>US</code> across 16 partitions.</p>
+
+    <h3>2 · Salting an aggregation (two-stage group-by)</h3>
+    <ul>
+      <li><strong>Stage 1 — partial aggregate on the salted key.</strong> Add <code>salt = floor(rand()*N)</code>, group by <code>(key, salt)</code>, compute a <em>partial</em> aggregate. The hot key is split into <code>N</code> groups across <code>N</code> partitions, so <code>N</code> tasks share the work.</li>
+      <li><strong>Stage 2 — final aggregate on the real key.</strong> Drop the salt and re-aggregate the <code>N</code> partials by <code>key</code> alone. Stage 1 already collapsed each <code>(key, salt)</code> to one row, so stage 2 is tiny.</li>
+      <li><strong>Composability:</strong> <code>sum</code>/<code>count</code>/<code>min</code>/<code>max</code> re-aggregate trivially. An <strong>average</strong> must be done as <code>sum</code>/<code>count</code> partials, then divided at the end — never average the averages.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> Count a stadium by having each section count itself first (stage 1), then add the 50 section totals (stage 2) — instead of one person counting everyone.</p>
+
+    <h3>3 · What is salting in join operations?</h3>
+    <ul>
+      <li><strong>The twist:</strong> if you salt only one side, salted rows won't find their match — <code>US#7</code> on the left has no <code>US#7</code> on the right, only <code>US</code>.</li>
+      <li><strong>The fix:</strong> salt the <strong>skewed (large) side's</strong> key with a random <code>0..N-1</code>, and <strong>explode</strong> the other side so it has <strong>one copy of each row per salt value</strong> (<code>US</code> → <code>US#0 … US#(N-1)</code>). Join on the combined <code>(key, salt)</code>.</li>
+      <li><strong>Why it works:</strong> the hot key's join work spreads across <code>N</code> partitions on both sides — no single task gets the whole hot key.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A 5 TB <code>transactions</code> fact (skewed on <code>merchant_id</code>, one mega-merchant = 40% of rows) ⋈ a <code>merchants</code> dimension. Salt <code>merchant_id</code> on transactions; explode <code>merchants</code> ×N; join on <code>(merchant_id, salt)</code>.</p>
+
+    <h3>4 · How to apply salting with JOINS (and the cost)</h3>
+    <ul>
+      <li><strong>The cost is an N× blow-up of the exploded side.</strong> Exploding the <em>whole</em> other side ×N is wasteful for the 99% of keys that aren't skewed.</li>
+      <li><strong>Salt only the hot keys:</strong> give skewed keys a real <code>0..N-1</code> salt and everyone else a constant <code>0</code>; explode the other side ×N only for hot keys. The blow-up stays proportional to the few hot keys.</li>
+      <li><strong>Pick <code>N</code> from the skew:</strong> roughly hot-key row count ÷ a healthy partition size. Too small → still skewed; too large → needless explosion and tiny partitions.</li>
+      <li><strong>Prefer AQE skew join first</strong> (Lesson 05): it splits skewed partitions with <strong>no code change</strong> when a partition's size &gt; <code>5×</code> median <strong>and</strong> &gt; <code>256 MB</code>. Salt only what AQE can't split (a single oversized key, or an aggregation).</li>
+    </ul>
+
+    <h3>5 · SQL hints in Spark</h3>
+    <p>Hints are <code>/*+ … */</code> comments placed <strong>immediately after <code>SELECT</code></strong> that instruct the planner. Two families:</p>
+    <ul>
+      <li><strong>Join-strategy hints</strong> — <code>BROADCAST(t)</code> (aliases <code>BROADCASTJOIN</code>, <code>MAPJOIN</code>), <code>MERGE(t)</code> (aliases <code>SHUFFLE_MERGE</code>, <code>MERGEJOIN</code>), <code>SHUFFLE_HASH(t)</code>, <code>SHUFFLE_REPLICATE_NL(t)</code>. <strong>Priority:</strong> <code>BROADCAST</code> &gt; <code>MERGE</code> &gt; <code>SHUFFLE_HASH</code> &gt; <code>SHUFFLE_REPLICATE_NL</code>.</li>
+      <li><strong>Partitioning hints</strong> — <code>COALESCE(n)</code> (reduce partitions, no shuffle), <code>REPARTITION(n | col | n,col)</code> (full shuffle), <code>REPARTITION_BY_RANGE([n,] col)</code> (range partition), <code>REBALANCE([n][,col])</code> (even out partition sizes — <strong>ignored unless AQE is enabled</strong>).</li>
+      <li><strong>Trade-off:</strong> a hint <em>overrides</em> the cost-based optimizer, so a wrong hint can be worse than none (<code>BROADCAST</code> a 5 GB table → driver OOM). A scalpel for when you <em>know</em> the estimate is wrong.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>/*+ REPARTITION(200, customer_id) */</code> pre-distributes rows before a wide aggregation; <code>/*+ BROADCAST(dim) */</code> forces a broadcast when stats are stale.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: SALTED-JOIN STEP-THROUGH ============ -->
+  <section>
+    <h2>Walk a salted join, phase by phase</h2>
+    <p>Click each phase to see what you change in the query when AQE's skew split isn't enough.</p>
+    <div class="lab" id="lab-saltjoin">
+      <div class="lab-head"><span class="lab-title">Salted join execution</span></div>
+      <p class="lab-sub"><code>transactions</code> ⋈ <code>merchants</code> on <code>merchant_id</code> — one mega-merchant is 40% of the fact.</p>
+      <div class="step" data-step><div class="head"><span class="ix">01</span> Confirm the skew, and that AQE didn't fix it</div><div class="detail">In the Spark UI Stages tab the join stage's <strong>Max</strong> task time is ≫ the <strong>Median</strong> and one task spills. AQE skew join only splits a partition that's &gt; 5× median <strong>and</strong> &gt; 256 MB; a single key bigger than the split target stays skewed — that's when you salt.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">02</span> Salt the skewed (large) side</div><div class="detail">Add <code>salt = (rand()*N).cast("int")</code> to <code>transactions</code> so the mega-merchant's rows carry <code>0..N-1</code>. The combined <code>(merchant_id, salt)</code> now hashes to N partitions instead of one.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">03</span> Explode the other side ×N</div><div class="detail"><code>merchants.withColumn("salt", explode(array(0..N-1)))</code> makes one copy of each merchant row per salt value, so a salted left row like <code>MEGA#7</code> still finds <code>MEGA#7</code> on the right. This is the N× blow-up — keep it small by exploding only the hot keys.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">04</span> Join on the combined key &amp; verify</div><div class="detail">Join on <code>["merchant_id","salt"]</code>. The hot key's work is now spread across N partitions on both sides. <code>.explain(mode="formatted")</code> still shows a <code>SortMergeJoin</code>, but on <code>(merchant_id, salt)</code>; in the Stages tab the join stage's <strong>Max</strong> task time now tracks the <strong>Median</strong>.</div></div>
+      <div class="verdict">Cost lives in <b>step 03</b> — the explosion. Salt only the confirmed hot keys (constant <code>salt=0</code> for the rest) so the blow-up stays proportional. And always try <b>AQE skew join</b> (step 01) before any of this.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the query rewrite behind a salted join.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Step 0 — confirm AQE skew join is on (before salting)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># AQE skew join is the FIRST line of defence — it splits skewed partitions with no</span>
+<span class="c"># code change. Confirm it's on before reaching for manual salting.</span>
+spark.conf.get(<span class="s">"spark.sql.adaptive.enabled"</span>)            <span class="c"># 'true' (default since Spark 3.2)</span>
+spark.conf.get(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>)   <span class="c"># 'true' (default)</span>
+
+<span class="c"># A partition is "skewed" if its size &gt; skewedPartitionFactor (5.0) × median AND</span>
+<span class="c"># &gt; skewedPartitionThresholdInBytes (256 MB); AQE then SPLITS it into sub-partitions.</span>
+<span class="c"># VERIFY in the Spark UI SQL tab: the join's AQEShuffleRead shows skewed=true and the</span>
+<span class="c"># straggler's Max task time drops toward the Median after AQE splits it.</span></code></pre>
+
+    <h3>Salt a skewed aggregation (two-stage group-by)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+N = <span class="f">16</span>  <span class="c"># salt buckets — split each hot key across up to 16 partitions</span>
+
+<span class="c"># clicks is skewed: ~90% of rows are country = 'US'. A plain groupBy("country")</span>
+<span class="c"># sends nearly all rows to ONE partition -&gt; one straggler task.</span>
+
+<span class="c"># Stage 1: partial aggregate on the SALTED key (key, salt). rand() spreads the hot</span>
+<span class="c"># key's rows across N salt buckets -&gt; N partitions -&gt; N tasks share the work.</span>
+salted = (clicks
+    .withColumn(<span class="s">"salt"</span>, (F.rand() * N).cast(<span class="s">"int"</span>))     <span class="c"># salt in 0..N-1</span>
+    .groupBy(<span class="s">"country"</span>, <span class="s">"salt"</span>)
+    .agg(F.sum(<span class="s">"revenue"</span>).alias(<span class="s">"partial_rev"</span>)))        <span class="c"># sum is re-aggregatable</span>
+
+<span class="c"># Stage 2: drop the salt, re-aggregate the N partials by the REAL key.</span>
+result = (salted
+    .groupBy(<span class="s">"country"</span>)
+    .agg(F.sum(<span class="s">"partial_rev"</span>).alias(<span class="s">"revenue"</span>)))
+
+<span class="c"># VERIFY: result.explain(mode="formatted") shows TWO HashAggregate/Exchange pairs</span>
+<span class="c"># (partial then final). In the Stages tab the partial-agg stage's Max task time is</span>
+<span class="c"># now close to its Median — the single straggler is gone.</span>
+result.explain(mode=<span class="s">"formatted"</span>)</code></pre>
+    <p><strong>Composability note:</strong> use <code>sum</code>/<code>count</code>/<code>min</code>/<code>max</code> for the partial. For an <strong>average</strong>, carry <code>sum</code> and <code>count</code> partials and divide at the very end — averaging the stage-1 averages is wrong.</p>
+
+    <h3>Salt a skewed join (salt one side, explode the other)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+N = <span class="f">16</span>
+
+<span class="c"># tx is skewed on merchant_id (one mega-merchant = 40%); merchants is small/unskewed.</span>
+
+<span class="c"># 1) Salt the SKEWED (large) side: append a random 0..N-1 to the join key.</span>
+tx_salted = tx.withColumn(<span class="s">"salt"</span>, (F.rand() * N).cast(<span class="s">"int"</span>))
+
+<span class="c"># 2) EXPLODE the other side into N copies — one per salt value — so every salted</span>
+<span class="c">#    left row finds its matching right copy. explode(array(0..N-1)) = N rows per key.</span>
+merchants_exploded = (merchants
+    .withColumn(<span class="s">"salt"</span>, F.explode(F.array([F.lit(i) <span class="k">for</span> i <span class="k">in</span> range(N)]))))
+
+<span class="c"># 3) Join on the COMBINED (merchant_id, salt) key.</span>
+joined = tx_salted.join(merchants_exploded, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>], how=<span class="s">"inner"</span>)
+
+<span class="c"># VERIFY: joined.explain(mode="formatted") still shows a SortMergeJoin, but on</span>
+<span class="c"># (merchant_id, salt). In the Stages tab the join stage's Max task time now tracks</span>
+<span class="c"># the Median — the hot-key straggler is split across N tasks. Cost: the merchants</span>
+<span class="c"># side now has N× the rows (acceptable only because it's small).</span>
+joined.explain(mode=<span class="s">"formatted"</span>)</code></pre>
+
+    <h3>Salt ONLY the hot keys (keep the blow-up proportional)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+N = <span class="f">16</span>
+hot = [<span class="s">"MERCHANT_MEGA"</span>]   <span class="c"># the few keys you confirmed are skewed (from the UI)</span>
+
+<span class="c"># Skewed keys get a real 0..N-1 salt; everyone else gets a constant 0 (no explosion).</span>
+tx_salted = tx.withColumn(
+    <span class="s">"salt"</span>,
+    F.when(F.col(<span class="s">"merchant_id"</span>).isin(hot), (F.rand() * N).cast(<span class="s">"int"</span>)).otherwise(F.lit(<span class="f">0</span>)))
+
+<span class="c"># Explode the other side ×N ONLY for hot keys; non-hot rows keep a single salt=0 copy.</span>
+m_hot = (merchants.filter(F.col(<span class="s">"merchant_id"</span>).isin(hot))
+    .withColumn(<span class="s">"salt"</span>, F.explode(F.array([F.lit(i) <span class="k">for</span> i <span class="k">in</span> range(N)]))))
+m_cold = merchants.filter(~F.col(<span class="s">"merchant_id"</span>).isin(hot)).withColumn(<span class="s">"salt"</span>, F.lit(<span class="f">0</span>))
+merchants_salted = m_hot.unionByName(m_cold)
+
+joined = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>], how=<span class="s">"inner"</span>)
+<span class="c"># VERIFY: same balanced task times, but merchants only grew N× for the few hot keys —</span>
+<span class="c"># not the whole dimension. Check Stages tab Max vs Median again.</span></code></pre>
+
+    <h3>Join-strategy &amp; partitioning hints (DataFrame API)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> broadcast
+
+<span class="c"># DataFrame-API equivalents of the hints:</span>
+tx.join(broadcast(merchants), <span class="s">"merchant_id"</span>)             <span class="c"># == /*+ BROADCAST(merchants) */</span>
+tx.hint(<span class="s">"merge"</span>).join(merchants, <span class="s">"merchant_id"</span>)         <span class="c"># == /*+ MERGE(...) */  force sort-merge</span>
+tx.hint(<span class="s">"shuffle_hash"</span>).join(merchants, <span class="s">"merchant_id"</span>)  <span class="c"># == /*+ SHUFFLE_HASH(...) */</span>
+tx.repartition(<span class="f">200</span>, <span class="s">"merchant_id"</span>)                     <span class="c"># == /*+ REPARTITION(200, merchant_id) */</span>
+tx.coalesce(<span class="f">50</span>)                                       <span class="c"># == /*+ COALESCE(50) */</span>
+
+<span class="c"># VERIFY: .explain() shows the forced node (BroadcastHashJoin / SortMergeJoin /</span>
+<span class="c"># ShuffledHashJoin) or the Exchange with the new partition count / partitioning.</span></code></pre>
+
+    <p>Equivalent Spark SQL — hints go <strong>immediately after <code>SELECT</code></strong>:</p>
+    <pre><span class="tag">sql</span><code><span class="c">-- Join-strategy hint (priority BROADCAST &gt; MERGE &gt; SHUFFLE_HASH &gt; SHUFFLE_REPLICATE_NL).</span>
+<span class="k">SELECT</span> <span class="c">/*+ BROADCAST(m) */</span> t.*, m.merchant_name
+<span class="k">FROM</span>   catalog.schema.transactions t
+<span class="k">JOIN</span>   catalog.schema.merchants m <span class="k">ON</span> t.merchant_id = m.merchant_id;
+
+<span class="c">-- Partitioning hints: repartition (full shuffle) or coalesce (no shuffle).</span>
+<span class="k">SELECT</span> <span class="c">/*+ REPARTITION(200, customer_id) */</span> * <span class="k">FROM</span> catalog.schema.transactions;
+<span class="k">SELECT</span> <span class="c">/*+ COALESCE(50) */</span>                  * <span class="k">FROM</span> catalog.schema.transactions;
+
+<span class="c">-- REBALANCE evens out partition sizes — but is IGNORED unless AQE is enabled.</span>
+<span class="k">SELECT</span> <span class="c">/*+ REBALANCE(merchant_id) */</span> * <span class="k">FROM</span> catalog.schema.transactions;</code></pre>
+
+    <h3>Contrast: naive skewed join vs salted join</h3>
+    <pre><span class="tag">python</span><code><span class="c"># ❌ Naive: one straggler task does the whole hot key. Spark UI: Max task time ≫ Median,</span>
+<span class="c">#    spill on that task, the stage waits an hour on one core.</span>
+slow = tx.join(merchants, <span class="s">"merchant_id"</span>)
+
+<span class="c"># ✅ Salted: the hot key is split across N partitions; task times balance.</span>
+fast = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>])
+<span class="c"># Spark UI Stages tab: `slow` has Max ≫ Median; `fast` has Max ≈ Median.</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: TABBED HINTS REFERENCE ============ -->
+  <section>
+    <h2>The hints, side by side</h2>
+    <p>Switch families to see each hint's syntax, what it forces, and the plan node that proves it landed.</p>
+    <div class="lab" id="lab-hints">
+      <div class="lab-head"><span class="lab-title">SQL hints reference</span></div>
+      <div class="controls">
+        <div class="seg" id="hi-seg" role="group" aria-label="hint family">
+          <button data-h="join" aria-pressed="true">Join strategy</button>
+          <button data-h="part" aria-pressed="false">Partitioning</button>
+        </div>
+      </div>
+      <div class="planbox" id="hi-plan"></div>
+      <div class="verdict" id="hi-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>AQE skew join</th><th>Salting an aggregation</th><th>Salting a join</th><th>SQL hints</th></tr></thead>
+      <tbody>
+        <tr><td><strong>What it fixes</strong></td><td>Skewed <em>join</em> partitions</td><td>Skewed <code>groupBy</code></td><td>Skewed <em>join</em> key</td><td>Wrong strategy / layout</td></tr>
+        <tr><td><strong>Code change?</strong></td><td><strong>None</strong> (automatic)</td><td>Two-stage group-by</td><td>Salt + explode + combined key</td><td>Add <code>/*+ … */</code> or <code>.hint()</code></td></tr>
+        <tr><td><strong>Mechanism</strong></td><td>Splits a skewed partition into sub-partitions</td><td>Group by <code>(key,&nbsp;salt)</code> → re-agg by <code>key</code></td><td>Salt skewed side <code>0..N-1</code>; explode other ×N</td><td>Override the optimizer's choice</td></tr>
+        <tr><td><strong>Cost</strong></td><td>A little extra bookkeeping</td><td>One extra shuffle (second agg)</td><td><strong>N× blow-up</strong> of the exploded side</td><td>A wrong hint can be worse than none</td></tr>
+        <tr><td><strong>When to use</strong></td><td><strong>First</strong> — before salting</td><td>Skewed agg AQE can't help</td><td>Skew AQE's split can't resolve</td><td>You <em>know</em> the plan is wrong</td></tr>
+        <tr><td><strong>Verify</strong></td><td><code>AQEShuffleRead</code> skewed=true; Max→Median</td><td>Two agg stages; balanced tasks</td><td><code>(key,&nbsp;salt)</code> join; balanced tasks</td><td>Forced node / new Exchange</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li>A <code>groupBy</code> on a key with one or a few dominant values → <strong>two-stage salted aggregation</strong>.</li>
+      <li>A huge fact ⋈ dimension where one join key is a large fraction of rows and <strong>AQE skew join didn't resolve it</strong> → <strong>salted join</strong> (salt the fact, explode the dimension).</li>
+      <li>A planner mis-estimate / stale-stats join → a <strong>join-strategy hint</strong>; a known-bad partition layout before a wide op → a <strong>partitioning hint</strong>.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>Salting explodes cardinality.</strong> Exploding the <em>whole</em> other side ×N is wasteful — salt only the confirmed hot keys (constant <code>salt=0</code> for the rest). Too large an <code>N</code> makes thousands of tiny partitions.</li>
+      <li><strong>Non-composable aggregates.</strong> <code>avg</code>, <code>countDistinct</code>, <code>percentile</code> don't re-aggregate naively. Carry <code>sum</code>+<code>count</code> for <code>avg</code>; for distinct/percentile, two-stage salting is much harder — often AQE wins.</li>
+      <li><strong><code>REBALANCE</code> does nothing with AQE off.</strong> A hint silently ignored is a classic "why didn't my fix work?" trap.</li>
+      <li><strong>Skew AQE can't fix.</strong> AQE splits a skewed <em>partition</em>; if a <em>single key</em> is bigger than your split target, splitting partitions doesn't help — that's exactly when salting (which sub-divides the key itself) is required.</li>
+      <li><strong>A hint can hurt.</strong> <code>BROADCAST</code> on a large table → driver OOM / <code>maxResultSize</code>; <code>SHUFFLE_REPLICATE_NL</code> on big inputs → a Cartesian-shaped explosion.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>Salting is <strong>manual and intrusive</strong> — you rewrite the query and must undo the salt correctly (re-aggregate / explode). It adds at least one extra shuffle.</li>
+      <li>Hints <strong>override</strong> the cost-based optimizer and AQE's runtime switch; a hint frozen into code can become wrong as data grows. Prefer AQE; hint only with a known reason.</li>
+      <li>Salting helps <strong>skew</strong>, not raw size — a genuinely huge non-skewed join still needs the full shuffle (or bucketing, Lesson 11). Salting an unskewed job only adds overhead.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Salting before checking the UI.</strong> Salting always adds a shuffle. If Max ≈ Median there's no skew — you're adding cost for nothing.</li>
+      <li><strong>Forgetting the second stage.</strong> A salted <code>groupBy("key","salt")</code> without the final <code>groupBy("key")</code> gives <code>N</code> rows per key — a wrong answer, not just slow.</li>
+      <li><strong>Averaging the averages.</strong> Re-aggregating stage-1 <code>avg</code>s with <code>avg</code> is incorrect; carry <code>sum</code>+<code>count</code> and divide at the end.</li>
+      <li><strong>Salting one side of a join only.</strong> Without exploding the other side, salted rows find no match and you silently <strong>lose rows</strong> (inner join) — a correctness bug.</li>
+      <li><strong>Exploding the entire dimension ×N.</strong> Multiplies <em>every</em> key, not just the hot ones. Salt only the keys you confirmed are hot.</li>
+      <li><strong>Expecting <code>REBALANCE</code> to work with AQE disabled.</strong> It's ignored; partitions stay uneven and you wonder why nothing changed.</li>
+      <li><strong>Reaching for salting before AQE.</strong> AQE skew join needs <strong>zero code</strong> and handles most skew. Try it first; salt the residual.</li>
+      <li><strong>Confusing a partitioning hint with a join hint.</strong> <code>REPARTITION</code>/<code>COALESCE</code>/<code>REBALANCE</code> reshape data; <code>BROADCAST</code>/<code>MERGE</code>/<code>SHUFFLE_HASH</code> pick a join strategy.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (AQE skew join, coalesce, join strategies)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — Join &amp; partitioning hints (BROADCAST / MERGE / SHUFFLE_HASH / SHUFFLE_REPLICATE_NL, COALESCE / REPARTITION / REPARTITION_BY_RANGE / REBALANCE)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.adaptive.skewJoin.*, shuffle.partitions)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (skew join, default-on DBR 7.3+)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: skew visualizer (salt-N slider rebalances bars + explodes the join side) ---- */
+(function(){
+  const root = document.getElementById('lab-skew');
+  if(!root) return;
+  const PARTS = 8;          // partitions shown
+  const HOT_ROWS = 900;     // rows in the hot key (US) before salting
+  const COLD_BASE = 100;    // baseline rows per other partition
+  const slider = root.querySelector('#sk-n');
+  const nval   = root.querySelector('#sk-nval');
+  const barsEl = root.querySelector('#sk-bars');
+  const elMax  = root.querySelector('#sk-max');
+  const elRatio= root.querySelector('#sk-ratio');
+  const elExp  = root.querySelector('#sk-explode');
+  const copies = root.querySelector('#sk-copies');
+  const verdict= root.querySelector('#sk-verdict');
+
+  function median(arr){
+    const s = arr.slice().sort((a,b)=>a-b), m = Math.floor(s.length/2);
+    return s.length % 2 ? s[m] : (s[m-1]+s[m]) / 2;
+  }
+
+  function render(){
+    const N = parseInt(slider.value, 10);
+    nval.textContent = N === 1 ? '1 (no salt)' : N + ' buckets';
+
+    // distribute the hot key's rows across min(N, PARTS) partitions; cold keys add baseline.
+    const spread = Math.min(N, PARTS);
+    const rows = new Array(PARTS).fill(0).map((_, i) => COLD_BASE + (i < spread ? HOT_ROWS / spread : 0));
+    const max = Math.max.apply(null, rows);
+    const peak = COLD_BASE + HOT_ROWS;   // height scale anchored to the unsalted peak
+
+    barsEl.innerHTML = '';
+    rows.forEach((r, i) => {
+      const b = document.createElement('div');
+      b.className = 'bar ' + (N === 1 && i === 0 ? 'hot' : (i < spread && N > 1 ? 'salted' : ''));
+      b.style.height = Math.max(3, (r / peak) * 100) + '%';
+      b.title = r + ' rows';
+      barsEl.appendChild(b);
+    });
+
+    elMax.textContent = Math.round(max);
+    elRatio.textContent = (max / median(rows)).toFixed(1) + '×';
+    elExp.textContent = N === 1 ? '1× (none)' : N + '×';
+
+    // exploded join side: one copy of the dimension row per salt value
+    copies.innerHTML = '';
+    const shown = Math.min(N, 16);
+    for(let i = 0; i < shown; i++){
+      const c = document.createElement('span');
+      c.className = 'copy';
+      c.textContent = 'US#' + i;
+      copies.appendChild(c);
+    }
+    if(N === 1){ copies.innerHTML = '<span class="copy">US (single copy — no explosion)</span>'; }
+
+    if(N === 1){
+      verdict.innerHTML = '<b>Skewed.</b> The hot key <code>US</code> piles into one partition — one task does ~9× the median work and may spill. This is the straggler you see as Max ≫ Median in the Spark UI.';
+    } else if(N >= PARTS){
+      verdict.innerHTML = '<b>Flat.</b> <code>US</code> is now spread across all ' + PARTS + ' partitions — task times balance (max ÷ median ≈ ' + (max/median(rows)).toFixed(1) + '×). Cost: the joined dimension grew <b>' + N + '×</b> — so salt only the hot keys.';
+    } else {
+      verdict.innerHTML = '<b>Better.</b> <code>US</code> now spans ' + N + ' partitions. Push N higher to flatten further — but every bump grows the exploded dimension side <b>' + N + '×</b>, so stop once task times are balanced.';
+    }
+  }
+  slider.addEventListener('input', render);
+  render();
+})();
+
+/* ---- Diagram 2: salted-join step accordion ---- */
+(function(){
+  const root = document.getElementById('lab-saltjoin');
+  if(!root) return;
+  root.querySelectorAll('[data-step]').forEach(function(step){
+    step.addEventListener('click', function(){ step.classList.toggle('open'); });
+  });
+})();
+
+/* ---- Diagram 3: tabbed hints reference ---- */
+(function(){
+  const root = document.getElementById('lab-hints');
+  if(!root) return;
+  const seg  = root.querySelector('#hi-seg');
+  const plan = root.querySelector('#hi-plan');
+  const note = root.querySelector('#hi-note');
+  const data = {
+    join: {
+      plan: '<span class="dim">-- hints go immediately after SELECT, priority high → low</span>\n' +
+            '<span class="ok">/*+ BROADCAST(t) */</span>           <span class="dim">aliases BROADCASTJOIN, MAPJOIN</span>\n' +
+            '<span class="ok">/*+ MERGE(t) */</span>               <span class="dim">aliases SHUFFLE_MERGE, MERGEJOIN</span>\n' +
+            '<span class="ok">/*+ SHUFFLE_HASH(t) */</span>\n' +
+            '<span class="ok">/*+ SHUFFLE_REPLICATE_NL(t) */</span>\n\n' +
+            '<span class="dim">priority:</span> BROADCAST &gt; MERGE &gt; SHUFFLE_HASH &gt; SHUFFLE_REPLICATE_NL',
+      note: '<b>Join-strategy hints force how a join runs</b>, overriding the size estimate. VERIFY in <code>.explain()</code>: the join node becomes <code>BroadcastHashJoin</code> / <code>SortMergeJoin</code> / <code>ShuffledHashJoin</code>. A wrong <code>BROADCAST</code> on a big table → driver OOM.'
+    },
+    part: {
+      plan: '<span class="dim">-- reshape data; an alternative to repartition()/coalesce() in SQL</span>\n' +
+            '<span class="ok">/*+ COALESCE(n) */</span>                  <span class="dim">reduce partitions, NO shuffle</span>\n' +
+            '<span class="ok">/*+ REPARTITION(n | col | n,col) */</span>  <span class="dim">full shuffle to n / by col</span>\n' +
+            '<span class="ok">/*+ REPARTITION_BY_RANGE([n,] col) */</span> <span class="dim">range partition by col</span>\n' +
+            '<span class="bad">/*+ REBALANCE([n][,col]) */</span>          <span class="bad">ignored unless AQE is ON</span>',
+      note: '<b>Partitioning hints reshape the data</b> before a wide op. VERIFY in <code>.explain()</code>: an <code>Exchange</code> with the new partition count / partitioning (or its absence for <code>COALESCE</code>). <code>REBALANCE</code> is a no-op when <code>spark.sql.adaptive.enabled=false</code>.'
+    }
+  };
+  function show(h){
+    plan.innerHTML = data[h].plan;
+    note.innerHTML = data[h].note;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.h === h)));
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.h);
+  });
+  show('join');
+})();
+</script>
+</body>
+</html>

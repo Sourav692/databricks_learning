@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakeflow Designer Operators · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.8vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: operator explorer grid */
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .op{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;transition:.18s;text-align:center}
+  .op:hover{border-color:var(--brand-2)}.op.on{border-color:var(--teal);background:#eef7f8}
+  .op .ic{font-size:1.3rem}.op .t{font-weight:600;font-size:.8rem;margin-top:2px}
+  .opd{margin-top:10px}.opd .card{display:none}.opd .card.on{display:block;animation:fade .25s ease}
+  .opd .sql{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:var(--brand);margin-top:6px}
+  /* diagram 2: build-a-flow */
+  .palette{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .pop{font-family:"Spline Sans Mono",monospace;font-size:.76rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;transition:.15s}
+  .pop:hover{border-color:var(--teal);background:#eef7f8}
+  .flowc{min-height:48px;border:1px dashed var(--line);border-radius:10px;background:#fff;padding:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .chip{font-family:"Spline Sans Mono",monospace;font-size:.76rem;background:#fff3e8;border:1px solid var(--brand-2);color:var(--brand);border-radius:8px;padding:6px 10px}
+  .arrow{color:var(--brand)}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;margin-top:8px}
+  .btn:hover{background:var(--brand);color:#fff}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 6.2</p>
+  <h1>Built-in <em>Operators</em></h1>
+  <p class="lede">The drag-and-drop building blocks of a Lakeflow Designer flow — each maps to a familiar SQL/PySpark transform, with SQL/Python escape hatches for the rest. This deep dive shows the generated code per operator.</p>
+  <div class="pills"><span class="pill">filter · join · aggregate</span><span class="pill">pivot · combine</span><span class="pill">generated SQL/PySpark</span><span class="pill">SQL/Python escape</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">Operators are transformation steps you wire source → … → output. The common ones — <strong>Filter, Aggregate, Join, Pivot, Transform, Combine, Sort, Limit</strong> — map to standard SQL/PySpark; <strong>SQL</strong> and <strong>Python</strong> operators (and UDFs) cover anything else.</div>
+  <div class="card analogy" style="margin-top:10px">🧱 <strong>Analogy:</strong> operators are <strong>LEGO bricks for data</strong> — each brick does one shaped job (filter, join, group), and you snap them together into the pipeline you want.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: operator explorer -->
+<section id="ops">
+  <h2>Operator explorer — click each</h2>
+  <p class="hint">▸ see what it does + its SQL equivalent</p>
+  <div class="grid">
+    <div class="op on" data-o="filter"><div class="ic">🔎</div><div class="t">Filter</div></div>
+    <div class="op" data-o="agg"><div class="ic">Σ</div><div class="t">Aggregate</div></div>
+    <div class="op" data-o="join"><div class="ic">🔗</div><div class="t">Join</div></div>
+    <div class="op" data-o="pivot"><div class="ic">🔄</div><div class="t">Pivot</div></div>
+    <div class="op" data-o="transform"><div class="ic">✏️</div><div class="t">Transform</div></div>
+    <div class="op" data-o="combine"><div class="ic">➕</div><div class="t">Combine</div></div>
+    <div class="op" data-o="sortlimit"><div class="ic">↕️</div><div class="t">Sort / Limit</div></div>
+    <div class="op" data-o="code"><div class="ic">⌨️</div><div class="t">SQL / Python</div></div>
+  </div>
+  <div class="opd">
+    <div class="card on" data-od="filter"><strong>Filter</strong> — keep only rows meeting conditions (equality, range, contains, null checks).<div class="sql">≈ WHERE</div></div>
+    <div class="card" data-od="agg"><strong>Aggregate</strong> — group rows and compute SUM/AVG/COUNT/MIN/MAX/MEDIAN/PERCENTILE…<div class="sql">≈ GROUP BY + agg fns</div></div>
+    <div class="card" data-od="join"><strong>Join</strong> — combine two tables on a key (inner / left / right / full, with optional custom expressions).<div class="sql">≈ JOIN</div></div>
+    <div class="card" data-od="pivot"><strong>Pivot</strong> — reshape rows↔columns with aggregations (pivot / unpivot).<div class="sql">≈ PIVOT</div></div>
+    <div class="card" data-od="transform"><strong>Transform</strong> — select, rename, reorder, and add calculated columns (NL or expression).<div class="sql">≈ SELECT / derived columns</div></div>
+    <div class="card" data-od="combine"><strong>Combine</strong> — merge tables via union / intersect / except (keep or drop duplicates).<div class="sql">≈ UNION / INTERSECT / EXCEPT</div></div>
+    <div class="card" data-od="sortlimit"><strong>Sort / Limit</strong> — order by columns (asc/desc) and cap the row count.<div class="sql">≈ ORDER BY / LIMIT</div></div>
+    <div class="card" data-od="code"><strong>SQL / Python</strong> — escape hatch: custom SQL query or PySpark for transforms the visual operators don't cover. Plus user-defined operators.<div class="sql">≈ raw query / PySpark</div></div>
+  </div>
+</section>
+
+<section id="code">
+  <h2>Operator → generated code</h2>
+  <p class="codecap">Filter (≈ WHERE)</p>
+  <pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> orders <span class="k">WHERE</span> amount &gt; 0 <span class="k">AND</span> order_date &gt;= current_date() - <span class="k">INTERVAL</span> <span class="f">90</span> <span class="k">DAYS</span>;
+<span class="c"># PySpark:</span> df.filter(<span class="s">"amount > 0 AND order_date >= current_date() - INTERVAL 90 DAYS"</span>)</pre>
+  <p class="codecap">Join (≈ JOIN — inner/left/right/full)</p>
+  <pre class="code"><span class="k">SELECT</span> o.*, c.segment <span class="k">FROM</span> orders o <span class="k">LEFT JOIN</span> customers c <span class="k">ON</span> o.customer_id = c.id;
+<span class="c"># PySpark:</span> orders.join(customers, orders.customer_id == customers.id, <span class="s">"left"</span>)</pre>
+  <p class="codecap">Aggregate (≈ GROUP BY + agg fns)</p>
+  <pre class="code"><span class="k">SELECT</span> region, sum(amount) <span class="k">AS</span> revenue, count(*) <span class="k">AS</span> n <span class="k">FROM</span> orders <span class="k">GROUP BY</span> region;
+<span class="c"># PySpark:</span> orders.groupBy(<span class="s">"region"</span>).agg(F.sum(<span class="s">"amount"</span>).alias(<span class="s">"revenue"</span>), F.count(<span class="s">"*"</span>).alias(<span class="s">"n"</span>))</pre>
+  <p class="codecap">Pivot / Transform / Combine</p>
+  <pre class="code"><span class="c">-- Pivot: rows ↔ columns</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> orders <span class="k">PIVOT</span> (sum(amount) <span class="k">FOR</span> region <span class="k">IN</span> (<span class="s">'US'</span>,<span class="s">'EU'</span>,<span class="s">'APAC'</span>));
+<span class="c">-- Transform: select / rename / derive</span>
+<span class="k">SELECT</span> order_id, amount, amount * <span class="f">0.1</span> <span class="k">AS</span> tax, upper(region) <span class="k">AS</span> region <span class="k">FROM</span> orders;
+<span class="c">-- Combine: union / intersect / except</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> orders_us <span class="k">UNION ALL</span> <span class="k">SELECT</span> * <span class="k">FROM</span> orders_eu;</pre>
+  <p class="codecap">Custom (SQL / Python) operator &amp; UDFs</p>
+  <pre class="code"><span class="c"># Python operator: arbitrary PySpark on the upstream DataFrame</span>
+<span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+<span class="k">def</span> transform(df):
+    <span class="k">return</span> df.withColumn(<span class="s">"clean_email"</span>, F.lower(F.trim(<span class="s">"email"</span>)))</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: build a gold flow -->
+<section id="flow">
+  <h2>Build a gold flow — click to add operators</h2>
+  <p class="hint">▸ assemble a top-10-regions-by-revenue flow</p>
+  <div class="palette">
+    <span class="pop" data-op="Join">+ Join</span>
+    <span class="pop" data-op="Filter">+ Filter</span>
+    <span class="pop" data-op="Aggregate">+ Aggregate</span>
+    <span class="pop" data-op="Sort">+ Sort</span>
+    <span class="pop" data-op="Limit">+ Limit</span>
+  </div>
+  <div class="flowc" id="fc"><span class="chip">orders</span><span class="arrow">▸</span><span class="chip">gold</span></div>
+  <button class="btn" onclick="resetFlow()">Reset</button>
+  <div class="hint" id="fnote" style="margin-top:8px"></div>
+</section>
+
+<section>
+  <h2>Operator cheat-sheet</h2>
+  <table>
+    <tr><th>Operator</th><th>SQL equivalent</th><th>Does</th></tr>
+    <tr><td>Filter</td><td><code>WHERE</code></td><td>keep matching rows</td></tr>
+    <tr><td>Aggregate</td><td><code>GROUP BY</code> + agg fns</td><td>summarize groups</td></tr>
+    <tr><td>Join</td><td><code>JOIN</code></td><td>combine two tables on a key</td></tr>
+    <tr><td>Pivot</td><td><code>PIVOT</code> / unpivot</td><td>rows ↔ columns</td></tr>
+    <tr><td>Transform</td><td><code>SELECT</code> / derived cols</td><td>pick/rename/compute columns</td></tr>
+    <tr><td>Combine</td><td><code>UNION/INTERSECT/EXCEPT</code></td><td>merge tables</td></tr>
+    <tr><td>Sort / Limit</td><td><code>ORDER BY</code> / <code>LIMIT</code></td><td>order / cap rows</td></tr>
+    <tr><td>SQL / Python</td><td>raw query / PySpark</td><td>escape hatch for the rest</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Operators map to <strong>standard SQL/PySpark transforms</strong> — so you can reason about what a visual flow does, and know when to drop to <strong>SQL/Python</strong>.</li>
+    <li>Shows Designer is a real transformation tool, not a toy.</li>
+  </ul>
+  <div class="card usecase">🏆 <strong>Real-world use case:</strong> build a gold table visually — <strong>Join</strong> orders↔customers, <strong>Filter</strong> last 90 days, <strong>Aggregate</strong> revenue by region, <strong>Sort</strong> desc, <strong>Limit</strong> top 10 — no code, compiles to a governed pipeline.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> assembling filter→join→aggregate flows visually; quick reshaping; letting analysts transform without SQL.</li>
+    <li><strong>Edge case:</strong> transforms the visual operators don't cover → use the <strong>SQL/Python</strong> operator or a user-defined operator.</li>
+    <li><strong>Limitation:</strong> heavy logic can be clearer in code than a long operator chain; operators inherit SDP/Designer constraints. Verify the exact operator list in the docs (it evolves).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Hunting for a visual operator that doesn't exist — use the <strong>SQL/Python</strong> operator.</li>
+    <li>❌ Confusing <strong>Pivot</strong> (reshape) with <strong>Aggregate</strong> (group+compute).</li>
+    <li>❌ Confusing <strong>Join</strong> (match on key) with <strong>Combine/union</strong> (stack tables).</li>
+    <li>❌ A 20-operator chain when a short SQL operator is clearer.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/designer/built-in-operators" target="_blank" rel="noopener">Built-in operators</a> ·
+  <a href="https://docs.databricks.com/aws/en/designer/build-transformation" target="_blank" rel="noopener">Build a transformation</a> ·
+  <a href="https://docs.databricks.com/aws/en/designer/" target="_blank" rel="noopener">Lakeflow Designer</a>
+  <p style="margin-top:10px">Topic 6.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — operator explorer (scoped to #ops)
+document.querySelectorAll('#ops .op').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#ops .op').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#ops .opd .card').forEach(c=>c.classList.toggle('on',c.dataset.od===k));
+  });
+});
+// Diagram 2 — build a flow (scoped to #flow)
+const fc=document.getElementById('fc'), fnote=document.getElementById('fnote');
+let fops=[];
+function renderFlow(){
+  let html='<span class="chip">orders</span>';
+  fops.forEach(o=>{ html+='<span class="arrow">▸</span><span class="chip">'+o+'</span>'; });
+  html+='<span class="arrow">▸</span><span class="chip">gold</span>';
+  fc.innerHTML=html;
+  const ideal=['Join','Filter','Aggregate','Sort','Limit'];
+  fnote.textContent = (JSON.stringify(fops)===JSON.stringify(ideal))
+    ? '✅ Top-10-regions-by-revenue flow complete — compiles to a governed pipeline.'
+    : fops.length+' operator(s) added.';
+}
+document.querySelectorAll('#flow .pop').forEach(o=>o.addEventListener('click',()=>{ fops.push(o.dataset.op); renderFlow(); }));
+function resetFlow(){ fops=[]; renderFlow(); }
+renderFlow();
+</script>
+</body>
+</html>

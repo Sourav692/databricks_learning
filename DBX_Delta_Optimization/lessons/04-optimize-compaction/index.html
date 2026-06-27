@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPTIMIZE / Compaction · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+
+  /* ---------- lesson-04 specific (reuses palette) ---------- */
+  .seg button:disabled{opacity:.45;cursor:not-allowed}
+  /* big "after" file cells for the bin-packing simulator */
+  .grid.packed{grid-template-columns:repeat(4,1fr);gap:12px}
+  .grid.packed .file{aspect-ratio:2.1/1;font-size:.7rem}
+  .file.big{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e;font-weight:600}
+  .file.merging{opacity:.15;transform:scale(.55)}
+  /* idempotency run-log */
+  .runlog{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .runrow{display:flex;align-items:center;gap:12px;font-size:.9rem;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow)}
+  .runrow .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-weight:600}
+  .runrow .badge{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-left:auto}
+  .runrow .badge.work{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+  .runrow .badge.noop{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 04</p>
+    <h1>OPTIMIZE &amp;<br><span class="drip">compaction.</span></h1>
+    <p class="lede">Busy tables accumulate thousands of small files. <code>OPTIMIZE</code> bin-packs them into fewer, right-sized files — same data, same results, far faster reads. It's idempotent, safe to run on a live table, and on managed tables the platform runs it for you.</p>
+    <div class="meta">
+      <span class="pill">Bin-packing <b>idempotent</b></span>
+      <span class="pill">Balances by <b>file size</b></span>
+      <span class="pill">Readers <b>not interrupted</b></span>
+      <span class="pill">OPTIMIZE FULL <b>DBR 16.0+</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><code>OPTIMIZE</code> is the command that takes the many small files a table has accumulated and rewrites them into <strong>fewer, right-sized files</strong>. That merging is called <strong>bin-packing</strong> — packing lots of little items into a smaller number of evenly-filled bins (here, the bins are data files of a healthy size). Nothing about your <em>data</em> changes — same rows, same values, same query results — only the <strong>physical file layout</strong> on storage gets tidier.</p>
+    <p>Why do small files pile up? Every streaming micro-batch, every <code>MERGE</code>/<code>UPDATE</code>/<code>DELETE</code>, every tiny append writes new Parquet files. A busy table can grow thousands of tiny files in a day. Each file carries fixed overhead — list it, open it, read its footer and stats, schedule a task for it — so <strong>thousands of tiny files make every read slow and metadata-heavy</strong>. <code>OPTIMIZE</code> is the broom that sweeps them back into a small number of well-sized files.</p>
+    <p><span class="chip analogy">Analogy</span><br>It's like <strong>consolidating a junk drawer of half-empty envelopes into a few full folders</strong>. Same papers inside, far fewer things to pick up and flip through. Bin-packing balances folders by <em>how thick they are</em> (file size in storage), not by <em>how many papers</em> each holds (row count).</p>
+    <p><span class="chip usecase">Real-world use case</span><br>A streaming <code>events</code> table ingests every few seconds and by noon has 40,000 files averaging 2&nbsp;MB. A nightly <code>OPTIMIZE</code> compacts them to a few hundred ~256&nbsp;MB files; the morning dashboards go from minutes to seconds. (On a UC managed table you'd let <strong>predictive optimization</strong> run this for you.)</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Small files make reads slow and expensive.</strong> Listing, opening, and scheduling a task per file is pure overhead. Replace 40,000 tiny files with a few hundred right-sized ones and the engine does far less bookkeeping before it touches a useful byte.</li>
+      <li><strong>Compaction is the read-side fix for write-side fragmentation.</strong> Frequent small writes (streaming, MERGE-heavy CDC) inevitably fragment a table; <code>OPTIMIZE</code> pays that debt down on a schedule instead of letting it accumulate forever.</li>
+      <li><strong>It composes with data skipping.</strong> Right-sized files <em>plus</em> colocation (<code>ZORDER</code> or liquid-clustering keys) means the engine reads fewer, bigger, better-organized files — the fast read.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      <code>OPTIMIZE</code> fixes the small-file problem <strong>after the fact</strong>; it's <strong>idempotent</strong>, <strong>safe to run on a live table</strong> (snapshot isolation — readers and streams aren't interrupted), and on modern UC managed tables you let <strong>predictive optimization</strong> run it automatically.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: bin-packing before/after simulator ============ -->
+  <section>
+    <h2>See it work — bin-packing simulator</h2>
+    <p>Below is a table stored as <strong>32 small files</strong>. Click <strong>Run OPTIMIZE</strong> and watch the engine bin-pack them into a handful of right-sized files. The <code>numFiles</code> drops, the <strong>average file size</strong> jumps, and the read gets cheaper — same data throughout.</p>
+
+    <div class="lab" id="lab-binpack">
+      <div class="lab-head">
+        <span class="lab-title">Bin-packing before / after</span>
+      </div>
+      <p class="lab-sub">A 32-file Delta table after a day of streaming micro-batches (~8&nbsp;MB each).</p>
+
+      <div class="controls">
+        <div class="seg" id="bp-ctrl" role="group" aria-label="OPTIMIZE controls">
+          <button data-act="run" aria-pressed="false">Run OPTIMIZE</button>
+          <button data-act="reset" aria-pressed="false">Reset (re-fragment)</button>
+        </div>
+      </div>
+      <div class="qstr" id="bp-cmd">OPTIMIZE main.delta_opt_demo.events;</div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="bp-label">Files on disk — before OPTIMIZE (many small files)</div>
+        <div class="grid" id="bp-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw" style="background:var(--paper-2)"></i> small file (~8 MB)</span>
+        <span><i class="sw" style="background:linear-gradient(135deg,#bfeaf3,#8fd6e8)"></i> compacted file (right-sized)</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="bp-files">32</div><div class="lbl">numFiles</div></div>
+        <div class="stat win"><div class="big" id="bp-avg">8 MB</div><div class="lbl">avg file size</div></div>
+        <div class="stat"><div class="big" id="bp-total">256 MB</div><div class="lbl">total size (unchanged)</div></div>
+      </div>
+      <div class="verdict" id="bp-verdict">A table with 32 tiny files: every read must list, open and schedule a task for all 32. Click <b>Run OPTIMIZE</b> to bin-pack them.</div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real bin-packing balances files by their size in storage toward a target (autotuned ~256&nbsp;MB→1&nbsp;GB or an explicit <code>delta.targetFileSize</code>); total bytes are roughly preserved and results never change.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: idempotency demo ============ -->
+  <section>
+    <h2>See it work — idempotency demo</h2>
+    <p>Bin-packing is <strong>idempotent</strong>: the first <code>OPTIMIZE</code> compacts the files; a second, immediate run finds nothing left to merge and is a <strong>no-op</strong> (zero files rewritten). Contrast with a <em>non-idempotent</em> operation like <code>OPTIMIZE … ZORDER BY</code>, which can rewrite again on a re-run. Click repeatedly and watch the run-log.</p>
+
+    <div class="lab" id="lab-idem">
+      <div class="lab-head">
+        <span class="lab-title">Idempotency: run OPTIMIZE again</span>
+      </div>
+      <p class="lab-sub">Each click issues one <code>OPTIMIZE</code> and records what it actually did.</p>
+
+      <div class="controls">
+        <div class="seg" id="id-mode" role="group" aria-label="Operation">
+          <button data-mode="compact" aria-pressed="true">OPTIMIZE (bin-packing)</button>
+          <button data-mode="zorder" aria-pressed="false">OPTIMIZE … ZORDER BY</button>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="seg" id="id-ctrl" role="group" aria-label="Run controls">
+          <button data-act="again" aria-pressed="false">Run OPTIMIZE again</button>
+          <button data-act="clear" aria-pressed="false">Clear log</button>
+        </div>
+      </div>
+      <div class="qstr" id="id-cmd">OPTIMIZE main.delta_opt_demo.events;</div>
+
+      <div class="runlog" id="id-log" aria-live="polite"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="id-runs">0</div><div class="lbl">runs issued</div></div>
+        <div class="stat win"><div class="big" id="id-rewritten">0</div><div class="lbl">files rewritten</div></div>
+        <div class="stat"><div class="big" id="id-noops">0</div><div class="lbl">no-op runs</div></div>
+      </div>
+      <div class="verdict" id="id-verdict">Click <b>Run OPTIMIZE again</b>. With bin-packing, only the first run does work — every later run is a no-op.</div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Idempotency applies to plain bin-packing; <code>OPTIMIZE … ZORDER BY</code> is <strong>not</strong> idempotent. Whether a real run does work depends on how fragmented the table currently is.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3>1 · <code>OPTIMIZE table_name</code> — bin-packing into fewer right-sized files</h3>
+    <p><code>OPTIMIZE</code> reads the table's small Parquet files and <strong>rewrites their contents into a smaller number of larger files</strong>, then commits a new version pointing at them. This is <strong>bin-packing</strong> — greedily packing rows into output files until each reaches the target size. Fewer, larger files mean less listing/opening/footer-reading/task-scheduling on every read. The cost: a one-time CPU-heavy rewrite — run it on a schedule, not after every micro-batch.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Compact ALL small files into fewer right-sized files (bin-packing).</span>
+<span class="c">-- Same data, same results afterward — only the physical layout changes.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># DeltaTable API equivalent of `OPTIMIZE table_name`.</span>
+<span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+dt = DeltaTable.forName(spark, <span class="s">"main.delta_opt_demo.events"</span>)
+dt.optimize().executeCompaction()   <span class="c"># bin-packing (compaction only, no Z-order)</span></pre>
+
+    <h3>2 · <code>OPTIMIZE t WHERE …</code> — limit to a partition subset</h3>
+    <p><code>OPTIMIZE t WHERE &lt;partition predicate&gt;</code> restricts compaction to the files matching the predicate — e.g. only yesterday's partitions. The <code>WHERE</code> must reference <strong>partition columns</strong>; it scopes <em>which files get rewritten</em>, not which rows. On a big partitioned table you rarely need to recompact well-sized history, so scoping to recently-written partitions makes maintenance cheap.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Only recompact the partitions that recently fragmented (cheaper).</span>
+<span class="c">-- The predicate must reference PARTITION columns.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events
+<span class="k">WHERE</span> event_date &gt;= <span class="k">DATE</span><span class="s">'2026-06-25'</span>;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># DeltaTable API: scope with .where() before executeCompaction().</span>
+dt = DeltaTable.forName(spark, <span class="s">"main.delta_opt_demo.events"</span>)
+(dt.optimize()
+   .where(<span class="s">"event_date >= '2026-06-25'"</span>)   <span class="c"># partition predicate — limits the rewrite</span>
+   .executeCompaction())</pre>
+
+    <h3>3 · Python / Scala DeltaTable API: <code>optimize().executeCompaction()</code></h3>
+    <p>The DeltaTable API mirrors the SQL command. <code>DeltaTable.forName(spark,"t").optimize().executeCompaction()</code> runs bin-packing; chain <code>.where("…")</code> to scope to a partition subset, exactly like SQL. A Scala equivalent has the same shape. (For Z-order on non-LC tables the method is <code>.executeZOrderBy(...)</code> instead.) Use the API when you're orchestrating maintenance in PySpark/Scala — e.g. compacting several tables in a loop.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># Compact a list of tables, scoped to recent partitions.</span>
+<span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+<span class="k">for</span> tbl <span class="k">in</span> [<span class="s">"main.delta_opt_demo.events"</span>, <span class="s">"main.delta_opt_demo.clicks"</span>]:
+    (DeltaTable.forName(spark, tbl)
+       .optimize()
+       .where(<span class="s">"event_date >= '2026-06-25'"</span>)   <span class="c"># optional; drop for a full compaction</span>
+       .executeCompaction())</pre>
+    <pre><span class="tag">Scala</span><span class="c">// Scala equivalent — same call shape as Python.</span>
+<span class="k">import</span> io.delta.tables._
+<span class="k">val</span> dt = DeltaTable.forName(spark, <span class="s">"main.delta_opt_demo.events"</span>)
+dt.optimize().where(<span class="s">"event_date >= '2026-06-25'"</span>).executeCompaction()</pre>
+
+    <h3>4 · Bin-packing is idempotent, and balances by file SIZE</h3>
+    <p>Bin-packing is <strong>idempotent</strong> — run <code>OPTIMIZE</code> twice and the <strong>second run has no effect</strong>, because the files are already right-sized. It aims for files <strong>evenly balanced by their size in storage</strong>, not by row count (though the two usually correlate). Idempotency makes <code>OPTIMIZE</code> safe to schedule aggressively: a no-op re-run costs almost nothing. (This applies to <em>bin-packing</em>; <code>ZORDER</code> is not idempotent — see sub-topic 6.)</p>
+    <pre><span class="tag">SQL</span><span class="c">-- First run compacts the small files...</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;
+<span class="c">-- ...a second, immediate run is a NO-OP (idempotent): nothing left to bin-pack.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;   <span class="c">-- numFiles unchanged, no files rewritten</span></pre>
+
+    <h3>5 · Liquid clustering vs partitioned tables</h3>
+    <p>On a <strong>liquid clustering</strong> table, <code>OPTIMIZE</code> doesn't just compact — it <strong>groups data by the clustering keys</strong>, <strong>incrementally</strong> (rewriting only what's needed to keep the layout healthy). On a <strong>partitioned</strong> table, compaction and layout happen <strong>within each partition</strong> — <code>OPTIMIZE</code> never merges files <em>across</em> partition boundaries. So an over-partitioned table (Lesson 02) can still have small files that compaction can't fully fix.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- LIQUID CLUSTERING table: OPTIMIZE is INCREMENTAL and groups by clustering keys.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;
+
+<span class="c">-- PARTITIONED table: compaction happens WITHIN each partition (never across them).</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events_partitioned
+<span class="k">WHERE</span> event_date = <span class="k">DATE</span><span class="s">'2026-06-25'</span>;</pre>
+
+    <h3>6 · <code>OPTIMIZE t ZORDER BY (col)</code> — compaction + Z-order (non-LC only)</h3>
+    <p>Adding <code>ZORDER BY (cols)</code> makes <code>OPTIMIZE</code> do two jobs at once: bin-pack <strong>and</strong> colocate rows along a space-filling curve so the chosen columns get tight, non-overlapping min/max ranges (Lesson 03) — better data skipping. <strong>Only for non-liquid-clustering tables</strong> (<code>ZORDER</code> is incompatible with liquid clustering), and unlike compaction it is <strong>NOT idempotent</strong> — re-running can rewrite again. For new tables, prefer liquid clustering.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Compact AND colocate by the columns you filter on most (non-LC tables only).</span>
+<span class="c">-- NOTE: not idempotent — schedule deliberately, not on every job.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events
+<span class="k">ZORDER BY</span> (event_type, user_id);   <span class="c">-- 1-2 dominant filter cols; more = less benefit each</span></pre>
+    <pre><span class="tag">PySpark</span><span class="c"># DeltaTable API: Z-order uses executeZOrderBy(...), not executeCompaction().</span>
+dt = DeltaTable.forName(spark, <span class="s">"main.delta_opt_demo.events"</span>)
+dt.optimize().executeZOrderBy(<span class="s">"event_type"</span>, <span class="s">"user_id"</span>)   <span class="c"># non-LC; NOT idempotent</span></pre>
+
+    <h3>7 · <code>OPTIMIZE table_name FULL</code> (DBR 16.0+) — force full reclustering</h3>
+    <p>For a <strong>liquid clustering</strong> table, <code>OPTIMIZE t FULL</code> forces a <strong>full reclustering</strong> — it rewrites <em>all</em> data to the current clustering keys, not just the incremental delta. Run it right after you <strong>first enable clustering</strong> or <strong>change the keys</strong>, since plain <code>OPTIMIZE</code> is incremental and leaves existing data laid out the old way. It rewrites the whole table, so it can take <strong>hours</strong> on a big table — a one-time operation, not routine upkeep.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- After enabling clustering or CHANGING keys, force a full recluster (DBR 16.0+).</span>
+<span class="c">-- Rewrites ALL data to the current keys — can be slow/expensive on big tables.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events <span class="k">CLUSTER BY</span> (event_type, event_date);
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events <span class="k">FULL</span>;   <span class="c">-- one-time, after the key change</span></pre>
+
+    <h3>8 · Snapshot isolation — live tables &amp; streams are safe</h3>
+    <p>Delta readers use <strong>snapshot isolation</strong>: they read a consistent committed version. When <code>OPTIMIZE</code> swaps the old small files for new compacted ones, in-flight readers keep reading their snapshot and <strong>aren't interrupted</strong>. Because <code>OPTIMIZE</code> makes <strong>no data changes</strong>, a read before and after returns the <strong>same results</strong>. Running it on a table that is a <strong>streaming source</strong> does <strong>not affect</strong> current or future streams. That's why it's safe on a live production table — no maintenance window needed.</p>
+
+    <h3>9 · <code>OPTIMIZE</code> returns file statistics</h3>
+    <p><code>OPTIMIZE</code> returns a row of <strong>file statistics</strong> — min/max/total size of files <strong>removed</strong> and <strong>added</strong>, Z-ordering stats (when used), the <strong>number of batches</strong>, and the <strong>partitions optimized</strong>. The same metrics land in <code>DESCRIBE HISTORY</code> under <code>operationMetrics</code>. Pair them with <code>DESCRIBE DETAIL</code> (<code>numFiles</code>, <code>sizeInBytes</code>) for a clean before/after — measure the win instead of guessing.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- OPTIMIZE returns stats (files removed/added, batches, partitions optimized).</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events;
+
+<span class="c">-- The same numbers land in DESCRIBE HISTORY under operationMetrics:</span>
+<span class="k">DESCRIBE HISTORY</span> main.delta_opt_demo.events;   <span class="c">-- latest OPTIMIZE row → operationMetrics</span>
+<span class="k">DESCRIBE DETAIL</span>  main.delta_opt_demo.events;   <span class="c">-- numFiles / sizeInBytes before/after</span></pre>
+
+    <h3>10 · Predictive optimization runs it automatically; frequency &amp; compute</h3>
+    <p>On <strong>UC managed</strong> tables, <strong>predictive optimization</strong> runs <code>OPTIMIZE</code> <strong>automatically</strong> when it's cost-effective — no scheduled job (Lesson 09). When you run it manually, frequency is a cost/performance trade-off: Databricks recommends <strong>start daily, then tune</strong>. <code>OPTIMIZE</code> is CPU-intensive (Parquet decode/encode) — use <strong>compute-optimized</strong> instances and attached <strong>SSDs</strong>. The target size the rewrite aims for is set by <code>delta.targetFileSize</code> / autotuning (Lesson 07).</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Let the platform run OPTIMIZE for you on UC MANAGED tables (Lesson 09):</span>
+<span class="k">ALTER SCHEMA</span> main.delta_opt_demo <span class="k">ENABLE PREDICTIVE OPTIMIZATION</span>;
+
+<span class="c">-- Optional: pin the target file size the rewrite aims for (else autotuned — Lesson 07).</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.targetFileSize'</span> = <span class="s">'256mb'</span>);</pre>
+  </section>
+
+  <section>
+    <h2>Comparison — <code>OPTIMIZE</code> variants &amp; related maintenance</h2>
+    <table class="tbl">
+      <thead><tr><th>Operation</th><th>What it does</th><th>Idempotent?</th><th>Scope</th><th>Use when</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">OPTIMIZE t</td><td>Bin-pack small files into fewer right-sized files</td><td><strong>Yes</strong></td><td>Whole table</td><td>Routine compaction of a fragmented table</td></tr>
+        <tr><td class="mono">OPTIMIZE t WHERE …</td><td>Compact only matching <strong>partitions</strong></td><td><strong>Yes</strong></td><td>Partition subset</td><td>Big partitioned table; only recent partitions fragmented</td></tr>
+        <tr><td class="mono">OPTIMIZE t ZORDER BY (…)</td><td>Compact <strong>+</strong> colocate via Z-order</td><td><strong>No</strong></td><td>Table / subset</td><td>Non-LC table filtered on high-cardinality cols</td></tr>
+        <tr><td class="mono">OPTIMIZE t (LC table)</td><td>Compact <strong>+</strong> group by clustering keys (incremental)</td><td>Incremental</td><td>Whole table</td><td>Routine upkeep of a liquid-clustering table</td></tr>
+        <tr><td class="mono">OPTIMIZE t FULL</td><td><strong>Full</strong> recluster to current keys (DBR 16.0+)</td><td>n/a (forces rewrite)</td><td>Whole table</td><td>Right after enabling LC or changing keys</td></tr>
+        <tr><td>Predictive optimization</td><td>Auto-runs <code>OPTIMIZE</code> when cost-effective</td><td>n/a</td><td>UC managed tables</td><td>The default for new managed tables (Lesson 09)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Plain <code>OPTIMIZE</code>:</strong> routine compaction of any fragmented Delta table (streaming sinks, MERGE-heavy CDC, many small appends).</li>
+      <li><strong><code>OPTIMIZE … WHERE</code>:</strong> large <strong>partitioned</strong> tables where only recently-written partitions fragmented — recompact just those, cheaply.</li>
+      <li><strong><code>OPTIMIZE … ZORDER BY</code>:</strong> legacy/external non-LC tables — compact and improve skipping in one pass.</li>
+      <li><strong><code>OPTIMIZE … FULL</code>:</strong> one-time, after enabling liquid clustering or changing keys (DBR 16.0+).</li>
+      <li><strong>Predictive optimization:</strong> the modern default — let the platform run <code>OPTIMIZE</code> on UC managed tables.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong><code>OPTIMIZE</code> on a streaming source</strong> → safe; snapshot isolation means current and future streams are unaffected and results don't change.</li>
+      <li><strong>Re-running compaction</strong> → idempotent no-op; but re-running <code>OPTIMIZE … ZORDER BY</code> is <strong>not</strong> a no-op and can rewrite again.</li>
+      <li><strong><code>WHERE</code> scoping</strong> → on partitioned tables compaction is <em>within</em> partitions only, never across boundaries.</li>
+      <li><strong>Over-partitioned table</strong> → tiny partitions can't be merged across boundaries, so <code>OPTIMIZE</code> can't fully fix partition-explosion small files (Lesson 02).</li>
+      <li><strong>Very large table with autotuned target</strong> → growing the target file size does <strong>not</strong> re-optimize existing files; set a fixed <code>delta.targetFileSize</code> if you need uniformity (Lesson 07).</li>
+      <li><strong><code>OPTIMIZE FULL</code> on a huge table</strong> → can take <strong>hours</strong>; it's a full rewrite, not routine maintenance.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li><code>OPTIMIZE</code> is a <strong>rewrite</strong> — it costs compute and writes new files (CPU-heavy; prefer compute-optimized instances + SSDs).</li>
+      <li><code>ZORDER BY</code> is <strong>not idempotent</strong> and is <strong>not compatible with liquid clustering</strong>.</li>
+      <li><code>OPTIMIZE … FULL</code> requires <strong>DBR 16.0+</strong>.</li>
+      <li>On <strong>partitioned</strong> tables, compaction never merges files <strong>across</strong> partitions.</li>
+      <li>Plain <code>OPTIMIZE</code> <strong>only changes file layout</strong> — not data, schema, or the clustering/partition design.</li>
+      <li><strong>Predictive optimization</strong> is <strong>UC managed tables only</strong> (not external / OpenSharing).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong><code>OPTIMIZE</code> is safe on live tables.</strong> Snapshot isolation — readers and streaming sources aren't interrupted and results don't change; no maintenance window needed.</li>
+      <li><strong>Compaction is idempotent; Z-order is not.</strong> Re-running plain <code>OPTIMIZE</code> is a free no-op; re-running <code>OPTIMIZE … ZORDER BY</code> can rewrite files again.</li>
+      <li><strong>Bin-packing balances by file SIZE, not row count.</strong> Expect evenly-sized files, not equal rows per file.</li>
+      <li><strong><code>WHERE</code> is for partitions.</strong> It scopes compaction to a partition subset; it can't merge files across partition boundaries.</li>
+      <li><strong>Don't <code>ZORDER</code> a liquid-clustering table.</strong> They're incompatible — on LC tables plain <code>OPTIMIZE</code> already groups by the clustering keys.</li>
+      <li><strong>After changing clustering keys, run <code>OPTIMIZE FULL</code>.</strong> Plain incremental <code>OPTIMIZE</code> won't re-lay-out existing data to the new keys (DBR 16.0+).</li>
+      <li><strong>Measure, don't assume.</strong> Use <code>OPTIMIZE</code>'s returned stats + <code>DESCRIBE DETAIL</code> + <code>DESCRIBE HISTORY</code> to confirm the win.</li>
+      <li><strong>On UC managed tables, prefer predictive optimization</strong> over a hand-scheduled <code>OPTIMIZE</code> job (Lesson 09).</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/sql/language-manual/delta-optimize" target="_blank" rel="noopener">OPTIMIZE — SQL language reference</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables (incremental OPTIMIZE / OPTIMIZE FULL)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">Data skipping for Delta Lake</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Control the data file size (target file size / autotuning)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization for Unity Catalog managed tables</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ============ INTERACTIVE 1: bin-packing before/after simulator ============ */
+(function(){
+  const root = document.getElementById('lab-binpack');
+  if(!root) return;
+  const grid   = root.querySelector('#bp-grid');
+  const elFiles= root.querySelector('#bp-files');
+  const elAvg  = root.querySelector('#bp-avg');
+  const elTotal= root.querySelector('#bp-total');
+  const elLabel= root.querySelector('#bp-label');
+  const elVerd = root.querySelector('#bp-verdict');
+  const elCmd  = root.querySelector('#bp-cmd');
+  const runBtn = root.querySelector('button[data-act="run"]');
+  const resetBtn = root.querySelector('button[data-act="reset"]');
+
+  const SMALL_N = 32;        // before: 32 small files
+  const PACKED_N = 4;        // after: 4 right-sized files
+  const TOTAL_MB = 256;      // total bytes preserved
+  let state = 'before';
+
+  function renderBefore(){
+    state='before';
+    grid.className='grid';
+    grid.innerHTML='';
+    for(let i=0;i<SMALL_N;i++){
+      const c=document.createElement('div');
+      c.className='file';
+      c.innerHTML='<span class="v">8MB</span>';
+      grid.appendChild(c);
+      c.style.opacity=0; c.style.transform='scale(.7)';
+      setTimeout(()=>{ c.style.opacity=1; c.style.transform=''; }, i*8);
+    }
+    elFiles.textContent = SMALL_N;
+    elAvg.textContent   = (TOTAL_MB/SMALL_N) + ' MB';
+    elTotal.textContent = TOTAL_MB + ' MB';
+    elLabel.textContent = 'Files on disk — before OPTIMIZE (many small files)';
+    elCmd.textContent   = 'OPTIMIZE main.delta_opt_demo.events;';
+    elVerd.innerHTML    = 'A table with <b>'+SMALL_N+' tiny files</b>: every read must list, open and schedule a task for all '+SMALL_N+'. Click <b>Run OPTIMIZE</b> to bin-pack them.';
+    runBtn.disabled=false; resetBtn.disabled=true;
+  }
+
+  function runOptimize(){
+    if(state!=='before') return;
+    // 1) animate small cells collapsing
+    Array.from(grid.children).forEach((c,i)=>{
+      setTimeout(()=>c.classList.add('merging'), i*5);
+    });
+    // 2) swap to packed layout
+    setTimeout(()=>{
+      state='after';
+      grid.className='grid packed';
+      grid.innerHTML='';
+      const per = TOTAL_MB/PACKED_N;
+      for(let i=0;i<PACKED_N;i++){
+        const c=document.createElement('div');
+        c.className='file big';
+        c.innerHTML='<span class="v">'+per+' MB</span>';
+        grid.appendChild(c);
+        c.style.opacity=0; c.style.transform='scale(.6)';
+        setTimeout(()=>{ c.style.opacity=1; c.style.transform=''; }, 60+i*70);
+      }
+      elFiles.textContent = PACKED_N;
+      elAvg.textContent   = per + ' MB';
+      elTotal.textContent = TOTAL_MB + ' MB';
+      elLabel.textContent = 'Files on disk — after OPTIMIZE (bin-packed, right-sized)';
+      elVerd.innerHTML    = 'Bin-packing merged '+SMALL_N+' files into <b>'+PACKED_N+'</b> right-sized files — <b>numFiles ↓ '+SMALL_N+'→'+PACKED_N+'</b>, avg size ↑ '+(TOTAL_MB/SMALL_N)+'→'+per+' MB. Total bytes are unchanged and results are identical — the read just got far cheaper.';
+      runBtn.disabled=true; resetBtn.disabled=false;
+    }, SMALL_N*5 + 180);
+  }
+
+  runBtn.addEventListener('click', runOptimize);
+  resetBtn.addEventListener('click', renderBefore);
+  renderBefore();
+})();
+</script>
+
+<script>
+/* ============ INTERACTIVE 2: idempotency demo ============ */
+(function(){
+  const root = document.getElementById('lab-idem');
+  if(!root) return;
+  const log    = root.querySelector('#id-log');
+  const elRuns = root.querySelector('#id-runs');
+  const elRw   = root.querySelector('#id-rewritten');
+  const elNo   = root.querySelector('#id-noops');
+  const elVerd = root.querySelector('#id-verdict');
+  const elCmd  = root.querySelector('#id-cmd');
+  const againBtn = root.querySelector('button[data-act="again"]');
+  const clearBtn = root.querySelector('button[data-act="clear"]');
+
+  let mode = 'compact';
+  let runs = 0, rewritten = 0, noops = 0, compactDone = false;
+
+  function cmdFor(m){
+    return m==='compact'
+      ? 'OPTIMIZE main.delta_opt_demo.events;'
+      : 'OPTIMIZE main.delta_opt_demo.events ZORDER BY (event_type);';
+  }
+
+  function resetCounters(){
+    runs=0; rewritten=0; noops=0; compactDone=false;
+    log.innerHTML='';
+    elRuns.textContent='0'; elRw.textContent='0'; elNo.textContent='0';
+  }
+
+  function setMode(m){
+    mode=m; elCmd.textContent=cmdFor(m);
+    root.querySelectorAll('#id-mode button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===m)));
+    resetCounters();
+    elVerd.innerHTML = m==='compact'
+      ? 'Click <b>Run OPTIMIZE again</b>. With bin-packing, only the first run does work — every later run is a no-op.'
+      : '<code>OPTIMIZE … ZORDER BY</code> is <b>not idempotent</b>: each run may rewrite files again, so there is no guaranteed no-op.';
+  }
+
+  function runAgain(){
+    runs++;
+    let didWork, files;
+    if(mode==='compact'){
+      // idempotent: first run compacts, rest are no-ops
+      didWork = !compactDone;
+      compactDone = true;
+      files = didWork ? 28 : 0;   // illustrative count of files rewritten on the working run
+    } else {
+      // non-idempotent: every run can rewrite again (illustrative, decreasing churn)
+      didWork = true;
+      files = Math.max(6, 24 - (runs-1)*6);
+    }
+    if(didWork) rewritten += files; else noops++;
+
+    const row=document.createElement('div');
+    row.className='runrow';
+    row.innerHTML = '<span class="ix">run #'+runs+'</span>'
+      + '<span>'+(didWork ? (files+' files rewritten') : 'no files rewritten')+'</span>'
+      + '<span class="badge '+(didWork?'work':'noop')+'">'+(didWork?'did work':'no-op')+'</span>';
+    row.style.opacity=0; row.style.transform='translateY(-6px)';
+    log.prepend(row);
+    setTimeout(()=>{ row.style.transition='.25s'; row.style.opacity=1; row.style.transform=''; },10);
+
+    elRuns.textContent=runs; elRw.textContent=rewritten; elNo.textContent=noops;
+
+    if(mode==='compact'){
+      elVerd.innerHTML = compactDone && runs>1
+        ? 'Run #'+runs+' rewrote <b>0 files</b> — bin-packing is <b>idempotent</b>, so every run after the first is a free no-op. Safe to schedule daily without worrying "did I already optimize?"'
+        : 'First run bin-packed <b>'+files+' files</b> into fewer right-sized ones. Click again — the next run will be a no-op.';
+    } else {
+      elVerd.innerHTML = 'Run #'+runs+' rewrote <b>'+files+' files</b>. <code>OPTIMIZE … ZORDER BY</code> is <b>not idempotent</b> — re-running keeps doing work, so schedule it deliberately (not on every job).';
+    }
+  }
+
+  root.querySelectorAll('#id-mode button').forEach(b=>{
+    b.addEventListener('click', ()=>setMode(b.dataset.mode));
+  });
+  againBtn.addEventListener('click', runAgain);
+  clearBtn.addEventListener('click', ()=>{ resetCounters(); setMode(mode); });
+  setMode('compact');
+})();
+</script>
+</body>
+</html>

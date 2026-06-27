@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partition Pruning &amp; DPP · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;--hit:#c2410c;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .filterbar select,.filterbar input[type=text]{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#fbbf77;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#73677a;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:#8a7d6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden;text-align:center;line-height:1.1}
+  .file.hit{background:linear-gradient(135deg,var(--flame-2),var(--flame));border-color:#9a3412;color:#fff4ec;box-shadow:0 6px 16px -6px rgba(194,65,12,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.3;filter:grayscale(.4)}
+  .file.dpp{background:linear-gradient(135deg,#e6d8fb,#c9b1f3);border-color:#b69aee;color:#4c1d95}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#5f5460}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .planbox .vio{color:#c4b5fd}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--flame)}
+  .dpprow{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+  .dpcol{flex:1;min-width:220px}
+  .dpcol h4{margin:0 0 8px;font-family:"Spline Sans",sans-serif;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a}
+  .dimbar{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+  .dimcell{border-radius:7px;padding:10px 0;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;background:var(--paper-2);border:1px solid var(--line);color:#8a7d6b;cursor:pointer;transition:.2s}
+  .dimcell.sel{background:linear-gradient(135deg,#8b5cf6,#6d28d9);border-color:#5b21b6;color:#fff}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.grid{grid-template-columns:repeat(6,1fr)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 07</p>
+    <h1>Partition pruning<br>&amp; <span class="drip">dynamic pruning.</span></h1>
+    <p class="lede">The cheapest data to process is the data you never read. Pruning skips whole directories of files — statically when you filter on a partition column, dynamically when you join a partitioned fact to a filtered dimension.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.0+ / DBR LTS</b></span>
+      <span class="pill">DPP default <b>on</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Partition pruning</strong> is Spark reading <em>only the on-disk directories it needs</em> and skipping the rest, instead of scanning every file in a table. It comes in two flavours:</p>
+    <ul>
+      <li><strong>Static partition pruning</strong> — a <em>literal</em> filter on a partition column (<code>WHERE country = 'US'</code>) lets Spark scan only the matching directory, decided <strong>at plan time</strong>.</li>
+      <li><strong>Dynamic Partition Pruning (DPP)</strong> — when a partitioned <strong>fact</strong> table is joined to a <strong>filtered dimension</strong>, Spark pushes the dimension's filter onto the fact's partition column <strong>at runtime</strong> — pruning fact partitions even though no literal was written against the fact.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one fact to keep straight</span>
+      "Partition" means two different things in Spark. Pruning is about the <strong>on-disk Hive-style table partitions</strong> (<code>PARTITIONED BY</code> → one directory per value), <em>not</em> the in-memory Spark partitions you set with <code>spark.sql.shuffle.partitions</code> / <code>repartition()</code>.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>I/O is usually the first bottleneck.</strong> Before tuning a join or shuffle, the biggest cheap win is to <strong>read less data</strong>. A 5-year, daily-partitioned table queried for one day should touch ~1/1825 of the files — if pruning fires.</li>
+      <li>The classic enterprise query is a <strong>huge partitioned fact ⋈ a small filtered dimension</strong> (<code>sales</code> by <code>order_date</code> ⋈ <code>date_dim WHERE quarter='Q4-2025'</code>). Without DPP, Spark scans <em>all</em> of <code>sales</code> and filters after the join. With DPP, it scans <strong>only the Q4 partitions</strong> — often a 10×+ reduction in bytes read.</li>
+      <li>Interviewers probe it: <em>"Your query reads the whole fact table even though you only want one region — why, and how do you fix it?"</em> The answer is in <code>PartitionFilters</code> / <code>dynamicpruningexpression</code> in the plan.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: PARTITION GRID PRUNER ============ -->
+  <section>
+    <h2>See it work — the partition grid</h2>
+    <p>The grid is a <code>sales</code> table partitioned by <code>region</code> (one directory per value). Pick a filter on the partition column and watch matching directories <strong>light up (read)</strong> while the rest <strong>grey out (skipped)</strong> — that's static pruning. Then choose a function-wrapped filter and watch pruning collapse to a full scan.</p>
+    <div class="lab" id="lab-grid">
+      <div class="lab-head"><span class="lab-title">Static partition-pruning grid</span></div>
+      <p class="lab-sub">32 directories — one per <code>region</code> value (4 macro-regions × 8 sub-regions, here keyed by first letter).</p>
+      <div class="controls">
+        <div class="filterbar">
+          <label>Filter
+            <select id="pg-pred">
+              <option value="eq:EMEA">region = 'EMEA'</option>
+              <option value="eq:APAC">region = 'APAC'</option>
+              <option value="in:EMEA,APAC">region IN ('EMEA','APAC')</option>
+              <option value="all">no filter (read everything)</option>
+              <option value="fn:EMEA">lower(region) = 'emea'  (function!)</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="qstr" id="pg-q">SELECT * FROM sales WHERE region = 'EMEA'</div>
+      <div class="gridwrap">
+        <div class="glabel">on-disk directories — /sales/region=…</div>
+        <div class="grid" id="pg-grid"></div>
+      </div>
+      <div class="legend">
+        <span><span class="sw" style="background:linear-gradient(135deg,var(--flame-2),var(--flame))"></span> read (hit)</span>
+        <span><span class="sw" style="background:var(--paper-2)"></span> skipped (pruned)</span>
+      </div>
+      <div class="readout">
+        <div class="stat win"><div class="big" id="pg-read">—</div><div class="lbl">directories read</div></div>
+        <div class="stat"><div class="big" id="pg-skip">—</div><div class="lbl">directories skipped</div></div>
+        <div class="stat"><div class="big" id="pg-pct">—</div><div class="lbl">data scanned</div></div>
+      </div>
+      <div class="verdict" id="pg-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real pruning lists directories from the catalog before any task runs.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>1 · Two meanings of "partition" — never confuse them</h3>
+    <p><span class="chip analogy">analogy</span> On-disk partitions are a <strong>filing cabinet with one labelled drawer per value</strong> — you open only the drawers you need. In-memory partitions are <strong>how many people you split a task across</strong> once the folders are on the table. Pruning is about which <em>drawers</em> you open, not how many people you hire.</p>
+    <ul>
+      <li><strong>(a) On-disk Hive-style partitions</strong> — <code>PARTITIONED BY (col)</code> / <code>partitionBy(col)</code>. Each distinct value becomes its own <strong>directory</strong> (<code>/sales/order_date=2025-01-01/…</code>). <strong>Pruning skips these.</strong></li>
+      <li><strong>(b) In-memory Spark partitions</strong> — the parallelism chunks, governed by <code>spark.sql.shuffle.partitions</code> (200) and <code>repartition()</code>/<code>coalesce()</code>. About parallelism, not file-skipping.</li>
+    </ul>
+
+    <h3>2 · How to create on-disk partitions</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> at write time Spark fans rows into one directory per distinct partition value, so a later filter on that column maps directly to a subset of directories.</li>
+      <li><strong>Why:</strong> pre-organises the table by a column you frequently filter on — "scan everything then filter" becomes "scan only matching directories."</li>
+      <li><strong>Trade-off — the cardinality rule:</strong> partition on a <strong>low-cardinality</strong> column (date, region, country). Partitioning a <strong>high-cardinality</strong> column (<code>user_id</code>, <code>order_id</code>) explodes the table into millions of tiny directories — the small-files problem plus huge driver-side metadata. Aim for partitions in the hundreds-of-MB-to-GB range.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>events</code> partitioned by <code>event_date</code> — dashboards filter by date, so every query prunes to a handful of day-directories.</p>
+
+    <h3>3 · Static partition pruning</h3>
+    <ul>
+      <li><strong>Mechanism:</strong> a <strong>literal</strong> filter on a partition column resolves <strong>at plan time</strong>; Spark lists only the matching directories and never opens the rest.</li>
+      <li><strong>Why it's free:</strong> partition values are encoded in directory paths, so Spark prunes from the file listing before a single task runs.</li>
+      <li><strong>Trade-off / the trap:</strong> it only fires when the column is filtered <em>directly with a literal</em>. Wrap it in a function (<code>year(order_date)=2025</code>) or compare it to another query's output and static pruning can't fire — the second case is exactly what DPP exists for.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>WHERE country = 'US'</code> on a country-partitioned table reads one directory instead of 195.</p>
+
+    <h3>4 · Why partition pruning (the payoff)</h3>
+    <ul>
+      <li>The goal of the whole track is to <strong>do less work</strong>; pruning is the purest form — you don't optimise the scan, you <strong>avoid</strong> it. Fewer files → fewer tasks → less downstream shuffle, because less data ever entered the pipeline.</li>
+      <li>It composes with the other "read less" tools: <strong>column pruning</strong> (read only needed columns) and <strong>predicate pushdown</strong> (push row filters into the reader). Pruning skips whole directories; those two trim what's read inside the surviving files.</li>
+    </ul>
+
+    <h3>5 · Dynamic Partition Pruning (DPP)</h3>
+    <p><span class="chip analogy">analogy</span> DPP is a bouncer who first checks the small VIP list (the filtered dimension), then only opens the cloakroom drawers (fact partitions) for names actually on it — instead of opening every drawer and checking each coat afterwards.</p>
+    <ul>
+      <li><strong>The problem:</strong> <code>fact JOIN dim WHERE dim.x='Q4'</code>. The filter is on <code>dim</code>, so <strong>static pruning can't help</strong> — at plan time Spark has no literal to prune the fact with, so it scans the entire fact and filters after the join.</li>
+      <li><strong>Mechanism:</strong> with <code>spark.sql.optimizer.dynamicPartitionPruning.enabled = true</code> (default; <strong>since Spark 3.0.0</strong>), Spark runs the small filtered dimension <strong>first</strong>, collects the surviving join-key values (a broadcast/subquery result), and pushes them <strong>onto the fact's partition column at runtime</strong> — so the fact scan reads only matching partitions <em>before</em> the join.</li>
+      <li><strong>Requirements (all must hold):</strong> the fact is <strong>partitioned on the join key</strong>; the filtered dimension is <strong>broadcastable</strong>; it's an equi-join on the partition column; and it is <strong>not a streaming query</strong>.</li>
+      <li><strong>Trade-off:</strong> when it fires, a massive I/O win for free. When the dimension is too big to broadcast or the fact isn't partitioned on the join key, DPP simply doesn't engage — you fall back to a full fact scan.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>sales</code> (by <code>order_date</code>, 2 TB) ⋈ <code>date_dim WHERE quarter='Q4-2025'</code> — DPP prunes <code>sales</code> to ~90 day-partitions at runtime instead of scanning all 2 TB.</p>
+
+    <div class="callout">
+      <span class="lbl">Reading it in the plan / UI</span>
+      <strong>Static</strong> → <code>PartitionFilters: [(country = US)]</code> on the <code>Scan</code> node, and "partitions read" drops in the Spark UI <strong>SQL</strong> tab. <strong>DPP</strong> → <code>PartitionFilters: [dynamicpruningexpression(...)]</code> + a <code>SubqueryBroadcast</code> / reused broadcast, and the fact <code>Scan</code> reports far fewer files read than the table's total.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: DPP TOGGLE ============ -->
+  <section>
+    <h2>See it work — dynamic partition pruning</h2>
+    <p>A partitioned <code>sales</code> fact (by quarter) joined to a small <code>date_dim</code>. Pick which quarter the <em>dimension</em> filter keeps, then toggle DPP. With DPP <strong>on</strong>, the dimension's surviving key is pushed onto the fact at runtime and only that quarter's fact partitions are read. With DPP <strong>off</strong>, the whole fact is scanned and filtered after the join.</p>
+    <div class="lab" id="lab-dpp">
+      <div class="lab-head"><span class="lab-title">Fact ⋈ filtered dimension</span></div>
+      <p class="lab-sub"><code>sales</code> partitioned by <code>quarter</code> ⋈ <code>date_dim</code> with a filter on the dimension.</p>
+      <div class="controls">
+        <div class="seg" id="dp-mode" role="group" aria-label="DPP toggle">
+          <button data-mode="on" aria-pressed="true">DPP on (default)</button>
+          <button data-mode="off" aria-pressed="false">DPP off</button>
+        </div>
+      </div>
+      <div class="dpprow">
+        <div class="dpcol">
+          <h4>dimension filter — WHERE quarter =</h4>
+          <div class="dimbar" id="dp-dim"></div>
+          <p class="lab-sub" style="margin-top:10px">The filter lives on the small dimension, not the fact.</p>
+        </div>
+        <div class="dpcol">
+          <h4>fact: /sales/quarter=… (8 partitions)</h4>
+          <div class="grid" id="dp-grid" style="grid-template-columns:repeat(4,1fr)"></div>
+        </div>
+      </div>
+      <div class="readout">
+        <div class="stat win"><div class="big" id="dp-read">—</div><div class="lbl">fact partitions read</div></div>
+        <div class="stat"><div class="big" id="dp-pct">—</div><div class="lbl">fact data scanned</div></div>
+      </div>
+      <div class="planbox" id="dp-plan"></div>
+      <div class="verdict" id="dp-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of <code>dynamicpruningexpression</code> on the fact-side scan.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan line or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Create on-disk partitions</h3>
+    <pre><span class="tag">python</span><code><span class="c"># partitionBy writes one directory per distinct order_date value.</span>
+<span class="c"># Pick a LOW-cardinality column (date/region) — never user_id/order_id.</span>
+(sales
+   .write
+   .partitionBy(<span class="s">"order_date"</span>)                 <span class="c"># ← creates /order_date=.../ directories</span>
+   .mode(<span class="s">"overwrite"</span>)
+   .saveAsTable(<span class="s">"main.pyspark_perf.sales"</span>))    <span class="c"># UC 3-level name; Delta is the default</span>
+
+<span class="c"># VERIFY the table really is partitioned:</span>
+spark.sql(<span class="s">"DESCRIBE EXTENDED main.pyspark_perf.sales"</span>).show(truncate=<span class="k">False</span>)
+<span class="c">#   look for "Partition Columns: [order_date]"</span></code></pre>
+
+    <p>Equivalent Spark SQL — same effect:</p>
+    <pre><span class="tag">sql</span><code><span class="c">-- Delta is the default on Databricks — don't write USING DELTA.</span>
+<span class="k">CREATE TABLE</span> main.pyspark_perf.sales
+<span class="k">PARTITIONED BY</span> (order_date)
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> main.pyspark_perf.sales_staging;</code></pre>
+
+    <h3>Trigger static partition pruning</h3>
+    <pre><span class="tag">python</span><code><span class="c"># A LITERAL filter on the partition column → plan-time pruning.</span>
+one_day = spark.table(<span class="s">"main.pyspark_perf.sales"</span>).where(<span class="s">"order_date = '2025-01-01'"</span>)
+
+<span class="c"># VERIFY: the scan node must carry a PartitionFilters line with your literal.</span>
+one_day.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   (1) Scan ... main.pyspark_perf.sales</span>
+<span class="c">#       PartitionFilters: [isnotnull(order_date#..), (order_date#.. = 2025-01-01)]   ✅</span>
+<span class="c">#   Spark UI SQL tab: "number of partitions read" = 1 (not the full table)</span></code></pre>
+
+    <pre><span class="tag">python</span><code><span class="c"># ❌ Anti-pattern: a function on the partition column defeats static pruning.</span>
+slow = spark.table(<span class="s">"main.pyspark_perf.sales"</span>).where(<span class="s">"year(order_date) = 2025"</span>)
+<span class="c"># explain() shows it under Filter / PushedFilters, NOT PartitionFilters → full scan.</span>
+<span class="c"># Fix: filter the raw column with a literal/range:</span>
+<span class="c">#   order_date &gt;= '2025-01-01' AND order_date &lt; '2026-01-01'</span></code></pre>
+
+    <h3>Trigger Dynamic Partition Pruning (fact ⋈ filtered dimension)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> col
+
+sales    = spark.table(<span class="s">"main.pyspark_perf.sales"</span>)      <span class="c"># partitioned by order_date (the join key)</span>
+date_dim = spark.table(<span class="s">"main.pyspark_perf.date_dim"</span>)   <span class="c"># small dimension, broadcastable</span>
+
+<span class="c"># Filter lives on the DIMENSION, not the fact — only DPP can prune the fact here.</span>
+q = (sales.join(date_dim, sales.order_date == date_dim.d_date)
+          .where(col(<span class="s">"d_quarter"</span>) == <span class="s">"Q4-2025"</span>))         <span class="c"># ← dim filter</span>
+
+<span class="c"># VERIFY: the fact scan's PartitionFilters carries a dynamicpruningexpression.</span>
+q.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   (n) Scan ... sales</span>
+<span class="c">#       PartitionFilters: [dynamicpruningexpression(order_date#.. IN subquery#..)]   ✅</span>
+<span class="c">#   ...a SubqueryBroadcast / ReusedExchange feeds it the surviving dates.</span>
+<span class="c">#   Spark UI SQL tab: the `sales` Scan reads only the Q4 partitions.</span></code></pre>
+
+    <pre><span class="tag">python</span><code><span class="c"># DPP is on by default; A/B it by turning it OFF to see the before-state, then reset.</span>
+print(spark.conf.get(<span class="s">"spark.sql.optimizer.dynamicPartitionPruning.enabled"</span>))  <span class="c"># 'true'</span>
+spark.conf.set(<span class="s">"spark.sql.optimizer.dynamicPartitionPruning.enabled"</span>, <span class="s">"false"</span>)  <span class="c"># demo only</span>
+<span class="c"># ...re-run q.explain() → dynamicpruningexpression gone, fact reads ALL partitions ❌</span>
+spark.conf.set(<span class="s">"spark.sql.optimizer.dynamicPartitionPruning.enabled"</span>, <span class="s">"true"</span>)   <span class="c"># reset</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: TABBED PLAN COMPARE ============ -->
+  <section>
+    <h2>Compare the plans</h2>
+    <p>Switch among the three scenarios to see what the <code>Scan</code> node's <code>PartitionFilters</code> looks like in each.</p>
+    <div class="lab" id="lab-plans">
+      <div class="lab-head"><span class="lab-title">Plan by pruning scenario</span></div>
+      <div class="controls">
+        <div class="seg" id="pl-seg" role="group" aria-label="scenario">
+          <button data-s="stat" aria-pressed="true">Static pruning</button>
+          <button data-s="dpp" aria-pressed="false">DPP</button>
+          <button data-s="none" aria-pressed="false">No pruning</button>
+        </div>
+      </div>
+      <div class="planbox" id="pl-plan"></div>
+      <div class="verdict" id="pl-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Static pruning</th><th>Dynamic Partition Pruning</th><th>In-memory partitions (contrast)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>What it skips</strong></td><td>On-disk directories that don't match</td><td>Fact directories not matched by the dimension filter</td><td><em>Nothing</em> — parallelism chunks, not files</td></tr>
+        <tr><td><strong>When decided</strong></td><td>Plan time</td><td><strong>Runtime</strong> (after the dimension filter runs)</td><td>n/a</td></tr>
+        <tr><td><strong>Triggered by</strong></td><td>Literal filter on the partition column</td><td>Join of partitioned fact to a <em>filtered, broadcastable</em> dimension</td><td><code>shuffle.partitions</code> / <code>repartition()</code></td></tr>
+        <tr><td><strong>Config</strong></td><td>Always on (no flag)</td><td><code>dynamicPartitionPruning.enabled=true</code> (3.0+)</td><td><code>shuffle.partitions=200</code></td></tr>
+        <tr><td><strong>Plan signal</strong></td><td><code>PartitionFilters: [col = literal]</code></td><td><code>PartitionFilters: [dynamicpruningexpression(...)]</code> + <code>SubqueryBroadcast</code></td><td><code>Exchange hashpartitioning(..., 200)</code></td></tr>
+        <tr><td><strong>Main requirement</strong></td><td>Partition column filtered directly</td><td>Fact partitioned on join key + dimension broadcastable</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li>Date/region/country-partitioned fact tables queried with date-range or region filters → <strong>static pruning</strong> on every query.</li>
+      <li>Star-schema joins where the filter sits on a dimension (<code>WHERE date_dim.quarter='Q4'</code>, <code>WHERE store_dim.region='EMEA'</code>) → <strong>DPP</strong> prunes the partitioned fact at runtime.</li>
+      <li>Combine with <strong>column pruning</strong> and <strong>predicate pushdown</strong> (the rest of "read less") before reaching for join/shuffle tuning.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>A function on the partition column</strong> (<code>year(order_date)=2025</code>, <code>lower(country)='us'</code>) silently defeats static pruning → full scan. Filter the raw column with literals/ranges.</li>
+      <li><strong>A UDF in the filter</strong> is a black box to Catalyst — it can't be pushed into <code>PartitionFilters</code>. Rewrite as native column expressions.</li>
+      <li><strong>DPP needs a broadcastable dimension.</strong> If the filtered dimension is too big to broadcast, DPP won't fire — pre-filter/shrink it or accept the full fact scan.</li>
+      <li><strong>Fact not partitioned on the join key</strong> → DPP cannot prune (it prunes partition directories, so the join key must be the partition column).</li>
+      <li><strong>Over-partitioning</strong> a high-cardinality column gives pruning power you never use <em>plus</em> millions of tiny files and driver-side partition-metadata pressure (Lesson 03) — a net loss.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>DPP is <strong>not applied to streaming queries</strong>.</li>
+      <li>Pruning skips <em>directories</em>; it does nothing inside a surviving file — that's column pruning + pushdown's job.</li>
+      <li>Static pruning needs the partition column <strong>in the predicate</strong>; a filter only on a non-partition column gets no partition pruning (though Delta file-stats data-skipping can still help — a different mechanism).</li>
+      <li><code>spark.sql.optimizer.dynamicPartitionPruning.enabled</code> is a <strong>runtime SQL conf</strong> (Spark 3.0+, default true); on a pre-3.0 engine DPP doesn't exist.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Confusing on-disk partitions with <code>shuffle.partitions</code>.</strong> Bumping <code>spark.sql.shuffle.partitions</code> does <em>nothing</em> for file pruning — wrong "partition." Pruning is about <code>PARTITIONED BY</code> directories.</li>
+      <li><strong>Wrapping the partition column in a function</strong> and wondering why the whole table scans — <code>year(order_date)=2025</code> ≠ a literal filter. Use <code>order_date &gt;= '2025-01-01' AND order_date &lt; '2026-01-01'</code>.</li>
+      <li><strong>Expecting static pruning when the filter is on a dimension.</strong> A filter on <code>dim</code> can't statically prune <code>fact</code> — that's what DPP is for; make sure its requirements are met.</li>
+      <li><strong>Over-partitioning</strong> on a high-cardinality column (<code>user_id</code>) — millions of one-row directories. Partition on low-cardinality columns; use <strong>bucketing</strong> (Lesson 11) or Z-ORDER / liquid clustering for high-cardinality keys.</li>
+      <li><strong>Assuming DPP fired.</strong> It's silent when it doesn't. Confirm <code>dynamicpruningexpression</code> in <code>.explain()</code> and the reduced "partitions read" in the Spark UI.</li>
+      <li><strong>Forgetting the dimension must be broadcastable.</strong> If your dimension grew past the broadcast threshold, DPP stops firing and fact scans go full again.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (Dynamic Partition Pruning, AQE, joins)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (dynamicPartitionPruning.enabled, shuffle.partitions)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-ddl-create-table-datasource.html">Apache Spark — CREATE TABLE ... PARTITIONED BY</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/dynamic-partition-pruning">Azure Databricks — Dynamic partition pruning</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions">Azure Databricks — When to partition tables (cardinality guidance)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: static partition-pruning grid (filter chooser) ---- */
+(function(){
+  const root = document.getElementById('lab-grid');
+  if(!root) return;
+  const pred    = root.querySelector('#pg-pred');
+  const grid    = root.querySelector('#pg-grid');
+  const qstr    = root.querySelector('#pg-q');
+  const elRead  = root.querySelector('#pg-read');
+  const elSkip  = root.querySelector('#pg-skip');
+  const elPct   = root.querySelector('#pg-pct');
+  const verdict = root.querySelector('#pg-verdict');
+
+  // 32 directories, evenly split across 4 regions (8 each).
+  const REGIONS = ['EMEA','APAC','AMER','LATAM'];
+  const N = 32;
+  const cells = [];
+  for(let i=0;i<N;i++){
+    const region = REGIONS[i % REGIONS.length];
+    const d = document.createElement('div');
+    d.className = 'file';
+    d.dataset.region = region;
+    d.innerHTML = '<span class="v">' + region + '</span>';
+    grid.appendChild(d);
+    cells.push(d);
+  }
+
+  const QUERIES = {
+    'eq:EMEA':       "SELECT * FROM sales WHERE region = 'EMEA'",
+    'eq:APAC':       "SELECT * FROM sales WHERE region = 'APAC'",
+    'in:EMEA,APAC':  "SELECT * FROM sales WHERE region IN ('EMEA','APAC')",
+    'all':           "SELECT * FROM sales",
+    'fn:EMEA':       "SELECT * FROM sales WHERE lower(region) = 'emea'"
+  };
+
+  function render(){
+    const val = pred.value;
+    qstr.textContent = QUERIES[val];
+    const parts = val.split(':');
+    const kind = parts[0];
+    const wanted = parts[1] ? parts[1].split(',') : [];
+    let read = 0;
+    let funcDefeat = (kind === 'fn');   // function on partition col → no pruning
+    cells.forEach(function(c){
+      let hit;
+      if(kind === 'all' || funcDefeat){ hit = true; }
+      else { hit = wanted.indexOf(c.dataset.region) !== -1; }
+      c.classList.toggle('hit', hit);
+      c.classList.toggle('skip', !hit);
+      if(hit) read++;
+    });
+    const skip = N - read;
+    const pct = Math.round(read / N * 100);
+    elRead.textContent = read;
+    elSkip.textContent = skip;
+    elPct.textContent = pct + '%';
+    if(kind === 'all'){
+      verdict.innerHTML = '<b>No filter → full scan.</b> Every directory is read. Pruning needs a predicate on the partition column.';
+    } else if(funcDefeat){
+      verdict.innerHTML = '<b>Function on the partition column defeats pruning.</b> <code>lower(region)=\'emea\'</code> can\'t be matched to directory names at plan time, so Spark scans <em>all 32</em> directories. Filter the raw column: <code>region = \'EMEA\'</code>.';
+    } else {
+      verdict.innerHTML = '<b>Static pruning fired.</b> Spark reads only the ' + read + ' matching direct' + (read===1?'ory':'ories') + ' and skips ' + skip + '. Confirm via <code>PartitionFilters</code> in <code>.explain()</code> and the reduced "partitions read" in the Spark UI.';
+    }
+  }
+  pred.addEventListener('change', render);
+  render();
+})();
+
+/* ---- Diagram 2: dynamic partition pruning toggle ---- */
+(function(){
+  const root = document.getElementById('lab-dpp');
+  if(!root) return;
+  const modeSeg = root.querySelector('#dp-mode');
+  const dimbar  = root.querySelector('#dp-dim');
+  const grid    = root.querySelector('#dp-grid');
+  const elRead  = root.querySelector('#dp-read');
+  const elPct   = root.querySelector('#dp-pct');
+  const plan    = root.querySelector('#dp-plan');
+  const verdict = root.querySelector('#dp-verdict');
+
+  const QUARTERS = ['Q1','Q2','Q3','Q4','Q1+1','Q2+1','Q3+1','Q4+1'];  // 8 fact partitions
+  const DIMS = ['Q1','Q2','Q3','Q4'];
+  let mode = 'on';
+  let selected = 'Q4';
+
+  // build dimension selector
+  const dimCells = [];
+  DIMS.forEach(function(q){
+    const d = document.createElement('div');
+    d.className = 'dimcell' + (q === selected ? ' sel' : '');
+    d.textContent = q;
+    d.dataset.q = q;
+    dimbar.appendChild(d);
+    dimCells.push(d);
+  });
+
+  // build fact partition grid
+  const factCells = [];
+  QUARTERS.forEach(function(q){
+    const d = document.createElement('div');
+    d.className = 'file';
+    d.dataset.q = q;
+    d.innerHTML = '<span class="v">' + q + '</span>';
+    grid.appendChild(d);
+    factCells.push(d);
+  });
+
+  function render(){
+    dimCells.forEach(function(c){ c.classList.toggle('sel', c.dataset.q === selected); });
+    let read = 0;
+    factCells.forEach(function(c){
+      // the join key equals the dimension's surviving quarter (same base quarter, both years here matched to selected base)
+      const matches = (mode === 'on') && (c.dataset.q === selected);
+      const fullScan = (mode === 'off');
+      const hit = fullScan || matches;
+      c.classList.toggle('hit', mode === 'on' && matches);
+      c.classList.toggle('dpp', false);
+      c.classList.toggle('skip', !hit);
+      // when DPP off, every partition is read but greyed-as-read (no pruning) → show as plain read
+      if(fullScan){ c.classList.remove('skip'); c.classList.add('hit'); }
+      if(hit) read++;
+    });
+    const total = factCells.length;
+    const pct = Math.round(read / total * 100);
+    elRead.textContent = read + ' / ' + total;
+    elPct.textContent = pct + '%';
+    if(mode === 'on'){
+      plan.innerHTML =
+        '<span class="dim">== Physical Plan ==</span>\n' +
+        'BroadcastHashJoin [order_date = d_date]\n' +
+        ':- <span class="ok">Scan sales</span>\n' +
+        ':     PartitionFilters: [<span class="ok">dynamicpruningexpression(order_date IN subquery#12)</span>]  ✅\n' +
+        '+- <span class="vio">BroadcastExchange</span>\n' +
+        '   +- Filter (d_quarter = ' + selected + ')\n' +
+        '      +- Scan date_dim\n' +
+        '<span class="dim">+- SubqueryBroadcast subquery#12 (feeds surviving dates to the fact scan)</span>';
+      verdict.innerHTML = '<b>DPP fired.</b> The <code>date_dim</code> filter runs first; its surviving <code>' + selected + '</code> key is pushed onto the fact\'s partition column at runtime, so <code>sales</code> reads only ' + read + ' of ' + total + ' partitions. Confirm <code>dynamicpruningexpression</code> in <code>.explain()</code>.';
+    } else {
+      plan.innerHTML =
+        '<span class="dim">== Physical Plan ==</span>\n' +
+        'BroadcastHashJoin [order_date = d_date]\n' +
+        ':- <span class="bad">Scan sales</span>\n' +
+        ':     PartitionFilters: []   <span class="bad">&lt;- no pruning: all ' + total + ' partitions read ❌</span>\n' +
+        '+- BroadcastExchange\n' +
+        '   +- Filter (d_quarter = ' + selected + ')\n' +
+        '      +- Scan date_dim';
+      verdict.innerHTML = '<b>DPP off → full fact scan.</b> Without DPP, Spark has no literal to prune <code>sales</code> with at plan time, so it reads <em>all ' + total + '</em> partitions and only filters after the join. This is the before-state you A/B against.';
+    }
+  }
+  dimbar.addEventListener('click', function(e){
+    const c = e.target.closest('.dimcell'); if(!c) return;
+    selected = c.dataset.q;
+    render();
+  });
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+    render();
+  });
+  render();
+})();
+
+/* ---- Diagram 3: tabbed plan compare ---- */
+(function(){
+  const root = document.getElementById('lab-plans');
+  if(!root) return;
+  const seg  = root.querySelector('#pl-seg');
+  const plan = root.querySelector('#pl-plan');
+  const note = root.querySelector('#pl-note');
+  const data = {
+    stat: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            '<span class="ok">Scan parquet sales</span>\n' +
+            '  PartitionFilters: [<span class="ok">isnotnull(order_date), (order_date = 2025-01-01)</span>]\n' +
+            '  PushedFilters: []\n' +
+            '  <span class="dim">partitions read: 1 of 1825</span>',
+      note: '<b>Static pruning.</b> A literal on the partition column resolves at plan time — only the matching directory is listed. The cheapest possible read.'
+    },
+    dpp: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            'BroadcastHashJoin [order_date = d_date]\n' +
+            ':- <span class="ok">Scan parquet sales</span>\n' +
+            ':    PartitionFilters: [<span class="ok">dynamicpruningexpression(order_date IN subquery#7)</span>]\n' +
+            '+- <span class="vio">BroadcastExchange</span>\n' +
+            '   +- Filter (d_quarter = Q4-2025) +- Scan date_dim\n' +
+            '<span class="dim">+- SubqueryBroadcast subquery#7</span>',
+      note: '<b>Dynamic Partition Pruning.</b> The filter is on the dimension; DPP runs it first and pushes the surviving keys onto the fact\'s partition column at runtime via a <code>SubqueryBroadcast</code>.'
+    },
+    none: {
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            '<span class="bad">Scan parquet sales</span>\n' +
+            '  PartitionFilters: []\n' +
+            '  PushedFilters: [year(order_date) = 2025]   <span class="bad">&lt;- function defeats pruning</span>\n' +
+            '  <span class="bad">partitions read: 1825 of 1825 ❌</span>',
+      note: '<b>No pruning.</b> A function on the partition column (or a filter only on a non-partition column) can\'t be matched to directories — Spark scans the whole table. Filter the raw column with a literal/range.'
+    }
+  };
+  function show(s){
+    plan.innerHTML = data[s].plan;
+    note.innerHTML = data[s].note;
+    seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.s === s)); });
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.s);
+  });
+  show('stat');
+})();
+</script>
+</body>
+</html>

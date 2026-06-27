@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 600" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="600" fill="#FAFAF9"/>
+  <text x="24" y="34" font-size="20" font-weight="700" fill="#1B3139">Azure Databricks — Private Link, DNS &amp; Hub-and-Spoke (with DEP)</text>
+  <text x="24" y="54" font-size="12" fill="#6B7280">Transit hub holds front-end + web-auth PEs + firewall + DNS · workspace spoke holds back-end PE · all three paths private, egress through one inspected door</text>
+
+  <!-- Corporate / on-prem -->
+  <rect x="24" y="250" width="130" height="70" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="89" y="278" text-anchor="middle" font-size="12" font-weight="600" fill="#2272B4">User / BI / REST</text>
+  <text x="89" y="295" text-anchor="middle" font-size="10" fill="#6B7280">corp net · VPN ·</text>
+  <text x="89" y="308" text-anchor="middle" font-size="10" fill="#6B7280">ExpressRoute</text>
+
+  <!-- Databricks subscription / control plane -->
+  <rect x="760" y="74" width="200" height="150" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="860" y="96" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Databricks subscription</text>
+  <rect x="780" y="110" width="160" height="64" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="860" y="134" text-anchor="middle" font-size="12" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="860" y="150" text-anchor="middle" font-size="9.5" fill="#4A5860">web app · REST</text>
+  <text x="860" y="163" text-anchor="middle" font-size="9.5" fill="#4A5860">SCC relay (metadata only)</text>
+  <rect x="780" y="184" width="160" height="32" rx="6" fill="#fff" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="860" y="204" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2272B4">Microsoft Entra ID (SSO)</text>
+
+  <!-- TRANSIT / HUB VNet -->
+  <rect x="200" y="80" width="360" height="250" rx="12" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="380" y="102" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">TRANSIT / HUB VNet (10.20.0.0/16)</text>
+
+  <rect x="218" y="116" width="150" height="52" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="293" y="137" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2272B4">PE: databricks_ui_api</text>
+  <text x="293" y="152" text-anchor="middle" font-size="9.5" fill="#4A5860">front-end (inbound)</text>
+
+  <rect x="384" y="116" width="158" height="52" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="463" y="134" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2272B4">PE: browser_authentication</text>
+  <text x="463" y="149" text-anchor="middle" font-size="9" fill="#4A5860">web-auth · 1 per region</text>
+  <text x="463" y="161" text-anchor="middle" font-size="9" fill="#4A5860">locked DO_NOT_DELETE ws</text>
+
+  <rect x="218" y="182" width="150" height="50" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="293" y="203" text-anchor="middle" font-size="11" font-weight="700" fill="#FF3621">Azure Firewall</text>
+  <text x="293" y="218" text-anchor="middle" font-size="9" fill="#4A5860">AzureFirewallSubnet (egress)</text>
+
+  <rect x="384" y="182" width="158" height="50" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="463" y="200" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1B3139">Private DNS zone</text>
+  <text x="463" y="214" text-anchor="middle" font-size="8.5" fill="#4A5860">privatelink.azuredatabricks.net</text>
+  <text x="463" y="226" text-anchor="middle" font-size="8.5" fill="#4A5860">linked to BOTH VNets</text>
+
+  <text x="380" y="256" text-anchor="middle" font-size="9.5" fill="#6B7280">4.1 front-end + web-auth PEs · 4.2 DNS override · 4.3 shared hub · 4.4 firewall</text>
+  <text x="380" y="300" text-anchor="middle" font-size="10" font-weight="600" fill="#00A972">③ allowlist only: pypi · artifacts · logs · Entra ID  → public internet</text>
+  <text x="380" y="316" text-anchor="middle" font-size="9.5" fill="#FF3621">default-deny: everything else dropped (✗ exfil blocked)</text>
+
+  <!-- WORKSPACE / SPOKE VNet -->
+  <rect x="200" y="370" width="360" height="200" rx="12" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="380" y="392" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">WORKSPACE VNet — spoke (10.10.0.0/16) · VNet injection + SCC</text>
+
+  <rect x="218" y="406" width="150" height="58" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="293" y="430" text-anchor="middle" font-size="11" font-weight="600" fill="#1B3139">Host subnet</text>
+  <text x="293" y="446" text-anchor="middle" font-size="9.5" fill="#4A5860">delegated (UDR + NSG)</text>
+
+  <rect x="384" y="406" width="158" height="58" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="463" y="427" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet</text>
+  <text x="463" y="442" text-anchor="middle" font-size="9.5" fill="#4A5860">clusters · NO public IP</text>
+  <text x="463" y="455" text-anchor="middle" font-size="9.5" fill="#4A5860">no inbound ports</text>
+
+  <rect x="218" y="478" width="150" height="48" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="293" y="497" text-anchor="middle" font-size="10" font-weight="700" fill="#2272B4">PE: databricks_ui_api</text>
+  <text x="293" y="511" text-anchor="middle" font-size="9" fill="#4A5860">back-end /27 (classic)</text>
+
+  <rect x="384" y="478" width="158" height="48" rx="8" fill="#fff" stroke="#00A972" stroke-width="2"/>
+  <text x="463" y="497" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2</text>
+  <text x="463" y="511" text-anchor="middle" font-size="9" fill="#4A5860">PE / Service Endpoint (bypass FW)</text>
+
+  <!-- Path 1: user -> front-end PE -->
+  <path d="M154 278 C 185 270, 195 200, 216 160" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="120" y="220" font-size="10.5" font-weight="600" fill="#1B3139">① user → workspace</text>
+  <text x="120" y="234" font-size="9.5" fill="#6B7280">443 · private IP (front-end)</text>
+
+  <!-- Path 1 SSO -> web-auth PE -->
+  <path d="M154 268 C 250 200, 320 175, 382 150" fill="none" stroke="#6B7280" stroke-width="1.6" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+  <text x="150" y="180" font-size="9" fill="#6B7280">SSO callback → web-auth</text>
+
+  <!-- front-end PE -> control plane -->
+  <path d="M368 140 C 600 110, 680 130, 778 138" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="600" y="100" font-size="9.5" fill="#6B7280">front-end PE → control plane (backbone)</text>
+
+  <!-- Path 2: container subnet -> back-end PE (outbound) -->
+  <path d="M463 464 C 420 472, 360 476, 320 478" fill="none" stroke="#FF3621" stroke-width="2.6" marker-end="url(#aho)"/>
+  <text x="300" y="558" font-size="10.5" font-weight="700" fill="#FF3621">② OUTBOUND only (SCC)</text>
+  <text x="300" y="572" font-size="9.5" fill="#FF3621">443 + 6666 · back-end PL</text>
+
+  <!-- back-end PE -> control plane (private, bypass FW) -->
+  <path d="M293 478 C 293 360, 640 250, 778 180" fill="none" stroke="#FF3621" stroke-width="2.2" stroke-dasharray="2,2" marker-end="url(#aho)"/>
+  <text x="560" y="330" font-size="9.5" font-weight="600" fill="#FF3621">back-end PE → control plane (private, bypass firewall)</text>
+
+  <!-- Path 4: container -> ADLS -->
+  <path d="M463 464 C 463 470, 463 472, 463 476" fill="none" stroke="#00A972" stroke-width="2" marker-end="url(#ahg)"/>
+  <text x="548" y="494" font-size="9.5" fill="#00A972">④ data</text>
+
+  <!-- Path egress: container -> firewall via UDR -->
+  <path d="M384 435 C 320 380, 300 280, 293 234" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="150" y="360" font-size="10.5" font-weight="600" fill="#1B3139">internet-bound</text>
+  <text x="150" y="374" font-size="9.5" fill="#6B7280">0.0.0.0/0 → firewall (UDR)</text>
+
+  <!-- VNet peering -->
+  <line x1="380" y1="330" x2="380" y2="370" stroke="#2272B4" stroke-width="2" stroke-dasharray="6,3"/>
+  <text x="392" y="354" font-size="9.5" fill="#2272B4">VNet peering (IP only — DNS still needed)</text>
+
+  <!-- Legend -->
+  <rect x="600" y="406" width="356" height="118" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="616" y="426" font-size="11" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="616" y1="440" x2="642" y2="440" stroke="#FF3621" stroke-width="2.6"/>
+  <text x="650" y="444" font-size="10" fill="#4A5860">② outbound-only (SCC) / back-end Private Link</text>
+  <line x1="616" y1="458" x2="642" y2="458" stroke="#6B7280" stroke-width="2"/>
+  <text x="650" y="462" font-size="10" fill="#4A5860">① front-end / DNS resolution path</text>
+  <line x1="616" y1="476" x2="642" y2="476" stroke="#00A972" stroke-width="2"/>
+  <text x="650" y="480" font-size="10" fill="#4A5860">③/④ allowlisted egress · data (PE/SE)</text>
+  <text x="616" y="500" font-size="9" fill="#6B7280">Public Network Access = Disabled once all 3 paths are private.</text>
+  <text x="616" y="514" font-size="9" fill="#6B7280">Control plane &amp; ADLS bypass the firewall on private paths.</text>
+</svg>

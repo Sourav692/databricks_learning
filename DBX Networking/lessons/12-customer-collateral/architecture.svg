@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 580" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="580" fill="#FAFAF9"/>
+  <text x="24" y="32" font-size="20" font-weight="700" fill="#1B3139">Stage 12 — Customer Collateral: Sized + Hardened Azure Databricks Topology</text>
+  <text x="24" y="52" font-size="12" fill="#6B7280">12.1 size the VNet for peak · 12.2 six security pillars on the three paths · 12.3 hardening controls (numbered ☐) with a verify step</text>
+
+  <!-- User / identity -->
+  <rect x="28" y="250" width="150" height="74" rx="8" fill="#fff" stroke="#7C3AED" stroke-width="2"/>
+  <text x="103" y="278" text-anchor="middle" font-size="12" font-weight="700" fill="#7C3AED">User / BI / REST</text>
+  <text x="103" y="295" text-anchor="middle" font-size="10" fill="#4A5860">Entra ID SSO + SCIM + MFA</text>
+  <text x="103" y="309" text-anchor="middle" font-size="10" fill="#4A5860">☐10 identity · ☐9 IP access lists</text>
+
+  <!-- Databricks-owned subscription -->
+  <rect x="688" y="74" width="248" height="270" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="812" y="96" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Databricks-owned Azure subscription</text>
+
+  <rect x="710" y="112" width="204" height="92" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="812" y="136" text-anchor="middle" font-size="13" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="812" y="153" text-anchor="middle" font-size="10" fill="#4A5860">web app · REST · UC metastore</text>
+  <text x="812" y="167" text-anchor="middle" font-size="10" fill="#4A5860">SCC relay · CMK managed svcs (☐8)</text>
+  <text x="812" y="181" text-anchor="middle" font-size="10" fill="#4A5860">system.access.audit (☐12)</text>
+  <text x="812" y="195" text-anchor="middle" font-size="10" fill="#4A5860">P1 isolation · P5 compliance/CSP</text>
+
+  <rect x="710" y="218" width="204" height="68" rx="8" fill="#fff" stroke="#00A972" stroke-width="2"/>
+  <text x="812" y="242" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Serverless compute plane</text>
+  <text x="812" y="259" text-anchor="middle" font-size="10" fill="#4A5860">network-isolated · no public IP</text>
+  <text x="812" y="273" text-anchor="middle" font-size="10" fill="#4A5860">egress via NCC (☐6)</text>
+
+  <rect x="710" y="300" width="204" height="32" rx="8" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.5"/>
+  <text x="812" y="320" text-anchor="middle" font-size="10" fill="#4A5860">Pillar 6 auditability · diagnostic logs → SIEM</text>
+
+  <!-- Transit / hub VNet -->
+  <rect x="210" y="74" width="218" height="120" rx="10" fill="#F5F3FF" stroke="#7C3AED" stroke-width="1.5"/>
+  <text x="319" y="94" text-anchor="middle" font-size="11" font-weight="700" fill="#7C3AED">Transit / hub VNet (12.1 hub-spoke)</text>
+  <rect x="228" y="106" width="182" height="34" rx="6" fill="#fff" stroke="#7C3AED" stroke-width="1.5"/>
+  <text x="319" y="127" text-anchor="middle" font-size="10" fill="#1B3139">Front-end PE · databricks_ui_api (☐4)</text>
+  <rect x="228" y="148" width="182" height="34" rx="6" fill="#fff" stroke="#7C3AED" stroke-width="1.5"/>
+  <text x="319" y="169" text-anchor="middle" font-size="10" fill="#1B3139">Web-auth PE · 1/region (☐4)</text>
+
+  <!-- Customer subscription -->
+  <rect x="210" y="210" width="430" height="345" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="425" y="232" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">YOUR Azure subscription — VNet injection (☐1), sized for PEAK nodes</text>
+
+  <!-- Workspace VNet -->
+  <rect x="232" y="244" width="386" height="150" rx="10" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="425" y="264" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Workspace VNet · NSG per workspace · subnet delegation</text>
+  <rect x="252" y="278" width="166" height="100" rx="8" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="335" y="300" text-anchor="middle" font-size="11" font-weight="600" fill="#1B3139">Host subnet ≥/26</text>
+  <text x="335" y="316" text-anchor="middle" font-size="9.5" fill="#4A5860">1 host IP / node</text>
+  <rect x="436" y="278" width="166" height="100" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="519" y="300" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet ≥/26</text>
+  <text x="519" y="316" text-anchor="middle" font-size="9.5" fill="#4A5860">clusters · No Public IP (☐2)</text>
+  <text x="519" y="330" text-anchor="middle" font-size="9.5" fill="#4A5860">1 container IP / node</text>
+  <text x="519" y="344" text-anchor="middle" font-size="9.5" fill="#4A5860">access modes (☐11)</text>
+  <text x="519" y="360" text-anchor="middle" font-size="9" fill="#6B7280">node ceiling = usable IPs − 5</text>
+
+  <!-- PL subnet + DNS -->
+  <rect x="232" y="404" width="180" height="56" rx="8" fill="#fff" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="322" y="426" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2272B4">Private Link subnet /27</text>
+  <text x="322" y="442" text-anchor="middle" font-size="9.5" fill="#4A5860">Back-end PE · databricks_ui_api (☐3)</text>
+  <rect x="424" y="404" width="194" height="56" rx="8" fill="#fff" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="521" y="426" text-anchor="middle" font-size="10.5" font-weight="600" fill="#2272B4">Private DNS (☐5)</text>
+  <text x="521" y="442" text-anchor="middle" font-size="9" fill="#4A5860">privatelink.azuredatabricks.net</text>
+
+  <!-- Storage + keys -->
+  <rect x="232" y="472" width="240" height="68" rx="8" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="352" y="496" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2 (your data)</text>
+  <text x="352" y="512" text-anchor="middle" font-size="9.5" fill="#4A5860">UC ext. location · storage firewall</text>
+  <text x="352" y="526" text-anchor="middle" font-size="9.5" fill="#4A5860">Service / Private Endpoint · P3 encryption</text>
+  <rect x="484" y="472" width="134" height="68" rx="8" fill="#fff" stroke="#00A972" stroke-width="1.5"/>
+  <text x="551" y="496" text-anchor="middle" font-size="10.5" font-weight="700" fill="#00A972">Azure Key Vault</text>
+  <text x="551" y="512" text-anchor="middle" font-size="9.5" fill="#4A5860">CMK / Managed HSM (☐8)</text>
+  <text x="551" y="526" text-anchor="middle" font-size="9" fill="#6B7280">hold + revoke keys</text>
+
+  <!-- Path 1: user -> front-end PE -> control -->
+  <path d="M178 270 C 210 200, 215 150, 226 130" fill="none" stroke="#7C3AED" stroke-width="2.4" marker-end="url(#ah)"/>
+  <text x="92" y="200" font-size="10.5" font-weight="700" fill="#7C3AED">① users → Databricks</text>
+  <text x="92" y="214" font-size="9.5" fill="#7C3AED">IP ACL → front-end PL · public access Disabled (☐7)</text>
+  <path d="M410 124 C 560 124, 600 134, 708 140" fill="none" stroke="#7C3AED" stroke-width="2" marker-end="url(#ah)"/>
+
+  <!-- Path 2: container subnet -> back-end PE -> relay -->
+  <path d="M548 378 C 470 396, 420 404, 412 420" fill="none" stroke="#FF3621" stroke-width="2.5" marker-end="url(#aho)"/>
+  <path d="M412 432 C 600 432, 640 300, 708 200" fill="none" stroke="#FF3621" stroke-width="2.5" marker-end="url(#aho)"/>
+  <text x="430" y="392" font-size="10.5" font-weight="700" fill="#FF3621">② SCC OUTBOUND :443</text>
+  <text x="430" y="406" font-size="9.5" fill="#FF3621">+ back-end Private Link</text>
+
+  <!-- Path 3: container subnet -> ADLS -->
+  <path d="M470 378 C 420 420, 390 445, 365 470" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="232" y="452" font-size="10.5" font-weight="700" fill="#1B3139">③ compute → storage</text>
+
+  <!-- Path 3 serverless -> ADLS -->
+  <path d="M710 270 C 540 300, 470 430, 472 472" fill="none" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ahg)"/>
+  <text x="628" y="430" font-size="9.5" fill="#00A972">③ serverless → ADLS via NCC PE</text>
+
+  <!-- key vault dotted -->
+  <path d="M484 506 C 460 506, 460 506, 472 506" fill="none" stroke="#00A972" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+  <!-- Legend -->
+  <rect x="28" y="360" width="158" height="118" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="38" y="380" font-size="11" font-weight="700" fill="#1B3139">Legend — three paths</text>
+  <line x1="38" y1="394" x2="62" y2="394" stroke="#7C3AED" stroke-width="2.4"/>
+  <text x="68" y="398" font-size="9.5" fill="#4A5860">① users → Databricks</text>
+  <line x1="38" y1="410" x2="62" y2="410" stroke="#FF3621" stroke-width="2.5"/>
+  <text x="68" y="414" font-size="9.5" fill="#4A5860">② compute ↔ control (SCC)</text>
+  <line x1="38" y1="426" x2="62" y2="426" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="68" y="430" font-size="9.5" fill="#4A5860">③ compute → storage</text>
+  <text x="38" y="448" font-size="9" fill="#6B7280">☐n = checklist item (12.3)</text>
+  <text x="38" y="462" font-size="9" fill="#6B7280">Pn = security pillar (12.2)</text>
+  <text x="38" y="474" font-size="9" fill="#6B7280">Data never flows via control plane.</text>
+</svg>

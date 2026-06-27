@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Broadcast variables &amp; accumulators · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  /* executor / task cluster diagram (broadcast panels) */
+  .cluster{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:18px 0 6px}
+  @media(max-width:560px){.cluster{grid-template-columns:1fr}}
+  .exec{border:1px solid var(--line);border-radius:11px;padding:12px 12px 14px;background:var(--paper)}
+  .exec .ex-name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a;margin-bottom:8px}
+  .copies{display:flex;flex-wrap:wrap;gap:5px;min-height:30px}
+  .copy{font-family:"Spline Sans Mono",monospace;font-size:.58rem;border-radius:6px;padding:4px 6px;border:1px solid #b69aee;background:linear-gradient(135deg,#e6d8fb,#c9b1f3);color:#4c1d95;transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
+  .copy.task{border-color:#f3cfa6;background:linear-gradient(135deg,#fde7d6,#f9c79c);color:#9a3412}
+  .tasks{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .tasktile{font-family:"Spline Sans Mono",monospace;font-size:.56rem;border-radius:6px;padding:4px 6px;border:1px dashed var(--line);background:#fff;color:#857890}
+  /* accumulator panels */
+  .accgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 4px}
+  @media(max-width:560px){.accgrid{grid-template-columns:1fr}}
+  .accbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);text-align:center}
+  .accbox .pn{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:#73677a}
+  .accbox .pv{font-family:"Fraunces",serif;font-weight:900;font-size:1.7rem;color:var(--flame);line-height:1.2;margin-top:4px}
+  .accbox.driver{background:linear-gradient(180deg,#f3edff,#ece2ff);border-color:#d8c9f5}
+  .accbox.driver .pv{color:var(--violet)}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 09</p>
+    <h1>Broadcast variables<br>&amp; <span class="drip">accumulators.</span></h1>
+    <p class="lede">Two ways to share data with your tasks: push a small read-only value out to every executor <em>once</em>, and pull aggregated numbers safely back to the driver — plus the exactly-once trap that catches everyone.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">Shipped <b>once per executor</b></span>
+      <span class="pill">Exactly-once <b>actions only</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p>Spark gives you two <strong>shared variables</strong> — values that cross the driver↔executor boundary in a controlled way, instead of being captured ad-hoc by a closure:</p>
+    <ul>
+      <li><strong>Broadcast variable</strong> — a <strong>read-only</strong> value you create on the driver; Spark caches it <strong>once per executor</strong>, so every task on that executor reads the same in-memory copy. <code>bv = sc.broadcast(value)</code>; read on workers with <code>bv.value</code>.</li>
+      <li><strong>Accumulator</strong> — a <strong>write-only-on-workers</strong> counter: tasks only <code>.add()</code>; <strong>only the driver</strong> reads the final <code>.value</code>. <code>acc = sc.accumulator(0)</code>; tasks do <code>acc.add(1)</code>.</li>
+    </ul>
+    <p>Think of them as opposite-direction pipes: a <strong>broadcast variable pushes data out</strong> to every executor; an <strong>accumulator pulls aggregated numbers back</strong> to the driver.</p>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      A broadcast <strong>variable</strong> is <em>not</em> a broadcast <strong>join</strong>. The variable is a value you reference inside a UDF/<code>map</code>; the join is a <em>strategy</em> the planner picks via <code>autoBroadcastJoinThreshold</code> / the <code>BROADCAST</code> hint (Lesson 02). Same word, different mechanism.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Without a broadcast variable</strong>, a lookup dict/set/model referenced in a closure is <strong>serialized and shipped with every task</strong> — 10,000 tasks = 10,000 copies of the same 50 MB map crossing the network. With a broadcast variable it ships <strong>once per executor</strong> and is reused by all its tasks: far less network, GC, and duplicated memory.</li>
+      <li><strong>Without an accumulator</strong>, getting a number (bad-record count, rows-skipped) out of distributed tasks needs a whole extra pass. An accumulator lets tasks <strong>report a number as a side-effect</strong> of work you're already doing — no extra job.</li>
+      <li>Interviewers probe both: <em>"How do you ship a 200 MB model to your UDF without re-sending it per task?"</em> (broadcast variable) and <em>"Can you trust a counter incremented inside a <code>map</code>?"</em> (no — exactly-once holds only inside <strong>actions</strong>).</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: ONCE-PER-EXECUTOR vs ONCE-PER-TASK ============ -->
+  <section>
+    <h2>See it work — once per executor, not once per task</h2>
+    <p>Drag the number of tasks per executor and toggle how the value travels. A plain closure variable is serialized <strong>per task</strong>; a broadcast variable is cached <strong>once per executor</strong> and shared by every task on it. Watch the copy count — and the bytes on the wire — diverge.</p>
+    <div class="lab" id="lab-bcast">
+      <div class="lab-head"><span class="lab-title">Broadcast variable vs closure capture</span></div>
+      <p class="lab-sub">A 50 MB lookup dict referenced by a UDF, across 2 executors.</p>
+      <div class="controls">
+        <div class="filterbar"><label>Tasks per executor <input type="range" id="bc-tasks" min="1" max="8" value="4"><span class="sizeval" id="bc-tasksval">4</span></label></div>
+        <div class="seg" id="bc-mode" role="group" aria-label="ship mode">
+          <button data-mode="bcast" aria-pressed="true">sc.broadcast(v)</button>
+          <button data-mode="closure" aria-pressed="false">Plain closure var</button>
+        </div>
+      </div>
+      <div class="cluster" id="bc-cluster"></div>
+      <div class="readout">
+        <div class="stat win"><div class="big" id="bc-copies">—</div><div class="lbl">copies shipped</div></div>
+        <div class="stat"><div class="big" id="bc-bytes">—</div><div class="lbl">~bytes on the wire</div></div>
+        <div class="stat"><div class="big" id="bc-perexec">—</div><div class="lbl">copies per executor</div></div>
+      </div>
+      <div class="verdict" id="bc-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real broadcast uses a torrent-like fan-out; the takeaway is one cached copy per executor, reused by its tasks.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS: BROADCAST VARIABLE ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>1 · Broadcast variable — ship a read-only value once per executor</h3>
+    <p><span class="chip analogy">analogy</span> A broadcast variable is like handing every cashier (executor) their own laminated price-list at the start of the shift, instead of faxing it to every customer (task). One copy per till, reused all day.</p>
+    <ul>
+      <li><strong>Mechanism:</strong> <code>bv = sc.broadcast(value)</code> on the <strong>driver</strong> serializes the value and ships it to each executor <strong>once</strong> (torrent-like fan-out); the executor caches it (in Storage memory / the block manager) and <strong>every task reads the same <code>bv.value</code></strong>. The docs define it as <em>"a read-only variable cached on each machine rather than shipping a copy of it with tasks."</em></li>
+      <li><strong>Read-only:</strong> workers only read <code>bv.value</code>. Mutating it on a worker has no effect anywhere else — it's broadcast once, not kept in sync.</li>
+      <li><strong>Why it beats a closure variable:</strong> a captured closure var is serialized <strong>per task</strong> (one copy per partition); a broadcast var is serialized <strong>once per executor</strong>.</li>
+      <li><strong>Lifecycle:</strong> <code>bv.unpersist()</code> drops the cached copies (re-broadcast if reused); <code>bv.destroy()</code> removes it <strong>permanently</strong> (using it afterwards is an error). Release it — it pins Storage memory on every executor.</li>
+      <li><strong>Trade-off:</strong> the value must fit on the <strong>driver</strong> (where it's built) and in <strong>each executor's</strong> memory; it's static and read-only.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A 30 MB <code>country_code → region</code> dict (or a small ML model) referenced in a Python UDF scoring 5 billion rows — broadcast it once per executor instead of shipping it with every task.</p>
+
+    <pre><span class="tag">python</span><code><span class="c"># DRIVER: build the small lookup once, then broadcast it (read-only) to every executor.</span>
+lookup = {<span class="s">"US"</span>: <span class="s">"NA"</span>, <span class="s">"CA"</span>: <span class="s">"NA"</span>, <span class="s">"DE"</span>: <span class="s">"EU"</span>, <span class="s">"IN"</span>: <span class="s">"APAC"</span>}
+bv = sc.broadcast(lookup)                       <span class="c"># shipped ONCE per executor</span>
+
+<span class="k">from</span> pyspark.sql.functions <span class="k">import</span> udf
+<span class="k">from</span> pyspark.sql.types <span class="k">import</span> StringType
+
+<span class="c"># WORKER: each task reads the SAME cached copy via bv.value — no per-task re-send.</span>
+<span class="f">@udf</span>(StringType())
+<span class="k">def</span> <span class="f">to_region</span>(code):
+    <span class="k">return</span> bv.value.get(code, <span class="s">"UNKNOWN"</span>)    <span class="c"># bv.value is READ-ONLY on the worker</span>
+
+regions = orders.withColumn(<span class="s">"region"</span>, to_region(<span class="s">"country_code"</span>))
+
+<span class="c"># VERIFY (a *variable*, not a plan node — verify in the Spark UI, not .explain()):</span>
+<span class="c">#   • Spark UI -> Storage tab: one "Broadcast" block, sized ~your value, NOT x num_tasks.</span>
+<span class="c">#   • tasks don't re-serialize the dict per task.</span>
+bv.unpersist()   <span class="c"># release when done (re-broadcast if reused) …</span>
+<span class="c"># bv.destroy()   # … or remove permanently (using it afterwards raises an error)</span></code></pre>
+
+    <div class="callout">
+      <span class="lbl">Variable vs join — keep them apart</span>
+      <code>sc.broadcast(dict)</code> ships a <em>value</em> you read in code. <code>df.join(broadcast(small_df), …)</code> (Lesson 02) is a <em>join strategy</em>. The DataFrame <code>broadcast()</code> hint takes a <strong>DataFrame</strong>; <code>sc.broadcast()</code> takes a <strong>plain Python object</strong>. Don't use a broadcast variable to "speed up a join" — use the join hint.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: TABBED VARIABLE-vs-JOIN COMPARE ============ -->
+  <section>
+    <h2>Compare: broadcast <em>variable</em> vs broadcast <em>join</em></h2>
+    <p>The single most-confused pair on this topic. Switch tabs to see what each one actually is, the API, and how you verify it.</p>
+    <div class="lab" id="lab-vsjoin">
+      <div class="lab-head"><span class="lab-title">Same word, two mechanisms</span></div>
+      <div class="controls">
+        <div class="seg" id="vj-seg" role="group" aria-label="which one">
+          <button data-s="var" aria-pressed="true">Broadcast variable</button>
+          <button data-s="join" aria-pressed="false">Broadcast join</button>
+        </div>
+      </div>
+      <div class="planbox" id="vj-plan"></div>
+      <div class="verdict" id="vj-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS: ACCUMULATOR ============ -->
+  <section>
+    <h2>2 · Accumulator — count on workers, read on the driver</h2>
+    <p><span class="chip analogy">analogy</span> An accumulator is like a tally counter at a stadium turnstile — each gate (task) clicks it as people pass, but only the control room (driver) reads the total. Gates can add; they can't read the running total.</p>
+    <ul>
+      <li><strong>Mechanism:</strong> <code>acc = sc.accumulator(0)</code> creates a shared counter on the <strong>driver</strong> — PySpark's <strong>only</strong> accumulator constructor (there is <strong>no</strong> <code>sc.longAccumulator(name)</code> in PySpark; that's Scala/Java-only). Tasks call <code>acc.add(n)</code> (or <code>acc += n</code>); each executor keeps a <strong>local partial</strong> and sends its contribution back, where Spark <strong>merges them on the driver</strong>. Only the driver reads <code>acc.value</code>.</li>
+      <li><strong>Write-only on workers:</strong> a task that reads <code>acc.value</code> sees only its own partial — never the global total. The asymmetry is what makes the merge associative and cheap.</li>
+      <li><strong>Lazy:</strong> the update only happens when an <strong>action</strong> runs the transformation containing it. No action → the count stays at the initial value.</li>
+      <li><strong>The exactly-once caveat (the whole interview):</strong> the docs guarantee exactly-once <strong>only for updates inside actions</strong> (e.g. <code>foreach</code>): <em>"In transformations, users should be aware that each task's update may be applied more than once if tasks or stages are re-executed."</em> A <code>map</code>/<code>filter</code> that increments an accumulator may run twice (retried task, recomputed stage, or a second action over an uncached DataFrame) → inflated count.</li>
+      <li><strong>Trade-off:</strong> great for cheap side-channel metrics; <strong>not</strong> a substitute for a real aggregation. For correctness-critical counts use <code>groupBy().count()</code> / <code>filter().count()</code>.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> Counting malformed records while writing a cleaned dataset — <code>bad_rows.add(1)</code> inside the <strong>action that writes</strong> (<code>foreachPartition</code>), then log <code>bad_rows.value</code> on the driver, with no second pass.</p>
+
+    <pre><span class="tag">python</span><code><span class="c"># DRIVER: sc.accumulator(value) is PySpark's ONLY accumulator constructor — there is no</span>
+<span class="c"># sc.longAccumulator(name) in PySpark (Scala/Java-only). It is UNNAMED.</span>
+bad_rows = sc.accumulator(<span class="f">0</span>)
+
+<span class="k">def</span> <span class="f">validate_and_write</span>(rows):
+    <span class="k">for</span> r <span class="k">in</span> rows:
+        <span class="k">if</span> r[<span class="s">"amount"</span>] <span class="k">is</span> <span class="k">None</span>:
+            bad_rows.add(<span class="f">1</span>)                  <span class="c"># WORKER: only .add() — never read .value here</span>
+        <span class="c"># … write/emit the good row …</span>
+
+<span class="c"># ✅ Inside an ACTION (foreachPartition) -> each task's update applied EXACTLY ONCE.</span>
+orders.rdd.foreachPartition(validate_and_write)
+
+<span class="c"># DRIVER ONLY reads the merged total — safe because the update ran inside an action.</span>
+<span class="k">print</span>(<span class="s">"bad rows:"</span>, bad_rows.value)
+
+<span class="c"># VERIFY: PySpark's sc.accumulator() is UNNAMED, so it is typically NOT surfaced by name in</span>
+<span class="c">#   the Spark UI Stages -> Accumulators view. Confirm the count against a real aggregation:</span>
+<span class="k">print</span>(<span class="s">"true count:"</span>, orders.filter(orders.amount.isNull()).count())   <span class="c"># matches bad_rows.value</span></code></pre>
+
+    <pre><span class="tag">python</span><code><span class="c"># ❌ Anti-pattern: incrementing inside a TRANSFORMATION (lazy + may re-run).</span>
+seen = sc.accumulator(<span class="f">0</span>)
+counted = orders.rdd.map(<span class="k">lambda</span> r: (seen.add(<span class="f">1</span>), r)[<span class="f">1</span>])   <span class="c"># transformation — NOT exactly-once</span>
+counted.count()        <span class="c"># runs once  -> seen == N …</span>
+counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  ⚠️ inflated</span>
+<span class="c"># A retried/speculative task or a recomputed stage can double-count even with one action.</span>
+<span class="c"># Fix for a real count: orders.count() / orders.filter(cond).count()  (a true aggregation).</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: ACCUMULATOR add()/merge + exactly-once ============ -->
+  <section>
+    <h2>See it work — workers <code>.add()</code>, the driver reads</h2>
+    <p>Press <strong>Run an action</strong> to fire tasks: each worker accumulates a local partial, then the driver merges them. Toggle whether the update sits inside an <strong>action</strong> or a <strong>transformation</strong>, then hit <strong>Re-run / retry</strong> to see how a recompute leaves the count correct (action) or doubled (transformation).</p>
+    <div class="lab" id="lab-acc">
+      <div class="lab-head"><span class="lab-title">Accumulator: add, merge, and the exactly-once trap</span></div>
+      <p class="lab-sub"><code>acc = sc.accumulator(0)</code> — 2 executors, 3 tasks each, every task adds its row count.</p>
+      <div class="controls">
+        <div class="seg" id="ac-mode" role="group" aria-label="where the update lives">
+          <button data-mode="action" aria-pressed="true">Inside an action (foreach)</button>
+          <button data-mode="transform" aria-pressed="false">Inside a transformation (map)</button>
+        </div>
+        <div class="seg" id="ac-run" role="group" aria-label="run controls">
+          <button data-act="run">Run an action</button>
+          <button data-act="rerun">Re-run / retry</button>
+          <button data-act="reset">Reset</button>
+        </div>
+      </div>
+      <div class="accgrid" id="ac-workers"></div>
+      <div class="accgrid">
+        <div class="accbox driver" style="grid-column:1 / -1"><div class="pn">driver reads acc.value</div><div class="pv" id="ac-driver">0</div></div>
+      </div>
+      <div class="verdict" id="ac-verdict">Press <b>Run an action</b> to fire the tasks.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: "Re-run" models a recomputed stage / second action over an uncached DataFrame. Expected true count = 600.</p>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Broadcast variable</th><th>Accumulator</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Direction</strong></td><td>Driver → executors (push out)</td><td>Executors → driver (pull back)</td></tr>
+        <tr><td><strong>Access</strong></td><td><strong>Read-only</strong> on workers (<code>bv.value</code>)</td><td><strong>Write-only</strong> on workers (<code>acc.add</code>); driver reads <code>acc.value</code></td></tr>
+        <tr><td><strong>Shipped / merged</strong></td><td>Cached <strong>once per executor</strong>, reused by its tasks</td><td>Per-task partials <strong>merged on the driver</strong></td></tr>
+        <tr><td><strong>Create</strong></td><td><code>sc.broadcast(value)</code></td><td><code>sc.accumulator(0)</code> (PySpark's only constructor; no <code>longAccumulator</code>)</td></tr>
+        <tr><td><strong>Typical use</strong></td><td>Small lookup dict/set/model in a UDF/<code>map</code></td><td>Counters/metrics: bad-record count, audit tallies</td></tr>
+        <tr><td><strong>Correctness caveat</strong></td><td>Static &amp; read-only — updates don't propagate</td><td><strong>Exactly-once only inside actions</strong>; transformations may double-count</td></tr>
+        <tr><td><strong>Release</strong></td><td><code>unpersist()</code> (re-broadcast if reused) / <code>destroy()</code></td><td>Lives with the <code>SparkContext</code>; reset by re-creating</td></tr>
+        <tr><td><strong>Verify in</strong></td><td>Spark UI <strong>Storage</strong> tab (one Broadcast block)</td><td>Cross-check <code>acc.value</code> vs a real aggregation (Python accumulators are unnamed → not surfaced by name in the UI)</td></tr>
+        <tr><td><strong>NOT this</strong></td><td>A broadcast <strong>join</strong> (a strategy, Lesson 02)</td><td>A real aggregation (<code>groupBy().count()</code>)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Broadcast variable:</strong> a small static lookup (<code>dict</code>/<code>set</code>), a compiled regex set, or a small ML model referenced inside a UDF/<code>mapInPandas</code>/RDD <code>map</code> over a huge dataset.</li>
+      <li><strong>Accumulator:</strong> lightweight side-channel metrics gathered <em>while</em> doing real work inside an <strong>action</strong> (<code>foreach</code>/<code>foreachPartition</code>) — bad-record counts, rows-dropped, sampled debug tallies.</li>
+      <li>Reach for the DataFrame <code>broadcast()</code> <strong>join hint</strong> (Lesson 02), not a broadcast variable, when the goal is avoiding the shuffle of a small <em>table</em> in a join.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>A broadcast value that's almost too big</strong> — it must fit on the <strong>driver</strong> and in <strong>each executor's</strong> memory; a 2 GB "small" lookup pressures Storage memory and can OOM.</li>
+      <li><strong>Mutating a broadcast value on a worker</strong> — read-only; local mutations are silently discarded. To change the lookup, re-broadcast a new variable.</li>
+      <li><strong>Forgetting to release</strong> — a long-lived broadcast pins Storage memory (region <code>R</code>, Lesson 04) on every executor; <code>unpersist()</code>/<code>destroy()</code> when done.</li>
+      <li><strong>Accumulator inside a transformation that runs twice</strong> — two actions over the same <strong>uncached</strong> DataFrame recompute and <strong>double</strong> the count; even one action can double-count on a <strong>retried/speculative task</strong> or <strong>recomputed stage</strong>.</li>
+      <li><strong>Reading an accumulator on a worker</strong> — illegal/meaningless; read <code>.value</code> on the driver, after the action.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li><strong>Both are RDD/<code>SparkContext</code>-level APIs</strong> — used via <code>sc.broadcast</code> / <code>sc.accumulator</code> and read inside UDFs/<code>rdd</code> functions. For pure DataFrame work, prefer DataFrame-native tools (the <code>broadcast()</code> join hint; built-in aggregations).</li>
+      <li><strong>Spark Connect / serverless:</strong> <code>SparkContext.broadcast</code> and <code>SparkContext.accumulator</code> are <strong>not supported on Spark Connect</strong>. On Databricks <strong>serverless / shared-access (Spark Connect)</strong> clusters <code>sc</code> isn't available the same way — use a broadcast <em>join</em> hint and DataFrame aggregations there. They work on classic single-user DBR clusters.</li>
+      <li><strong>No exactly-once inside transformations</strong> — by design. Don't build correctness-critical counts on accumulators; use a real aggregation.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Confusing a broadcast <em>variable</em> with a broadcast <em>join</em>.</strong> <code>sc.broadcast(dict)</code> ships a value you read in a UDF; <code>join(broadcast(df), …)</code> is a join strategy. The #1 trap on this topic.</li>
+      <li><strong>Capturing a big object in a closure instead of broadcasting it.</strong> Referencing a 50 MB dict directly in a UDF serializes it <strong>per task</strong>. Wrap it in <code>sc.broadcast(...)</code> and read <code>bv.value</code>.</li>
+      <li><strong>Trusting an accumulator updated inside a <code>map</code>/<code>filter</code>.</strong> Exactly-once holds <strong>only inside actions</strong>; use <code>foreach</code>/<code>foreachPartition</code>, or a real aggregation.</li>
+      <li><strong>Assuming an accumulator updates without an action.</strong> Accumulators are <strong>lazy</strong> — no action, no increment.</li>
+      <li><strong>Reading <code>acc.value</code> on a worker.</strong> Workers are write-only; you get a partial, not the total. Read on the driver.</li>
+      <li><strong>Never releasing a broadcast.</strong> It pins executor Storage memory and pressures GC (Lesson 10). <code>unpersist()</code>/<code>destroy()</code> when done.</li>
+      <li><strong>Expecting a PySpark accumulator to show by name in the UI.</strong> <code>sc.accumulator(0)</code> is <strong>unnamed</strong> and PySpark has <strong>no</strong> <code>sc.longAccumulator(name)</code> (Scala/Java-only), so Python accumulators aren't surfaced by name in Stages → Accumulators. Verify by comparing <code>acc.value</code> to a real aggregation (<code>filter().count()</code>).</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html#shared-variables">Apache Spark — RDD Programming Guide (Broadcast Variables &amp; Accumulators, exactly-once caveat)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (broadcast <em>join</em> — keep distinct from the variable)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (autoBroadcastJoinThreshold — the join threshold, not the variable)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (runtime broadcast-join behavior)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. <code>sc.broadcast</code>/<code>sc.accumulator</code> are classic-<code>SparkContext</code> APIs (not supported on Spark Connect). Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: broadcast variable — once per executor vs once per task ---- */
+(function(){
+  const root = document.getElementById('lab-bcast');
+  if(!root) return;
+  const SIZE_MB = 50;                 // size of the lookup value
+  const EXECS = 2;                    // two executors
+  const tasks = root.querySelector('#bc-tasks');
+  const tasksval = root.querySelector('#bc-tasksval');
+  const modeSeg = root.querySelector('#bc-mode');
+  const cluster = root.querySelector('#bc-cluster');
+  const elCopies = root.querySelector('#bc-copies');
+  const elBytes = root.querySelector('#bc-bytes');
+  const elPer = root.querySelector('#bc-perexec');
+  const verdict = root.querySelector('#bc-verdict');
+  let mode = 'bcast';
+
+  function render(){
+    const t = parseInt(tasks.value, 10);
+    tasksval.textContent = t;
+    const bcast = (mode === 'bcast');
+    const copiesPerExec = bcast ? 1 : t;        // 1 cached copy, or one per task
+    const totalCopies = copiesPerExec * EXECS;
+    const bytes = totalCopies * SIZE_MB;
+    elCopies.textContent = totalCopies;
+    elBytes.textContent = bytes >= 1024 ? (bytes/1024).toFixed(1) + ' GB' : bytes + ' MB';
+    elPer.textContent = copiesPerExec;
+
+    // build the two executor panels
+    let html = '';
+    for(let e=1; e<=EXECS; e++){
+      let copies = '';
+      for(let c=0; c<copiesPerExec; c++){
+        copies += '<span class="copy' + (bcast ? '' : ' task') + '">' + SIZE_MB + ' MB</span>';
+      }
+      let tasktiles = '';
+      for(let k=0; k<t; k++){
+        tasktiles += '<span class="tasktile">task ' + k + (bcast ? ' → bv.value' : ' (own copy)') + '</span>';
+      }
+      html += '<div class="exec"><div class="ex-name">Executor ' + e + '</div>' +
+              '<div class="copies">' + copies + '</div>' +
+              '<div class="tasks">' + tasktiles + '</div></div>';
+    }
+    cluster.innerHTML = html;
+
+    if(bcast){
+      verdict.innerHTML = '<b>One cached copy per executor.</b> Spark ships the ' + SIZE_MB +
+        ' MB value <b>' + EXECS + '</b> time(s) total — once per executor — and all ' + (t*EXECS) +
+        ' tasks read the same <code>bv.value</code>. Adding tasks costs nothing extra on the wire.';
+    } else {
+      verdict.innerHTML = '<b>One copy per task.</b> A plain closure variable is serialized with <b>every</b> task: ' +
+        (t*EXECS) + ' copies, ~' + (bytes>=1024 ? (bytes/1024).toFixed(1)+' GB' : bytes+' MB') +
+        ' on the wire — the same dict re-sent again and again. Wrap it in <code>sc.broadcast(...)</code>.';
+    }
+  }
+  tasks.addEventListener('input', render);
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  render();
+})();
+
+/* ---- Diagram 2: broadcast variable vs broadcast join (tabbed compare) ---- */
+(function(){
+  const root = document.getElementById('lab-vsjoin');
+  if(!root) return;
+  const seg = root.querySelector('#vj-seg');
+  const plan = root.querySelector('#vj-plan');
+  const note = root.querySelector('#vj-note');
+  const data = {
+    var: {
+      plan: '<span class="dim"># It is a VALUE you reference in code (no plan node).</span>\n' +
+            'bv = sc.<span class="ok">broadcast</span>({"US": "NA", "DE": "EU"})   <span class="dim"># plain Python object</span>\n' +
+            'df.withColumn("region", to_region("cc"))      <span class="dim"># UDF reads bv.value</span>\n' +
+            '<span class="dim"># VERIFY -> Spark UI Storage tab: one "Broadcast" block.</span>',
+      note: '<b>Broadcast VARIABLE.</b> A read-only value shipped once per executor and read inside a UDF/<code>map</code>. API: <code>sc.broadcast(obj)</code> → <code>bv.value</code>. Not a join, not a plan node — verify in the <b>Storage</b> tab.'
+    },
+    join: {
+      plan: '<span class="dim"># It is a JOIN STRATEGY the planner applies (a plan node).</span>\n' +
+            'big.join(<span class="ok">broadcast</span>(small), "id")        <span class="dim"># broadcast() takes a DataFrame</span>\n' +
+            '<span class="dim"># or SQL:</span> SELECT /*+ <span class="ok">BROADCAST</span>(small) */ ...\n' +
+            '<span class="dim"># VERIFY -> .explain():</span>\n' +
+            '<span class="ok">BroadcastHashJoin</span> [id]   <span class="ok">&lt;- no big-side Exchange ✅</span>',
+      note: '<b>Broadcast JOIN.</b> A strategy chosen via <code>autoBroadcastJoinThreshold</code> (10 MB OSS) or the <code>BROADCAST</code> hint — it ships the small <em>table</em> and skips the big-side shuffle (Lesson 02). Verify in <code>.explain()</code> as <code>BroadcastHashJoin</code>.'
+    }
+  };
+  function show(s){
+    plan.innerHTML = data[s].plan;
+    note.innerHTML = data[s].note;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s)));
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.s);
+  });
+  show('var');
+})();
+
+/* ---- Diagram 3: accumulator add/merge + exactly-once trap ---- */
+(function(){
+  const root = document.getElementById('lab-acc');
+  if(!root) return;
+  const EXECS = 2, TASKS = 3, PER_TASK = 100;   // 2 execs x 3 tasks x 100 rows = 600 true
+  const TRUE_TOTAL = EXECS * TASKS * PER_TASK;
+  const modeSeg = root.querySelector('#ac-mode');
+  const runSeg = root.querySelector('#ac-run');
+  const workers = root.querySelector('#ac-workers');
+  const elDriver = root.querySelector('#ac-driver');
+  const verdict = root.querySelector('#ac-verdict');
+  let mode = 'action';
+  let ranOnce = false;
+  let partials = [];   // per-executor partial totals
+
+  function blankWorkers(){
+    partials = new Array(EXECS).fill(0);
+    paint();
+  }
+  function paint(){
+    let html = '';
+    for(let e=0; e<EXECS; e++){
+      html += '<div class="accbox"><div class="pn">Executor ' + (e+1) + ' — local partial (' + TASKS + ' tasks .add)</div>' +
+              '<div class="pv">' + partials[e] + '</div></div>';
+    }
+    workers.innerHTML = html;
+    const total = partials.reduce((a,b)=>a+b, 0);
+    elDriver.textContent = total;
+  }
+  function runAction(isRerun){
+    // each executor's tasks add PER_TASK rows
+    const contribution = TASKS * PER_TASK;        // 300 per executor
+    if(!isRerun){
+      partials = partials.map(() => contribution); // first run: clean partials
+      ranOnce = true;
+    } else {
+      if(!ranOnce){ runAction(false); return; }
+      if(mode === 'action'){
+        // inside an action: recompute is idempotent for the accumulator → stays correct
+        partials = partials.map(() => contribution);
+      } else {
+        // inside a transformation: re-execution re-applies the update → doubles
+        partials = partials.map(p => p + contribution);
+      }
+    }
+    paint();
+    const total = partials.reduce((a,b)=>a+b,0);
+    if(mode === 'action'){
+      verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true count = ' + TRUE_TOTAL + '). ' +
+        'Updates ran inside an <b>action</b> (<code>foreach</code>) → each task applied <b>exactly once</b>, so re-running/retrying still gives the right total. ✅';
+    } else {
+      if(total === TRUE_TOTAL){
+        verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true count = ' + TRUE_TOTAL + '). ' +
+          'Looks right after one action — but the update is inside a <b>transformation</b> (<code>map</code>). Press <b>Re-run / retry</b> to model a recompute…';
+      } else {
+        verdict.innerHTML = '<b>acc.value = ' + total + '</b> — but the true count is only ' + TRUE_TOTAL + '. ⚠️ ' +
+          'The update lives in a <b>transformation</b>, so a recomputed stage / second action <b>re-applied</b> it and inflated the count. Trust accumulators only inside actions, or use a real aggregation.';
+      }
+    }
+  }
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    ranOnce = false;
+    blankWorkers();
+    verdict.innerHTML = 'Mode set to <b>' + (mode === 'action' ? 'inside an action' : 'inside a transformation') + '</b>. Press <b>Run an action</b>.';
+  });
+  runSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    const act = b.dataset.act;
+    if(act === 'run'){ ranOnce = false; runAction(false); }
+    else if(act === 'rerun'){ runAction(true); }
+    else { ranOnce = false; blankWorkers(); verdict.innerHTML = 'Reset. Press <b>Run an action</b> to fire the tasks.'; }
+  });
+  blankWorkers();
+})();
+</script>
+</body>
+</html>

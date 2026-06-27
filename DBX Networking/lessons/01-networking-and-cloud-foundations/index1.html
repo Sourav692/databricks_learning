@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 1 - Networking Foundations, Simple Mode</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.65;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:22px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--db-navy);font-weight:700;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 14px 22px;} li{margin-bottom:7px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:700;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .callout p{margin:0;font-size:14px;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0;}
+  .card{background:var(--db-light);border:1px solid var(--db-border);border-top:3px solid var(--db-blue);
+        border-radius:10px;padding:15px;}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--db-navy);}
+  .card p{font-size:13px;margin:0;color:#4A5860;}
+  .card.orange{border-top-color:var(--db-orange);}
+  .card.green{border-top-color:var(--db-green);}
+  .card.gray{border-top-color:var(--db-gray);}
+
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:390px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.blue{stroke:var(--db-blue);stroke-width:2.4;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:700;}
+  .alabel.cold{fill:var(--db-green);font-weight:700;}
+  .alabel.blue{fill:var(--db-blue);font-weight:700;}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+  .flow-box{background:#fff;border:1px solid var(--db-border);border-left:4px solid var(--db-orange);
+           border-radius:8px;padding:16px 20px;margin-top:14px;}
+  .flow-box h4{margin-bottom:8px;color:var(--db-navy);font-size:15px;}
+  .flow-box ol{margin:0 0 8px 20px;}
+  .flow-box li{margin-bottom:5px;font-size:13.5px;}
+  .flow-box .flow-bottom{margin:0;font-size:13.5px;color:#2A3439;}
+
+  figure{margin:14px 0;}
+  figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks - Networking &amp; Security - Stage 1 Simple Mode</div>
+  <h1>Networking Foundations Without Memorizing Numbers</h1>
+  <div class="subtitle">A plain-English version of Lesson 1. The goal is to understand how the pieces work:
+    where compute lives, what allows traffic, what routes traffic, how outbound IPs become stable, and why DNS
+    decides whether private networking actually works.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">How it works</span>
+    <span class="badge">Customer talk-track</span>
+    <span class="badge">No port memorization</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="cidr">CIDR</button>
+  <button data-tab="vnet">VNet / Subnets / NIC</button>
+  <button data-tab="controls">NSG / UDR / NAT</button>
+  <button data-tab="dns">DNS</button>
+  <button data-tab="topology">Hub &amp; Spoke</button>
+  <button data-tab="flow">End-to-End Flow</button>
+  <button data-tab="field">Field Notes</button>
+</nav>
+
+<section class="panel active" id="overview">
+  <h2>The One Mental Model</h2>
+  <p>Think of an Azure Databricks deployment like a private business campus.</p>
+
+  <div class="cards">
+    <div class="card"><h3>CIDR</h3><p>The address plan for the campus.</p></div>
+    <div class="card"><h3>VNet</h3><p>The campus boundary in Azure.</p></div>
+    <div class="card"><h3>Subnets</h3><p>The roads or zones inside the campus.</p></div>
+    <div class="card"><h3>NIC</h3><p>The network adapter that lets a VM get an IP on a subnet.</p></div>
+    <div class="card orange"><h3>NSG</h3><p>The guard deciding if traffic is allowed.</p></div>
+    <div class="card orange"><h3>UDR</h3><p>The road sign deciding where traffic goes.</p></div>
+    <div class="card orange"><h3>NAT</h3><p>The official exit gate for stable outbound IP.</p></div>
+    <div class="card green"><h3>DNS</h3><p>The phonebook that turns names into IPs.</p></div>
+  </div>
+
+  <figure>
+    <img src="architecture.svg" alt="Simplified networking foundations architecture for Azure Databricks">
+    <figcaption class="caption">Same architecture map, but use it as a story: address space, subnet placement, traffic controls, DNS, and enterprise routing.</figcaption>
+  </figure>
+
+  <div class="callout tip">
+    <h4>Interactive diagrams live in each tab</h4>
+    <p>Each tab below has its own clickable whiteboard: <strong>Campus map</strong> &rarr; <em>Hub &amp; Spoke</em>, <strong>Traffic controls</strong> &rarr; <em>NSG / UDR / NAT</em>, <strong>Private DNS path</strong> &rarr; <em>DNS</em>. Open a tab, then click a box to see what it does in plain English.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>What matters for Databricks</h4>
+    <p>Classic Databricks compute runs inside the customer's Azure VNet. That means the customer's network design controls how clusters start, phone home, reach storage, and exit to external systems.</p>
+  </div>
+</section>
+
+<section class="panel" id="cidr">
+  <h2>CIDR: How Much Address Space Do We Have?</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Every machine on a network needs a unique number to be found, like a house needs a street address. CIDR is just the shorthand for saying "this is the block of addresses we've set aside for our neighborhood" - and the whole question on this tab is whether that block is big enough.</p>
+  </div>
+
+  <h3>First, the words you'll see</h3>
+  <ul>
+    <li><strong>IP address</strong> - the unique number for one machine, like a house number (e.g. <code>10.0.4.7</code>).</li>
+    <li><strong>IP range / address space</strong> - a whole block of those numbers reserved together, like all the house numbers on one street.</li>
+    <li><strong>CIDR notation</strong> - the compact way to write a range, e.g. <code>10.0.0.0/24</code>.</li>
+    <li><strong>The "/24" part</strong> - the slash number sets the block size; a <strong>bigger</strong> slash means a <strong>smaller</strong> block (<code>/24</code> = 256 addresses, <code>/16</code> = far more).</li>
+  </ul>
+
+  <p><strong>Simple version:</strong> CIDR is just a compact way to describe a block of IP addresses.</p>
+  <p>You do not need to memorize the math first. Remember the shape:</p>
+  <ul>
+    <li>Smaller slash number means bigger block.</li>
+    <li>Bigger slash number means smaller block.</li>
+    <li>A large workspace needs enough addresses for peak cluster size.</li>
+  </ul>
+
+  <h3>Databricks meaning</h3>
+  <p>In Azure Databricks classic compute, every cluster node consumes subnet IP capacity. If the subnet is too small, the workspace can run out of IPs and clusters fail to start.</p>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"Before we deploy Databricks into your VNet, we need enough private address space for the biggest cluster size you expect. If the subnet is too small, the workspace can run out of IPs later."</p>
+  </div>
+
+  <h3>What breaks</h3>
+  <ul>
+    <li>Clusters stay pending.</li>
+    <li>Autoscaling fails.</li>
+    <li>Users see cluster start failures.</li>
+  </ul>
+  <p>This is usually a network capacity problem, not a Spark problem.</p>
+</section>
+
+<section class="panel" id="vnet">
+  <h2>VNet, Subnets, and NICs: Where Databricks Lives</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of a gated community you own inside Azure. The community wall is the <strong>VNet</strong>, the streets inside it are the <strong>subnets</strong>, and the <strong>NIC</strong> is the driveway that connects one house (a VM) to a street so it gets an address. Databricks compute parks its machines on streets inside your community.</p>
+  </div>
+
+  <p><strong>VNet:</strong> your private network boundary in Azure.</p>
+  <p><strong>Subnet:</strong> a smaller section inside that VNet.</p>
+  <p><strong>NIC:</strong> Network Interface Card, the virtual adapter that lets a VM plug into a subnet and receive an IP address.</p>
+
+  <table>
+    <thead><tr><th>Concept</th><th>Simple Analogy</th><th>Databricks Meaning</th></tr></thead>
+    <tbody>
+      <tr><td>VNet</td><td>Gated community</td><td>Customer-owned private network boundary</td></tr>
+      <tr><td>Subnet</td><td>Street inside the community</td><td>Where Databricks compute resources attach</td></tr>
+      <tr><td>NIC</td><td>Driveway connection</td><td>VM network adapter that consumes an IP</td></tr>
+      <tr><td>IP address</td><td>House number</td><td>How the node is found on the network</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Databricks meaning</h3>
+  <p>For classic Azure Databricks with VNet injection, Databricks uses two delegated subnets:</p>
+  <ul>
+    <li><strong>Host subnet:</strong> supports the VM host side.</li>
+    <li><strong>Container subnet:</strong> supports the Databricks Runtime side.</li>
+  </ul>
+
+  <h3>So does the host subnet "contain the VM"?</h3>
+  <p>Partly. A single cluster <strong>node = one Azure VM</strong>, and that VM is given <strong>two NICs</strong> — one in each subnet. The VM's host side attaches to the host subnet, but the <strong>Spark workload runs inside a container</strong> whose NIC lives in the container subnet. So one node plants a foot in <strong>both</strong> subnets.</p>
+
+  <table>
+    <thead><tr><th>Subnet</th><th>Which NIC</th><th>What runs there</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Host subnet</strong></td><td>VM <strong>host NIC</strong></td><td>The underlying VM / host agent — the VM attaches here</td></tr>
+      <tr><td><strong>Container subnet</strong></td><td><strong>Container NIC</strong></td><td>The Databricks Runtime container where <strong>Spark actually executes</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>Why NIC matters</h4>
+    <p>One node consumes <strong>one IP in the host subnet AND one IP in the container subnet</strong>. So the two subnets must be the <strong>same size</strong>, sized for your peak node count — if either runs out of IPs, clusters can't scale or even start.</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Naming gotcha</h4>
+    <p>Azure historically calls these the <strong>"public" (host)</strong> and <strong>"private" (container)</strong> subnets. With <strong>SCC / No Public IP</strong> enabled (the default), the "public" host subnet does <em>not</em> actually hand out public IPs — the name is legacy. Both NICs are private.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"Databricks compute uses your subnets like parking spaces. Each cluster node needs space in both the host and container subnets. If those streets are too short, we run out of parking."</p>
+  </div>
+</section>
+
+<section class="panel" id="controls">
+  <h2>NSG, UDR, and NAT: Allowed, Routed, and Exiting</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Picture a piece of traffic trying to leave your network. Three different jobs decide its fate: a guard checks if it's even allowed out, a road sign tells it which way to go, and an exit gate stamps it with a return address. Those three jobs are NSG, UDR, and NAT - and they're easy to mix up, so each answers a different question.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card orange"><h3>NSG</h3><p>Network Security Group - the <strong>guard</strong> that decides <strong>is this traffic allowed?</strong> A list of allow/deny rules on a subnet or NIC.</p></div>
+    <div class="card gray"><h3>UDR</h3><p>User-Defined Route - the <strong>road sign</strong> that decides <strong>where does it go next?</strong> It points traffic to a firewall, the hub, or straight out.</p></div>
+    <div class="card green"><h3>NAT gateway</h3><p>The <strong>exit gate</strong> that decides <strong>which IP does it leave as?</strong> It gives outbound traffic one stable public address.</p></div>
+  </div>
+
+  <p>This is the core foundation for Databricks networking conversations.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click NSG, UDR, or NAT to see how a packet is allowed, routed, and given a stable exit IP.</p>
+  <div class="diagram-block" data-view="controls"></div>
+
+  <table>
+    <thead><tr><th>Control</th><th>Question It Answers</th><th>Analogy</th><th>Databricks Use</th></tr></thead>
+    <tbody>
+      <tr><td><strong>NSG</strong></td><td>Is traffic allowed?</td><td>Security guard</td><td>Allow or deny traffic for compute subnets</td></tr>
+      <tr><td><strong>UDR</strong></td><td>Where should traffic go?</td><td>Road sign / GPS</td><td>Send traffic through firewall, hub, or private path</td></tr>
+      <tr><td><strong>NAT</strong></td><td>Which IP does it exit as?</td><td>Official exit gate</td><td>Give clusters a stable outbound IP for allowlists</td></tr>
+    </tbody>
+  </table>
+
+  <h3>NSG = allowed?</h3>
+  <p>An NSG is a rulebook on a subnet or network interface. It checks whether traffic is allowed or blocked.</p>
+
+  <h3>UDR = routed where?</h3>
+  <p>A UDR is a custom route. It tells Azure which next hop traffic should take.</p>
+
+  <h3>NAT = exits as which IP?</h3>
+  <p>A NAT Gateway gives outbound traffic a stable public source IP. This helps when downstream systems need to allowlist Databricks traffic.</p>
+
+  <h3>Do all three only fire for outbound traffic to public/Azure services?</h3>
+  <p>No — each has a different scope, and this is a common mix-up:</p>
+  <table>
+    <thead><tr><th>Control</th><th>Direction it governs</th><th>Outbound-to-public only?</th></tr></thead>
+    <tbody>
+      <tr><td><strong>NAT Gateway</strong></td><td>Outbound to the internet only</td><td><strong>Essentially yes</strong> — it source-NATs egress to public destinations</td></tr>
+      <tr><td><strong>UDR</strong></td><td>The "leaving the subnet" (egress) direction</td><td><strong>No</strong> — routes <em>all</em> egress: internet, Azure services, on-prem, other VNets, private paths</td></tr>
+      <tr><td><strong>NSG</strong></td><td>Both inbound <em>and</em> outbound, plus east-west</td><td><strong>No</strong> — also governs traffic <em>inside</em> your VNet</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>The nuance</h4>
+    <p><strong>NAT</strong> is the only one that's truly outbound-to-internet — Private Endpoints, Service Endpoints, and on-prem traffic all <strong>bypass</strong> it. <strong>UDR</strong> steers any egress next hop, public or private. <strong>NSG</strong> is bidirectional and also enforces the <strong>worker-to-worker</strong> rules Databricks requires inside the VNet — so it fires for traffic that never leaves your network.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"The NSG is the guard, the UDR is the road sign, and the NAT Gateway is the official exit gate. Together they decide whether cluster traffic is allowed, where it goes, and what IP it appears from when it leaves."</p>
+  </div>
+
+  <h3>What breaks</h3>
+  <ul>
+    <li>Wrong NSG: traffic is blocked.</li>
+    <li>Wrong UDR: traffic goes to the wrong place or gets dropped by firewall.</li>
+    <li>Missing NAT: outbound IP is not stable enough for external allowlists.</li>
+  </ul>
+</section>
+
+<section class="panel" id="dns">
+  <h2>DNS: Names Become IPs</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>You type a name, but the network only travels by number. DNS is the lookup that turns the name into the right number - like a phonebook turning a person's name into their phone number. The catch for private networking: the <strong>same name</strong> can point to two different numbers, and you need it to give the private one.</p>
+  </div>
+
+  <p>DNS is the phonebook of the network. Humans use names; networks use IP addresses.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click the boxes to see why a Private Endpoint only works when DNS resolves the name to its private IP.</p>
+  <div class="diagram-block" data-view="dns"></div>
+
+  <h3>Walk the diagram: the two paths in an Azure Databricks flow</h3>
+  <p>The diagram shows <strong>one client and one name</strong> resolving two different ways. Trace a cluster reaching ADLS (or a user opening the workspace URL):</p>
+  <p><strong>Public path</strong> (default — no Private Link):</p>
+  <ol>
+    <li>The <strong>client / cluster</strong> uses a <strong>service name</strong> (e.g. the workspace URL, or <code>…dfs.core.windows.net</code>).</li>
+    <li><strong>Default lookup</strong> hits <strong>Public DNS</strong>, which returns the service's <strong>public IP</strong> (the "normal answer").</li>
+    <li>Traffic takes the <strong>public path</strong> to the Azure service's public endpoint.</li>
+  </ol>
+  <p><strong>Private path</strong> (with Private Link):</p>
+  <ol>
+    <li>The same client uses the <strong>same name</strong> — nothing in the app or query changes.</li>
+    <li>A <strong>private lookup</strong> hits the <strong>Private DNS Zone</strong> linked to your VNet, whose <strong>A record</strong> points the name at the <strong>Private Endpoint's private IP</strong> inside your VNet.</li>
+    <li>Traffic follows the <strong>private path</strong> to the Private Endpoint, then on to the <strong>Azure service</strong> (Databricks / ADLS) — never touching the public endpoint.</li>
+  </ol>
+
+  <div class="callout key">
+    <h4>The only thing that changed</h4>
+    <p>The <strong>name is identical</strong> on both paths — only <em>which DNS answers</em> differs. The Private DNS Zone override is what flips Databricks traffic from the public door to the private one.</p>
+  </div>
+
+  <p>In Azure Databricks each Private Link flow has a matching Private DNS zone:</p>
+  <ul>
+    <li><strong>Front-end</strong> (user → workspace) and <strong>back-end</strong> (cluster → control-plane relay) → <code>privatelink.azuredatabricks.net</code></li>
+    <li><strong>Storage</strong> (cluster → ADLS Gen2) → <code>privatelink.dfs.core.windows.net</code> (and <code>privatelink.blob.core.windows.net</code>)</li>
+  </ul>
+
+  <h3>Databricks meaning</h3>
+  <p>When a user opens a workspace URL, or when compute reaches storage, DNS must resolve the service name to the correct endpoint.</p>
+  <p>With Private Link, DNS is critical because the same service name may need to resolve to a private IP instead of a public IP.</p>
+
+  <h3>Public DNS vs Private DNS</h3>
+  <p>Both answer the same question — "what IP does this name point to?" — but they live in different places and give different answers. The trick of private networking is making the <strong>same name</strong> resolve to a <strong>private IP</strong> from inside your VNet.</p>
+
+  <table>
+    <thead><tr><th>Aspect</th><th>Public DNS</th><th>Private DNS (Private DNS Zone)</th></tr></thead>
+    <tbody>
+      <tr><td>Who sees it</td><td>The whole internet</td><td>Only VNets linked to the zone</td></tr>
+      <tr><td>Answer it returns</td><td>The <strong>public</strong> endpoint IP</td><td>The <strong>private</strong> endpoint IP inside the VNet</td></tr>
+      <tr><td>Who manages it</td><td>Azure / the service by default</td><td>Customer-created zone, linked to the VNet (often in the hub)</td></tr>
+      <tr><td>Databricks role</td><td>Default path when no private setup exists</td><td>Makes Private Link actually usable end-to-end</td></tr>
+    </tbody>
+  </table>
+
+  <h3>How they work together</h3>
+  <ul>
+    <li><strong>Public DNS</strong> is the global phonebook — by default a name like the workspace URL or <code>*.dfs.core.windows.net</code> resolves to a public IP.</li>
+    <li>A <strong>Private Endpoint</strong> gives that service a private IP inside your VNet.</li>
+    <li>A <strong>Private DNS Zone</strong> linked to the VNet <strong>overrides</strong> the name so it answers with that private IP instead of the public one.</li>
+    <li>Result: clients inside the VNet reach the service privately; nothing outside the linked VNets is affected.</li>
+  </ul>
+
+  <div class="callout key">
+    <h4>Important idea</h4>
+    <p>Private networking is not only about creating a private endpoint. The name also has to resolve to the private IP — that override is the Private DNS Zone's job, not the Private Endpoint's.</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Common gotcha</h4>
+    <p>Private Endpoint created, but the Private DNS Zone is missing or not linked to the VNet → the name still resolves via public DNS, so traffic takes the public path. It "looks" private but isn't.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"If DNS still points to the public address, traffic will not use the private path. Private Endpoint gives the service a private address; Private DNS makes the name point to that private address."</p>
+  </div>
+
+  <h3>First check when it breaks</h3>
+  <p>From inside the VNet, resolve the name and confirm it returns a private IP.</p>
+</section>
+
+<section class="panel" id="topology">
+  <h2>Hub-and-Spoke: How Enterprises Organize Networks</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of an airport map. One central airport (the <strong>hub</strong>) holds the shared services everyone uses; many destination airports (the <strong>spokes</strong>) are the individual workloads. <strong>Peering</strong> is the direct flight that connects a spoke to the hub. Databricks lives in one spoke and flies into the customer's shared hub.</p>
+  </div>
+
+  <p>Hub-and-spoke is a common enterprise network layout.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see where the Databricks spoke, the shared hub, and the data path live on the campus map.</p>
+  <div class="diagram-block" data-view="campus"></div>
+
+  <table>
+    <thead><tr><th>Part</th><th>Simple Meaning</th><th>Usually Contains</th></tr></thead>
+    <tbody>
+      <tr><td>Hub</td><td>Central shared services network</td><td>Firewall, VPN/ExpressRoute gateway, DNS resolver</td></tr>
+      <tr><td>Spoke</td><td>Workload network</td><td>Databricks workspace VNet, app VNets, data VNets</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Databricks meaning</h3>
+  <p>The Databricks workspace VNet is often a spoke. It peers to the hub so traffic can use central inspection, routing, DNS, and on-prem connectivity.</p>
+
+  <h3>Who owns the hub vs the spoke?</h3>
+  <p><strong>Both VNets live on the customer side</strong> — in the customer's own Azure tenant and subscriptions. The hub is <strong>not</strong> something Databricks owns or provides, and it is not the Databricks control plane.</p>
+  <ul>
+    <li><strong>Hub VNet:</strong> customer-owned, <strong>shared across all of the customer's workloads</strong> (not just Databricks). Holds firewall/NVA, VPN/ExpressRoute gateway, DNS resolver, shared Private DNS zones.</li>
+    <li><strong>Spoke VNet:</strong> customer-owned, <strong>one per workload</strong>. The Databricks workspace VNet (host + container subnets) is a spoke that peers to the hub.</li>
+  </ul>
+
+  <div class="callout key">
+    <h4>Do you have to create two VNets?</h4>
+    <p>Not necessarily. A hub is an <strong>enterprise pattern, never a Databricks requirement</strong>. The minimum is a <strong>single VNet</strong> with two delegated subnets (host + container) for VNet injection.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Customer situation</th><th>What you create</th></tr></thead>
+    <tbody>
+      <tr><td>Already runs hub-and-spoke (most regulated enterprises)</td><td>Just the <strong>spoke</strong> — peer it into the existing hub.</td></tr>
+      <tr><td>Greenfield, no hub yet</td><td>Both — but the hub is the customer's infra decision, not a Databricks ask.</td></tr>
+      <tr><td>Small / simple deployment</td><td><strong>Zero hub</strong> — one standalone VNet with VNet injection is enough.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>Common gotcha</h4>
+    <p>VNet peering is not automatically transitive. Spoke A does not automatically talk to spoke B just because both connect to the hub — spoke-to-spoke or spoke-to-on-prem traffic must be explicitly routed through the hub's firewall/gateway via UDRs.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"The Databricks workspace lives in a customer-owned spoke VNet. If you already have a shared hub for firewall, DNS, and on-prem connectivity, we peer the spoke into it — we don't create or live in the hub, and a hub isn't required at all for a standalone deployment."</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"We put Databricks in a spoke VNet and connect it to the hub. The hub gives us central inspection, routing, DNS, and on-prem connectivity."</p>
+  </div>
+</section>
+
+<section class="panel" id="flow">
+  <h2>End-to-End: The Life of a Packet</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>All four pieces are just <strong>stages a single packet passes through</strong>. The cluster's NIC (in a subnet, in a VNet) is <em>where</em> the packet is born. Then, in order: <strong>DNS</strong> turns the name into an IP, <strong>NSG</strong> decides if it may leave, <strong>UDR</strong> decides which way it goes, and <strong>NAT</strong> (only for the internet) stamps a public return address. Follow one packet and the whole model clicks.</p>
+  </div>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each stage to see what it does as the packet flows left → right, then branches into the public or private path.</p>
+  <div class="diagram-block" data-view="flow"></div>
+
+  <h3>The six steps, in order</h3>
+  <ol>
+    <li><strong>Born — VNet / Subnet / NIC.</strong> The cluster node is a VM with a <strong>NIC + private IP</strong> in your subnet. This is <em>where</em> everything happens.</li>
+    <li><strong>Name → IP — DNS.</strong> The node resolves the service name. <strong>Public DNS</strong> → a public IP; a <strong>Private DNS Zone</strong> → a Private Endpoint's private IP. <em>This sets the destination.</em></li>
+    <li><strong>Allowed? — NSG.</strong> The NSG on the NIC/subnet checks the 5-tuple and allows or denies. (It also governs worker-to-worker traffic.)</li>
+    <li><strong>Which way? — UDR / routing.</strong> Azure matches the destination IP to the most specific route: a Private Endpoint <code>/32</code>, a Service Endpoint backbone route, on-prem via the gateway, or <code>0.0.0.0/0</code> → NAT / firewall.</li>
+    <li><strong>Exit IP? — NAT.</strong> <em>Only</em> on the internet path, NAT source-NATs the packet to a stable public IP. Private / Service-Endpoint / on-prem paths keep the private source IP and skip NAT.</li>
+    <li><strong>Arrive.</strong> The packet reaches its destination — a Private Endpoint (→ ADLS / control plane) on the private path, or the internet on the public path.</li>
+  </ol>
+
+  <div class="callout key">
+    <h4>The link that removes the confusion: DNS ↔ routing</h4>
+    <p>DNS and UDR are a <strong>chain</strong>. The IP that DNS returns is what the router then matches. <strong>Private DNS → private IP → matches the Private Endpoint route → private path (no NAT).</strong> <strong>Public DNS → public IP → matches <code>0.0.0.0/0</code> → NAT / firewall.</strong> So "fix the DNS answer" and the routing — and whether NAT is even involved — follow automatically.</p>
+  </div>
+
+  <h3>Who does what (recap)</h3>
+  <table>
+    <thead><tr><th>Piece</th><th>Question it answers</th><th>When it fires</th></tr></thead>
+    <tbody>
+      <tr><td><strong>VNet / Subnet / NIC</strong></td><td>Where does the packet live?</td><td>Always — the node's private IP and home</td></tr>
+      <tr><td><strong>DNS</strong></td><td>What IP for this name?</td><td>First — sets the destination (public vs private)</td></tr>
+      <tr><td><strong>NSG</strong></td><td>Is it allowed?</td><td>Every packet, in and out, incl. worker-to-worker</td></tr>
+      <tr><td><strong>UDR</strong></td><td>Which next hop?</td><td>On egress — picks the path by destination IP</td></tr>
+      <tr><td><strong>NAT</strong></td><td>Which public source IP?</td><td>Only on the internet path (private paths skip it)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The one mental model</div>
+    <div class="quote">"A cluster's NIC sits in a subnet in my VNet. DNS turns the name into an IP — public or private — and that answer decides which route wins. The NSG says whether the packet may go, the UDR says where it goes next, and NAT only stamps a public IP if it's heading to the internet. Everything else — Private Endpoints, Service Endpoints, on-prem — takes a more-specific private route and keeps its private IP."</div>
+  </div>
+</section>
+
+<section class="panel" id="field">
+  <h2>Field Notes: How To Think During Troubleshooting</h2>
+  <p>Do not start by memorizing ports. Start by asking what is happening to the packet.</p>
+
+  <table>
+    <thead><tr><th>Symptom</th><th>First Thing To Think</th></tr></thead>
+    <tbody>
+      <tr><td>Cluster will not start</td><td>Are the subnets out of IPs?</td></tr>
+      <tr><td>Cluster cannot reach control plane</td><td>Did NSG or UDR block outbound traffic?</td></tr>
+      <tr><td>Customer firewall sees unexpected IP</td><td>Is NAT configured for stable egress?</td></tr>
+      <tr><td>Private Link exists but traffic seems public</td><td>Does DNS resolve to private IP?</td></tr>
+      <tr><td>Spoke cannot reach on-prem</td><td>Is hub routing or peering configured correctly?</td></tr>
+      <tr><td>Storage access fails</td><td>Is storage reached by the expected route and DNS answer?</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The architect one-liner</div>
+    <div class="quote">"Databricks classic compute runs inside the customer's Azure network, so the same network foundations apply: CIDR gives us enough addresses, subnets give compute a place to live, NSGs allow or block traffic, UDRs steer traffic, NAT gives stable egress, DNS makes private endpoints usable, and hub-and-spoke ties it into the enterprise network."</div>
+  </div>
+
+  <h3>The seven questions</h3>
+  <ol>
+    <li>Where does the compute live?</li>
+    <li>Which subnet does it use?</li>
+    <li>Is traffic allowed?</li>
+    <li>Where is traffic routed?</li>
+    <li>What IP does traffic exit from?</li>
+    <li>What IP does the name resolve to?</li>
+    <li>Is the workspace connected into the enterprise hub correctly?</li>
+  </ol>
+</section>
+
+<footer>
+  Companion files: `lesson1.md` and `index1.html`. Original detailed lesson remains in `lesson.md` and `index.html`.
+</footer>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(item => item.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+const ARCH = {
+  campus: {
+    tip: '<strong>Campus map</strong>Click each box to see where the network foundation lives.',
+    nodes: [
+      {id:'onprem',x:30,y:146,w:142,h:64,color:'#6B7280',label:'On-prem / users',sub:'people and tools',
+        info:'<strong>On-prem / users</strong>This is where analysts, BI tools, or corporate networks start. They reach Azure through VPN, ExpressRoute, or normal HTTPS depending on how private the design is.'},
+      {id:'hub',x:248,y:54,w:274,h:224,color:'#FF3621',label:'Hub VNet',sub:'shared services',
+        info:'<strong>Hub VNet</strong>The central services area. Customers often put firewall, DNS, VPN/ExpressRoute, and inspection here so every workspace does not build its own network stack.'},
+      {id:'dns',x:282,y:110,w:106,h:58,color:'#00A972',label:'DNS',sub:'phonebook',
+        info:'<strong>DNS</strong>The phonebook. It turns names like a workspace URL or storage URL into IP addresses. Private networking only works if DNS returns private IPs where expected.'},
+      {id:'fw',x:408,y:110,w:106,h:58,color:'#FF3621',label:'Firewall',sub:'inspection',
+        info:'<strong>Firewall</strong>The inspection point. If the customer wants all outbound traffic checked, routes can send Databricks traffic through this hub firewall.'},
+      {id:'spoke',x:620,y:54,w:270,h:224,color:'#2272B4',label:'Databricks spoke VNet',sub:'classic compute lives here',
+        info:'<strong>Databricks spoke VNet</strong>The customer-owned VNet where classic Databricks compute runs. Because compute is here, customer NSGs, UDRs, NAT, DNS, and peering choices matter.'},
+      {id:'host',x:646,y:118,w:104,h:58,color:'#6B7280',label:'Host subnet',sub:'host NIC/IP',
+        info:'<strong>Host subnet</strong>One of the two Databricks subnets. A node consumes host-side network capacity here.'},
+      {id:'cont',x:766,y:118,w:104,h:58,color:'#2272B4',label:'Container subnet',sub:'DBR runs here',
+        info:'<strong>Container subnet</strong>The subnet associated with the Databricks Runtime side. A node also consumes container-side network capacity here.'},
+      {id:'adls',x:668,y:292,w:180,h:58,color:'#00A972',label:'ADLS Gen2',sub:'customer data',
+        info:'<strong>ADLS Gen2</strong>The customer data lake. Databricks compute should read and write data directly here; the control plane should not be the data path.'}
+    ],
+    arrows: [
+      {from:'onprem',to:'hub',cls:'',label:'enters Azure',labelX:210,labelY:154},
+      {from:'hub',to:'spoke',cls:'blue',label:'VNet peering',via:[{x:570,y:214},{x:620,y:214}],labelX:596,labelY:202},
+      {from:'cont',to:'adls',cls:'cold',label:'compute to storage',via:[{x:818,y:228},{x:758,y:228}],labelX:795,labelY:254}
+    ]
+  },
+  controls: {
+    tip: '<strong>Traffic controls</strong>Click NSG, UDR, or NAT to remember allowed, routed, and exiting.',
+    nodes: [
+      {id:'cluster',x:34,y:150,w:150,h:64,color:'#2272B4',label:'Cluster node',sub:'sends traffic',
+        info:'<strong>Cluster node</strong>A Databricks worker or driver needs to talk outbound: to control plane, storage, package repos, APIs, or customer services.'},
+      {id:'nsg',x:238,y:150,w:136,h:64,color:'#FF3621',label:'NSG',sub:'allowed?',
+        info:'<strong>NSG = is traffic allowed?</strong>The subnet guard. It decides whether traffic can pass. If the NSG blocks the required path, cluster startup or data access can fail.'},
+      {id:'udr',x:430,y:150,w:146,h:64,color:'#6B7280',label:'UDR',sub:'routed where?',
+        info:'<strong>UDR = where should traffic go?</strong>The road sign. It decides the next hop: direct to Azure service, through the hub, or through a firewall.'},
+      {id:'fw',x:660,y:46,w:150,h:64,color:'#FF3621',label:'Azure Firewall',sub:'inspect',
+        info:'<strong>Azure Firewall</strong>Optional inspection point. Used when the customer wants egress reviewed, logged, or tightly allowlisted.'},
+      {id:'nat',x:660,y:250,w:150,h:64,color:'#00A972',label:'NAT Gateway',sub:'stable exit IP',
+        info:'<strong>NAT Gateway = exits as which IP?</strong>The official exit gate. It gives private cluster traffic a stable public source IP for downstream allowlists.'},
+      {id:'outside',x:842,y:150,w:68,h:64,color:'#6B7280',label:'Outside',sub:'service',
+        info:'<strong>Outside service</strong>A public API, package repository, SaaS service, or customer endpoint that sees the Databricks traffic after routing and NAT decisions.'}
+    ],
+    arrows: [
+      {from:'cluster',to:'nsg',cls:'hot',label:'allowed?',labelX:212,labelY:136},
+      {from:'nsg',to:'udr',cls:'',label:'then route',labelX:404,labelY:136},
+      {from:'udr',to:'fw',cls:'hot',label:'allowed + logged?',via:[{x:576,y:82}],labelX:610,labelY:62},
+      {from:'udr',to:'nat',cls:'cold',label:'stable source IP?',via:[{x:576,y:286}],labelX:612,labelY:304},
+      {from:'fw',to:'outside',cls:'',labelX:826,labelY:102},
+      {from:'nat',to:'outside',cls:'cold',label:'stable IP',via:[{x:828,y:282}],labelX:852,labelY:264}
+    ]
+  },
+  dns: {
+    tip: '<strong>Private DNS path</strong>Click the boxes to see why Private Endpoint also needs DNS.',
+    nodes: [
+      {id:'client',x:36,y:148,w:150,h:66,color:'#2272B4',label:'Client / cluster',sub:'uses service name',
+        info:'<strong>Client / cluster</strong>Uses a name, not an IP. For example, a workspace URL or an ADLS endpoint name.'},
+      {id:'publicdns',x:262,y:52,w:176,h:64,color:'#6B7280',label:'Public DNS',sub:'normal answer',
+        info:'<strong>Public DNS</strong>The default phonebook. If this is the only answer, the name may resolve to a public endpoint.'},
+      {id:'privdns',x:262,y:240,w:176,h:64,color:'#00A972',label:'Private DNS Zone',sub:'private answer',
+        info:'<strong>Private DNS Zone</strong>The internal phonebook linked to the VNet. It overrides the name so the answer is a private IP.'},
+      {id:'pe',x:528,y:240,w:170,h:64,color:'#2272B4',label:'Private Endpoint',sub:'private IP in VNet',
+        info:'<strong>Private Endpoint</strong>A private IP in the customer VNet representing an Azure service. The DNS record should point to this private IP.'},
+      {id:'service',x:758,y:148,w:132,h:66,color:'#00A972',label:'Azure service',sub:'Databricks / ADLS',
+        info:'<strong>Azure service</strong>The target service. Private networking works when the name resolves to the private endpoint path, not the public endpoint.'}
+    ],
+    arrows: [
+      {from:'client',to:'publicdns',cls:'muted',label:'default lookup',via:[{x:188,y:112}],labelX:212,labelY:98},
+      {from:'client',to:'privdns',cls:'cold',label:'private lookup',via:[{x:188,y:266}],labelX:214,labelY:246},
+      {from:'privdns',to:'pe',cls:'cold',label:'A record',labelX:480,labelY:226},
+      {from:'pe',to:'service',cls:'cold',label:'private path',via:[{x:698,y:272},{x:698,y:182}],labelX:716,labelY:194},
+      {from:'publicdns',to:'service',cls:'muted',label:'public path',via:[{x:630,y:84},{x:630,y:158}],labelX:630,labelY:70}
+    ]
+  },
+  flow: {
+    tip: '<strong>Life of a packet</strong>Click each stage. The packet flows left to right, then branches: public path (up) or private path (down).',
+    nodes: [
+      {id:'node',x:18,y:150,w:152,h:74,color:'#2272B4',label:'Cluster node + NIC',sub:'private IP · in subnet/VNet',
+        info:'<strong>VNet / Subnet / NIC</strong>The cluster node is a VM with a NIC and a private IP in your subnet. This is WHERE the packet is born — everything else happens to it from here.'},
+      {id:'dns',x:208,y:150,w:124,h:74,color:'#00A972',label:'DNS',sub:'name → IP',
+        info:'<strong>DNS — name to IP</strong>Resolves the service name. Public DNS returns a public IP; a Private DNS Zone returns a Private Endpoint\'s private IP. This answer SETS THE DESTINATION, which decides which route wins next.'},
+      {id:'nsg',x:370,y:150,w:112,h:74,color:'#FF3621',label:'NSG',sub:'allowed?',
+        info:'<strong>NSG — allowed?</strong>Checks the 5-tuple on the NIC/subnet and allows or denies. Bidirectional, and also governs worker-to-worker traffic — so it fires even for traffic that never leaves the VNet.'},
+      {id:'udr',x:520,y:150,w:122,h:74,color:'#6B7280',label:'UDR / routing',sub:'next hop?',
+        info:'<strong>UDR / routing — which way?</strong>Matches the destination IP to the most specific route: a Private Endpoint /32, a Service Endpoint backbone route, on-prem via the gateway, or 0.0.0.0/0 to NAT / firewall. Longest-prefix-match wins.'},
+      {id:'nat',x:682,y:44,w:128,h:64,color:'#00A972',label:'NAT Gateway',sub:'stable public IP',
+        info:'<strong>NAT — exit IP (internet only)</strong>Only on the 0.0.0.0/0 internet path. Source-NATs the packet to a stable public IP for downstream allowlists. Private / Service-Endpoint / on-prem paths skip NAT entirely.'},
+      {id:'inet',x:824,y:44,w:88,h:64,color:'#6B7280',label:'Internet',sub:'/ SaaS',
+        info:'<strong>Internet / SaaS</strong>The public destination — a package repo, API, or SaaS — which sees the NAT (or firewall) public source IP.'},
+      {id:'pe',x:682,y:256,w:128,h:64,color:'#2272B4',label:'Private Endpoint',sub:'private IP in VNet',
+        info:'<strong>Private Endpoint — private path</strong>A private IP in your VNet for the target service. Reached when DNS returned the private IP and the /32 route matched. Source stays private; no NAT.'},
+      {id:'svc',x:824,y:256,w:88,h:64,color:'#00A972',label:'ADLS',sub:'/ service',
+        info:'<strong>Azure service (ADLS / control plane)</strong>The private destination, reached over the backbone via the Private Endpoint — never touching the public endpoint.'}
+    ],
+    arrows: [
+      {from:'node',to:'dns',cls:'',label:'① resolve',labelX:190,labelY:138},
+      {from:'dns',to:'nsg',cls:'',label:'name → IP',labelX:351,labelY:138},
+      {from:'nsg',to:'udr',cls:'hot',label:'② allowed?',labelX:501,labelY:138},
+      {from:'udr',to:'nat',cls:'hot',label:'0.0.0.0/0',via:[{x:662,y:120}],labelX:648,labelY:120},
+      {from:'nat',to:'inet',cls:'',label:'③ stable IP',labelX:818,labelY:34},
+      {from:'udr',to:'pe',cls:'cold',label:'PE / SE route',via:[{x:662,y:292}],labelX:648,labelY:300},
+      {from:'pe',to:'svc',cls:'cold',label:'④ private',labelX:818,labelY:246}
+    ]
+  }
+};
+
+const FLOWS = {
+  campus: '<h4>Scenario: a user runs a Databricks job that reads the data lake</h4>'
+    + '<ol>'
+    + '<li><strong>On-prem / users</strong> start the request — an analyst or BI tool reaches Azure over ExpressRoute, VPN, or HTTPS.</li>'
+    + '<li>Traffic <em>enters Azure</em> and lands in the <strong>Hub VNet</strong>, the shared-services area the customer owns.</li>'
+    + '<li>Inside the hub, <strong>DNS</strong> resolves the workspace and storage names, and the <strong>Firewall</strong> is available to inspect outbound traffic.</li>'
+    + '<li>The hub reaches the <strong>Databricks spoke VNet</strong> over <strong>VNet peering</strong> — this is the customer-owned VNet where classic compute runs.</li>'
+    + '<li>A cluster node spins up, consuming an IP in both the <strong>Host subnet</strong> (VM host side) and the <strong>Container subnet</strong> (Databricks Runtime side).</li>'
+    + '<li>The <strong>Container subnet</strong> (DBR) then reads and writes directly to <strong>ADLS Gen2</strong> — the data path goes compute-to-storage, never through the control plane.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Classic Databricks compute lives in the customer\'s spoke VNet, so subnet sizing, peering, and DNS are all customer-controlled, and compute talks to storage directly.</p>',
+  controls: '<h4>Scenario: a job cluster runs <code>pip install</code> to an external package repo</h4>'
+    + '<ol>'
+    + '<li>The <strong>Cluster node</strong> sends outbound traffic toward the package repository.</li>'
+    + '<li>The <strong>NSG</strong> asks <em>"is this allowed?"</em> — if the rule blocks the path, the install (or cluster start) fails right here.</li>'
+    + '<li>If allowed, the <strong>UDR</strong> decides <em>"where does it go?"</em> — the next hop is either the firewall or the NAT Gateway.</li>'
+    + '<li>For inspected egress, the route sends it to <strong>Azure Firewall</strong>, which checks the FQDN allowlist and logs the request.</li>'
+    + '<li>For stable egress, the route sends it to the <strong>NAT Gateway</strong>, which rewrites the source to a stable public IP.</li>'
+    + '<li>The packet reaches the <strong>Outside service</strong>, which sees the firewall-approved and/or NAT\'d traffic — the stable IP is what a downstream allowlist matches on.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> NSG decides <em>allowed</em>, UDR decides <em>routed where</em>, and NAT decides <em>exits as which IP</em> — get any one wrong and outbound traffic is blocked, misrouted, or unrecognizable to the far end.</p>',
+  dns: '<h4>Scenario: a cluster reaches ADLS over Private Link by name</h4>'
+    + '<ol>'
+    + '<li>The <strong>Client / cluster</strong> asks for a service by name (a workspace URL or an ADLS endpoint), not an IP.</li>'
+    + '<li>Without private DNS, the <strong>Public DNS</strong> lookup returns the public endpoint and traffic takes the <em>public path</em> to the <strong>Azure service</strong> — Private Link gets bypassed.</li>'
+    + '<li>With a <strong>Private DNS Zone</strong> linked to the VNet, the <em>private lookup</em> overrides that name instead.</li>'
+    + '<li>The zone\'s <strong>A record</strong> points the name at the <strong>Private Endpoint</strong> — a private IP that lives inside the customer VNet.</li>'
+    + '<li>The cluster connects to that Private Endpoint, which carries traffic over the <em>private path</em> to the <strong>Azure service</strong> (Databricks / ADLS).</li>'
+    + '<li>Result: same name, but now it resolves to a private IP, so the traffic stays on the private network.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> A Private Endpoint alone is not enough — the name must also resolve to its private IP via the Private DNS Zone, or traffic quietly falls back to the public path.</p>',
+  flow: '<h4>Scenario: a cluster reads a Delta table from ADLS, then runs a <code>pip install</code></h4>'
+    + '<ol>'
+    + '<li><strong>Born:</strong> the <strong>cluster node + NIC</strong> has a private IP in your subnet, inside your VNet. Everything below happens to packets leaving this NIC.</li>'
+    + '<li><strong>DNS:</strong> it resolves the name. For ADLS with Private Link, the <strong>Private DNS Zone</strong> returns the <strong>Private Endpoint\'s private IP</strong>; for <code>pip install</code>, public DNS returns a <strong>public IP</strong>. This answer sets the destination.</li>'
+    + '<li><strong>NSG:</strong> the guard checks <em>"allowed?"</em> on the NIC/subnet. If denied, it stops here.</li>'
+    + '<li><strong>UDR / routing:</strong> Azure matches the destination IP. The ADLS private IP hits the <strong>Private Endpoint /32 route</strong> → private path. The package-repo public IP hits <code>0.0.0.0/0</code> → NAT (or firewall).</li>'
+    + '<li><strong>NAT:</strong> only the <code>pip install</code> packet gets source-NAT\'d to a <strong>stable public IP</strong> and reaches the <strong>Internet</strong>. The ADLS packet skips NAT entirely.</li>'
+    + '<li><strong>Arrive:</strong> the ADLS read lands on the <strong>Private Endpoint</strong> → ADLS over the backbone (private path); the install reaches the public repo (public path).</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> One NIC, two destinations — and the <strong>DNS answer decides everything downstream</strong>: private IP → private route → no NAT; public IP → default route → NAT. NSG allows/denies either way; the VNet/subnet/NIC is just where it all starts.</p>'
+};
+
+function svgEl(name, attrs){
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const key in attrs) element.setAttribute(key, attrs[key]);
+  return element;
+}
+
+function edgePoint(rect, tx, ty){
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  const scale = 1 / Math.max(Math.abs(dx) / (rect.w / 2), Math.abs(dy) / (rect.h / 2));
+  return {x: cx + dx * scale, y: cy + dy * scale};
+}
+
+function markerDefs(suffix){
+  return ''
+    + '<marker id="ar-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>'
+    + '<marker id="arb-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#2272B4"/></marker>'
+    + '<marker id="aro-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>'
+    + '<marker id="arg-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>';
+}
+
+function buildDiagram(mount){
+  const viewKey = mount.getAttribute('data-view');
+  const view = ARCH[viewKey];
+  if (!view) return;
+  mount.innerHTML =
+    '<div class="diagram-canvas"><svg viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + markerDefs(viewKey)
+    + '</defs><g class="dg-content"></g></svg></div>'
+    + '<div class="info-box diag-info"><strong>Tip</strong>Click a box for a plain-English explanation of what it does.</div>'
+    + '<div class="flow-box diag-flow"></div>';
+  const svg = mount.querySelector('svg');
+  const group = svg.querySelector('.dg-content');
+  const info = mount.querySelector('.diag-info');
+  const flow = mount.querySelector('.diag-flow');
+  const byId = {};
+  view.nodes.forEach(node => { byId[node.id] = node; });
+
+  view.arrows.forEach(arrow => {
+    const from = byId[arrow.from];
+    const to = byId[arrow.to];
+    const route = arrow.via || [];
+    const firstTarget = route[0] || {x: to.x + to.w / 2, y: to.y + to.h / 2};
+    const lastSource = route[route.length - 1] || {x: from.x + from.w / 2, y: from.y + from.h / 2};
+    const start = edgePoint(from, firstTarget.x, firstTarget.y);
+    const end = edgePoint(to, lastSource.x, lastSource.y);
+    const points = [start, ...route, end];
+    const line = svgEl('polyline', {
+      points: points.map(point => point.x + ',' + point.y).join(' '),
+      class:'arrow ' + (arrow.cls || '')
+    });
+    const marker = arrow.cls === 'hot' ? 'aro-'+viewKey : arrow.cls === 'cold' ? 'arg-'+viewKey : arrow.cls === 'blue' ? 'arb-'+viewKey : arrow.cls === 'muted' ? null : 'ar-'+viewKey;
+    if (marker) line.setAttribute('marker-end', 'url(#' + marker + ')');
+    group.appendChild(line);
+    if (arrow.label) {
+      const labelX = arrow.labelX || (start.x + end.x) / 2;
+      const labelY = arrow.labelY || ((start.y + end.y) / 2 - 6);
+      const bgWidth = Math.max(54, arrow.label.length * 6.2 + 14);
+      const bg = svgEl('rect', {
+        x: labelX - bgWidth / 2,
+        y: labelY - 13,
+        width: bgWidth,
+        height: 18,
+        rx: 5,
+        fill: '#FFFFFF',
+        stroke: '#E5E7EB'
+      });
+      group.appendChild(bg);
+      const text = svgEl('text', {x:labelX, y:labelY, 'text-anchor':'middle', class:'alabel ' + (arrow.cls || '')});
+      text.textContent = arrow.label;
+      group.appendChild(text);
+    }
+  });
+
+  view.nodes.forEach(node => {
+    const item = svgEl('g', {class:'node'});
+    item.appendChild(svgEl('rect', {x:node.x, y:node.y, width:node.w, height:node.h, rx:8, class:'node-bg', fill:'#fff', stroke:node.color, 'stroke-width':2}));
+    const isContainer = node.w >= 240 && node.h >= 120;
+    const labelY = isContainer ? node.y + 26 : node.y + node.h / 2 - 4;
+    const subY = isContainer ? node.y + 44 : node.y + node.h / 2 + 14;
+    const label = svgEl('text', {x:node.x + node.w / 2, y:labelY, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:node.color});
+    label.textContent = node.label;
+    item.appendChild(label);
+    const sub = svgEl('text', {x:node.x + node.w / 2, y:subY, 'text-anchor':'middle', 'font-size':10.5, fill:'#6B7280'});
+    sub.textContent = node.sub;
+    item.appendChild(sub);
+    const show = () => { info.innerHTML = node.info; };
+    item.addEventListener('click', show);
+    item.addEventListener('mouseenter', show);
+    group.appendChild(item);
+  });
+
+  info.innerHTML = view.tip;
+  if (typeof FLOWS !== 'undefined' && FLOWS[viewKey]) flow.innerHTML = FLOWS[viewKey];
+}
+
+document.querySelectorAll('.diagram-block').forEach(buildDiagram);
+</script>
+</body>
+</html>

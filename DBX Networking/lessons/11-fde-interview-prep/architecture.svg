@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 980 580" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="980" height="580" fill="#FAFAF9"/>
+  <text x="24" y="32" font-size="19" font-weight="700" fill="#1B3139">FDE Capstone — Secure Azure Databricks End-State ("Complete Private Isolation")</text>
+  <text x="24" y="51" font-size="11.5" fill="#6B7280">Three paths privately secured + Public network access = Disabled. Classic = back-end PL / storage PE · Serverless = NCC. Each control tagged with its driver &amp; rough cost.</text>
+
+  <!-- User -->
+  <rect x="26" y="250" width="120" height="58" rx="8" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="86" y="276" text-anchor="middle" font-size="12.5" font-weight="600" fill="#2272B4">Analyst / BI / REST</text>
+  <text x="86" y="293" text-anchor="middle" font-size="9.5" fill="#6B7280">corporate net · ExpressRoute</text>
+
+  <!-- Databricks-owned subscription -->
+  <rect x="720" y="64" width="244" height="230" rx="12" fill="#fff" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="842" y="86" text-anchor="middle" font-size="11.5" font-weight="700" fill="#1B3139">Databricks-owned Azure subscription</text>
+
+  <rect x="744" y="100" width="196" height="80" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="842" y="126" text-anchor="middle" font-size="12.5" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="842" y="143" text-anchor="middle" font-size="9.5" fill="#4A5860">web app · REST · Unity Catalog</text>
+  <text x="842" y="157" text-anchor="middle" font-size="9.5" fill="#4A5860">cluster mgr · SCC relay</text>
+  <text x="842" y="171" text-anchor="middle" font-size="9.5" fill="#4A5860">(metadata + orchestration only)</text>
+
+  <rect x="744" y="196" width="196" height="74" rx="8" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="842" y="220" text-anchor="middle" font-size="11.5" font-weight="700" fill="#00A972">Serverless compute plane</text>
+  <text x="842" y="237" text-anchor="middle" font-size="9.5" fill="#4A5860">no public IP · dynamic IPs</text>
+  <text x="842" y="251" text-anchor="middle" font-size="9.5" fill="#4A5860">egress via NCC (Premium)</text>
+  <text x="842" y="265" text-anchor="middle" font-size="9.5" fill="#4A5860">CP leg: backbone + TLS</text>
+
+  <!-- Transit VNet (hub) -->
+  <rect x="172" y="78" width="246" height="150" rx="10" fill="#EFF6FF" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="295" y="98" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Transit VNet (hub) — your subscription</text>
+  <rect x="190" y="110" width="98" height="48" rx="7" fill="#fff" stroke="#FF3621" stroke-width="1.8"/>
+  <text x="239" y="129" text-anchor="middle" font-size="9.5" font-weight="700" fill="#FF3621">Front-end PE</text>
+  <text x="239" y="143" text-anchor="middle" font-size="8.5" fill="#6B7280">databricks_ui_api</text>
+  <rect x="300" y="110" width="100" height="48" rx="7" fill="#fff" stroke="#FF3621" stroke-width="1.8"/>
+  <text x="350" y="125" text-anchor="middle" font-size="9.5" font-weight="700" fill="#FF3621">web-auth PE</text>
+  <text x="350" y="137" text-anchor="middle" font-size="8" fill="#6B7280">browser_authentication</text>
+  <text x="350" y="149" text-anchor="middle" font-size="8" fill="#6B7280">1 / region / DNS zone</text>
+  <rect x="190" y="170" width="210" height="44" rx="7" fill="#fff" stroke="#FFC107" stroke-width="1.8"/>
+  <text x="295" y="188" text-anchor="middle" font-size="9.5" font-weight="700" fill="#B8860B">Azure Firewall (DEP, optional)</text>
+  <text x="295" y="202" text-anchor="middle" font-size="8.5" fill="#6B7280">UDR 0.0.0.0/0 · FQDN allowlist · ~$900/mo</text>
+
+  <!-- Workspace VNet (spoke) -->
+  <rect x="172" y="252" width="356" height="156" rx="10" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="350" y="272" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Workspace VNet (VNet injection, spoke)</text>
+  <rect x="190" y="284" width="120" height="60" rx="7" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="250" y="306" text-anchor="middle" font-size="10" font-weight="600" fill="#1B3139">Host subnet</text>
+  <text x="250" y="320" text-anchor="middle" font-size="8.5" fill="#6B7280">delegated</text>
+  <rect x="322" y="284" width="188" height="60" rx="7" fill="#fff" stroke="#2272B4" stroke-width="2"/>
+  <text x="416" y="304" text-anchor="middle" font-size="10" font-weight="700" fill="#2272B4">Container subnet — clusters</text>
+  <text x="416" y="318" text-anchor="middle" font-size="8.5" fill="#6B7280">NO public IP (SCC/NPIP) · no inbound</text>
+  <text x="416" y="331" text-anchor="middle" font-size="8.5" fill="#6B7280">≥ /26 · 2 IPs/node · CIDR immutable</text>
+  <rect x="322" y="356" width="188" height="42" rx="7" fill="#fff" stroke="#FF3621" stroke-width="1.8"/>
+  <text x="416" y="373" text-anchor="middle" font-size="9.5" font-weight="700" fill="#FF3621">Back-end PE · databricks_ui_api</text>
+  <text x="416" y="387" text-anchor="middle" font-size="8.5" fill="#6B7280">NoAzureDatabricksRules · 443/6666/3306/8443-8451</text>
+
+  <!-- Storage -->
+  <rect x="172" y="432" width="356" height="120" rx="10" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="350" y="452" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">Your storage (your subscription)</text>
+  <rect x="190" y="466" width="180" height="70" rx="7" fill="#fff" stroke="#00A972" stroke-width="2"/>
+  <text x="280" y="488" text-anchor="middle" font-size="10.5" font-weight="700" fill="#00A972">ADLS Gen2 (CMK)</text>
+  <text x="280" y="503" text-anchor="middle" font-size="8.5" fill="#6B7280">Unity Catalog ext. locations</text>
+  <text x="280" y="516" text-anchor="middle" font-size="8.5" fill="#6B7280">row filters / column masks</text>
+  <text x="280" y="529" text-anchor="middle" font-size="8.5" fill="#6B7280">public access = Disabled</text>
+  <rect x="382" y="466" width="130" height="70" rx="7" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="447" y="490" text-anchor="middle" font-size="10" font-weight="600" fill="#1B3139">Storage PE / SE</text>
+  <text x="447" y="505" text-anchor="middle" font-size="8.5" fill="#6B7280">SE = free (backbone)</text>
+  <text x="447" y="518" text-anchor="middle" font-size="8.5" fill="#6B7280">PE = ~$7/mo + /GB ×2</text>
+
+  <!-- Path 1: user -> front-end PE -> control plane -->
+  <path d="M146 268 C 165 240, 168 150, 188 134" fill="none" stroke="#FF3621" stroke-width="2.4" marker-end="url(#aho)"/>
+  <path d="M400 134 C 560 130, 620 124, 742 130" fill="none" stroke="#FF3621" stroke-width="2.4" marker-end="url(#aho)"/>
+  <text x="44" y="200" font-size="10" font-weight="700" fill="#FF3621">① front-end PL</text>
+  <text x="44" y="214" font-size="8.5" fill="#FF3621">443 · IP ACL alt (free)</text>
+
+  <!-- Path 2: container subnet -> back-end PE -> control plane (outbound) -->
+  <path d="M510 372 C 600 372, 660 280, 742 200" fill="none" stroke="#FF3621" stroke-width="2.6" marker-end="url(#aho)"/>
+  <text x="560" y="340" font-size="10" font-weight="700" fill="#FF3621">② SCC relay OUTBOUND</text>
+  <text x="560" y="354" font-size="8.5" fill="#FF3621">back-end PL · backbone</text>
+
+  <!-- Path 2 serverless backbone -->
+  <path d="M842 196 C 842 188, 842 186, 842 182" fill="none" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ahg)"/>
+  <text x="640" y="312" font-size="8.5" fill="#00A972">② serverless ↔ CP: backbone + TLS (managed)</text>
+
+  <!-- Path 3 classic: container subnet -> storage PE -->
+  <path d="M416 398 C 430 420, 440 440, 447 464" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="455" y="430" font-size="9.5" font-weight="600" fill="#1B3139">③ classic → storage</text>
+  <text x="455" y="443" font-size="8.5" fill="#6B7280">SE (free) or PE (mandated)</text>
+
+  <!-- Path 3 serverless -> ADLS via NCC -->
+  <path d="M744 250 C 470 600, 330 560, 300 538" fill="none" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#ahg)"/>
+  <text x="560" y="560" font-size="8.5" fill="#00A972">③ serverless → storage: NCC private endpoint (PENDING→ESTABLISHED)</text>
+
+  <!-- DEP egress hint -->
+  <path d="M412 356 C 360 300, 320 240, 296 216" fill="none" stroke="#FFC107" stroke-width="1.8" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+
+  <!-- Legend -->
+  <rect x="26" y="330" width="132" height="118" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="36" y="350" font-size="10.5" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="36" y1="364" x2="60" y2="364" stroke="#FF3621" stroke-width="2.6"/>
+  <text x="66" y="368" font-size="9" fill="#4A5860">private (PL/SCC)</text>
+  <line x1="36" y1="380" x2="60" y2="380" stroke="#00A972" stroke-width="2" stroke-dasharray="5,3"/>
+  <text x="66" y="384" font-size="9" fill="#4A5860">serverless (NCC)</text>
+  <line x1="36" y1="396" x2="60" y2="396" stroke="#6B7280" stroke-width="2"/>
+  <text x="66" y="400" font-size="9" fill="#4A5860">classic storage path</text>
+  <line x1="36" y1="412" x2="60" y2="412" stroke="#FFC107" stroke-width="1.8" stroke-dasharray="4,3"/>
+  <text x="66" y="416" font-size="9" fill="#4A5860">DEP egress (optional)</text>
+  <text x="36" y="436" font-size="8" fill="#6B7280">Premium · data never via CP.</text>
+</svg>

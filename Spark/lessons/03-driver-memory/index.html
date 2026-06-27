@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Driver memory &amp; driver OOM · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  /* driver-heap fill bar */
+  .heapbar{position:relative;height:50px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:18px 0 6px;background:var(--paper-2)}
+  .heapbar .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--flame-2),var(--flame));transition:width .25s ease,background .25s ease;display:flex;align-items:center;justify-content:flex-end;color:#fff4ec;font-family:"Spline Sans Mono",monospace;font-size:.7rem;padding-right:8px}
+  .heapbar.danger .fill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 7px,#9a3412 7px,#9a3412 14px)}
+  .heapbar .limit{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--violet);box-shadow:0 0 0 1px #fff}
+  .heapbar .limit::after{content:"maxResultSize 1g";position:absolute;top:-20px;left:6px;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet);white-space:nowrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 03</p>
+    <h1>Driver memory<br>&amp; <span class="drip">driver OOM.</span></h1>
+    <p class="lede">There are many executors but only one driver — a single fixed heap. One oversized <code>collect()</code>, one over-broadcast table, or one partition-count explosion can sink a job that 200 healthy executors were running perfectly.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">driver.memory <b>1g</b></span>
+      <span class="pill">maxResultSize <b>1g</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p>Every Spark application has exactly <strong>one driver</strong> — the JVM that runs your notebook, holds the <code>SparkSession</code>, builds the plan, and schedules tasks. Its heap (<code>spark.driver.memory</code>, default <strong>1g</strong>) is fixed and finite. A <strong>driver OOM</strong> is what happens when something you asked Spark to bring <em>back to the driver</em> doesn't fit.</p>
+    <p>Four kinds of data live on the driver — each a way to fill that heap:</p>
+    <ul>
+      <li><strong>The plan &amp; scheduling state</strong> — the logical/physical plan and the bookkeeping for every job, stage, task, and partition.</li>
+      <li><strong>Action results</strong> — whatever an action pulls back: <code>collect()</code>, <code>take()</code>, <code>head()</code>, <code>toPandas()</code>, <code>show()</code>.</li>
+      <li><strong>The broadcast build</strong> — the small side of a broadcast join is <em>collected to the driver first</em>, then shipped to every executor.</li>
+      <li><strong>Partition / file metadata</strong> — for a job touching a huge number of partitions or files, the driver holds the listing and per-partition metadata.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Executors scale <strong>out</strong> (add nodes for more data); the driver does <strong>not</strong>. If you move data <em>to</em> the driver — by <code>collect()</code>, by broadcasting, or by exploding partition counts — you are loading one fixed heap. Keep big data on the executors.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>The driver is a single point of failure.</strong> When the driver dies, the whole application dies — every executor's work is thrown away. A slow executor degrades one task; a dead driver kills the job.</li>
+      <li><strong><code>collect()</code> on a big result is the #1 cause.</strong> A <code>display()</code> of millions of rows, a <code>toPandas()</code> on a fact table — each tries to serialize every partition back into one heap. The docs are explicit: results above <code>spark.driver.maxResultSize</code> (default <strong>1g</strong>) <strong>abort the job</strong>, and <em>raising</em> that limit "may cause out-of-memory errors in driver."</li>
+      <li><strong>A mis-sized broadcast hits the driver, not the executor.</strong> A broadcast join collects the small side to the driver and ships it out — broadcast a table that's too big and the <em>driver</em> OOMs while building it, before any executor sees it.</li>
+      <li><strong>Interviewers probe the asymmetry:</strong> <em>"Ran fine for months, then started failing with no executor-side data growth — where do you look?"</em> Often the driver: a result set, a broadcast, or a partition-count explosion that crept over the limit.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: COLLECT SLIDER → HEAP FILL ============ -->
+  <section>
+    <h2>See it work — fill the driver heap with <code>collect()</code></h2>
+    <p>Drag the number of rows you <code>collect()</code>. Watch the serialized result fill the driver heap toward the <code>maxResultSize</code> line — cross it and the job is <strong>aborted</strong>; raise the cap to "unlimited" and the same result runs the heap straight into a real <strong>driver OOM</strong>. Then switch the action to <code>write()</code>/<code>take()</code> and watch the heap stay flat.</p>
+    <div class="lab" id="lab-collect">
+      <div class="lab-head"><span class="lab-title">collect(n) → driver heap</span></div>
+      <p class="lab-sub">A fact table of <code>~200 B/row</code>, pulled to a <strong>1g</strong> driver heap with a <strong>1g</strong> <code>maxResultSize</code> guardrail.</p>
+      <div class="controls">
+        <div class="filterbar"><label>Rows collected <input type="range" id="dc-rows" min="1" max="120" value="20"><span class="sizeval" id="dc-rowsval">2.0 M rows</span></label></div>
+        <div class="seg" id="dc-action" role="group" aria-label="action">
+          <button data-act="collect" aria-pressed="true">collect()</button>
+          <button data-act="take" aria-pressed="false">take(1000)</button>
+          <button data-act="write" aria-pressed="false">write()</button>
+        </div>
+        <div class="seg" id="dc-guard" role="group" aria-label="guardrail">
+          <button data-guard="on" aria-pressed="true">maxResultSize = 1g</button>
+          <button data-guard="off" aria-pressed="false">maxResultSize = 0 (unlimited)</button>
+        </div>
+      </div>
+      <div class="heapbar" id="dc-heap"><div class="fill" id="dc-fill"></div><div class="limit" id="dc-limit"></div></div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="dc-size">—</div><div class="lbl">result to driver</div></div>
+        <div class="stat win"><div class="big" id="dc-state">—</div><div class="lbl">driver state</div></div>
+        <div class="stat"><div class="big" id="dc-fits">—</div><div class="lbl">fits in 1g heap?</div></div>
+      </div>
+      <div class="planbox" id="dc-plan"></div>
+      <div class="verdict" id="dc-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real heap headroom is less than 1g (plan + scheduler state share it), and row width varies.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>Driver memory management: what the driver holds</h3>
+    <p><span class="chip analogy">analogy</span> The driver is the <strong>air-traffic controller</strong> in the tower — it doesn't fly the planes (the executors do), but it tracks every flight. Hand the controller a job meant for the whole fleet (collect all the cargo to the tower) and the tower is crushed.</p>
+    <p>The <strong>driver heap</strong> (<code>spark.driver.memory</code>, default 1g) is the JVM heap of the driver process. On Databricks it runs on the cluster's <strong>driver node</strong>; in OSS client mode it runs in the submitting/edge process, in cluster mode inside the cluster. Either way it is <strong>one</strong> heap, and these compete for it:</p>
+    <ul>
+      <li><strong>The plan and the scheduler</strong> — Catalyst's plan, the DAG scheduler, task-set state. Cheap normally; expensive when a job fans out to <strong>hundreds of thousands of partitions/files</strong>.</li>
+      <li><strong>Action results</strong> — <code>collect()</code> (all rows), <code>take(n)</code>/<code>head(n)</code> (n rows), <code>toPandas()</code> (all rows, as pandas), <code>show()</code> (a capped preview, usually safe). Serialized on executors, <strong>deserialized into the driver heap</strong>.</li>
+      <li><strong>The broadcast build</strong> — for a broadcast hash join, Spark <strong>collects the small side to the driver</strong>, builds the broadcast relation, then ships it to every executor. So the broadcast size budget is a <em>driver</em> budget.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The overhead region (a subtle second OOM surface)</span>
+      Cluster-mode drivers also reserve <code>spark.driver.memoryOverhead</code> = <code>driverMemory × spark.driver.memoryOverheadFactor</code> (<strong>factor 0.10</strong>; 0.40 for non-JVM Kubernetes), floored at <code>spark.driver.minMemoryOverhead</code> = <strong>384m</strong> (settable key since Spark 4.0.0; the 384&nbsp;MB floor predates it). Overhead covers off-heap and the <strong>PySpark driver process</strong> — so heavy <code>toPandas()</code> / local-Python work pressures <em>overhead</em>, not the JVM heap.
+    </div>
+
+    <h3><code>spark.driver.maxResultSize</code>: the guardrail</h3>
+    <p><span class="chip usecase">use case</span> A guardrail so a stray <code>collect()</code> <strong>aborts cleanly</strong> with a clear error instead of silently hanging the cluster while the heap thrashes and GC pauses pile up.</p>
+    <ul>
+      <li><strong>What it is (doc-quoted):</strong> "Limit of total size of serialized results of all partitions for each Spark action (e.g. <code>collect</code>). Jobs will be aborted if the total size is above this limit. Having a high limit may cause <strong>out-of-memory errors in driver</strong>." Default <strong>1g</strong>.</li>
+      <li><strong>Mechanism:</strong> as task results stream back, Spark <strong>sums their serialized sizes</strong>; the instant the running total crosses <code>maxResultSize</code>, the job is <strong>aborted</strong> — a <em>pre-emptive</em> abort, before the heap is necessarily exhausted.</li>
+      <li><strong>Why it exists:</strong> it converts a creeping driver OOM (slow, GC-thrashing, hard to diagnose) into a <strong>fast, explicit failure</strong> with an actionable message.</li>
+      <li><strong>The trap:</strong> raising it (or <code>0</code> = unlimited) removes the guardrail, so a too-big <code>collect()</code> sails past the abort into a real <strong>OutOfMemoryError</strong>. Raise it only when you've sized <code>spark.driver.memory</code> to match.</li>
+    </ul>
+
+    <h3>Why &amp; how driver OOM happens — the four paths</h3>
+    <ul>
+      <li><strong>(a) <code>collect()</code> / <code>toPandas()</code> of too many rows</strong> — the classic, doc-grounded path. Every partition is serialized and pulled into one heap. Symptom: the <code>maxResultSize</code> abort, or a driver <code>OutOfMemoryError</code> if the cap was raised. Fix: <strong>write</strong> it, or pull a bounded <code>take(n)</code>/<code>limit(n)</code>.</li>
+      <li><strong>(b) Broadcasting a too-large table</strong> — driver OOM <em>during the build</em>. The small side is collected to the driver first; force <code>broadcast()</code> on a 3 GB "dimension" and the driver OOMs before any executor receives it. Look for a <code>BroadcastExchange</code> in the plan. <em>(Operationally well-known; not a doc quote.)</em></li>
+      <li><strong>(c) A huge partition / file count</strong> — metadata OOM. A job that fans out to hundreds of thousands of tasks can exhaust the heap with <em>metadata alone</em>, no result collected. Fix: <code>coalesce</code>, sane <code>shuffle.partitions</code>, compaction, AQE coalesce. <em>(Established practice, not a doc quote.)</em></li>
+      <li><strong>(d) Large local Python objects</strong> — a giant list / pandas frame / model in driver code pressures the <strong>PySpark driver process</strong> (overhead). Fix: keep heavy data in DataFrames; materialize only summaries.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">Driver OOM ≠ executor OOM</span>
+      Driver OOM = data brought <em>to</em> the driver (collect / broadcast-build / metadata). Executor OOM (Lesson 04) = a partition too big to process or spill on a worker. Different node, different log, different fix.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: WHERE DOES THE DATA GO? (step accordion) ============ -->
+  <section>
+    <h2>Walk a <code>collect()</code> vs a <code>write()</code>, step by step</h2>
+    <p>Click each phase to see exactly where the rows travel — and why one floods the driver while the other never touches it.</p>
+    <div class="lab" id="lab-flow">
+      <div class="lab-head"><span class="lab-title">Where the rows go</span></div>
+      <p class="lab-sub">The same DataFrame, two terminal actions.</p>
+      <div class="step" data-step><div class="head"><span class="ix">01</span> Executors compute the partitions (both cases)</div><div class="detail">Every executor runs its tasks and produces output partitions in <strong>executor</strong> memory/disk. So far the driver only holds the plan and scheduling state — identical for <code>collect()</code> and <code>write()</code>.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">02a</span> collect(): serialize every partition back to the driver</div><div class="detail">Each task serializes its result and ships it to the driver, which <strong>deserializes all of them into one heap</strong>. Spark sums the serialized sizes as they arrive — the moment the total crosses <code>maxResultSize</code> (1g), the job is <strong>aborted</strong>. If the cap was raised, the heap fills until a real <code>OutOfMemoryError</code>.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">02b</span> write(): executors write their own partitions to storage</div><div class="detail">Each executor writes its partition directly to the table/files in parallel. <strong>Nothing is returned to the driver</strong> — the driver only collects tiny commit metadata. The driver heap stays flat regardless of result size. <code>write.format("noop")</code> does the same to <em>run</em> a job for timing without writing output.</div></div>
+      <div class="step" data-step><div class="head"><span class="ix">03</span> Need rows locally? Bound the pull</div><div class="detail">If you truly need rows on the driver, never pull the whole thing: <code>take(n)</code> / <code>limit(n).collect()</code> caps it at <code>n</code> rows, and aggregating first (<code>groupBy().agg()</code>) returns a few summary rows instead of the raw table.</div></div>
+      <div class="verdict">Cost lives in <b>step 02a</b>. The fix is to prefer <b>02b</b> (write / noop) and, when you must pull rows, to <b>bound</b> them (take / limit / aggregate).</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of where action results physically land.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Replace collect() with a write (or a bounded pull)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># ❌ Naive: pulls EVERY row of a fact table into the 1g driver heap → maxResultSize abort or OOM.</span>
+rows = big_df.collect()                      <span class="c"># all partitions serialized into one heap</span>
+pdf  = big_df.toPandas()                     <span class="c"># same hazard — every row, as a pandas frame</span>
+
+<span class="c"># ✅ Right: keep the data on the executors. Write it out…</span>
+big_df.write.mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.pyspark_perf_demo.result"</span>)
+
+<span class="c"># …or, to RUN the job without returning rows (timing / materialize a plan), use the noop sink:</span>
+big_df.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()   <span class="c"># full job, nothing pulled to the driver</span>
+
+<span class="c"># ✅ Need a few rows locally? Pull a BOUNDED set, never the whole thing:</span>
+sample = big_df.limit(<span class="f">1000</span>).collect()        <span class="c"># at most 1000 rows reach the driver</span>
+
+<span class="c"># VERIFY: Spark UI → Jobs/SQL tab. The collect() job returns a final result task set to the</span>
+<span class="c"># driver; the write/noop job returns NOTHING. If collect() is too big, the driver log shows:</span>
+<span class="c">#   "Total size of serialized results ... is bigger than spark.driver.maxResultSize"</span></code></pre>
+
+    <h3>Aggregate on the cluster, then collect the small summary</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
+
+<span class="c"># ❌ Don't collect the raw rows to compute a total on the driver.</span>
+total_bad = <span class="f">sum</span>(r[<span class="s">"amount"</span>] <span class="k">for</span> r <span class="k">in</span> big_df.collect())     <span class="c"># pulls every row — driver hazard</span>
+
+<span class="c"># ✅ Do the aggregation on the executors; collect only the tiny result.</span>
+total_ok = big_df.agg(F.sum(<span class="s">"amount"</span>).alias(<span class="s">"t"</span>)).collect()[<span class="f">0</span>][<span class="s">"t"</span>]   <span class="c"># 1 row to the driver</span>
+
+<span class="c"># VERIFY: .explain() shows HashAggregate (partial + final) on the cluster; the action returns</span>
+<span class="c"># a single row. Spark UI → SQL tab: the final exchange is tiny, not the whole table.</span></code></pre>
+
+    <h3>Guard against a mis-sized broadcast (driver-side OOM)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> broadcast
+
+<span class="c"># ❌ Forcing broadcast on a table that's actually large OOMs the DRIVER during the build.</span>
+risky = fact.join(broadcast(too_big_dim), <span class="s">"k"</span>)   <span class="c"># small side collected to driver first → OOM</span>
+
+<span class="c"># ✅ Only broadcast a genuinely small side; otherwise let the planner / AQE choose.</span>
+ok = fact.join(small_dim, <span class="s">"k"</span>)                    <span class="c"># planner broadcasts only if under the threshold</span>
+
+<span class="c"># Cap auto-broadcast so a creeping dimension can't silently start OOMing the driver:</span>
+spark.conf.set(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>, <span class="f">10</span> * <span class="f">1024</span> * <span class="f">1024</span>)  <span class="c"># 10 MB (OSS default)</span>
+
+<span class="c"># VERIFY: fact.join(...).explain(mode="formatted") — a BroadcastExchange feeding the SMALL side</span>
+<span class="c"># is fine; a BroadcastExchange on a multi-GB side is the warning sign. The OOM, if it comes, is</span>
+<span class="c"># on the DRIVER (driver log), not an executor.</span></code></pre>
+
+    <h3>Size the limits deliberately, in pairs</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Read the current budget. These are the levers; size them TOGETHER, deliberately.</span>
+<span class="f">print</span>(<span class="s">"driver.memory        ="</span>, spark.conf.get(<span class="s">"spark.driver.memory"</span>))         <span class="c"># '1g' — heap</span>
+<span class="f">print</span>(<span class="s">"driver.maxResultSize ="</span>, spark.conf.get(<span class="s">"spark.driver.maxResultSize"</span>))  <span class="c"># '1g' — guardrail</span>
+
+<span class="c"># maxResultSize CAN be set at runtime; raise the GUARDRAIL only with a matching HEAP.</span>
+spark.conf.set(<span class="s">"spark.driver.maxResultSize"</span>, <span class="s">"2g"</span>)
+<span class="c"># spark.driver.memory is a LAUNCH-TIME JVM flag — set it in the cluster Spark config (restart):</span>
+<span class="c">#   spark.driver.memory 8g</span>
+<span class="c"># Never set maxResultSize 0 (unlimited) to "make the error go away" — that removes the guardrail.</span>
+
+<span class="c"># VERIFY in the Spark UI → Executors tab: the single 'driver' row shows its memory + GC time.</span>
+<span class="c"># Rising driver GC time during a collect() = the heap is under pressure (the OOM warning sign).</span></code></pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: TABBED — THE FOUR OOM PATHS ============ -->
+  <section>
+    <h2>The four ways a driver OOMs</h2>
+    <p>Switch between the paths to see what triggers each, what the symptom looks like, and the fix.</p>
+    <div class="lab" id="lab-paths">
+      <div class="lab-head"><span class="lab-title">Driver-OOM paths</span></div>
+      <div class="controls">
+        <div class="seg" id="dp-seg" role="group" aria-label="oom path">
+          <button data-p="collect" aria-pressed="true">collect / toPandas</button>
+          <button data-p="broadcast" aria-pressed="false">over-broadcast</button>
+          <button data-p="metadata" aria-pressed="false">partition explosion</button>
+          <button data-p="python" aria-pressed="false">local Python</button>
+        </div>
+      </div>
+      <div class="planbox" id="dp-plan"></div>
+      <div class="verdict" id="dp-note"></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Action</th><th>Lands on the driver?</th><th>Driver-OOM risk</th><th>Use it when</th></tr></thead>
+      <tbody>
+        <tr><td><code>df.write.save(...)</code> / <code>saveAsTable(...)</code></td><td><strong>No</strong> (executors write)</td><td>None</td><td>Persisting any large result — the default</td></tr>
+        <tr><td><code>df.write.format("noop").save()</code></td><td><strong>No</strong></td><td>None</td><td>Timing / materializing a plan without output</td></tr>
+        <tr><td><code>df.show(n)</code></td><td>A capped preview</td><td>Low</td><td>Eyeballing a few rows</td></tr>
+        <tr><td><code>df.take(n)</code> / <code>df.limit(n).collect()</code></td><td><strong>n rows</strong></td><td>Low (bounded)</td><td>Pulling a small, bounded sample locally</td></tr>
+        <tr><td><code>df.agg(...).collect()</code></td><td>The <strong>summary</strong> (few rows)</td><td>Low</td><td>Computing totals/metrics on the cluster</td></tr>
+        <tr><td><code>df.collect()</code></td><td><strong>All rows</strong></td><td><strong>High</strong></td><td>Only on a known-small result</td></tr>
+        <tr><td><code>df.toPandas()</code></td><td><strong>All rows</strong> (+ Python proc)</td><td><strong>High</strong></td><td>Only on a known-small result (also pressures overhead)</td></tr>
+        <tr><td><code>fact.join(broadcast(dim))</code></td><td>The <strong>small side</strong> (build)</td><td>High <strong>if <code>dim</code> is big</strong></td><td><code>dim</code> is genuinely small (≤ ~10 MB)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><code>maxResultSize</code> as a <strong>safety guardrail</strong> so a stray <code>collect()</code> fails fast and clearly instead of silently thrashing the driver heap.</li>
+      <li>Raising <code>spark.driver.memory</code> <strong>deliberately</strong> for a legitimately large-but-bounded local result (a model object, a moderate aggregation) — paired with a matching <code>maxResultSize</code>.</li>
+      <li>The <code>noop</code> sink to <strong>run</strong> a job (timing / materializing a plan) with <strong>zero</strong> data returned to the driver — the safe alternative to <code>collect()</code> for benchmarking.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>A broadcast that's <em>almost</em> too big.</strong> A dimension at 8 MB today, 80 MB next quarter, silently starts OOMing the <em>driver</em> during the build — not the executors. Cap the threshold; let AQE decide.</li>
+      <li><strong><code>toPandas()</code> hits two limits.</strong> It pulls every row into the JVM heap <em>and</em> converts to a pandas frame in the <strong>Python driver process</strong> (overhead) — it can OOM the container even when the JVM heap looks okay.</li>
+      <li><strong>Partition-count explosion with no big result.</strong> <code>repartition(500000)</code> or millions of tiny files can OOM the driver on <strong>metadata / scheduling alone</strong>, with no <code>collect()</code> in your code.</li>
+      <li><strong>Raised <code>maxResultSize</code> without raised heap.</strong> Removing the guardrail just converts a clean abort into a real, harder-to-diagnose driver OOM.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li><strong>The driver does not scale out.</strong> There is exactly one, with one fixed heap — you cannot "add driver nodes." Above the heap: <em>bring less back</em> or <em>a bigger driver node</em>.</li>
+      <li><strong><code>spark.driver.memory</code> is launch-time.</strong> It's a JVM flag set when the driver starts — set it in the <strong>cluster Spark config</strong> (a restart), not via <code>spark.conf.set(...)</code> at runtime. <code>maxResultSize</code> <em>can</em> be set at runtime.</li>
+      <li><strong>The broadcast-build and metadata OOM paths aren't verbatim in the docs.</strong> Only the <code>collect()</code>/large-result path (via <code>maxResultSize</code>) is doc-quoted; the others are well-established operational practice — true, but stated as such.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong><code>collect()</code> to "just look at the data."</strong> Use <code>df.show(20)</code> or <code>df.limit(20).toPandas()</code> — never <code>collect()</code> / <code>toPandas()</code> on a full fact table.</li>
+      <li><strong>Setting <code>maxResultSize=0</code> to silence the error.</strong> That removes the guardrail and trades a clean abort for a real driver OOM. Size the limit; don't disable it.</li>
+      <li><strong>Blaming the executors for a broadcast OOM.</strong> A too-big <code>broadcast()</code> OOMs the <strong>driver</strong> during the build — check the <em>driver</em> log and look for a <code>BroadcastExchange</code>.</li>
+      <li><strong>Bumping <code>spark.driver.memory</code> at runtime.</strong> It's a launch-time JVM flag; <code>spark.conf.set</code> won't take effect until it's set in the cluster config and the cluster restarts.</li>
+      <li><strong><code>toPandas()</code> on a big DataFrame for "convenience".</strong> The riskiest driver call there is — every row, into both the JVM heap and the Python process.</li>
+      <li><strong>Confusing driver OOM with executor OOM (Lesson 04).</strong> Driver OOM = data brought <em>to</em> the driver. Executor OOM = a partition too big to process/spill on a worker.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.driver.memory, maxResultSize, memoryOverhead)</a>
+      <a href="https://spark.apache.org/docs/latest/cluster-overview.html">Apache Spark — Cluster overview (driver, executors, what the driver does)</a>
+      <a href="https://spark.apache.org/docs/latest/tuning.html">Apache Spark — Tuning guide (memory management, serialized results)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (broadcast join → driver-side build)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/compute/configure">Azure Databricks — Compute configuration (the driver node)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ. The <code>collect()</code>/<code>maxResultSize</code> driver-OOM path is doc-quoted; the broadcast-build and partition-metadata paths are established operational practice.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: collect(n) → driver heap fill (slider + action + guardrail toggles) ---- */
+(function(){
+  const root = document.getElementById('lab-collect');
+  if(!root) return;
+  const HEAP_MB   = 1024;          // spark.driver.memory = 1g
+  const LIMIT_MB  = 1024;          // spark.driver.maxResultSize = 1g
+  const BYTES_ROW = 200;           // ~200 B/row (illustrative)
+  const rows    = root.querySelector('#dc-rows');
+  const rowsval = root.querySelector('#dc-rowsval');
+  const actSeg  = root.querySelector('#dc-action');
+  const guardSeg= root.querySelector('#dc-guard');
+  const heap    = root.querySelector('#dc-heap');
+  const fill    = root.querySelector('#dc-fill');
+  const limitEl = root.querySelector('#dc-limit');
+  const elSize  = root.querySelector('#dc-size');
+  const elState = root.querySelector('#dc-state');
+  const elFits  = root.querySelector('#dc-fits');
+  const plan    = root.querySelector('#dc-plan');
+  const verdict = root.querySelector('#dc-verdict');
+  let act = 'collect', guard = 'on';
+
+  // place the maxResultSize marker at LIMIT/HEAP of the bar width
+  limitEl.style.left = (Math.min(LIMIT_MB / HEAP_MB, 1) * 100) + '%';
+
+  function fmtMB(mb){ return mb >= 1024 ? (mb/1024).toFixed(2) + ' GB' : Math.round(mb) + ' MB'; }
+
+  function render(){
+    const millions = parseInt(rows.value, 10) / 10;      // slider 1..120 → 0.1M..12M rows
+    rowsval.textContent = millions.toFixed(1) + ' M rows';
+
+    // how many rows actually reach the driver, by action
+    let drvRows, label;
+    if(act === 'collect'){ drvRows = millions * 1e6; label = 'collect() — all rows'; }
+    else if(act === 'take'){ drvRows = Math.min(1000, millions * 1e6); label = 'take(1000) — bounded'; }
+    else { drvRows = 0; label = 'write() — nothing to driver'; }
+
+    const drvMB = drvRows * BYTES_ROW / (1024*1024);
+    elSize.textContent = drvRows === 0 ? '0 MB' : fmtMB(drvMB);
+    fill.style.width = Math.min(drvMB / HEAP_MB, 1) * 100 + '%';
+    fill.textContent = drvMB > 60 ? fmtMB(drvMB) : '';
+
+    const overLimit = drvMB > LIMIT_MB;
+    const overHeap  = drvMB > HEAP_MB;
+    heap.classList.toggle('danger', overHeap);
+    elFits.textContent = drvMB <= HEAP_MB ? 'Yes' : 'No';
+
+    if(act === 'write'){
+      elState.textContent = 'Healthy';
+      plan.innerHTML =
+        '<span class="dim">== action: write() ==</span>\n' +
+        '<span class="ok">Executors write their own partitions in parallel.</span>\n' +
+        '<span class="ok">0 rows returned to the driver — heap stays flat ✅</span>';
+      verdict.innerHTML = '<b>write() never touches the driver.</b> Executors persist their partitions directly; the driver only collects tiny commit metadata. Use <code>write.format("noop")</code> to <em>run</em> the job for timing with no output.';
+    } else if(act === 'take'){
+      elState.textContent = 'Healthy';
+      plan.innerHTML =
+        '<span class="dim">== action: take(1000) ==</span>\n' +
+        '<span class="ok">At most 1000 rows reach the driver (' + fmtMB(drvMB) + ').</span>\n' +
+        '<span class="ok">Bounded pull — safe regardless of table size ✅</span>';
+      verdict.innerHTML = '<b>take(n) is bounded.</b> No matter how big the table, only ' + Math.round(drvRows).toLocaleString() + ' rows land on the driver. Prefer this (or aggregate first) whenever you need rows locally.';
+    } else {
+      // collect()
+      if(guard === 'on' && overLimit){
+        elState.textContent = 'ABORTED';
+        plan.innerHTML =
+          '<span class="dim">== action: collect() ==</span>\n' +
+          '<span class="bad">ERROR: Total size of serialized results (' + fmtMB(drvMB) + ')</span>\n' +
+          '<span class="bad">is bigger than spark.driver.maxResultSize (1024.0 MiB) ❌</span>';
+        verdict.innerHTML = '<b>The guardrail fired.</b> The serialized result (' + fmtMB(drvMB) + ') crossed <code>maxResultSize</code> (1g), so Spark <strong>aborted the job cleanly</strong> before the heap was exhausted. The fix is to NOT collect — not to raise the cap.';
+      } else if(guard === 'off' && overHeap){
+        elState.textContent = 'DRIVER OOM';
+        plan.innerHTML =
+          '<span class="dim">== action: collect() (maxResultSize = 0, unlimited) ==</span>\n' +
+          '<span class="bad">No guardrail. Result ' + fmtMB(drvMB) + ' &gt; 1g heap.</span>\n' +
+          '<span class="bad">java.lang.OutOfMemoryError: Java heap space (driver) ❌</span>';
+        verdict.innerHTML = '<b>Real driver OOM.</b> With the guardrail off, the ' + fmtMB(drvMB) + ' result ran the 1g heap straight into an <code>OutOfMemoryError</code> — slower to fail and harder to diagnose than a clean abort. This is why raising the cap is not a fix.';
+      } else {
+        elState.textContent = 'Healthy';
+        plan.innerHTML =
+          '<span class="dim">== action: collect() ==</span>\n' +
+          '<span class="ok">' + fmtMB(drvMB) + ' of serialized results fit in the 1g heap.</span>\n' +
+          '<span class="ok">Under maxResultSize — job completes ✅</span>';
+        verdict.innerHTML = '<b>Fits — for now.</b> At ' + fmtMB(drvMB) + ' the result is under the limit. But <code>collect()</code> scales with the table; nudge the rows up and watch it cross 1g. Prefer write / take / aggregate so it can never blow up.';
+      }
+    }
+  }
+
+  rows.addEventListener('input', render);
+  actSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    act = b.dataset.act;
+    actSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  guardSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    guard = b.dataset.guard;
+    guardSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    render();
+  });
+  render();
+})();
+
+/* ---- Diagram 2: collect-vs-write step accordion ---- */
+(function(){
+  const root = document.getElementById('lab-flow');
+  if(!root) return;
+  root.querySelectorAll('[data-step]').forEach(function(step){
+    step.addEventListener('click', function(){ step.classList.toggle('open'); });
+  });
+})();
+
+/* ---- Diagram 3: tabbed four-OOM-paths ---- */
+(function(){
+  const root = document.getElementById('lab-paths');
+  if(!root) return;
+  const seg = root.querySelector('#dp-seg');
+  const plan = root.querySelector('#dp-plan');
+  const note = root.querySelector('#dp-note');
+  const data = {
+    collect: {
+      plan: '<span class="dim">== path (a): collect() / toPandas() of too many rows ==</span>\n' +
+            'trigger : every partition serialized into ONE heap\n' +
+            'symptom : <span class="bad">maxResultSize abort</span>, or driver <span class="bad">OutOfMemoryError</span> if cap raised\n' +
+            'doc     : <span class="ok">verbatim in the docs (via maxResultSize)</span>',
+      note: '<b>The classic path.</b> Fix: <code>write</code> it, or pull a bounded <code>take(n)</code>/<code>limit(n)</code>; aggregate on the cluster and collect the summary.'
+    },
+    broadcast: {
+      plan: '<span class="dim">== path (b): broadcasting a too-large table ==</span>\n' +
+            'trigger : small side collected to the driver to BUILD the broadcast\n' +
+            'symptom : driver OOM on a <span class="bad">JOIN</span> — look for <span class="bad">BroadcastExchange</span>\n' +
+            'note    : OOM is on the DRIVER, before any executor receives it',
+      note: '<b>Operational, not a doc quote.</b> Fix: broadcast only a genuinely small side; cap <code>autoBroadcastJoinThreshold</code>; let AQE decide at runtime (Lessons 02 &amp; 05).'
+    },
+    metadata: {
+      plan: '<span class="dim">== path (c): partition / file explosion ==</span>\n' +
+            'trigger : 100,000s of tasks/files → per-partition metadata on the driver\n' +
+            'symptom : driver OOM / GC-thrash during planning &amp; scheduling\n' +
+            'note    : NO result collected — metadata alone fills the heap',
+      note: '<b>Operational, not a doc quote.</b> Fix: <code>coalesce</code>, sane <code>shuffle.partitions</code>, compaction / fewer files; let AQE coalesce post-shuffle partitions (Lesson 05).'
+    },
+    python: {
+      plan: '<span class="dim">== path (d): large local Python objects ==</span>\n' +
+            'trigger : giant list / pandas frame / model in driver code\n' +
+            'symptom : pressures the <span class="bad">PySpark driver process</span> (overhead, not JVM heap)\n' +
+            'note    : toPandas() hits BOTH the JVM heap and the Python process',
+      note: '<b>The overhead surface.</b> Fix: keep heavy data in DataFrames on the executors; materialize only small summaries on the driver.'
+    }
+  };
+  function show(p){
+    plan.innerHTML = data[p].plan;
+    note.innerHTML = data[p].note;
+    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.p === p)));
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.p);
+  });
+  show('collect');
+})();
+</script>
+</body>
+</html>

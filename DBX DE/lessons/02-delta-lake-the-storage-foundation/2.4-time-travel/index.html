@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Time Travel · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  /* diagram 1: version slider */
+  .slider-wrap{margin-top:8px}
+  input[type=range]{width:100%}
+  .vbar{display:flex;justify-content:space-between;font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin-top:4px}
+  .snap{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px}
+  .snap .v{font-family:"Spline Sans Mono",monospace;color:var(--brand);font-size:.8rem}
+  .snap table{margin-top:8px;font-size:.86rem;box-shadow:none}
+  .snap th,.snap td{padding:6px 9px}
+  .vacuumed{margin-top:10px;font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#fdecea;border:1px solid #f0b3a8;color:#9a2b1a;padding:8px 12px;border-radius:8px;display:none}
+  /* diagram 2: actions */
+  .acts{display:flex;flex-direction:column;gap:8px}
+  .act{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .act:hover{border-color:var(--brand-2)}.act.open{border-color:var(--teal)}
+  .act .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .act .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .act.open .d{display:block}
+  /* diagram 3: tabbed SQL/PySpark */
+  .tabs{display:flex;gap:6px;margin-bottom:8px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px 8px 0 0;padding:7px 14px;cursor:pointer}
+  .tab.on{border-color:var(--teal);border-bottom-color:#fff;color:var(--teal);font-weight:600}
+  .tabpane{display:none}.tabpane.on{display:block;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 2.4</p>
+  <h1>Delta <em>Time Travel</em></h1>
+  <p class="lede">Query or restore an earlier version of a Delta table using its transaction-log history — undo bad writes, audit, reproduce past states, and diff versions. This deep dive walks each with the mechanism and the code.</p>
+  <div class="pills"><span class="pill">VERSION AS OF</span><span class="pill">TIMESTAMP AS OF</span><span class="pill">RESTORE</span><span class="pill">retention</span><span class="pill">CDF</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">Every write made a version; <strong>time travel</strong> reads any of them by <code>VERSION AS OF n</code> or <code>TIMESTAMP AS OF '…'</code>. <code>DESCRIBE HISTORY</code> lists versions; <code>RESTORE TABLE</code> rolls back (as a new commit) — all bounded by retention (VACUUM + log retention).</div>
+  <div class="card analogy" style="margin-top:10px">📄 <strong>Analogy:</strong> it's <strong>Google Docs version history</strong> for a table — view how it looked yesterday, or restore that version as the current one. (But only as far back as retention keeps the files.)</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: version slider -->
+<section id="tt">
+  <h2>Travel the versions — drag the slider</h2>
+  <p class="hint">▸ drag to a version; versions past retention are VACUUMed</p>
+  <div class="slider-wrap">
+    <input type="range" id="vrange" min="0" max="4" value="4" step="1">
+    <div class="vbar"><span>v0 (oldest)</span><span>v4 (current)</span></div>
+  </div>
+  <div class="snap" id="snap"></div>
+  <div class="vacuumed" id="vac">⚠️ v0–v1 are older than deletedFileRetentionDuration (7 days) — VACUUM removed those files, so they're no longer queryable.</div>
+</section>
+
+<!-- DEEP DIVE: querying the past, tabbed -->
+<section id="query">
+  <h2>1 · Querying the past</h2>
+  <p>Two SQL forms, an <code>@</code> shorthand, and PySpark read options — all read a past snapshot read-only. Pin a report to a version for reproducible numbers.</p>
+  <div class="tabs">
+    <div class="tab on" data-t="sql">Spark SQL</div>
+    <div class="tab" data-t="py">PySpark</div>
+  </div>
+  <div class="tabpane on" data-tp="sql">
+    <pre class="code"><span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders <span class="k">VERSION AS OF</span> <span class="f">41</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders <span class="k">TIMESTAMP AS OF</span> <span class="s">'2026-06-20T09:00:00Z'</span>;
+
+<span class="c">-- @ shorthand: @v&lt;version&gt; or @&lt;yyyyMMddHHmmssSSS&gt;</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders@v41;
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders@20260620090000000;</pre>
+  </div>
+  <div class="tabpane" data-tp="py">
+    <pre class="code">v_old = spark.read.option(<span class="s">"versionAsOf"</span>, <span class="f">41</span>).table(<span class="s">"main.sales.orders"</span>)
+t_old = spark.read.option(<span class="s">"timestampAsOf"</span>, <span class="s">"2026-06-20"</span>).table(<span class="s">"main.sales.orders"</span>)</pre>
+  </div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: actions -->
+<section id="acts">
+  <h2>2 · The operations — click each</h2>
+  <pre class="code"><span class="k">DESCRIBE HISTORY</span> main.sales.orders;
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders <span class="k">VERSION AS OF</span> <span class="f">41</span>;
+<span class="k">RESTORE TABLE</span> main.sales.orders <span class="k">TO VERSION AS OF</span> <span class="f">41</span>;</pre>
+  <div class="acts" style="margin-top:10px">
+    <div class="act open" onclick="this.classList.toggle('open')"><div class="h"><span>DESCRIBE HISTORY</span><span>▸</span></div><div class="d">Lists versions newest-first with timestamp, user, operation, and <code>operationMetrics</code> (rows written/updated/deleted). Your starting point to find the bad write.</div></div>
+    <div class="act" onclick="this.classList.toggle('open')"><div class="h"><span>VERSION / TIMESTAMP AS OF</span><span>▸</span></div><div class="d">Read-only query of a past snapshot — by commit number or point in time. Great for audits and reproducing reports.</div></div>
+    <div class="act" onclick="this.classList.toggle('open')"><div class="h"><span>RESTORE TABLE</span><span>▸</span></div><div class="d">Rolls the table back to a chosen version. It's a <strong>new data-changing commit</strong> (<code>dataChange=true</code>; history preserved) — and counts as a write for downstream streaming consumers, so make them idempotent.</div></div>
+  </div>
+  <p class="codecap">RESTORE — SQL & PySpark</p>
+  <pre class="code"><span class="k">RESTORE TABLE</span> main.sales.orders <span class="k">TO VERSION AS OF</span> <span class="f">41</span>;</pre>
+  <pre class="code" style="margin-top:8px"><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+DeltaTable.forName(spark, <span class="s">"main.sales.orders"</span>).restoreToVersion(<span class="f">41</span>)</pre>
+</section>
+
+<section id="retention">
+  <h2>3 · Retention — how far back you can actually go</h2>
+  <p>Time travel is bounded by <strong>two</strong> independent settings — both must cover the window you want, or old versions become unqueryable.</p>
+  <table>
+    <tr><th>Property</th><th>Controls</th><th>Default</th></tr>
+    <tr><td><code>delta.deletedFileRetentionDuration</code></td><td>how long removed <strong>data files</strong> are kept (VACUUM horizon)</td><td><strong>7 days</strong></td></tr>
+    <tr><td><code>delta.logRetentionDuration</code></td><td>how long <strong>commit/history metadata</strong> is kept</td><td><strong>30 days</strong></td></tr>
+  </table>
+  <p class="codecap">Extend BOTH together (higher storage cost)</p>
+  <pre class="code"><span class="k">ALTER TABLE</span> main.sales.orders <span class="k">SET TBLPROPERTIES</span> (
+  <span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'interval 60 days'</span>,
+  <span class="s">'delta.logRetentionDuration'</span>         = <span class="s">'interval 60 days'</span>);</pre>
+</section>
+
+<section id="cdf">
+  <h2>4 · Diffing versions — Change Data Feed</h2>
+  <p>Time travel reads a snapshot; <strong>CDF</strong> answers <em>"what rows changed between two versions?"</em> — the enterprise pattern for incremental downstream propagation. Must be enabled <em>before</em> the changes you want (not retroactive).</p>
+  <pre class="code"><span class="k">ALTER TABLE</span> main.sales.orders <span class="k">SET TBLPROPERTIES</span> (delta.enableChangeDataFeed = <span class="k">true</span>);
+
+<span class="c">-- row-level changes from v41 onward, tagged by change type</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> table_changes(<span class="s">'main.sales.orders'</span>, <span class="f">41</span>);</pre>
+  <pre class="code" style="margin-top:8px">changes = (spark.read.option(<span class="s">"readChangeFeed"</span>, <span class="s">"true"</span>)
+                     .option(<span class="s">"startingVersion"</span>, <span class="f">41</span>)
+                     .table(<span class="s">"main.sales.orders"</span>))
+<span class="c"># _change_type ∈ insert | update_preimage | update_postimage | delete</span>
+<span class="c"># plus _commit_version, _commit_timestamp</span></pre>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li><strong>Fast recovery:</strong> a bad write or accidental delete is one <code>RESTORE</code> away — no backups needed.</li>
+    <li><strong>Reproducibility &amp; audit:</strong> re-run a report exactly as of month-end, or prove what the data showed on a given day.</li>
+  </ul>
+  <div class="card usecase">🌙 <strong>Real-world use case:</strong> an ETL job corrupts the orders table at 2am. You <code>DESCRIBE HISTORY</code>, find the last good version, and <code>RESTORE TABLE orders TO VERSION AS OF 41</code> — fixed in seconds.</div>
+</section>
+
+<section>
+  <h2>Which tool for "the past"?</h2>
+  <table>
+    <tr><th>Need</th><th>Use</th></tr>
+    <tr><td>See the table as it <em>was</em></td><td><code>VERSION</code> / <code>TIMESTAMP AS OF</code> (read-only)</td></tr>
+    <tr><td>Undo a bad write / delete</td><td><code>RESTORE TABLE</code> (new commit)</td></tr>
+    <tr><td>Find the right version to use</td><td><code>DESCRIBE HISTORY</code></td></tr>
+    <tr><td>Know <em>which rows</em> changed between versions</td><td>Change Data Feed (<code>table_changes</code>)</td></tr>
+  </table>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> rollback/undo, auditing, reproducing historical analyses, debugging, version diffs (CDF), reproducible ML/reporting snapshots.</li>
+    <li><strong>Edge cases:</strong> retention caps how far back you can go — <code>VACUUM</code> removes files past <code>delta.deletedFileRetentionDuration</code> (7 days); history metadata past <code>delta.logRetentionDuration</code> (30 days). <code>RESTORE</code> on a streaming source is a data change → may cause duplicate reprocessing (make downstream idempotent). CDF isn't retroactive.</li>
+    <li><strong>Limitation:</strong> not a long-term backup/DR — bounded by retention; extend both properties together for more history (higher storage cost).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Assuming you can travel back arbitrarily far — VACUUM + retention cap it.</li>
+    <li>❌ Treating time travel as backup/DR — it's bounded by retention.</li>
+    <li>❌ Raising <code>deletedFileRetentionDuration</code> without also raising <code>logRetentionDuration</code> — both must cover the window.</li>
+    <li>❌ Forgetting <code>RESTORE</code> adds a new version (history preserved) and counts as a write for downstream streaming consumers.</li>
+    <li>❌ Expecting CDF to show changes from before you enabled it — it's not retroactive.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/history" target="_blank" rel="noopener">History &amp; time travel</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/vacuum" target="_blank" rel="noopener">VACUUM</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-restore" target="_blank" rel="noopener">RESTORE</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/delta-change-data-feed" target="_blank" rel="noopener">Change Data Feed</a>
+  <p style="margin-top:10px">Topic 2.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — version slider (scoped to #tt)
+const SNAP = {
+  0: {label:"v0 · CREATE", rows:[["1","Ada","—"]]},
+  1: {label:"v1 · INSERT", rows:[["1","Ada","100"],["2","Lin","250"]]},
+  2: {label:"v2 · MERGE",  rows:[["1","Ada","180"],["2","Lin","250"],["3","Sam","90"]]},
+  3: {label:"v3 · DELETE", rows:[["1","Ada","180"],["3","Sam","90"]]},
+  4: {label:"v4 · current",rows:[["1","Ada","180"],["3","Sam","90"],["4","Ravi","300"]]}
+};
+const range=document.getElementById('vrange'), snap=document.getElementById('snap'), vac=document.getElementById('vac');
+function renderSnap(v){
+  const s=SNAP[v];
+  let h='<div class="v">'+s.label+'</div><table><tr><th>id</th><th>name</th><th>amount</th></tr>';
+  s.rows.forEach(r=>h+='<tr><td>'+r[0]+'</td><td>'+r[1]+'</td><td>'+r[2]+'</td></tr>');
+  h+='</table>';
+  snap.innerHTML=h;
+  vac.style.display = (v<=1) ? 'block' : 'none';
+}
+range.addEventListener('input',e=>renderSnap(+e.target.value));
+renderSnap(4);
+// Diagram 2 (#acts) uses inline onclick toggles — scoped, no collisions.
+// Diagram 3 — tabbed SQL/PySpark (scoped to #query)
+document.querySelectorAll('#query .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#query .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#query .tabpane').forEach(p=>p.classList.toggle('on',p.dataset.tp===k));
+  });
+});
+</script>
+</body>
+</html>

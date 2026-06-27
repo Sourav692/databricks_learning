@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zerobus Ingest — Architect View</title>
+<style>
+  :root {
+    --db-orange: #FF3621;
+    --db-navy: #1B3139;
+    --db-dark: #0E1416;
+    --db-gray: #6B7280;
+    --db-light: #F5F5F4;
+    --db-border: #E5E7EB;
+    --db-green: #00A972;
+    --db-blue: #2272B4;
+    --db-yellow: #FFC107;
+    --db-red: #DC2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "DM Sans", sans-serif;
+    background: #FAFAF9;
+    color: var(--db-dark);
+    line-height: 1.6;
+    padding: 32px 16px;
+  }
+  .container { max-width: 1100px; margin: 0 auto; }
+  header {
+    background: linear-gradient(135deg, var(--db-navy) 0%, var(--db-dark) 100%);
+    color: white;
+    padding: 36px 40px;
+    border-radius: 12px;
+    margin-bottom: 24px;
+  }
+  header .eyebrow {
+    color: var(--db-orange);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  header h1 { font-size: 36px; font-weight: 700; margin-bottom: 8px; }
+  header .subtitle { font-size: 16px; opacity: 0.85; max-width: 720px; }
+  .badges {
+    display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;
+  }
+  .badge {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+  }
+  .badge.ga { background: var(--db-green); border-color: var(--db-green); }
+
+  nav.tabs {
+    display: flex;
+    gap: 4px;
+    background: white;
+    padding: 6px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid var(--db-border);
+    flex-wrap: wrap;
+  }
+  nav.tabs button {
+    background: transparent;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--db-gray);
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+  nav.tabs button:hover { background: var(--db-light); color: var(--db-dark); }
+  nav.tabs button.active {
+    background: var(--db-navy);
+    color: white;
+  }
+
+  section.panel {
+    background: white;
+    border-radius: 12px;
+    padding: 32px;
+    border: 1px solid var(--db-border);
+    margin-bottom: 20px;
+    display: none;
+  }
+  section.panel.active { display: block; }
+
+  h2 { font-size: 22px; margin-bottom: 16px; color: var(--db-navy); }
+  h3 { font-size: 16px; margin: 20px 0 10px; color: var(--db-navy); font-weight: 600; }
+  p { margin-bottom: 12px; color: #2A3439; }
+  strong { color: var(--db-dark); }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .stat {
+    background: var(--db-light);
+    padding: 16px;
+    border-radius: 8px;
+    border-left: 3px solid var(--db-orange);
+  }
+  .stat .num { font-size: 22px; font-weight: 700; color: var(--db-navy); }
+  .stat .label { font-size: 12px; color: var(--db-gray); margin-top: 4px; }
+
+  .callout {
+    padding: 16px 20px;
+    border-radius: 8px;
+    margin: 16px 0;
+    border-left: 4px solid;
+  }
+  .callout.tip { background: #ECFDF5; border-color: var(--db-green); }
+  .callout.warn { background: #FEF3C7; border-color: var(--db-yellow); }
+  .callout.key { background: #EFF6FF; border-color: var(--db-blue); }
+  .callout h4 { font-size: 14px; margin-bottom: 6px; }
+
+  /* Interactive diagram */
+  .diagram-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .diagram-controls button {
+    padding: 10px 16px;
+    border: 2px solid var(--db-border);
+    background: white;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+  .diagram-controls button.active {
+    background: var(--db-orange);
+    color: white;
+    border-color: var(--db-orange);
+  }
+  .diagram-canvas {
+    background: #FBFAF8;
+    border: 1px solid var(--db-border);
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 380px;
+    position: relative;
+  }
+  .diagram-canvas svg { width: 100%; height: auto; max-height: 420px; }
+  .node {
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .node:hover .node-bg { filter: brightness(1.1); stroke-width: 3; }
+  .node-bg { transition: all 0.2s; }
+  .arrow { stroke: var(--db-gray); stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+  .arrow.hot { stroke: var(--db-orange); stroke-width: 2.5; }
+  .arrow.cold { stroke: var(--db-blue); stroke-dasharray: 4,3; }
+
+  .info-box {
+    background: white;
+    border: 1px solid var(--db-border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 12px;
+    font-size: 13px;
+    min-height: 70px;
+  }
+  .info-box strong { display: block; margin-bottom: 4px; color: var(--db-orange); }
+
+  /* Comparison table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--db-border);
+  }
+  th {
+    background: var(--db-light);
+    font-weight: 600;
+    color: var(--db-navy);
+    font-size: 13px;
+  }
+  tr:hover { background: #FBFAF8; }
+
+  /* Decision cards */
+  .decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+  }
+  @media (max-width: 720px) { .decision-grid { grid-template-columns: 1fr; } }
+  .decision {
+    padding: 18px;
+    border-radius: 10px;
+    border: 1px solid;
+  }
+  .decision.pick { background: #ECFDF5; border-color: #A7F3D0; }
+  .decision.skip { background: #FEF2F2; border-color: #FECACA; }
+  .decision h3 { margin-top: 0; }
+  .decision.pick h3 { color: var(--db-green); }
+  .decision.skip h3 { color: var(--db-red); }
+  .decision ul { list-style: none; padding-left: 0; }
+  .decision li {
+    padding: 6px 0 6px 22px;
+    position: relative;
+    font-size: 14px;
+  }
+  .decision.pick li::before {
+    content: "✓";
+    position: absolute; left: 0;
+    color: var(--db-green); font-weight: 700;
+  }
+  .decision.skip li::before {
+    content: "✕";
+    position: absolute; left: 0;
+    color: var(--db-red); font-weight: 700;
+  }
+
+  /* Scenario cards */
+  .scenarios {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .scenario {
+    background: var(--db-light);
+    border-radius: 8px;
+    padding: 16px;
+    border-top: 3px solid var(--db-orange);
+  }
+  .scenario .num {
+    display: inline-block;
+    background: var(--db-orange);
+    color: white;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 22px;
+    font-size: 12px;
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  .scenario h4 { display: inline; font-size: 14px; }
+  .scenario p { font-size: 13px; margin-top: 8px; color: #4A5860; }
+
+  .interview-card {
+    background: linear-gradient(135deg, #1B3139 0%, #0E1416 100%);
+    color: white;
+    padding: 24px 28px;
+    border-radius: 12px;
+    margin: 20px 0;
+    border-left: 4px solid var(--db-orange);
+  }
+  .interview-card .label {
+    font-size: 11px;
+    color: var(--db-orange);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .interview-card .quote {
+    font-size: 17px;
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  footer {
+    background: white;
+    padding: 20px 28px;
+    border-radius: 10px;
+    border: 1px solid var(--db-border);
+    font-size: 13px;
+    color: var(--db-gray);
+  }
+  footer a { color: var(--db-blue); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  footer ul { list-style: none; margin-top: 8px; }
+  footer li { padding: 3px 0; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Databricks · Lakeflow Connect</div>
+  <h1>Zerobus Ingest Connector</h1>
+  <div class="subtitle">Push-based, serverless ingestion straight from your application into a Unity Catalog Delta table — no Kafka, no Kinesis, no broker to manage.</div>
+  <div class="badges">
+    <span class="badge ga">GA</span>
+    <span class="badge">Lakeflow Connect</span>
+    <span class="badge">Serverless</span>
+    <span class="badge">gRPC · REST · OTLP</span>
+    <span class="badge">Docs updated Apr 2026</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="architecture">Interactive Architecture</button>
+  <button data-tab="perf">Performance &amp; Cost</button>
+  <button data-tab="when">When to Pick It</button>
+  <button data-tab="vs">vs. Alternatives</button>
+  <button data-tab="pubsub">Why Not Pub/Sub</button>
+  <button data-tab="interview">Interview Framing</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>What it is</h2>
+  <p><strong>Zerobus Ingest</strong> is a push-based ingestion API that writes data directly into Unity Catalog Delta tables. A serverless connector that automatically scales to handle incoming connections — no partitions to configure, no brokers to manage.</p>
+  <p>Sits under <strong>Lakeflow Connect</strong> alongside managed connectors (Salesforce, SQL Server, etc.) and Auto Loader — but it's the only one designed for <strong>app-emitted, high-volume events</strong> rather than pulling from a source.</p>
+
+  <h3>The problem it solves</h3>
+  <p>The classic pattern to land app events in the lakehouse is:</p>
+  <div style="background:#FBFAF8;border:1px solid var(--db-border);border-radius:8px;padding:14px 18px;font-family:'Monaco',monospace;font-size:13px;margin:12px 0;">
+    App  →  Kafka / Kinesis / EventHub  →  Structured Streaming or DLT  →  Delta
+  </div>
+  <p>That's three systems to operate, scale, and bill for, just to get bytes into a table. Zerobus collapses the message bus and the streaming job into a single serverless service. Your app talks to Databricks directly.</p>
+
+  <div class="callout key">
+    <h4>Mental model</h4>
+    <p style="margin:0;font-size:14px;">Your "scaling strategy" with Zerobus is to open more streams. One stream guarantees ordering. Many streams give you horizontal throughput.</p>
+  </div>
+
+  <h3>How it works (4 steps)</h3>
+  <ol style="margin-left:20px; margin-top:8px;">
+    <li>Client opens a <strong>stream</strong> to the Zerobus Ingest API and specifies a target Delta table.</li>
+    <li>Client constructs a message that matches the table schema and pushes it.</li>
+    <li>Service buffers, validates schema, durably persists the message, and <strong>acks</strong> the client.</li>
+    <li>Service <strong>materializes</strong> the data in the Delta table in optimized batches.</li>
+  </ol>
+</section>
+
+<!-- ARCHITECTURE -->
+<section class="panel" id="architecture">
+  <h2>Interactive Architecture</h2>
+  <p style="font-size:14px;">Switch between the two patterns. Click any component to see what it does.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchDiagram('zerobus')">Zerobus Pattern</button>
+    <button onclick="switchDiagram('kafka')">Kafka + Streaming Pattern</button>
+    <button onclick="switchDiagram('hybrid')">Hybrid (Both)</button>
+  </div>
+
+  <div class="diagram-canvas">
+    <svg id="diagram" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+        </marker>
+        <marker id="arrowhead-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+          <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+        </marker>
+      </defs>
+      <g id="diagramContent"></g>
+    </svg>
+  </div>
+
+  <div class="info-box" id="infoBox">
+    <strong>Tip</strong>Click any boxed component above to learn about it.
+  </div>
+</section>
+
+<!-- PERFORMANCE -->
+<section class="panel" id="perf">
+  <h2>Performance &amp; Cost</h2>
+  <div class="stat-grid">
+    <div class="stat">
+      <div class="num">100 MB/s</div>
+      <div class="label">Per stream throughput</div>
+    </div>
+    <div class="stat">
+      <div class="num">10 GB/s</div>
+      <div class="label">Per target table</div>
+    </div>
+    <div class="stat">
+      <div class="num">15K rec/s</div>
+      <div class="label">Per stream</div>
+    </div>
+    <div class="stat">
+      <div class="num">≤ 200 ms</div>
+      <div class="label">P50 time to durability</div>
+    </div>
+    <div class="stat">
+      <div class="num">≤ 500 ms</div>
+      <div class="label">P95 time to durability</div>
+    </div>
+    <div class="stat">
+      <div class="num">Jobs Serverless</div>
+      <div class="label">Billing SKU</div>
+    </div>
+  </div>
+
+  <h3>Ordering guarantee</h3>
+  <p>Ordering is guaranteed <strong>per stream</strong>, not across streams. If your client round-robins messages across multiple streams, ordering is lost.</p>
+
+  <h3>Schema safety net — Durable Fallback Location</h3>
+  <p>If a breaking schema change happens to the target table while Zerobus has data in flight, that data is written as Parquet to <code style="background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;">_zerobus/table_rejected_parquets/</code> under the table root. Nothing is lost; it stays inside the table's storage boundary and inherits its access controls.</p>
+
+  <h3>Interfaces</h3>
+  <p>gRPC (with SDKs in Python, Java, Rust, Go, TypeScript), REST (Beta), and OpenTelemetry / OTLP (Beta — not billed at this time).</p>
+
+  <div class="callout tip">
+    <h4>Monitoring</h4>
+    <p style="margin:0;font-size:14px;">Two system tables: <strong>Zerobus Ingest system table</strong> for usage, and <strong>billable usage system table</strong> filtered by <code style="font-size:12px;">billing_origin_product = 'LAKEFLOW_CONNECT'</code>.</p>
+  </div>
+</section>
+
+<!-- WHEN -->
+<section class="panel" id="when">
+  <h2>When an Architect Picks It</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Pick Zerobus</h3>
+      <ul>
+        <li>App telemetry, clickstream, IoT, observability going directly to the lakehouse</li>
+        <li>High fan-in from many producers with variable throughput</li>
+        <li>OpenTelemetry pipelines (traces, logs, metrics via OTLP)</li>
+        <li>You want the simplest path from app → Delta — no message bus</li>
+        <li>The lakehouse is the <strong>only</strong> real-time destination</li>
+        <li>Greenfield event pipeline with no Kafka already in place</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't Pick Zerobus</h3>
+      <ul>
+        <li>You need a true pub/sub with multiple independent consumers</li>
+        <li>Source is an existing DB or SaaS — use Lakeflow Connect managed connector (CDC)</li>
+        <li>Source is files in cloud storage — that's Auto Loader's job</li>
+        <li>You already run Kafka happily — don't rip it out</li>
+        <li>You need replay or time-travel on the stream itself</li>
+        <li>Single-digit ms end-to-end latency required (trading, fraud)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- VS ALTERNATIVES -->
+<section class="panel" id="vs">
+  <h2>Trade-offs vs. Alternatives</h2>
+  <table>
+    <thead>
+      <tr><th>Choice</th><th>Pick when</th><th>Avoid when</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Zerobus Ingest</strong></td>
+        <td>New app-emitted event pipeline; lakehouse is destination; zero infra wanted</td>
+        <td>You need pub/sub fan-out or replay</td>
+      </tr>
+      <tr>
+        <td><strong>Kafka / Kinesis + Structured Streaming</strong></td>
+        <td>Pub/sub, multiple consumers, existing investment, sub-100ms hard SLAs</td>
+        <td>You only need data to land in Delta and want minimal ops</td>
+      </tr>
+      <tr>
+        <td><strong>Auto Loader</strong></td>
+        <td>Source is files (S3/ADLS/GCS) landing from upstream</td>
+        <td>You control the producer and could push directly</td>
+      </tr>
+      <tr>
+        <td><strong>Lakeflow Connect managed connector</strong></td>
+        <td>Source is SaaS or operational DB (Salesforce, SQL Server, Workday)</td>
+        <td>Source is your own emitting application</td>
+      </tr>
+      <tr>
+        <td><strong>DLT <code style="font-size:12px;">apply_changes</code></strong></td>
+        <td>You have the stream and need declarative CDC merges into silver</td>
+        <td>Used at the ingestion layer instead of as a downstream transform</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Where it fits in a reference architecture</h3>
+  <div style="background:#FBFAF8;border:1px solid var(--db-border);border-radius:8px;padding:18px;font-family:'Monaco',monospace;font-size:12px;line-height:1.7;overflow-x:auto;">
+App / service ──►  ┌──────────────────────────────┐<br>
+OTel exporter ──► │ Zerobus Ingest (serverless)  │ ──► Delta table (UC) ──► DLT / Jobs / DBSQL<br>
+IoT device   ──►  │  gRPC / REST / OTLP          │      (bronze)         (silver / gold transforms)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;└──────────────────────────────┘
+  </div>
+  <p style="margin-top:12px;font-size:14px;">Zerobus replaces the <strong>(Kafka + Structured Streaming bronze job)</strong> box. Silver/gold transforms still run downstream — typically DLT reading the bronze table.</p>
+</section>
+
+<!-- PUB/SUB -->
+<section class="panel" id="pubsub">
+  <h2>Why Zerobus ≠ Pub/Sub</h2>
+  <p><strong>Zerobus is a one-way pipe: producer → Delta table.</strong> Once data lands in Delta, it's at rest. It is not a streaming bus that multiple services can subscribe to in real time.</p>
+
+  <p>Kafka, Kinesis, EventHubs, Pub/Sub are <strong>brokers</strong>. They sit between producers and N consumers and let each consumer:</p>
+  <ul style="margin-left:20px;">
+    <li>Read the same event independently (different consumer groups / shards)</li>
+    <li>Maintain its own offset / cursor — replay from any point</li>
+    <li>Apply backpressure without affecting other consumers</li>
+    <li>Receive the event in milliseconds, often before anyone else has seen it</li>
+  </ul>
+  <p>Zerobus deliberately removes the broker. The price: there's nothing for other consumers to subscribe to.</p>
+
+  <h3>Concrete scenarios where you still need Kafka/Kinesis</h3>
+  <div class="scenarios">
+    <div class="scenario">
+      <span class="num">1</span><h4>Multiple real-time consumers</h4>
+      <p>An <code>order_placed</code> event feeds fraud detection, inventory, notifications, <em>and</em> the lakehouse. With Kafka all four subscribe; with Zerobus only the lakehouse gets the data.</p>
+    </div>
+    <div class="scenario">
+      <span class="num">2</span><h4>Event-driven microservices</h4>
+      <p>Services communicate via events on a bus. The lakehouse is one subscriber among many — often added later as an analytics tap. Kafka is the system of record for the event itself.</p>
+    </div>
+    <div class="scenario">
+      <span class="num">3</span><h4>Replay / time-travel</h4>
+      <p>Kafka retains events for days/weeks. A new service can deploy and replay history. Zerobus has no replay API — data sits in Delta but it's not a rewindable stream.</p>
+    </div>
+    <div class="scenario">
+      <span class="num">4</span><h4>Cross-cloud / cross-region fan-out</h4>
+      <p>Kafka MirrorMaker, Kinesis cross-region replication — these solve "the same event must reach four regions and two clouds." Zerobus terminates in one Unity Catalog table.</p>
+    </div>
+    <div class="scenario">
+      <span class="num">5</span><h4>Sub-100ms end-to-end latency</h4>
+      <p>Zerobus is P95 ≤ 500 ms to Delta durability. Trading or fraud systems reacting to events need single-digit ms broker→consumer. That's Kafka territory.</p>
+    </div>
+    <div class="scenario">
+      <span class="num">6</span><h4>Existing Kafka ecosystem</h4>
+      <p>Schema Registry, ksqlDB, Flink jobs, existing topics, ops muscle. Ripping that out for Zerobus saves nothing and breaks every non-lakehouse consumer.</p>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <h4>Rule of thumb</h4>
+    <p style="margin:0;font-size:14px;">If <strong>more than one system</strong> needs the event in real time, you need a broker. Zerobus is for "the lakehouse is the only real-time consumer."</p>
+  </div>
+</section>
+
+<!-- INTERVIEW -->
+<section class="panel" id="interview">
+  <h2>Interview Framing</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Zerobus is Databricks saying: if the only reason you're running Kafka is to get app events into Delta, you don't need Kafka anymore — push straight to a Unity Catalog table over gRPC, serverless, with sub-second durability."</div>
+  </div>
+
+  <div class="interview-card">
+    <div class="label">The pub/sub clarifier</div>
+    <div class="quote">"Zerobus replaces Kafka only when Kafka was being used solely as a transport to land events in the lakehouse. If Kafka is also serving real-time microservices, replay, multi-consumer fan-out, or cross-region distribution, those are pub/sub responsibilities Zerobus does not take on. In those cases the right pattern is Kafka and Zerobus side-by-side, or Kafka with a Structured Streaming bronze job — Zerobus doesn't enter the picture."</div>
+  </div>
+
+  <h3>Three questions to ask a customer before recommending Zerobus</h3>
+  <ol style="margin-left:20px;">
+    <li>Who else, besides analytics, needs this event stream in real time?</li>
+    <li>Do you control the producer (your app) or is this coming from a SaaS / DB / file source?</li>
+    <li>Is sub-100ms latency a hard requirement, or is sub-second to Delta good enough?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against latest Databricks docs)</strong>
+  <ul>
+    <li>· <a href="https://docs.databricks.com/aws/en/ingestion/zerobus-overview" target="_blank">Zerobus Ingest connector overview — Databricks docs</a></li>
+    <li>· <a href="https://docs.databricks.com/aws/en/ingestion/zerobus-ingest" target="_blank">Use the Zerobus Ingest connector — Databricks docs</a></li>
+    <li>· <a href="https://docs.databricks.com/aws/en/ingestion/zerobus-limits" target="_blank">Zerobus Ingest connector limitations — Databricks docs</a></li>
+    <li>· <a href="https://www.databricks.com/blog/announcing-general-availability-zerobus-ingest-part-lakeflow-connect" target="_blank">Announcing GA of Zerobus Ingest — Databricks blog</a></li>
+    <li>· <a href="https://www.databricks.com/product/data-engineering/lakeflow-connect/zerobus-ingest" target="_blank">Zerobus Ingest product page</a></li>
+  </ul>
+</footer>
+
+</div>
+
+<script>
+// ---------------- Tab switching ----------------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t => {
+  t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    panels.forEach(p => p.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById(t.dataset.tab).classList.add('active');
+  });
+});
+
+// ---------------- Interactive diagrams ----------------
+const diagrams = {
+  zerobus: {
+    nodes: [
+      { id: 'app1', x: 40, y: 60, w: 140, h: 50, label: 'Application', sub: 'producer', color: '#2272B4',
+        info: '<strong>Application (producer)</strong>Your service, mobile app, or backend job. Uses the Zerobus SDK (Python, Java, Rust, Go, TS) or REST to push records over a long-lived gRPC stream.' },
+      { id: 'app2', x: 40, y: 150, w: 140, h: 50, label: 'OTel Exporter', sub: 'logs / traces / metrics', color: '#2272B4',
+        info: '<strong>OpenTelemetry exporter</strong>Standard OTLP exporter ships traces, logs, and metrics into predefined Delta schemas — replacing a Splunk/Datadog hop or a Kafka+collector pipeline.' },
+      { id: 'app3', x: 40, y: 240, w: 140, h: 50, label: 'IoT Device', sub: 'high fan-in', color: '#2272B4',
+        info: '<strong>IoT / edge device</strong>Many producers, variable throughput. Each opens its own stream; scaling = more streams.' },
+      { id: 'zb', x: 320, y: 130, w: 200, h: 90, label: 'Zerobus Ingest', sub: 'serverless · gRPC/REST/OTLP', color: '#FF3621',
+        info: '<strong>Zerobus Ingest service</strong>Serverless. Buffers, validates schema against the target table, durably persists, acks the client, then materializes into Delta. P95 ≤ 500ms to durability. Billed as Jobs Serverless.' },
+      { id: 'delta', x: 640, y: 130, w: 200, h: 90, label: 'Delta Table', sub: 'Unity Catalog · bronze', color: '#00A972',
+        info: '<strong>Delta table (Unity Catalog)</strong>Governed bronze table. Schema is authoritative — Zerobus validates incoming messages against it. Breaking changes route data to <code>_zerobus/table_rejected_parquets/</code>.' },
+      { id: 'dlt', x: 640, y: 260, w: 200, h: 50, label: 'DLT / Jobs / DBSQL', sub: 'silver & gold transforms', color: '#6B7280',
+        info: '<strong>Downstream consumers</strong>DLT pipelines, batch jobs, or DBSQL warehouses read the bronze Delta table for silver/gold transforms. These are <em>not</em> real-time pub/sub subscribers — they read the table.' }
+    ],
+    arrows: [
+      { from: 'app1', to: 'zb', cls: 'hot' },
+      { from: 'app2', to: 'zb', cls: 'hot' },
+      { from: 'app3', to: 'zb', cls: 'hot' },
+      { from: 'zb', to: 'delta', cls: 'hot' },
+      { from: 'delta', to: 'dlt', cls: '' }
+    ]
+  },
+  kafka: {
+    nodes: [
+      { id: 'app1', x: 40, y: 130, w: 140, h: 50, label: 'Application', sub: 'producer', color: '#2272B4',
+        info: '<strong>Application (producer)</strong>Publishes events to a Kafka topic using Kafka clients. Schema typically managed externally (Schema Registry).' },
+      { id: 'kafka', x: 260, y: 80, w: 180, h: 90, label: 'Kafka / Kinesis', sub: 'broker · pub/sub', color: '#FFC107',
+        info: '<strong>Kafka broker</strong>Durable, replayable log. Multiple consumer groups can read independently. Schema Registry, partitions, brokers, replication — all to operate.' },
+      { id: 'stream', x: 260, y: 220, w: 180, h: 60, label: 'Structured Streaming', sub: 'or DLT streaming', color: '#FF3621',
+        info: '<strong>Structured Streaming / DLT bronze job</strong>Reads from Kafka and writes to Delta. You operate the cluster (or use serverless DLT). This is the piece Zerobus replaces.' },
+      { id: 'delta', x: 540, y: 220, w: 180, h: 60, label: 'Delta Table', sub: 'Unity Catalog · bronze', color: '#00A972',
+        info: '<strong>Delta table (UC)</strong>Bronze landing zone. Same as in the Zerobus pattern — but you got here via two hops instead of one.' },
+      { id: 'fraud', x: 540, y: 30, w: 180, h: 40, label: 'Fraud Service', sub: 'consumer', color: '#6B7280',
+        info: '<strong>Fraud detection consumer</strong>Reads the same Kafka topic with its own offset. Cannot exist with Zerobus alone — needs a broker.' },
+      { id: 'inv', x: 540, y: 80, w: 180, h: 40, label: 'Inventory Service', sub: 'consumer', color: '#6B7280',
+        info: '<strong>Inventory consumer</strong>Independently consumes the topic. Different consumer group, own offset. This is the pub/sub case Zerobus does not replace.' },
+      { id: 'notif', x: 540, y: 130, w: 180, h: 40, label: 'Notification Service', sub: 'consumer', color: '#6B7280',
+        info: '<strong>Notification consumer</strong>Sends transactional emails. Another independent subscriber. With Zerobus you would have to query Delta — far too slow for this.' }
+    ],
+    arrows: [
+      { from: 'app1', to: 'kafka', cls: '' },
+      { from: 'kafka', to: 'stream', cls: '' },
+      { from: 'kafka', to: 'fraud', cls: '' },
+      { from: 'kafka', to: 'inv', cls: '' },
+      { from: 'kafka', to: 'notif', cls: '' },
+      { from: 'stream', to: 'delta', cls: '' }
+    ]
+  },
+  hybrid: {
+    nodes: [
+      { id: 'app1', x: 40, y: 130, w: 140, h: 50, label: 'Application', sub: 'producer (dual write)', color: '#2272B4',
+        info: '<strong>Application</strong>Sends events to Kafka for real-time consumers AND to Zerobus for the lakehouse. Or alternatively, only to Kafka with Zerobus consuming from a separate path — depends on which is the system of record.' },
+      { id: 'kafka', x: 260, y: 40, w: 180, h: 60, label: 'Kafka', sub: 'pub/sub for services', color: '#FFC107',
+        info: '<strong>Kafka</strong>Keeps serving real-time microservice consumers — fraud, inventory, notifications. Not removed.' },
+      { id: 'zb', x: 260, y: 220, w: 180, h: 60, label: 'Zerobus Ingest', sub: 'analytics path', color: '#FF3621',
+        info: '<strong>Zerobus Ingest</strong>Takes only the lakehouse path. Replaces the Structured Streaming bronze job. Reduces one moving part without touching the broker.' },
+      { id: 'svcs', x: 540, y: 40, w: 180, h: 60, label: 'Real-time services', sub: 'fraud / inventory / notif', color: '#6B7280',
+        info: '<strong>Real-time consumers</strong>Continue subscribing to Kafka topics independently.' },
+      { id: 'delta', x: 540, y: 220, w: 180, h: 60, label: 'Delta Table (UC)', sub: 'bronze · analytics', color: '#00A972',
+        info: '<strong>Delta table</strong>Bronze landing for analytics. DLT/DBSQL downstream.' }
+    ],
+    arrows: [
+      { from: 'app1', to: 'kafka', cls: '' },
+      { from: 'app1', to: 'zb', cls: 'hot' },
+      { from: 'kafka', to: 'svcs', cls: '' },
+      { from: 'zb', to: 'delta', cls: 'hot' }
+    ]
+  }
+};
+
+function renderDiagram(key) {
+  const d = diagrams[key];
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const g = document.getElementById('diagramContent');
+  g.innerHTML = '';
+
+  // Arrows first (behind nodes)
+  d.arrows.forEach(a => {
+    const fromN = d.nodes.find(n => n.id === a.from);
+    const toN = d.nodes.find(n => n.id === a.to);
+    const x1 = fromN.x + fromN.w;
+    const y1 = fromN.y + fromN.h / 2;
+    const x2 = toN.x;
+    const y2 = toN.y + toN.h / 2;
+    const path = document.createElementNS(svgNS, 'path');
+    const midX = (x1 + x2) / 2;
+    path.setAttribute('d', `M ${x1} ${y1} C ${midX} ${y1}, ${midX} ${y2}, ${x2 - 4} ${y2}`);
+    path.setAttribute('class', 'arrow ' + (a.cls || ''));
+    if (a.cls === 'hot') path.setAttribute('marker-end', 'url(#arrowhead-orange)');
+    g.appendChild(path);
+  });
+
+  // Nodes
+  d.nodes.forEach(n => {
+    const group = document.createElementNS(svgNS, 'g');
+    group.setAttribute('class', 'node');
+    group.setAttribute('data-info', n.info);
+
+    const rect = document.createElementNS(svgNS, 'rect');
+    rect.setAttribute('x', n.x);
+    rect.setAttribute('y', n.y);
+    rect.setAttribute('width', n.w);
+    rect.setAttribute('height', n.h);
+    rect.setAttribute('rx', 8);
+    rect.setAttribute('class', 'node-bg');
+    rect.setAttribute('fill', 'white');
+    rect.setAttribute('stroke', n.color);
+    rect.setAttribute('stroke-width', '2');
+    group.appendChild(rect);
+
+    const label = document.createElementNS(svgNS, 'text');
+    label.setAttribute('x', n.x + n.w / 2);
+    label.setAttribute('y', n.y + n.h / 2 - (n.sub ? 4 : -4));
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', '14');
+    label.setAttribute('font-weight', '600');
+    label.setAttribute('fill', n.color);
+    label.textContent = n.label;
+    group.appendChild(label);
+
+    if (n.sub) {
+      const sub = document.createElementNS(svgNS, 'text');
+      sub.setAttribute('x', n.x + n.w / 2);
+      sub.setAttribute('y', n.y + n.h / 2 + 14);
+      sub.setAttribute('text-anchor', 'middle');
+      sub.setAttribute('font-size', '11');
+      sub.setAttribute('fill', '#6B7280');
+      sub.textContent = n.sub;
+      group.appendChild(sub);
+    }
+
+    group.addEventListener('click', () => {
+      document.getElementById('infoBox').innerHTML = n.info;
+    });
+    group.addEventListener('mouseenter', () => {
+      document.getElementById('infoBox').innerHTML = n.info;
+    });
+
+    g.appendChild(group);
+  });
+}
+
+function switchDiagram(key) {
+  document.querySelectorAll('.diagram-controls button').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  renderDiagram(key);
+  document.getElementById('infoBox').innerHTML = '<strong>Tip</strong>Click any boxed component above to learn about it.';
+}
+
+// Initial render
+renderDiagram('zerobus');
+</script>
+</body>
+</html>

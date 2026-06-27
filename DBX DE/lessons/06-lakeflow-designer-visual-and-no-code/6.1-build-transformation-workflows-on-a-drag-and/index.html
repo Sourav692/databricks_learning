@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakeflow Designer · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  ol{margin:.4em 0;padding-left:1.3em}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: canvas builder */
+  .palette{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .op{font-family:"Spline Sans Mono",monospace;font-size:.76rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 11px;cursor:pointer;transition:.15s}
+  .op:hover{border-color:var(--teal);background:#eef7f8}
+  .canvas{min-height:60px;border:1px dashed var(--line);border-radius:10px;background:#fff;padding:10px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .chip{font-family:"Spline Sans Mono",monospace;font-size:.76rem;background:#fff3e8;border:1px solid var(--brand-2);color:var(--brand);border-radius:8px;padding:6px 10px}
+  .arrow{color:var(--brand)}
+  .gen{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+  .btn:hover{background:var(--brand);color:#fff}
+  /* diagram 2: build modes */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 6.1</p>
+  <h1><em>Lakeflow Designer</em></h1>
+  <p class="lede">A visual, no-code, AI-native tool to build data pipelines on a drag-and-drop canvas — output is production-ready Python code, governed by Unity Catalog and versionable in Git. This deep dive pairs the UI flow with the generated code.</p>
+  <div class="pills"><span class="pill">no-code canvas</span><span class="pill">Genie Code (NL)</span><span class="pill">generates Python</span><span class="pill">Git-versionable</span><span class="pill">UC-governed</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Lakeflow Designer</strong> = drag-and-drop + natural-language data prep where the visual workflow compiles to <strong>production-ready Python code</strong>, governed by Unity Catalog and versionable in Git — no "rebuild the prototype" step. <em>(⚠️ verify preview/GA status in the docs.)</em></div>
+  <div class="card analogy" style="margin-top:10px">🧩 <strong>Analogy:</strong> a <strong>no-code app builder for pipelines</strong> — like dragging blocks in a website builder, but every block generates real, governed pipeline code underneath (not a throwaway prototype).</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: canvas builder -->
+<section id="canvas">
+  <h2>Build on the canvas — click operators to add them</h2>
+  <p class="hint">▸ drop operators between Source and Output, then "Generate code"</p>
+  <div class="palette">
+    <span class="op" data-op="Filter">+ Filter</span>
+    <span class="op" data-op="Join">+ Join</span>
+    <span class="op" data-op="Aggregate">+ Aggregate</span>
+    <span class="op" data-op="Reshape">+ Reshape</span>
+  </div>
+  <div class="canvas" id="cv">
+    <span class="chip">Source</span><span class="arrow">▸</span><span class="chip">Output</span>
+  </div>
+  <div class="gen">
+    <button class="btn" onclick="genCode()">Generate code</button>
+    <button class="btn" onclick="resetCv()">Reset</button>
+  </div>
+  <pre class="code" id="code" style="margin-top:10px"># generated, UC-governed Python appears here</pre>
+</section>
+
+<section id="ui">
+  <h2>1 · Build it — UI steps</h2>
+  <ol>
+    <li>Open <strong>Jobs &amp; Pipelines</strong> (or <strong>+ New</strong>) → create a <strong>Lakeflow Designer</strong> draft.</li>
+    <li><strong>Add sources</strong> — pick UC tables/files from the catalog onto the canvas.</li>
+    <li><strong>Drop transform operators</strong> (filter, join, aggregate, reshape — 6.2) and wire source → output; preview data at any node.</li>
+    <li>Optionally use <strong>Genie Code</strong> to generate/edit a step from a prompt (6.3).</li>
+    <li><strong>Publish</strong> — choose the destination UC catalog/schema; Designer creates the tables + underlying pipeline.</li>
+  </ol>
+  <div class="card note">💡 Data stays in place on Databricks, governed by Unity Catalog from the first step — lineage &amp; permissions apply.</div>
+</section>
+
+<section id="code2">
+  <h2>2 · The generated code (the production payoff)</h2>
+  <p>Every visual workflow compiles to production-ready <strong>Python</strong> you can inspect, review in a PR, and commit to Git — the same artifact an engineer would write.</p>
+  <pre class="code"><span class="c"># Illustrative of what Designer generates for "monthly revenue per region"</span>
+<span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+
+<span class="f">@dp.materialized_view</span>(comment=<span class="s">"Monthly revenue per region (generated by Lakeflow Designer)"</span>)
+<span class="k">def</span> monthly_revenue_by_region():
+    orders  = spark.read.table(<span class="s">"main.sales.orders"</span>).where(<span class="s">"amount > 0"</span>)   <span class="c"># Filter op</span>
+    regions = spark.read.table(<span class="s">"main.sales.dim_region"</span>)                  <span class="c"># Source</span>
+    <span class="k">return</span> (orders.join(regions, <span class="s">"region_id"</span>)                            <span class="c"># Join op</span>
+                  .groupBy(<span class="s">"region"</span>, <span class="s">"month"</span>).sum(<span class="s">"amount"</span>))             <span class="c"># Aggregate op</span></pre>
+  <p style="margin-top:8px">Because it's real code, it's <strong>versionable (Git), reviewable in PRs, and deployable via Asset Bundles</strong> — it behaves like any code-authored pipeline.</p>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: build modes -->
+<section id="modes">
+  <h2>3 · Two ways to build — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="drag">Drag-and-drop</button>
+    <button class="tab" data-t="nl">Natural language (Genie Code)</button>
+  </div>
+  <div class="panel on" data-p="drag"><div class="card">Drop built-in operators (filter, aggregate, join, reshape — 6.2) and wire them into a flow. Add your own <strong>user-defined operators</strong> via Python/SQL UDFs for custom logic.</div></div>
+  <div class="panel" data-p="nl"><div class="card">Type intent — e.g. <em>"monthly revenue per region"</em> — and <strong>Genie Code</strong> (6.3) generates or updates the transformation. The result is the same governed Python as the drag-and-drop path.</div></div>
+  <div class="card note" style="margin-top:10px">💡 Either way, the output is <strong>production-ready Python governed by Unity Catalog</strong> — it inherits lineage &amp; permissions and can be committed to Git.</div>
+</section>
+
+<section>
+  <h2>When to use it vs. drop to code</h2>
+  <table>
+    <tr><th>Use Lakeflow Designer</th><th>Author SDP code directly</th></tr>
+    <tr><td>Analyst / citizen-engineer data prep</td><td>Complex/custom logic, advanced state</td></tr>
+    <tr><td>Fast, visual prototyping that ships</td><td>Heavy parameterization, libraries</td></tr>
+    <tr><td>NL-assisted exploration</td><td>Fine-grained control / testing</td></tr>
+  </table>
+  <div class="card" style="margin-top:10px">Not either/or: Designer <strong>generates</strong> the code, so a team can start visual and hand the generated Python to engineering to extend.</div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Opens governed pipeline-building to <strong>analysts &amp; non-engineers</strong> — and avoids the usual "rebuild the prototype in real code" step (the output <em>is</em> production Python).</li>
+    <li>"How do non-engineers build governed pipelines?" → <strong>Lakeflow Designer</strong> (part of the 2026 Lakeflow lineup).</li>
+  </ul>
+  <div class="card usecase">📊 <strong>Real-world use case:</strong> an analyst drags Salesforce + orders onto the canvas, types "monthly revenue per region," and ships it — the generated pipeline is UC-governed, lands in Git, and runs like any other Lakeflow pipeline, no engineering hand-off.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> analyst/citizen-engineer data prep; fast prototyping that ships as production pipelines; visual exploration with NL help; bridging analysts &amp; engineers via shared generated code.</li>
+    <li><strong>Edge case:</strong> very complex/custom logic may be better authored directly in SDP code; UDF operators bridge gaps but reintroduce some code.</li>
+    <li><strong>Limitation:</strong> it's a newer tool — <strong>verify current availability (preview vs GA) and limits in the docs</strong>. It produces a Lakeflow pipeline, so SDP constraints apply underneath. <em>(⚠️ availability not asserted here — confirm in docs.)</em></li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Thinking it's a throwaway prototype tool — its output is <strong>governed production Python</strong> you can version in Git.</li>
+    <li>❌ Assuming "no-code" means "no governance" — it's <strong>fully Unity Catalog governed</strong>.</li>
+    <li>❌ Forcing every advanced transform onto the canvas — drop to SDP code / UDF operators when logic gets gnarly.</li>
+    <li>❌ Asserting it's GA without checking the docs.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/designer/what-is-lakeflow-designer" target="_blank" rel="noopener">What is Lakeflow Designer?</a> ·
+  <a href="https://docs.databricks.com/aws/en/designer/" target="_blank" rel="noopener">Lakeflow Designer</a> ·
+  <a href="https://docs.databricks.com/aws/en/genie-code/" target="_blank" rel="noopener">Genie Code</a>
+  <p style="margin-top:10px">Topic 6.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — canvas builder (scoped to #canvas)
+const cv=document.getElementById('cv'), codeEl=document.getElementById('code');
+let ops=[];
+function renderCv(){
+  let html='<span class="chip">Source</span>';
+  ops.forEach(o=>{ html+='<span class="arrow">▸</span><span class="chip">'+o+'</span>'; });
+  html+='<span class="arrow">▸</span><span class="chip">Output</span>';
+  cv.innerHTML=html;
+}
+document.querySelectorAll('#canvas .op').forEach(o=>o.addEventListener('click',()=>{ ops.push(o.dataset.op); renderCv(); }));
+function genCode(){
+  let py='# generated, UC-governed Python (Lakeflow Designer)\nfrom pyspark import pipelines as dp\n\n@dp.materialized_view\ndef result():\n    df = spark.read.table("source")';
+  ops.forEach(o=>{
+    if(o==='Filter') py+='.where("amount > 0")';
+    if(o==='Join') py+='.join(spark.read.table("dim_region"), "region_id")';
+    if(o==='Aggregate') py+='.groupBy("region").sum("amount")';
+    if(o==='Reshape') py+='.select("region", "total")';
+  });
+  codeEl.textContent = py + '\n    return df';
+}
+function resetCv(){ ops=[]; renderCv(); codeEl.textContent='# generated, UC-governed Python appears here'; }
+renderCv();
+// Diagram 2 — build modes tabs (scoped to #modes)
+document.querySelectorAll('#modes .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#modes .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#modes .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unity Catalog — Namespace & Governance · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: hierarchy tree */
+  .tree{font-family:"Spline Sans Mono",monospace;font-size:.86rem}
+  .node{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;margin:4px 0;cursor:pointer;transition:.15s}
+  .node:hover{border-color:var(--brand-2)}
+  .node.on{border-color:var(--teal);background:#eef7f8}
+  .lvl1{margin-left:0}.lvl2{margin-left:24px}.lvl3{margin-left:48px}.lvl4{margin-left:72px}
+  .ndesc{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;min-height:50px}
+  /* diagram 2: governance tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 8.1</p>
+  <h1>Unity Catalog — <em>Namespace</em> &amp; Governance</h1>
+  <p class="lede">One governance layer over all data &amp; AI: a metastore→catalog→schema→object hierarchy, the 3-level name catalog.schema.object, Volumes for files, plus built-in discovery, lineage, and audit. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">catalog.schema.object</span><span class="pill">information_schema</span><span class="pill">Volumes</span><span class="pill">lineage + audit</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Unity Catalog</strong> governs every asset under <strong>metastore → catalog → schema → object</strong>, addressed by the 3-level name <code>catalog.schema.object</code>. <strong>Volumes</strong> govern files; <strong>lineage</strong> &amp; <strong>audit</strong> are automatic (queryable as system tables).</div>
+  <div class="card analogy" style="margin-top:10px">📚 <strong>Analogy:</strong> a <strong>city library system</strong> — metastore = the system, catalogs = branches, schemas = sections, tables/volumes = books/media. The 3-level name is the call number; lineage is the citation trail; audit is the checkout log.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: hierarchy tree -->
+<section id="tree">
+  <h2>The object hierarchy — click a level</h2>
+  <p class="hint">▸ metastore → catalog → schema → object</p>
+  <div class="tree">
+    <div class="node lvl1 on" data-n="meta">🏛️ metastore</div>
+    <div class="node lvl2" data-n="cat">📁 catalog &nbsp;(prod)</div>
+    <div class="node lvl3" data-n="sch">📂 schema &nbsp;(sales)</div>
+    <div class="node lvl4" data-n="obj">📄 object &nbsp;(orders / landing volume / fn / model)</div>
+  </div>
+  <div class="ndesc" id="ndesc"></div>
+</section>
+
+<section id="ns">
+  <h2>1 · The 3-level namespace</h2>
+  <p>Create the hierarchy, then address objects fully-qualified or set a default catalog+schema for short names. Common pattern: <strong>catalog per environment/domain</strong>.</p>
+  <pre class="code"><span class="k">CREATE CATALOG IF NOT EXISTS</span> prod;
+<span class="k">CREATE SCHEMA  IF NOT EXISTS</span> prod.sales;
+
+<span class="k">SELECT</span> * <span class="k">FROM</span> prod.sales.orders;     <span class="c">-- fully qualified</span>
+<span class="k">USE CATALOG</span> prod; <span class="k">USE SCHEMA</span> sales;     <span class="c">-- then short names resolve</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> orders;                 <span class="c">-- → prod.sales.orders</span></pre>
+  <p class="codecap">Inspect metadata via information_schema</p>
+  <pre class="code"><span class="k">SELECT</span> table_name, table_type <span class="k">FROM</span> prod.information_schema.tables <span class="k">WHERE</span> table_schema = <span class="s">'sales'</span>;
+<span class="k">SELECT</span> column_name, data_type <span class="k">FROM</span> prod.information_schema.columns
+<span class="k">WHERE</span> table_schema = <span class="s">'sales'</span> <span class="k">AND</span> table_name = <span class="s">'orders'</span>;</pre>
+</section>
+
+<section id="vols">
+  <h2>2 · Volumes — govern files (not tables)</h2>
+  <p>The UC-governed place for files; access at <code>/Volumes/&lt;catalog&gt;/&lt;schema&gt;/&lt;volume&gt;/…</code>. Managed = UC owns storage; external = your path under a UC external location. Replaces DBFS mounts.</p>
+  <pre class="code"><span class="k">CREATE VOLUME</span> prod.sales.landing;                         <span class="c">-- managed</span>
+<span class="k">CREATE EXTERNAL VOLUME</span> prod.sales.archive
+  <span class="k">LOCATION</span> <span class="s">'s3://acme-lake/sales/archive/'</span>;              <span class="c">-- external</span></pre>
+  <pre class="code" style="margin-top:8px"><span class="c"># Read/write files through the /Volumes path — governed like any UC object</span>
+dbutils.fs.ls(<span class="s">"/Volumes/prod/sales/landing/"</span>)
+df = spark.read.json(<span class="s">"/Volumes/prod/sales/landing/clickstream.json"</span>)
+df.write.format(<span class="s">"delta"</span>).saveAsTable(<span class="s">"prod.sales.bronze_clicks"</span>)</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: governance features -->
+<section id="gov">
+  <h2>3 · Built-in governance — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="disc">Discovery</button>
+    <button class="tab" data-t="lin">Lineage</button>
+    <button class="tab" data-t="aud">Audit</button>
+    <button class="tab" data-t="vol">Volumes</button>
+  </div>
+  <div class="panel on" data-p="disc"><div class="card"><strong>Discovery</strong> — Catalog Explorer + search to find/inspect assets; <code>information_schema</code> &amp; <code>COMMENT</code>/<code>TAGS</code> make them searchable.</div></div>
+  <div class="panel" data-p="lin"><div class="card"><strong>Lineage</strong> — automatically tracks source → tables → dashboards, down to <strong>column</strong> level. Query via <code>system.access.column_lineage</code>.</div></div>
+  <div class="panel" data-p="aud"><div class="card"><strong>Audit</strong> — the <code>system.access.audit</code> system table records all data access &amp; system activity for compliance/security.</div></div>
+  <div class="panel" data-p="vol"><div class="card"><strong>Volumes</strong> — govern non-tabular files (images, JSON, models), managed or external — instead of legacy DBFS mounts.</div></div>
+</section>
+
+<section id="discov">
+  <h2>4 · Tags, lineage &amp; audit as code</h2>
+  <pre class="code"><span class="c">-- Document + tag for search/governance</span>
+<span class="k">COMMENT ON TABLE</span> prod.sales.orders <span class="k">IS</span> <span class="s">'Curated order facts (gold).'</span>;
+<span class="k">ALTER TABLE</span> prod.sales.orders <span class="k">SET TAGS</span> (<span class="s">'domain'</span>=<span class="s">'sales'</span>, <span class="s">'pii'</span>=<span class="s">'false'</span>);
+<span class="k">ALTER TABLE</span> prod.sales.orders <span class="k">ALTER COLUMN</span> email <span class="k">SET TAGS</span> (<span class="s">'pii'</span>=<span class="s">'true'</span>);</pre>
+  <pre class="code" style="margin-top:8px"><span class="c">-- Who accessed what (audit) + column lineage — via system tables</span>
+<span class="k">SELECT</span> event_time, user_identity.email, action_name <span class="k">FROM</span> system.access.audit
+<span class="k">WHERE</span> action_name = <span class="s">'getTable'</span> <span class="k">AND</span> event_date &gt;= current_date() - <span class="f">7</span>;
+<span class="k">SELECT</span> * <span class="k">FROM</span> system.access.column_lineage <span class="k">WHERE</span> target_table_name = <span class="s">'orders'</span>;</pre>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>One governance model across <strong>every workspace</strong> — no per-tool permission sprawl. It's the backbone for access control &amp; ABAC (rest of Topic 8).</li>
+    <li>"How is data governed on Databricks?" → <strong>Unity Catalog</strong> (namespace + lineage + audit).</li>
+  </ul>
+  <div class="card usecase">🧾 <strong>Real-world use case:</strong> <code>prod.finance.invoices</code> is governed once — analysts discover it in Catalog Explorer, lineage shows it feeds the revenue dashboard, and audit logs record every access for compliance.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> organizing data by env/domain (catalogs/schemas); governing files via Volumes; impact analysis via lineage; compliance via audit; programmatic discovery via information_schema / system tables.</li>
+    <li><strong>Edge cases:</strong> mixing legacy <code>hive_metastore</code> (2-level) with UC (3-level) confuses references; lineage captures UC-tracked operations only; <code>information_schema</code> is per-catalog while <code>system.information_schema</code> spans the metastore.</li>
+    <li><strong>Limitation:</strong> lineage/audit reflect what UC governs — raw files written outside UC aren't fully captured; Volumes hold files, not a replacement for Delta tables.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using <strong>DBFS mounts</strong> for files instead of <strong>UC Volumes</strong> (legacy, ungoverned).</li>
+    <li>❌ Two-level <code>schema.table</code> habits — UC is <strong>three-level</strong>.</li>
+    <li>❌ Assuming lineage covers everything — it covers UC-tracked flows.</li>
+    <li>❌ Treating a Volume like a table — Volumes hold files; query tables for data.</li>
+    <li>❌ Hardcoding a single catalog — parameterize for dev/staging/prod.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/" target="_blank" rel="noopener">Unity Catalog</a> ·
+  <a href="https://docs.databricks.com/aws/en/volumes/" target="_blank" rel="noopener">Volumes</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/information-schema/" target="_blank" rel="noopener">information_schema</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage" target="_blank" rel="noopener">Data lineage</a>
+  <p style="margin-top:10px">Topic 8.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — hierarchy tree (scoped to #tree)
+const ND={
+  meta:'<b>Metastore</b> — top-level container for a region; holds catalogs and governs them. One metastore can be shared across workspaces in a region.',
+  cat:'<b>Catalog</b> — first part of the name (e.g. prod). Common pattern: one catalog per environment or domain.',
+  sch:'<b>Schema</b> — second part (e.g. sales). Groups related tables/views/volumes/functions/models.',
+  obj:'<b>Object</b> — the asset itself: table, view, <b>volume</b> (files), function, or model. Addressed as catalog.schema.object.'
+};
+const nd=document.getElementById('ndesc');
+function setNode(k){
+  document.querySelectorAll('#tree .node').forEach(n=>n.classList.toggle('on',n.dataset.n===k));
+  nd.innerHTML=ND[k];
+}
+document.querySelectorAll('#tree .node').forEach(n=>n.addEventListener('click',()=>setNode(n.dataset.n)));
+setNode('meta');
+// Diagram 2 — governance tabs (scoped to #gov)
+document.querySelectorAll('#gov .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#gov .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#gov .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

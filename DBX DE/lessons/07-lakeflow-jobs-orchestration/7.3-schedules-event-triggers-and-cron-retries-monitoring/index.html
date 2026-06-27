@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Triggers, Schedules & Monitoring · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.4vw,2.7rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .y{color:#69c0d0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: trigger picker */
+  .trig{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .tg{border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;transition:.18s;text-align:center}
+  .tg:hover{border-color:var(--brand-2)}.tg.on{border-color:var(--teal);background:#eef7f8}
+  .tg .ic{font-size:1.3rem}.tg .t{font-weight:600;font-size:.8rem;margin-top:2px}
+  .tgd{margin-top:10px}.tgd .card{display:none}.tgd .card.on{display:block;animation:fade .25s ease}
+  /* diagram 2: cron decoder */
+  .cronrow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .cb{flex:1;min-width:60px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;text-align:center;cursor:pointer;transition:.15s;font-family:"Spline Sans Mono",monospace}
+  .cb:hover{border-color:var(--teal)}.cb.on{border-color:var(--teal);background:#eef7f8}
+  .cb .f{font-size:1.1rem;font-weight:600}.cb .l{font-size:.6rem;color:#8a939c}
+  .cronout{font-family:"Spline Sans Mono",monospace;font-size:.84rem;margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.trig{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 7.3</p>
+  <h1>Triggers, Schedules &amp; <em>Monitoring</em></h1>
+  <p class="lede">How a job starts (Quartz CRON / file arrival / table update / continuous), recovers (retries, partial re-run), and reports (monitoring + notifications + health SLAs). This deep dive pairs each with bundle YAML.</p>
+  <div class="pills"><span class="pill">Quartz CRON</span><span class="pill">file-arrival</span><span class="pill">retries</span><span class="pill">notifications</span><span class="pill">health SLA</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Triggers</strong> start a run (Quartz CRON, file arrival, table update, continuous, periodic, manual); <strong>retries &amp; timeouts</strong> recover from blips (re-run only failed tasks); <strong>monitoring + notifications + health rules</strong> tell you what happened (email / webhook / Slack / SLA breach).</div>
+  <div class="card analogy" style="margin-top:10px">⏰ <strong>Analogy:</strong> triggers are the <strong>alarm clock</strong> (time) or <strong>doorbell</strong> (an event); retries are <em>"try the key again if the door sticks"</em>; notifications are the <strong>text message</strong> telling you it worked or broke.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: trigger picker -->
+<section id="trig">
+  <h2>Trigger types — click each</h2>
+  <p class="hint">▸ what starts the run?</p>
+  <div class="trig">
+    <div class="tg on" data-t="cron"><div class="ic">⏰</div><div class="t">Scheduled (CRON)</div></div>
+    <div class="tg" data-t="file"><div class="ic">📁</div><div class="t">File arrival</div></div>
+    <div class="tg" data-t="table"><div class="ic">🗃️</div><div class="t">Table update</div></div>
+    <div class="tg" data-t="cont"><div class="ic">♾️</div><div class="t">Continuous</div></div>
+    <div class="tg" data-t="periodic"><div class="ic">🔁</div><div class="t">Periodic</div></div>
+    <div class="tg" data-t="manual"><div class="ic">▶️</div><div class="t">Manual</div></div>
+  </div>
+  <div class="tgd">
+    <div class="card on" data-td="cron"><strong>Scheduled (Quartz CRON)</strong> — time-based, e.g. <code>0 0 2 * * ?</code> = 02:00 daily. Runs in the job's <code>timezone_id</code>.</div>
+    <div class="card" data-td="file"><strong>File arrival</strong> — fires when new files reach a monitored Unity Catalog location (<code>trigger.file_arrival.url</code>). Pairs well with Auto Loader downstream.</div>
+    <div class="card" data-td="table"><strong>Table update</strong> — fires when a source table is modified.</div>
+    <div class="card" data-td="cont"><strong>Continuous</strong> — auto-restarts on completion/failure for always-on jobs (compute stays up → cost).</div>
+    <div class="card" data-td="periodic"><strong>Periodic</strong> — fixed interval (<code>trigger.periodic.interval/unit</code>), an alternative to cron.</div>
+    <div class="card" data-td="manual"><strong>Manual</strong> — "Run now" or via external orchestration / API.</div>
+  </div>
+</section>
+
+<!-- DIAGRAM 2: Quartz cron decoder (6 fields) -->
+<section id="cron">
+  <h2>Quartz CRON decoder — click a field</h2>
+  <p class="hint">▸ <code>0 0 2 * * ?</code> — Databricks uses 6-field Quartz (not 5-field Unix)</p>
+  <div class="cronrow">
+    <div class="cb on" data-c="sec"><div class="f">0</div><div class="l">seconds</div></div>
+    <div class="cb" data-c="min"><div class="f">0</div><div class="l">minutes</div></div>
+    <div class="cb" data-c="hr"><div class="f">2</div><div class="l">hours</div></div>
+    <div class="cb" data-c="dom"><div class="f">*</div><div class="l">day of month</div></div>
+    <div class="cb" data-c="mon"><div class="f">*</div><div class="l">month</div></div>
+    <div class="cb" data-c="dow"><div class="f">?</div><div class="l">day of week</div></div>
+  </div>
+  <div class="cronout" id="cronout"></div>
+</section>
+
+<section id="schedyaml">
+  <h2>1 · Schedule &amp; triggers as code</h2>
+  <pre class="code"><span class="y">schedule:</span>
+  <span class="y">quartz_cron_expression:</span> <span class="s">"0 0 2 * * ?"</span>   <span class="c"># 02:00 daily (sec min hr dom mon dow)</span>
+  <span class="y">timezone_id:</span> <span class="s">"America/New_York"</span>       <span class="c"># DST-aware; "UTC" avoids DST drift</span>
+  <span class="y">pause_status:</span> UNPAUSED                  <span class="c"># or PAUSED</span></pre>
+  <pre class="code" style="margin-top:8px"><span class="c"># event-driven instead of cron:</span>
+<span class="y">trigger:</span>
+  <span class="y">file_arrival:</span> { <span class="y">url:</span> <span class="s">"/Volumes/main/raw/orders/"</span> }
+<span class="c"># or: trigger: { periodic: { interval: 6, unit: HOURS } }</span></pre>
+</section>
+
+<section id="reliability">
+  <h2>2 · Reliability — retries, timeouts, concurrency</h2>
+  <pre class="code"><span class="y">timeout_seconds:</span> 7200            <span class="c"># job kill-switch (2h)</span>
+<span class="y">max_concurrent_runs:</span> 1           <span class="c"># default 1; raise only if overlap is safe</span>
+<span class="y">tasks:</span>
+  - <span class="y">task_key:</span> ingest
+    <span class="y">max_retries:</span> 2                       <span class="c"># retry transient failures twice</span>
+    <span class="y">min_retry_interval_millis:</span> 60000     <span class="c"># wait 60s between retries</span>
+    <span class="y">retry_on_timeout:</span> true               <span class="c"># also retry on task timeout</span>
+    <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/ingest.py }</pre>
+  <div class="card note" style="margin-top:10px">💡 Retries fix <strong>transient</strong> failures (flaky API, lost node), not deterministic bugs. On a fix, <strong>re-run only the failed tasks</strong> (repair run), not the whole job.</div>
+</section>
+
+<section id="notify">
+  <h2>3 · Notifications &amp; health (SLA)</h2>
+  <pre class="code"><span class="y">email_notifications:</span>
+  <span class="y">on_failure:</span> [<span class="s">"oncall@acme.com"</span>]
+  <span class="y">on_duration_warning_threshold_exceeded:</span> [<span class="s">"oncall@acme.com"</span>]
+<span class="y">webhook_notifications:</span>
+  <span class="y">on_failure:</span> [{ <span class="y">id:</span> <span class="s">"${var.slack_webhook_id}"</span> }]   <span class="c"># Slack / PagerDuty</span>
+<span class="y">health:</span>
+  <span class="y">rules:</span>
+    - <span class="y">metric:</span> RUN_DURATION_SECONDS      <span class="c"># SLA: warn if a run exceeds 1h</span>
+      <span class="y">op:</span> GREATER_THAN
+      <span class="y">value:</span> 3600</pre>
+  <p style="margin-top:8px">Health rules turn "it's slow" into an <strong>alert</strong>, not a silent miss. Monitor runs in the <strong>Runs</strong> tab and trend health/cost via <code>system.lakeflow.*</code> system tables.</p>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>A pipeline that doesn't start automatically, recover from blips, and alert on failure isn't production-ready — this is the ops layer.</li>
+    <li>"Run when files land?" → file-arrival; "daily at 2am?" → Quartz CRON; "alert on failure / SLA?" → notifications + health rules.</li>
+  </ul>
+  <div class="card usecase">🌙 <strong>Real-world use case:</strong> a gold pipeline runs on Quartz CRON <code>0 0 2 * * ?</code>, retries transient failures twice, re-runs only failed tasks on manual fix, and emails + Slack-webhooks the on-call if the run fails or breaches its duration SLA.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> scheduled batch, event-driven ingestion, always-on jobs, alerting, partial re-runs after a fix, duration SLAs.</li>
+    <li><strong>Edge cases:</strong> default <strong>max_concurrent_runs = 1</strong> (a long run can make the next scheduled run skip/queue); <strong>Quartz CRON is in the job's timezone</strong> (DST/TZ bugs — use UTC); file-arrival watches <strong>UC locations</strong> only.</li>
+    <li><strong>Limitation:</strong> continuous jobs keep compute running (cost); retries fix <strong>transient</strong> failures, not deterministic bugs.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Using <strong>5-field Unix cron</strong> — Databricks uses <strong>6-field Quartz</strong> (<code>0 0 2 * * ?</code>).</li>
+    <li>❌ Re-running the whole job after one task fails — <strong>re-run only the failed tasks</strong>.</li>
+    <li>❌ Wrong CRON timezone → off-by-hours schedules (watch DST).</li>
+    <li>❌ Expecting overlapping runs by default — <code>max_concurrent_runs</code> is 1 unless raised.</li>
+    <li>❌ No failure notification / health rule → silent failures nobody notices.</li>
+    <li>❌ Relying on retries to mask a deterministic bug.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/jobs/triggers" target="_blank" rel="noopener">Triggers &amp; schedules</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/scheduled" target="_blank" rel="noopener">Schedule (Quartz cron)</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/notifications" target="_blank" rel="noopener">Notifications</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/monitor" target="_blank" rel="noopener">Monitor jobs</a>
+  <p style="margin-top:10px">Topic 7.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — trigger picker (scoped to #trig)
+document.querySelectorAll('#trig .tg').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.t;
+    document.querySelectorAll('#trig .tg').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#trig .tgd .card').forEach(c=>c.classList.toggle('on',c.dataset.td===k));
+  });
+});
+// Diagram 2 — Quartz cron decoder (scoped to #cron)
+const CRON={
+  sec:'seconds = 0 → at the top of the minute',
+  min:'minutes = 0 → at the top of the hour',
+  hr:'hours = 2 → 02:00 (2 AM, job timezone)',
+  dom:'day of month = * → every day',
+  mon:'month = * → every month',
+  dow:'day of week = ? → no specific value (Quartz: ? when day-of-month is set)'
+};
+const cout=document.getElementById('cronout');
+function setCron(k){
+  document.querySelectorAll('#cron .cb').forEach(b=>b.classList.toggle('on',b.dataset.c===k));
+  cout.textContent = CRON[k] + '   →   "0 0 2 * * ?" = every day at 02:00';
+}
+document.querySelectorAll('#cron .cb').forEach(b=>b.addEventListener('click',()=>setCron(b.dataset.c)));
+setCron('sec');
+</script>
+</body>
+</html>

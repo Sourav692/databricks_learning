@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Asset Bundles · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: CLI lifecycle stepper */
+  .steps{display:flex;gap:0;flex-wrap:wrap;align-items:stretch}
+  .stp{flex:1;min-width:90px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;text-align:center;transition:.18s}
+  .stp:hover{transform:translateY(-2px)}
+  .stp.on{border-color:var(--teal);background:#eef7f8}
+  .stp .n{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#8a939c}
+  .stp .c{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.78rem;margin-top:2px}
+  .conn{display:flex;align-items:center;color:var(--brand);padding:0 4px}
+  .stpd{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;min-height:54px}
+  /* diagram 2: target switch */
+  .switch{display:flex;gap:8px;margin-bottom:10px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.conn{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 11.1</p>
+  <h1>Databricks <em>Asset Bundles</em> (DABs)</h1>
+  <p class="lede">Infrastructure-as-code for the lakehouse — declare jobs, pipelines &amp; resources in databricks.yml and deploy to dev/prod targets via the CLI, with source control &amp; CI/CD.</p>
+  <div class="pills"><span class="pill">databricks.yml</span><span class="pill">dev/prod targets</span><span class="pill">variables &amp; overrides</span><span class="pill">init·validate·deploy·run</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>DABs</strong> declare your jobs/pipelines/dashboards/resources in <strong>YAML</strong> and deploy them with the Databricks CLI to <strong>targets</strong> (dev/prod) — reproducible, versioned, reviewable, CI/CD-ready. The bundle is the source of truth, not the UI.</div>
+  <div class="card analogy" style="margin-top:10px">📦 <strong>Analogy:</strong> a <strong>blueprint + flat-pack instructions</strong> for your project. Instead of hand-assembling jobs/pipelines in every workspace, you ship one labeled box (the bundle) that builds the <strong>same setup</strong> in dev and prod from code.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: CLI lifecycle -->
+<section id="cli">
+  <h2>The CLI lifecycle — click a step</h2>
+  <p class="hint">▸ init → validate → deploy → run → destroy</p>
+  <div class="steps">
+    <div class="stp on" data-s="init"><div class="n">1</div><div class="c">init</div></div>
+    <div class="conn">▸</div>
+    <div class="stp" data-s="validate"><div class="n">2</div><div class="c">validate</div></div>
+    <div class="conn">▸</div>
+    <div class="stp" data-s="deploy"><div class="n">3</div><div class="c">deploy</div></div>
+    <div class="conn">▸</div>
+    <div class="stp" data-s="run"><div class="n">4</div><div class="c">run</div></div>
+    <div class="conn">▸</div>
+    <div class="stp" data-s="destroy"><div class="n">5</div><div class="c">destroy</div></div>
+  </div>
+  <div class="stpd" id="stpd"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · The <code>databricks.yml</code> skeleton — top-level mappings</h3>
+  <p class="mech"><b>Mechanism:</b> one root file defines the bundle. Top-level mappings: <code>bundle</code>, <code>include</code>, <code>variables</code>, <code>artifacts</code>, <code>resources</code>, <code>targets</code>, <code>sync</code>, <code>run_as</code>, <code>workspace</code>, <code>permissions</code>. Only <code>bundle.name</code> is strictly required. <b>Trade-off:</b> a monolith gets unwieldy — split with <code>include</code>.</p>
+  <pre class="code"><span class="c"># databricks.yml — the root file (only bundle.name is strictly required)</span>
+<span class="y">bundle</span>:
+  <span class="y">name</span>: sales_platform        <span class="c"># logical name; namespaces deployed resources</span>
+<span class="y">variables</span>:
+  <span class="y">warehouse_id</span>:
+    <span class="y">description</span>: SQL warehouse for SQL tasks
+    <span class="y">default</span>: <span class="s">""</span>               <span class="c"># overridable per target / via --var</span></pre>
+
+  <h3>2 · Structure for scale — <code>include</code>, <code>artifacts</code>, <code>sync</code></h3>
+  <p class="mech"><b>Mechanism:</b> <code>include</code> globs in extra YAML files; <code>artifacts</code> builds things at deploy (e.g. a wheel); <code>sync</code> picks which local paths upload. <b>Trade-off:</b> <code>include</code> paths are relative to root and top-level only — a mis-scoped glob silently includes nothing.</p>
+  <pre class="code"><span class="y">include</span>:
+  - <span class="s">resources/*.yml</span>           <span class="c"># jobs.yml, pipelines.yml, dashboards.yml …</span>
+<span class="y">artifacts</span>:
+  <span class="y">sales_wheel</span>:
+    <span class="y">type</span>: whl
+    <span class="y">path</span>: <span class="s">./libs/sales</span>        <span class="c"># built and uploaded on deploy</span>
+<span class="y">sync</span>:
+  <span class="y">paths</span>: [ <span class="s">./src</span> ]            <span class="c"># local code synced to the workspace</span></pre>
+
+  <h3>3 · Resources — declare what gets deployed</h3>
+  <p class="mech"><b>Mechanism:</b> under <code>resources</code>, each type (<code>jobs</code>, <code>pipelines</code>, <code>dashboards</code>, <code>alerts</code>, <code>sql_warehouses</code>, <code>models</code>…) holds named declarations mapping to the REST API object. <b>Trade-off:</b> the bundle owns them — UI edits revert on the next deploy.</p>
+  <pre class="code"><span class="y">resources</span>:
+  <span class="y">jobs</span>:
+    <span class="y">sales_etl</span>:
+      <span class="y">name</span>: sales-etl
+      <span class="y">tasks</span>:
+        - <span class="y">task_key</span>: ingest
+          <span class="y">notebook_task</span>: { <span class="y">notebook_path</span>: ./src/ingest.py }
+        - <span class="y">task_key</span>: report
+          <span class="y">sql_task</span>:
+            <span class="y">warehouse_id</span>: <span class="s">${var.warehouse_id}</span>
+            <span class="y">file</span>: { <span class="y">path</span>: ./sql/report.sql }
+          <span class="y">depends_on</span>: [{ <span class="y">task_key</span>: ingest }]
+  <span class="y">pipelines</span>:
+    <span class="y">sales_sdp</span>:
+      <span class="y">name</span>: sales-sdp
+      <span class="y">libraries</span>: [{ <span class="y">notebook</span>: { <span class="y">path</span>: ./src/pipeline.py } }]</pre>
+
+  <h3>4 · Targets &amp; deployment modes — dev vs prod</h3>
+  <p class="mech"><b>Mechanism:</b> <code>targets</code> declares each environment. <code>mode: development</code> namespaces resources per user &amp; pauses schedules (safe to iterate); <code>mode: production</code> uses real names + active schedules. One target is <code>default</code>. <b>Trade-off:</b> wrong target is easy — dev mode <em>renames</em> resources, so check <code>-t</code>.</p>
+  <pre class="code"><span class="y">targets</span>:
+  <span class="y">dev</span>:
+    <span class="y">mode</span>: development          <span class="c"># prefixes names, pauses schedules — safe to iterate</span>
+    <span class="y">default</span>: <span class="k">true</span>
+    <span class="y">workspace</span>: { <span class="y">host</span>: <span class="s">https://dev.cloud.databricks.com</span> }
+  <span class="y">prod</span>:
+    <span class="y">mode</span>: production           <span class="c"># real names, schedules active</span>
+    <span class="y">workspace</span>: { <span class="y">host</span>: <span class="s">https://prod.cloud.databricks.com</span> }
+    <span class="y">run_as</span>: { <span class="y">service_principal_name</span>: <span class="s">${var.sp_app_id}</span> }  <span class="c"># who prod runs as</span></pre>
+
+  <h3>5 · Variables &amp; per-target overrides</h3>
+  <p class="mech"><b>Mechanism:</b> <code>variables</code> set defaults; any target overrides them, and <code>--var</code> overrides at the CLI. Reference with <code>${var.name}</code> (and <code>${resources....id}</code> to wire resources). <b>Trade-off:</b> empty vars surface only at validate/deploy — set defaults, validate in CI.</p>
+  <pre class="code"><span class="c"># top-level default above; override inside a target:</span>
+<span class="y">targets</span>:
+  <span class="y">prod</span>:
+    <span class="y">variables</span>:
+      <span class="y">warehouse_id</span>: <span class="s">0a1b2c3d4e5f6789</span>   <span class="c"># prod SQL warehouse</span>
+<span class="c"># deploy-time override:</span>
+<span class="c"># databricks bundle deploy -t prod --var="warehouse_id=..."</span></pre>
+
+  <h3>6 · The CLI lifecycle</h3>
+  <p class="mech"><b>Mechanism:</b> <code>init</code> scaffolds; <code>validate</code> checks (warns on unknown props); <code>summary</code>/<code>plan</code> preview; <code>deploy -t</code> pushes; <code>run</code> executes; <code>destroy -t</code> tears down. <b>Trade-off:</b> <code>destroy</code> is irreversible — guard it in automation.</p>
+  <pre class="code"><span class="f">databricks</span> bundle init                       <span class="c"># scaffold from a template</span>
+<span class="f">databricks</span> bundle validate                   <span class="c"># check config (run in CI on PRs)</span>
+<span class="f">databricks</span> bundle deploy -t dev              <span class="c"># push to the dev target</span>
+<span class="f">databricks</span> bundle run sales_etl -t dev       <span class="c"># execute a deployed job</span>
+<span class="f">databricks</span> bundle deploy -t prod             <span class="c"># promote (usually CI on merge)</span>
+<span class="f">databricks</span> bundle destroy -t dev             <span class="c"># tear down dev (irreversible)</span></pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: target switch -->
+<section id="tgt">
+  <h2>Targets — one bundle, many environments</h2>
+  <p class="hint">▸ click a target to see the deploy command &amp; behavior</p>
+  <div class="switch">
+    <div class="opt on" data-o="dev">dev</div>
+    <div class="opt" data-o="prod">prod</div>
+  </div>
+  <div class="card" id="tgtcard"></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Click-built jobs/pipelines <strong>drift</strong> between dev &amp; prod and can't be reviewed or rolled back. DABs make deployments reproducible, versioned, automated.</li>
+    <li>"Promote a pipeline dev→prod / do CI-CD on Databricks?" → <strong>Asset Bundles</strong>.</li>
+  </ul>
+  <div class="card usecase">🔁 <strong>Real-world use case:</strong> <code>databricks.yml</code> lives in Git; a GitHub Action runs <code>bundle validate</code> on PRs and <code>bundle deploy -t prod</code> on merge — prod always matches reviewed code, no manual UI edits.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> consistent dev→prod promotion, CI/CD, versioning jobs/pipelines/dashboards, team review, importing existing resources via <code>bundle generate</code> + <code>deployment bind</code>.</li>
+    <li><strong>Edge cases:</strong> secrets/host differ per target — use overrides + secret scopes; <code>development</code> vs <code>production</code> mode changes behavior (dev prefixes names, pauses schedules); <code>run_as</code> sets the prod identity (use a service principal).</li>
+    <li><strong>Limitation:</strong> DABs deploy <strong>Databricks resources</strong>, not general cloud infra (use Terraform for that); click-editing deployed resources causes drift — treat the bundle as source of truth.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Click-editing a deployed job → next <code>deploy</code> overwrites it; the bundle is the source of truth.</li>
+    <li>❌ Hard-coding prod host/secrets instead of using <strong>targets</strong> + variables + secret scopes.</li>
+    <li>❌ Deploying to the wrong <strong>target</strong> (dev mode renames resources) — check <code>-t</code>.</li>
+    <li>❌ Skipping <code>validate</code> in CI → broken config reaches the workspace.</li>
+    <li>❌ Running <code>destroy</code> against prod by habit — it's irreversible; gate it.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/" target="_blank" rel="noopener">Asset Bundles</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/settings" target="_blank" rel="noopener">databricks.yml</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/reference" target="_blank" rel="noopener">Config reference</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/cli/bundle-commands" target="_blank" rel="noopener">bundle CLI</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/ci-cd" target="_blank" rel="noopener">CI/CD</a>
+  <p style="margin-top:10px">Topic 11.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — CLI lifecycle (scoped to #cli)
+const STP={
+  init:'<b>databricks bundle init</b> — scaffold a new bundle from a template (creates databricks.yml + sample resources).',
+  validate:'<b>databricks bundle validate</b> — check the config/syntax before deploying; warns on unknown properties. Run this in CI on every PR.',
+  deploy:'<b>databricks bundle deploy -t &lt;target&gt;</b> — push the resources (jobs/pipelines/dashboards) to the chosen workspace target.',
+  run:'<b>databricks bundle run &lt;resource&gt; -t &lt;target&gt;</b> — execute a deployed job/pipeline.',
+  destroy:'<b>databricks bundle destroy -t &lt;target&gt;</b> — permanently tear down everything the bundle created in that target (irreversible).'
+};
+const stpd=document.getElementById('stpd');
+function setStp(k){ document.querySelectorAll('#cli .stp').forEach(s=>s.classList.toggle('on',s.dataset.s===k)); stpd.innerHTML=STP[k]; }
+document.querySelectorAll('#cli .stp').forEach(s=>s.addEventListener('click',()=>setStp(s.dataset.s)));
+setStp('init');
+// Diagram 2 — target switch (scoped to #tgt)
+const TGT={
+  dev:'<b>Target: dev</b> (<code>mode: development</code>)<br><code>databricks bundle deploy -t dev</code><br>→ deploys to the dev workspace; dev mode <b>prefixes resource names</b> &amp; pauses schedules so it\'s safe to iterate.',
+  prod:'<b>Target: prod</b> (<code>mode: production</code>)<br><code>databricks bundle deploy -t prod</code><br>→ deploys to prod with production settings (real names, schedules active, run_as a service principal). Usually run by CI on merge, never by hand.'
+};
+const tc=document.getElementById('tgtcard');
+function setTgt(k){ document.querySelectorAll('#tgt .opt').forEach(o=>o.classList.toggle('on',o.dataset.o===k)); tc.innerHTML=TGT[k]; }
+document.querySelectorAll('#tgt .opt').forEach(o=>o.addEventListener('click',()=>setTgt(o.dataset.o)));
+setTgt('dev');
+</script>
+</body>
+</html>

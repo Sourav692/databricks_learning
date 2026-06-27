@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spark architecture &amp; execution model · Databricks PySpark Performance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
+  .pill b{color:var(--violet);font-weight:600}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  ul,ol{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
+  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
+  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#8c8093}
+  pre .k{color:#f6a96b;font-weight:500}
+  pre .s{color:#b7e88f}
+  pre .f{color:#c4b5fd}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
+  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox .ok{color:#b7e88f}
+  .planbox .bad{color:#f6a96b}
+  .planbox .dim{color:#8c8093}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
+  .stat.win .big{color:var(--violet)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .verdict b{color:var(--flame)}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step.open .detail{display:block}
+  /* code-line click-through (diagram 1) */
+  .codelines{font-family:"Spline Sans Mono",monospace;font-size:.84rem;background:var(--ink);border-radius:10px;padding:10px 6px;line-height:1.85;overflow-x:auto}
+  .cl{display:block;padding:4px 12px;border-radius:7px;color:#cdc4d3;cursor:pointer;border-left:3px solid transparent;transition:.15s;white-space:pre}
+  .cl:hover{background:#241b30}
+  .cl.lazy{background:rgba(139,92,246,.16);border-left-color:var(--violet-2);color:#e7defb}
+  .cl.action{background:rgba(249,115,22,.18);border-left-color:var(--flame-2);color:#ffe6cf}
+  .cl .tagk{font-family:"Spline Sans Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;float:right;opacity:.85}
+  .cl.lazy .tagk{color:var(--violet-2)}
+  .cl.action .tagk{color:var(--flame-2)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 4px;font-size:.78rem;color:#5f5460}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:13px;height:13px;border-radius:4px;display:inline-block}
+  .sw-lazy{background:var(--violet-2)}
+  .sw-action{background:var(--flame-2)}
+  /* job tree (diagram 2) */
+  .tree{margin-top:8px}
+  .tnode{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fff;box-shadow:var(--shadow)}
+  .tnode>.thead{cursor:pointer;padding:13px 16px;display:flex;align-items:center;gap:11px;font-weight:600}
+  .tnode>.thead .tw{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#fff;background:var(--flame);border-radius:6px;padding:2px 8px}
+  .tnode>.thead .tw.s{background:var(--violet)}
+  .tnode>.thead .tw.t{background:#0f9d58}
+  .tnode>.thead .arr{margin-left:auto;color:var(--flame);transition:.2s;font-family:"Spline Sans Mono",monospace}
+  .tnode.open>.thead .arr{transform:rotate(90deg)}
+  .tkids{display:none;padding:0 14px 12px 30px}
+  .tnode.open>.tkids{display:block}
+  .tnote{font-size:.86rem;color:#5f5460;padding:0 16px 12px 16px;margin-top:-4px}
+  .tasks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tk{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:#e7f6ee;border:1px solid #b6e0c8;color:#0f7a43;border-radius:6px;padding:4px 8px}
+  /* narrow vs wide (diagram 3) */
+  .stagewrap{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:6px}
+  .stagebox{flex:1;min-width:190px;border:1px dashed var(--line);border-radius:12px;padding:14px;background:var(--paper)}
+  .stagebox .sh{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--flame);margin-bottom:8px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.74rem;background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;margin:5px 0;display:flex;justify-content:space-between;gap:8px}
+  .part b{color:var(--violet)}
+  .exch{display:flex;align-items:center;justify-content:center;min-width:120px;flex:0 0 auto;padding:8px}
+  .exch .box{text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#9a3412;background:#fde7d6;border:1px dashed #f3cfa6;border-radius:10px;padding:10px 12px}
+  .exch.hidden{display:none}
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  footer a:hover{border-color:var(--flame)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
+    <p class="eyebrow">Databricks · PySpark Performance · Lesson 01</p>
+    <h1>Driver, executors<br>&amp; the <span class="drip">shuffle.</span></h1>
+    <p class="lede">How one line of PySpark becomes a fleet of tasks across a cluster: the driver builds the plan, an action fires a job, shuffle boundaries cut it into stages, and one task runs per partition. Get this picture and every later lesson clicks into place.</p>
+    <div class="meta">
+      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
+      <span class="pill">shuffle.partitions <b>200</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ WHAT IT IS ============ -->
+  <section>
+    <h2>What it is</h2>
+    <p>A Spark <strong>application</strong> is one program (your notebook or job) that runs as a small society of processes:</p>
+    <ul>
+      <li><strong>Driver</strong> — the brain. Runs your code, holds the <code>SparkSession</code>, turns DataFrame code into a plan, and schedules work. Exactly <strong>one</strong> per application.</li>
+      <li><strong>Executors</strong> — the muscle. JVM processes on worker nodes that <strong>run tasks</strong> and <strong>hold cached data</strong>. There are <strong>N</strong> of them.</li>
+      <li><strong>Cluster manager</strong> — the landlord. Allocates the worker machines (Standalone / YARN / Kubernetes; on Databricks the platform manages it). It does <em>not</em> schedule your tasks — the driver does.</li>
+    </ul>
+    <p>You also choose <em>where you launch from</em> — the <strong>edge / gateway node</strong> — and <em>where the driver runs</em> — the <strong>deployment mode</strong> (client vs cluster).</p>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Spark is <strong>lazy</strong>. Transformations only describe work; an <strong>action</strong> fires a <strong>job</strong>; the job is cut at <strong>shuffle boundaries</strong> into <strong>stages</strong>; each stage runs as <strong>tasks — one per partition</strong>. Job → stage → task → partition is how you read any Spark UI.
+    </div>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Every performance problem is a problem with this picture</strong> — too much on the driver, the wrong partition count, or an expensive <strong>shuffle</strong> between stages. You can't tune what you can't see.</li>
+      <li><strong>The shuffle is the villain of the whole track.</strong> A shuffle = Spark moving rows across the network so equal keys land on the same executor; it writes files to local disk and reads them back over the network — the single most expensive operation Spark does. Lessons 02–11 are about avoiding, repairing, or surviving it.</li>
+      <li><strong>Interviewers start here.</strong> "Walk me through what happens when you call <code>df.count()</code>" separates people who <em>use</em> Spark from people who <em>understand</em> it.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: LAZY vs ACTION CLICK-THROUGH ============ -->
+  <section>
+    <h2>See it work — which line fires the job?</h2>
+    <p>Click each line of this PySpark snippet to mark it. Transformations are <strong>lazy</strong> (they only build the plan); the <strong>action</strong> is the one line that submits a job. Watch the job counter — it only ticks when you hit the action.</p>
+    <div class="lab" id="lab-lazy">
+      <div class="lab-head"><span class="lab-title">Lazy transformations vs the action</span></div>
+      <p class="lab-sub">Tap a line to classify it. Try to find the single line that triggers execution.</p>
+      <div class="legend">
+        <span><span class="swatch sw-lazy"></span> transformation (lazy — no job)</span>
+        <span><span class="swatch sw-action"></span> action (fires a job)</span>
+      </div>
+      <div class="codelines" id="lz-code">
+        <span class="cl" data-kind="lazy">df  = spark.range(0, 1_000_000)</span>
+        <span class="cl" data-kind="lazy">df2 = df.filter(<span style="color:#b7e88f">"id % 2 = 0"</span>)</span>
+        <span class="cl" data-kind="lazy">df3 = df2.withColumn(<span style="color:#b7e88f">"bucket"</span>, df2.id % 10)</span>
+        <span class="cl" data-kind="lazy">df4 = df3.groupBy(<span style="color:#b7e88f">"bucket"</span>).count()</span>
+        <span class="cl" data-kind="action">total = df4.count()   <span style="color:#8c8093"># &lt;-- ?</span></span>
+        <span class="cl" data-kind="action">df4.write.format(<span style="color:#b7e88f">"noop"</span>).save()   <span style="color:#8c8093"># &lt;-- ?</span></span>
+      </div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="lz-jobs">0</div><div class="lbl">jobs submitted so far</div></div>
+        <div class="stat win"><div class="big" id="lz-lazy">0</div><div class="lbl">lazy lines found</div></div>
+      </div>
+      <div class="verdict" id="lz-verdict">Click any line to reveal whether it runs anything.</div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration — <code>show()</code>/<code>take()</code> also fire jobs; <code>noop</code> runs the full plan but discards output.</p>
+    </div>
+  </section>
+
+  <!-- ============ HOW IT WORKS ============ -->
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>1 · The three roles: driver, executors, cluster manager</h3>
+    <p><span class="chip analogy">analogy</span> A restaurant kitchen — the <strong>driver</strong> is the head chef calling orders and plating the dish; the <strong>executors</strong> are the line cooks at their stations; the <strong>cluster manager</strong> is the owner deciding how many cooks you get.</p>
+    <ul>
+      <li><strong>Driver</strong> — runs user code, builds the logical→physical plan (Catalyst), cuts it into jobs/stages/tasks, schedules them, and collects results. It also <strong>builds the small side of a broadcast join</strong>. A single point — overload it and the whole app sinks (Lesson 03).</li>
+      <li><strong>Executors</strong> — long-lived JVMs with fixed <strong>cores</strong> (task slots) and <strong>heap</strong> (Lesson 04). They run tasks, cache blocks, and write/read shuffle files. Parallelism is capped by partitions, not by raw core count.</li>
+      <li><strong>Cluster manager</strong> — only <em>allocates</em> machines; it does <strong>not</strong> schedule tasks. On Databricks this is fully managed.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> Sizing a cluster: a stage with 800 partitions on executors with 4 cores each needs 200 executor-cores to finish in one wave; fewer cores = more waves = longer wall-clock.</p>
+
+    <h3>2 · The edge / gateway node</h3>
+    <ul>
+      <li><strong>Definition:</strong> a machine that can <em>submit</em> to the cluster and talk to the cluster manager, but is <strong>not</strong> in the worker pool that runs tasks.</li>
+      <li>It holds the Spark client libraries + cluster config and bridges your laptop/CI host to the cluster. In <strong>client mode</strong> the driver runs <em>here</em>.</li>
+      <li><strong>On Databricks</strong> the notebook front-end plays this role and your commands are interpreted on the cluster's <strong>driver node</strong>. The concept still matters when you submit from CI/CD, Airflow, or a bastion host.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> The edge node is the <strong>drive-thru window</strong> — you order there and it relays to the kitchen, but no food is cooked at the window.</p>
+
+    <h3>3 · Deployment modes: client vs cluster</h3>
+    <p>The deployment mode answers one question: <strong>where does the driver run?</strong></p>
+    <ul>
+      <li><strong>Client mode</strong> — driver on the <strong>submitting / edge node</strong>. YARN: "the driver runs in the client process, and the application master is only used for requesting resources from YARN." If the client dies, the app dies. <em>Best for interactive notebooks / REPL.</em></li>
+      <li><strong>Cluster mode</strong> — driver runs <strong>inside the cluster</strong>. YARN: "the Spark driver runs inside an application master process… and the client can go away after initiating the application." <em>Best for production fire-and-forget batch.</em></li>
+      <li><strong>On Databricks</strong> notebooks, the driver always runs on the cluster's <strong>driver node</strong> — it maintains the SparkContext, interprets notebook commands, and runs the Spark master. On a <strong>single-node</strong> cluster the driver node is both master and worker.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> An Airflow DAG running nightly ETL → <strong>cluster mode</strong> (the worker hands off and moves on). A data scientist in a REPL → <strong>client mode</strong> (results stream to the terminal).</p>
+
+    <h3>4 · Lazy evaluation, transformations vs actions</h3>
+    <ul>
+      <li><strong>Lazy:</strong> Spark records what you want but does nothing until you ask for a result.</li>
+      <li><strong>Transformations</strong> (<code>select</code>, <code>filter</code>, <code>withColumn</code>, <code>join</code>, <code>groupBy</code>) return a new DataFrame and run <strong>nothing</strong> — they extend the plan.</li>
+      <li><strong>Actions</strong> (<code>count</code>, <code>collect</code>, <code>show</code>, <code>write</code>, <code>take</code>) force execution. <strong>Each action triggers a job.</strong></li>
+      <li><strong>Why it's good:</strong> seeing the whole chain lets Catalyst fuse ops, push filters to the scan, and prune columns — impossible if each line ran eagerly.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> A <strong>shopping list</strong> — writing items (transformations) is free; you only walk the aisles (the job) when you go to the store (an action).</p>
+
+    <h3>5 · Narrow vs wide dependencies (and the shuffle)</h3>
+    <ul>
+      <li><strong>Narrow:</strong> each input partition feeds <strong>one</strong> output partition (<code>map</code>, <code>filter</code>, <code>select</code>, <code>union</code>). No data moves — Spark <strong>pipelines</strong> them in one stage.</li>
+      <li><strong>Wide:</strong> an output partition depends on <strong>many</strong> inputs, so rows are <strong>redistributed across the network</strong> — a <strong>shuffle</strong> (<code>groupBy</code>, non-broadcast <code>join</code>, <code>distinct</code>, <code>repartition</code>).</li>
+      <li><strong>The shuffle, mechanically:</strong> (1) map side partitions output by key and <strong>writes shuffle files to local disk</strong>; (2) a <strong>stage barrier</strong> waits for all map tasks; (3) reduce side <strong>fetches its slices over the network</strong>. That's disk + network + serialize + a wait — the most expensive thing Spark does. <code>spark.sql.shuffle.partitions</code> (default <strong>200</strong> OSS; <code>auto</code> on Databricks) sets the post-shuffle count.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> <code>events.groupBy("user_id").count()</code> shuffles all events so each user's rows land together — a cluster-killer when one user holds 90% of rows (skew, Lesson 08).</p>
+
+    <h3>6 · The execution hierarchy: job → stage → task</h3>
+    <ol>
+      <li><strong>Action → Job.</strong> Each action submits <strong>one job</strong>.</li>
+      <li><strong>Job → Stages.</strong> Spark cuts a new stage at <strong>every shuffle (wide) boundary</strong>; narrow ops fuse into the same stage. One shuffle ⇒ two stages.</li>
+      <li><strong>Stage → Tasks.</strong> Each stage runs <strong>one task per partition</strong>. 200 partitions ⇒ 200 tasks.</li>
+      <li><strong>Tasks → executor cores</strong> in <strong>waves</strong> (total tasks ÷ total cores).</li>
+    </ol>
+    <div class="callout">
+      <span class="lbl">Why this is the whole track</span>
+      "Too many tiny tasks" → AQE coalesce (Lesson 05). "One task runs 10× longer" → skew (Lesson 08). "A stage with huge Shuffle Read" → an avoidable shuffle (Lessons 02, 11). Learn to read this hierarchy once and every later lesson clicks into place.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: JOB -> STAGES -> TASKS TREE ============ -->
+  <section>
+    <h2>Expand a job into stages &amp; tasks</h2>
+    <p>This is the job behind <code>spark.range(1e6).groupBy(...).count()</code>. Click to expand each node: one action made one job, the <code>groupBy</code> shuffle cut it into two stages, and each stage runs one task per partition.</p>
+    <div class="lab" id="lab-tree">
+      <div class="lab-head"><span class="lab-title">job → stages → tasks</span></div>
+      <p class="lab-sub">One action → one job → stages split at the shuffle → one task per partition.</p>
+      <div class="tree" id="jt-tree">
+        <div class="tnode">
+          <div class="thead"><span class="tw">JOB 0</span> triggered by <code>count()</code> (the action) <span class="arr">&#9656;</span></div>
+          <div class="tnote">Exactly one action ⇒ exactly one job. The job has a shuffle (<code>groupBy</code>), so it splits into two stages.</div>
+          <div class="tkids">
+            <div class="tnode">
+              <div class="thead"><span class="tw s">STAGE 0</span> scan + partial aggregate (narrow, pre-shuffle) <span class="arr">&#9656;</span></div>
+              <div class="tnote">Reads <code>range</code> and computes a partial per-partition count. Narrow ops are fused here — no data has moved yet. 8 input partitions ⇒ 8 tasks.</div>
+              <div class="tkids">
+                <div class="tasks"><span class="tk">task 0</span><span class="tk">task 1</span><span class="tk">task 2</span><span class="tk">task 3</span><span class="tk">task 4</span><span class="tk">task 5</span><span class="tk">task 6</span><span class="tk">task 7</span></div>
+                <p class="lab-sub" style="margin:10px 0 0">↑ 8 tasks = 8 input partitions. Each writes shuffle files to local disk at the stage boundary.</p>
+              </div>
+            </div>
+            <div class="tnode">
+              <div class="thead"><span class="tw s">STAGE 1</span> final aggregate (after the Exchange / shuffle) <span class="arr">&#9656;</span></div>
+              <div class="tnote">Begins only after Stage 0's shuffle files exist. Fetches its slice over the network and finishes the count. Post-shuffle partitions = <code>spark.sql.shuffle.partitions</code> (200; AQE may coalesce).</div>
+              <div class="tkids">
+                <div class="tasks"><span class="tk">task 0</span><span class="tk">task 1</span><span class="tk">task 2</span><span class="tk">…</span><span class="tk">task 199</span></div>
+                <p class="lab-sub" style="margin:10px 0 0">↑ 200 tasks = 200 post-shuffle partitions. In the Spark UI > Stages tab this stage shows Shuffle Read bytes.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="verdict">Read it top-down: <b>action → job</b>, <b>shuffle → new stage</b>, <b>partition → task</b>. That is the entire Spark UI in three rules.</div>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 3: NARROW vs WIDE TOGGLE ============ -->
+  <section>
+    <h2>Narrow vs wide — make the shuffle appear</h2>
+    <p>Toggle between a narrow operation (<code>filter</code>) and a wide one (<code>groupBy</code>). Watch a second stage — and the <code>Exchange</code> (shuffle) between them — appear the moment the dependency becomes wide.</p>
+    <div class="lab" id="lab-nw">
+      <div class="lab-head"><span class="lab-title">Stage boundary simulator</span></div>
+      <div class="controls">
+        <div class="seg" id="nw-seg" role="group" aria-label="dependency type">
+          <button data-d="narrow" aria-pressed="true">Narrow — filter()</button>
+          <button data-d="wide" aria-pressed="false">Wide — groupBy()</button>
+        </div>
+      </div>
+      <div class="stagewrap">
+        <div class="stagebox">
+          <div class="sh">Stage 0 — input partitions</div>
+          <div class="part">partition 0 <b>p0</b></div>
+          <div class="part">partition 1 <b>p1</b></div>
+          <div class="part">partition 2 <b>p2</b></div>
+          <div class="part">partition 3 <b>p3</b></div>
+        </div>
+        <div class="exch hidden" id="nw-exch">
+          <div class="box">Exchange<br>hashpartitioning<br>&#8595;<br>shuffle:<br>disk + network</div>
+        </div>
+        <div class="stagebox" id="nw-stage2">
+          <div class="sh" id="nw-stage2-h">(same stage — pipelined)</div>
+          <div id="nw-stage2-body"></div>
+        </div>
+      </div>
+      <div class="planbox" id="nw-plan"></div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="nw-stages">1</div><div class="lbl">stages</div></div>
+        <div class="stat win"><div class="big" id="nw-shuffle">No</div><div class="lbl">shuffle?</div></div>
+        <div class="stat"><div class="big" id="nw-cost">low</div><div class="lbl">relative cost</div></div>
+      </div>
+      <div class="verdict" id="nw-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of why a wide dependency forces a new stage — the <code>Exchange</code> node in the physical plan.</p>
+    </div>
+  </section>
+
+  <!-- ============ CODE + VERIFICATION ============ -->
+  <section>
+    <h2>The code you'll write (and how to verify it)</h2>
+    <div class="callout">
+      <span class="lbl">Track rule</span>
+      Every technique is paired with <strong>how to prove it</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+    </div>
+
+    <h3>Prove lazy evaluation (transformations build, actions fire)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># None of these run anything — they only extend the logical plan (LAZY).</span>
+df  = spark.range(<span class="f">0</span>, <span class="f">1_000_000</span>)
+df2 = df.filter(<span class="s">"id % 2 = 0"</span>)                 <span class="c"># transformation — no job</span>
+df3 = df2.withColumn(<span class="s">"bucket"</span>, df2.id % <span class="f">10</span>)   <span class="c"># transformation — no job</span>
+
+<span class="c"># VERIFY: Spark UI &gt; Jobs tab is EMPTY right now. Nothing has executed.</span>
+count = df3.count()                          <span class="c"># ACTION — fires exactly one job</span>
+<span class="c"># VERIFY: Spark UI &gt; Jobs tab now shows ONE new job for count().</span></code></pre>
+
+    <h3>See the plan &amp; stage boundaries (narrow vs wide)</h3>
+    <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> col   <span class="c"># used by the col("id") snippets below</span>
+
+<span class="c"># Narrow-only: filter + withColumn fuse into ONE stage, no shuffle.</span>
+narrow = spark.range(<span class="f">1_000_000</span>).filter(<span class="s">"id &gt; 10"</span>).withColumn(<span class="s">"x"</span>, col(<span class="s">"id"</span>) * <span class="f">2</span>)
+narrow.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   Project +- Filter +- Range     &lt;- no Exchange = no shuffle = single stage ✅</span>
+
+<span class="c"># Wide: groupBy forces a shuffle -&gt; a stage boundary appears.</span>
+wide = spark.range(<span class="f">1_000_000</span>).groupBy(col(<span class="s">"id"</span>) % <span class="f">100</span>).count()
+wide.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   HashAggregate</span>
+<span class="c">#   +- Exchange hashpartitioning(...)   &lt;- Exchange = the shuffle = a NEW stage ❌(costly)</span>
+<span class="c">#      +- HashAggregate +- Range</span></code></pre>
+
+    <p>Same idea in Spark SQL — the <code>GROUP BY</code> introduces the <code>Exchange</code>:</p>
+    <pre><span class="tag">sql</span><code><span class="k">EXPLAIN</span> <span class="k">FORMATTED</span>
+<span class="k">SELECT</span> id % <span class="f">100</span> <span class="k">AS</span> g, count(*) <span class="k">FROM</span> range(<span class="f">1000000</span>) <span class="k">GROUP BY</span> id % <span class="f">100</span>;
+<span class="c">-- Look for the `Exchange` node — that is the shuffle / stage boundary.</span></code></pre>
+
+    <h3>Inspect &amp; control partitions (one task per partition)</h3>
+    <pre><span class="tag">python</span><code>df = spark.range(<span class="f">1_000_000</span>)
+<span class="k">print</span>(df.rdd.getNumPartitions())     <span class="c"># in-memory partitions =&gt; tasks per stage</span>
+
+shuffled = df.groupBy(col(<span class="s">"id"</span>) % <span class="f">7</span>).count()
+<span class="k">print</span>(shuffled.rdd.getNumPartitions())  <span class="c"># -&gt; 200 (post-shuffle count, OSS default)</span>
+
+<span class="c"># Demo only — set it small and watch tasks change (AQE may coalesce it, Lesson 05).</span>
+spark.conf.set(<span class="s">"spark.sql.shuffle.partitions"</span>, <span class="f">8</span>)
+<span class="c"># VERIFY: Spark UI &gt; Stages tab — post-shuffle stage now shows 8 tasks, not 200.</span></code></pre>
+
+    <h3>Time a plan without pulling data to the driver</h3>
+    <pre><span class="tag">python</span><code><span class="k">import</span> time
+<span class="c"># The "noop" sink runs the FULL job but writes nothing — time a plan WITHOUT</span>
+<span class="c"># a driver-OOM-risky collect().</span>
+t0 = time.time()
+wide.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()
+<span class="k">print</span>(round(time.time() - t0, <span class="f">2</span>), <span class="s">"s"</span>)
+<span class="c"># VERIFY: Spark UI &gt; SQL tab shows the completed query; Stages tab shows the</span>
+<span class="c"># Exchange's Shuffle Read/Write bytes — the cost of the wide op.</span></code></pre>
+  </section>
+
+  <!-- ============ COMPARISON TABLE ============ -->
+  <section>
+    <h2>Comparison table</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Narrow dependency</th><th>Wide dependency (shuffle)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Examples</strong></td><td><code>map</code>, <code>filter</code>, <code>select</code>, <code>withColumn</code>, <code>union</code></td><td><code>groupBy</code>, <code>join</code> (non-broadcast), <code>distinct</code>, <code>repartition</code></td></tr>
+        <tr><td><strong>Data movement</strong></td><td>None — same executor</td><td>Rows redistributed <strong>across the network</strong></td></tr>
+        <tr><td><strong>Stage</strong></td><td>Fused into the <strong>same</strong> stage</td><td>Forces a <strong>new</strong> stage (a barrier)</td></tr>
+        <tr><td><strong>Plan node</strong></td><td>no <code>Exchange</code></td><td><code>Exchange</code> (one per shuffle)</td></tr>
+        <tr><td><strong>Cost</strong></td><td>Cheap (CPU only)</td><td><strong>Expensive</strong> — disk + network + serialize + wait</td></tr>
+      </tbody>
+    </table>
+    <table class="tbl">
+      <thead><tr><th>Deployment mode</th><th>Where the driver runs</th><th>Client can disconnect?</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Client</strong></td><td>Submitting / edge node (Databricks: driver node)</td><td>No — client death kills the app</td><td>Interactive notebooks, REPL</td></tr>
+        <tr><td><strong>Cluster</strong></td><td>Inside the cluster (YARN ApplicationMaster)</td><td><strong>Yes</strong> — fire-and-forget</td><td>Production batch / scheduled jobs</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li>The mental model for <strong>reading any Spark UI / <code>.explain()</code></strong> — find the <code>Exchange</code> nodes (shuffles = stage boundaries), count tasks per stage (= partitions), watch the task-time spread.</li>
+      <li><strong>Sizing a cluster</strong> — match executor cores to partition counts so a stage runs in as few waves as possible.</li>
+      <li><strong>Choosing a deployment mode</strong> — cluster mode for scheduled production, client mode for interactive sessions.</li>
+    </ul>
+    <h3>Edge cases</h3>
+    <ul>
+      <li><strong>A "no-op"-looking action still runs a job</strong> — <code>show()</code> and <code>take(n)</code> trigger jobs (sometimes partial); even <code>noop</code> runs the full plan and only discards output.</li>
+      <li><strong>Too few partitions</strong> → idle cores + huge tasks that spill/OOM. <strong>Too many tiny partitions</strong> → scheduling overhead dominates. AQE auto-coalesces the over-partitioned case (Lesson 05).</li>
+      <li><code>spark.sql.shuffle.partitions</code> <strong>only affects shuffles</strong> — not a plain scan's partition count; use <code>repartition</code>/<code>coalesce</code> for that.</li>
+      <li><strong>Single-node Databricks cluster</strong> — the driver node is also the only worker, so driver and executor share one machine; fine for dev, misleading for perf intuition.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>The driver is a <strong>single point of failure and a bottleneck</strong> — it can't scale out; protect it (Lesson 03).</li>
+      <li>A shuffle <strong>cannot be made free</strong>, only avoided (broadcast, bucketing) or reduced (AQE coalesce). No flag "turns off" a required shuffle.</li>
+      <li><strong>Lazy evaluation hides cost</strong> — a long chain looks instant until the action runs all of it at once. Reason from the plan, not the line count.</li>
+      <li><code>shuffle.partitions</code> is <strong>200 in OSS Spark</strong>; on <strong>Databricks</strong> it can be <code>auto</code>. State which you mean.</li>
+    </ul>
+  </section>
+
+  <!-- ============ GOTCHAS ============ -->
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Thinking transformations run.</strong> They don't — only actions do. A "slow <code>filter</code>" is the action that finally ran the whole chain. Time the <strong>action</strong>, read the plan.</li>
+      <li><strong>Confusing the two meanings of "partition."</strong> Here it's an <strong>in-memory Spark partition</strong> (a chunk → one task). On-disk Hive/Delta partitions (directories) are different (Lesson 07).</li>
+      <li><strong><code>collect()</code> to "just check" a big DataFrame.</strong> That pulls every row to the driver and risks driver OOM (Lesson 03). Use <code>take(n)</code>, <code>show()</code>, or a <code>noop</code> write.</li>
+      <li><strong>Assuming more executors = faster.</strong> Parallelism is capped by the <strong>partition count</strong> — 1000 cores can't help a stage with 8 partitions.</li>
+      <li><strong>Ignoring the <code>Exchange</code>.</strong> Every <code>Exchange</code> is a shuffle you're paying for. First question for a slow job: "which <code>Exchange</code> nodes are here, and can I remove one?"</li>
+      <li><strong>Mixing up the cluster manager and the driver.</strong> The manager only <em>allocates</em> machines; the <strong>driver</strong> schedules tasks.</li>
+    </ul>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <div class="doclinks">
+      <a href="https://spark.apache.org/docs/latest/cluster-overview.html">Apache Spark — Cluster Mode Overview (driver, executors, cluster manager, jobs/stages/tasks)</a>
+      <a href="https://spark.apache.org/docs/latest/running-on-yarn.html">Apache Spark — Running on YARN (client vs cluster deploy modes)</a>
+      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html">Apache Spark — RDD Programming Guide (transformations vs actions, narrow/wide, shuffle)</a>
+      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.shuffle.partitions)</a>
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (shuffle partitions, AQE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/compute/configure">Azure Databricks — Compute configuration (driver node)</a>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
+    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+  </div>
+</footer>
+
+<script>
+/* ---- Diagram 1: lazy-vs-action click-through ---- */
+(function(){
+  const root = document.getElementById('lab-lazy');
+  if(!root) return;
+  const lines = root.querySelectorAll('#lz-code .cl');
+  const jobsEl = root.querySelector('#lz-jobs');
+  const lazyEl = root.querySelector('#lz-lazy');
+  const verdict = root.querySelector('#lz-verdict');
+  let jobs = 0, lazyFound = 0;
+  const revealed = new Set();
+
+  lines.forEach(function(line, i){
+    line.addEventListener('click', function(){
+      if(revealed.has(i)) return;          // classify each line once
+      revealed.add(i);
+      const kind = line.dataset.kind;
+      line.classList.add(kind);
+      const lbl = document.createElement('span');
+      lbl.className = 'tagk';
+      if(kind === 'action'){
+        jobs += 1;
+        jobsEl.textContent = jobs;
+        lbl.textContent = 'action → +1 job';
+        verdict.innerHTML = '<b>That line is an action.</b> It submits a job — Spark finally executes the plan built by all the lazy lines above it. The job counter ticked.';
+      } else {
+        lazyFound += 1;
+        lazyEl.textContent = lazyFound;
+        lbl.textContent = 'lazy · no job';
+        verdict.innerHTML = '<b>Lazy transformation.</b> It only extends the logical plan — zero jobs, zero tasks, nothing on the cluster yet.';
+      }
+      line.appendChild(lbl);
+    });
+  });
+})();
+
+/* ---- Diagram 2: job -> stages -> tasks expandable tree ---- */
+(function(){
+  const root = document.getElementById('lab-tree');
+  if(!root) return;
+  root.querySelectorAll('.tnode > .thead').forEach(function(head){
+    head.addEventListener('click', function(e){
+      e.stopPropagation();               // don't toggle ancestor nodes
+      head.parentElement.classList.toggle('open');
+    });
+  });
+})();
+
+/* ---- Diagram 3: narrow-vs-wide stage-boundary toggle ---- */
+(function(){
+  const root = document.getElementById('lab-nw');
+  if(!root) return;
+  const seg = root.querySelector('#nw-seg');
+  const exch = root.querySelector('#nw-exch');
+  const stage2h = root.querySelector('#nw-stage2-h');
+  const stage2body = root.querySelector('#nw-stage2-body');
+  const plan = root.querySelector('#nw-plan');
+  const stagesEl = root.querySelector('#nw-stages');
+  const shufEl = root.querySelector('#nw-shuffle');
+  const costEl = root.querySelector('#nw-cost');
+  const verdict = root.querySelector('#nw-verdict');
+
+  const data = {
+    narrow: {
+      stages: 1, shuffle: 'No', cost: 'low',
+      h2: '(same stage — pipelined output)',
+      body: '<div class="part">p0 &rarr; <b>p0\'</b></div>' +
+            '<div class="part">p1 &rarr; <b>p1\'</b></div>' +
+            '<div class="part">p2 &rarr; <b>p2\'</b></div>' +
+            '<div class="part">p3 &rarr; <b>p3\'</b></div>',
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            '<span class="ok">Project</span> [id, (id * 2) AS x]\n' +
+            '+- <span class="ok">Filter</span> (id &gt; 10)\n' +
+            '   +- Range (0, 1000000)        <span class="ok">&lt;- no Exchange = single stage ✅</span>',
+      verdict: '<b>Narrow dependency.</b> Each input partition maps to exactly one output partition, so <code>filter</code> and the projection are <em>pipelined</em> in one stage — no data crosses the network, no <code>Exchange</code>.'
+    },
+    wide: {
+      stages: 2, shuffle: 'Yes', cost: 'high',
+      h2: 'Stage 1 — after the Exchange',
+      body: '<div class="part">group A <b>(from p0..p3)</b></div>' +
+            '<div class="part">group B <b>(from p0..p3)</b></div>' +
+            '<div class="part">group C <b>(from p0..p3)</b></div>' +
+            '<div class="part">… up to 200 parts</div>',
+      plan: '<span class="dim">== Physical Plan ==</span>\n' +
+            '<span class="ok">HashAggregate</span> (final count)\n' +
+            '+- <span class="bad">Exchange</span> hashpartitioning(g, 200)  <span class="bad">&lt;- the shuffle / stage boundary ❌</span>\n' +
+            '   +- HashAggregate (partial count)\n' +
+            '      +- Range (0, 1000000)',
+      verdict: '<b>Wide dependency.</b> Each output group draws from <em>every</em> input partition, so Spark inserts an <code>Exchange</code> — rows are written to local disk and fetched over the network into a <strong>new stage</strong>. This is the expensive shuffle.'
+    }
+  };
+
+  function show(d){
+    const cfg = data[d];
+    exch.classList.toggle('hidden', d !== 'wide');
+    stage2h.textContent = cfg.h2;
+    stage2body.innerHTML = cfg.body;
+    plan.innerHTML = cfg.plan;
+    stagesEl.textContent = cfg.stages;
+    shufEl.textContent = cfg.shuffle;
+    costEl.textContent = cfg.cost;
+    verdict.innerHTML = cfg.verdict;
+    seg.querySelectorAll('button').forEach(function(b){
+      b.setAttribute('aria-pressed', String(b.dataset.d === d));
+    });
+  }
+  seg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    show(b.dataset.d);
+  });
+  show('narrow');
+})();
+</script>
+</body>
+</html>

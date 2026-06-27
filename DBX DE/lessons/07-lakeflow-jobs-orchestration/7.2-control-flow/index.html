@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Job Control Flow · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.8vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .y{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.85rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: if/else simulator */
+  .ctrl{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .ctrl label{font-family:"Spline Sans Mono",monospace;font-size:.8rem;color:#48555f}
+  input[type=range]{flex:1}
+  .branch{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
+  .bx{flex:1;min-width:160px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;text-align:center;opacity:.4;transition:.25s}
+  .bx.active{opacity:1;border-color:var(--teal);background:#eef7f8}
+  .bx .ty{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#8a939c}
+  /* diagram 2: feature tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 7.2</p>
+  <h1>Job <em>Control Flow</em></h1>
+  <p class="lede">Make a job dynamic: branch with if/else (condition_task), loop with for-each, pass data with task values, and run tasks conditionally with run_if rules. This deep dive pairs each with the bundle YAML.</p>
+  <div class="pills"><span class="pill">condition_task</span><span class="pill">for_each_task</span><span class="pill">task values</span><span class="pill">run_if</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">Control flow turns a fixed task chain into a dynamic workflow: <strong>If/else</strong> (<code>condition_task</code>) branches on a condition, <strong>For-each</strong> (<code>for_each_task</code>) loops a task over a list, <strong>task values</strong> pass small data between tasks, and <strong>run_if</strong> controls when a task runs based on upstream outcomes.</div>
+  <div class="card analogy" style="margin-top:10px">🍳 <strong>Analogy:</strong> on top of the recipe (the job): <em>"if the dough's too dry, add water"</em> (if/else), <em>"repeat for each tray"</em> (for-each), a <em>sticky note passed between cooks</em> (task values), and <em>"only plate if the main didn't burn"</em> (run-if).</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: if/else simulator -->
+<section id="ifelse">
+  <h2>If/else — drag the row count</h2>
+  <p class="hint">▸ condition: <code>row_count &gt;= 100</code> → publish, else → quarantine</p>
+  <div class="ctrl">
+    <label>row_count (task value):</label>
+    <input type="range" id="rc" min="0" max="300" value="180" step="10">
+    <span class="mono" id="rcval">180</span>
+  </div>
+  <div class="branch">
+    <div class="bx" id="bpub">✅ Publish to gold<div class="ty">outcome: true</div></div>
+    <div class="bx" id="bquar">🚧 Quarantine + alert<div class="ty">outcome: false</div></div>
+  </div>
+</section>
+
+<section id="tv">
+  <h2>1 · Task values — pass small data between tasks</h2>
+  <pre class="code"><span class="c"># upstream task ("ingest"): publish a value</span>
+dbutils.jobs.taskValues.set(key=<span class="s">"row_count"</span>, value=<span class="f">1234</span>)
+<span class="c"># downstream task: read it</span>
+n = dbutils.jobs.taskValues.get(taskKey=<span class="s">"ingest"</span>, key=<span class="s">"row_count"</span>, default=<span class="f">0</span>)</pre>
+  <p style="margin-top:6px">Reference a value in a condition/param with <code>{{tasks.ingest.values.row_count}}</code>. Values are small (counts/flags) — for big data, write a table and pass a pointer.</p>
+</section>
+
+<section id="ifyaml">
+  <h2>2 · If/else — condition_task (bundle YAML)</h2>
+  <pre class="code"><span class="y">tasks:</span>
+  - <span class="y">task_key:</span> gate
+    <span class="y">condition_task:</span>
+      <span class="y">op:</span> GREATER_THAN              <span class="c"># EQUAL_TO, LESS_THAN, GREATER_THAN_OR_EQUAL, ...</span>
+      <span class="y">left:</span> <span class="s">"{{tasks.ingest.values.row_count}}"</span>
+      <span class="y">right:</span> <span class="s">"100"</span>
+  - <span class="y">task_key:</span> publish_gold           <span class="c"># runs only when gate == true</span>
+    <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> gate, <span class="y">outcome:</span> <span class="s">"true"</span> }]
+    <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/publish.py }
+  - <span class="y">task_key:</span> quarantine             <span class="c"># runs only when gate == false</span>
+    <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> gate, <span class="y">outcome:</span> <span class="s">"false"</span> }]
+    <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/quarantine.py }</pre>
+</section>
+
+<section id="foreach">
+  <h2>3 · For-each — for_each_task (bundle YAML)</h2>
+  <pre class="code"><span class="y">tasks:</span>
+  - <span class="y">task_key:</span> ingest_all
+    <span class="y">for_each_task:</span>
+      <span class="y">inputs:</span> <span class="s">'["sales","orders","users"]'</span>   <span class="c"># or a task value / job param</span>
+      <span class="y">concurrency:</span> 4                       <span class="c"># bound the parallelism</span>
+      <span class="y">task:</span>
+        <span class="y">task_key:</span> ingest_one
+        <span class="y">notebook_task:</span>
+          <span class="y">notebook_path:</span> ../src/ingest_table.py
+          <span class="y">base_parameters:</span> { <span class="y">table:</span> <span class="s">"{{input}}"</span> }   <span class="c"># current item</span></pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: feature tabs -->
+<section id="feat">
+  <h2>4 · The four tools — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="if">If/else</button>
+    <button class="tab" data-t="fe">For-each</button>
+    <button class="tab" data-t="tv">Task values</button>
+    <button class="tab" data-t="ri">Run-if</button>
+  </div>
+  <div class="panel on" data-p="if"><div class="card"><strong>condition_task</strong> — branch on a condition comparing task values / job params (<code>op</code> + <code>left</code> + <code>right</code>); downstream tasks attach to the <code>true</code>/<code>false</code> outcome.</div></div>
+  <div class="panel" data-p="fe"><div class="card"><strong>for_each_task</strong> — run a nested task once per item in <code>inputs</code>, passing <code>{{input}}</code> each iteration; <code>concurrency</code> bounds parallelism.</div></div>
+  <div class="panel" data-p="tv"><div class="card"><strong>Task values</strong> — <code>dbutils.jobs.taskValues.set/get</code> pass small data between tasks without external storage.</div></div>
+  <div class="panel" data-p="ri"><div class="card"><strong>run_if</strong> — choose when a task runs vs its dependencies (see table below). Use <code>ALL_DONE</code> / <code>AT_LEAST_ONE_FAILED</code> for cleanup &amp; alerts.</div></div>
+</section>
+
+<section id="runif">
+  <h2>5 · Run-if — conditional execution on outcomes</h2>
+  <table>
+    <tr><th><code>run_if</code> value</th><th>Runs when…</th><th>Use for</th></tr>
+    <tr><td><code>ALL_SUCCESS</code> <em>(default)</em></td><td>every dependency succeeded</td><td>normal flow</td></tr>
+    <tr><td><code>AT_LEAST_ONE_SUCCESS</code></td><td>≥1 dependency succeeded</td><td>best-effort merge</td></tr>
+    <tr><td><code>NONE_FAILED</code></td><td>none failed (skips allowed)</td><td>tolerant continue</td></tr>
+    <tr><td><code>ALL_DONE</code></td><td>all finished (success or fail)</td><td><strong>cleanup</strong></td></tr>
+    <tr><td><code>AT_LEAST_ONE_FAILED</code></td><td>≥1 dependency failed</td><td><strong>alerting</strong></td></tr>
+    <tr><td><code>ALL_FAILED</code></td><td>all failed</td><td>fallback path</td></tr>
+  </table>
+  <pre class="code" style="margin-top:12px">  - <span class="y">task_key:</span> alert_on_failure
+    <span class="y">depends_on:</span> [{ <span class="y">task_key:</span> ingest_all }, { <span class="y">task_key:</span> publish_gold }]
+    <span class="y">run_if:</span> AT_LEAST_ONE_FAILED          <span class="c"># fire only when something upstream failed</span>
+    <span class="y">notebook_task:</span> { <span class="y">notebook_path:</span> ../src/alert.py }</pre>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Production pipelines need branching, looping, and recovery — not a fixed sequence.</li>
+    <li>"Process N tables in one job?" → <strong>for-each</strong>; "skip publish if validation failed?" → <strong>if/else + run-if</strong> — common interview probes.</li>
+  </ul>
+  <div class="card usecase">🔁 <strong>Real-world use case:</strong> a job uses <strong>for-each</strong> to ingest 12 tables in parallel, sets a row-count <strong>task value</strong>, an <strong>if/else</strong> publishes to gold only if counts look sane, and a <strong>run-if AT_LEAST_ONE_FAILED</strong> task fires an alert.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> data-driven branching, fan-out over many inputs, passing counts/flags, conditional alerting/cleanup.</li>
+    <li><strong>Edge cases:</strong> task values are <strong>small</strong> — for big data write to a table and pass a pointer; for-each parallelism is <strong>bounded</strong> (<code>concurrency</code> + limits), batch huge lists; <code>run_if</code> defaults to <code>ALL_SUCCESS</code>.</li>
+    <li><strong>Limitation:</strong> control flow is job/task-level — fine-grained row logic belongs in task code/SDP; over-using if/else hurts readability (sometimes separate jobs are clearer).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Stuffing large data into a task value — it's for small values; use a table.</li>
+    <li>❌ Forgetting <code>run_if</code> defaults to <code>ALL_SUCCESS</code> — cleanup/alert won't run after a failure unless set to <code>AT_LEAST_ONE_FAILED</code> / <code>ALL_DONE</code>.</li>
+    <li>❌ A notebook <code>if</code> in code when you need <strong>task-level</strong> branching (so DAG/monitoring reflects it) — use <code>condition_task</code>.</li>
+    <li>❌ Unbounded for-each over thousands of items without batching / <code>concurrency</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/jobs/control-flow" target="_blank" rel="noopener">Control flow</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/conditional-tasks" target="_blank" rel="noopener">If/else task</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/for-each" target="_blank" rel="noopener">For each task</a> ·
+  <a href="https://docs.databricks.com/aws/en/jobs/task-values" target="_blank" rel="noopener">Task values</a>
+  <p style="margin-top:10px">Topic 7.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — if/else simulator (scoped to #ifelse)
+const rc=document.getElementById('rc'), rcval=document.getElementById('rcval'),
+      bpub=document.getElementById('bpub'), bquar=document.getElementById('bquar');
+function renderIf(v){
+  rcval.textContent=v;
+  const pass = v>=100;
+  bpub.classList.toggle('active',pass);
+  bquar.classList.toggle('active',!pass);
+}
+rc.addEventListener('input',e=>renderIf(+e.target.value));
+renderIf(180);
+// Diagram 2 — feature tabs (scoped to #feat)
+document.querySelectorAll('#feat .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#feat .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#feat .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

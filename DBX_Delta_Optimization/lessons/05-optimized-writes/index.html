@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Optimized writes · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+
+  /* ---------- pipeline step-through (lesson-05 specific, reuses palette) ---------- */
+  .pipe{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:16px 0 4px}
+  .pnode{border:1px solid var(--line);border-radius:11px;padding:12px 14px;background:#fff;box-shadow:var(--shadow);opacity:.4;transform:translateY(6px);transition:.32s cubic-bezier(.2,.9,.3,1.2)}
+  .pnode.on{opacity:1;transform:none}
+  .pnode.active{border-color:var(--frost-2);background:linear-gradient(180deg,#fff,#eef7fa);box-shadow:0 8px 20px -8px rgba(31,111,139,.55)}
+  .pnode .pk{font-family:"Spline Sans Mono",monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--frost)}
+  .pnode .pt{font-weight:600;font-size:.92rem;margin-top:3px}
+  .pnode .pd{font-size:.78rem;color:#56636d;margin-top:4px}
+  .pnode.shuffle{border-color:var(--amber)}
+  .pnode.shuffle .pk{color:var(--amber)}
+  .stepbar{display:flex;gap:8px;align-items:center;margin:14px 0 2px;flex-wrap:wrap}
+  .stepbar button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:#fff;color:var(--frost);padding:7px 16px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepbar button:hover{border-color:var(--frost-2)}
+  .stepbar button:disabled{opacity:.4;cursor:not-allowed}
+  .stepbar .ctr{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#6a7780}
+  /* matrix / checklist */
+  .matrix{display:grid;grid-template-columns:1fr;gap:8px;margin:16px 0 4px}
+  .mrow{border:1px solid var(--line);border-radius:11px;padding:13px 16px;background:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.18s}
+  .mrow:hover{border-color:var(--frost-2)}
+  .mrow .mhead{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .mrow .mop{font-family:"Spline Sans Mono",monospace;font-size:.9rem;font-weight:600}
+  .mrow .badge{font-family:"Spline Sans Mono",monospace;font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 10px;border-radius:999px;white-space:nowrap}
+  .mrow .badge.q{background:var(--paper-2);color:#7a868f}
+  .mrow.on .badge.on-d{background:linear-gradient(135deg,var(--frost-2),var(--frost));color:#eafaff}
+  .mrow.on .badge.lock{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+  .mrow.off .badge.off-d{background:var(--paper-2);color:#7a868f}
+  .mrow .mwhy{display:none;margin-top:9px;font-size:.88rem;color:#3c4a53}
+  .mrow.revealed .mwhy{display:block}
+  .mrow.on.revealed{background:linear-gradient(180deg,#fff,#eef7fa);border-color:var(--frost-2)}
+  .mrow.off.revealed{background:linear-gradient(180deg,#fff,#f6f2ea)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 05</p>
+    <h1>Optimized<br><span class="drip">writes.</span></h1>
+    <p class="lede">Right-size files as they're written. Optimized writes adds one extra shuffle just before a write so each partition gets a few ~128 MB files instead of a swarm of tiny ones — preventing the small-file problem instead of repairing it later.</p>
+    <div class="meta">
+      <span class="pill">Target <b>128 MB</b></span>
+      <span class="pill">Best on <b>partitioned tables</b></span>
+      <span class="pill">MERGE/UPDATE/DELETE <b>always on</b></span>
+      <span class="pill">Write-time <b>(vs auto compaction)</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Optimized writes</strong> fix file sizes <em>at the moment data is written</em> — before files ever land in storage. Normally Spark writes roughly <strong>one file per write task</strong>, so a job with many parallel tasks emits a swarm of tiny files. Optimized writes inserts <strong>one extra shuffle stage just before the write</strong>: it redistributes rows so each table partition is written by <strong>fewer tasks</strong>, each producing a <strong>larger, right-sized file</strong>. The target file size when enabled is <strong>128&nbsp;MB</strong>.</p>
+    <p>Instead of letting the shape of your <em>compute</em> (how many tasks happened to run) decide the shape of your <em>storage</em> (how many files), optimized writes reshuffles the data so storage is sized on purpose. It is <strong>most effective for partitioned tables</strong>, where the default behavior scatters each partition's rows across every task.</p>
+    <p><span class="chip analogy">Analogy</span><br>It's a <strong>packing station before shipping</strong>. Without it, ten workers each toss whatever they hold into its own box — you ship ten half-empty boxes. Optimized writes is the worker at the end of the line who <em>consolidates</em> everything for the same address first, then packs a few full boxes. Same goods, far fewer boxes.</p>
+    <p><span class="chip usecase">Real-world use case</span><br>A nightly <code>MERGE</code> that upserts CDC rows into a large partitioned <code>sales</code> table. Without optimized writes each micro-task appends a tiny file per partition it touches; with optimized writes (which is <strong>on by default for MERGE</strong>) the rows are reshuffled per partition first, so each partition gets a handful of ~128&nbsp;MB files.</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>It prevents small files instead of cleaning them up later.</strong> Manual <code>OPTIMIZE</code> (Lesson 04) and auto compaction (Lesson 06) <em>repair</em> a table that already has too many small files — a second read-and-rewrite pass. Optimized writes avoids creating most of those files in the first place.</li>
+      <li><strong>It removes the <code>coalesce</code>/<code>repartition</code> guesswork.</strong> The old way to control write file count was <code>df.coalesce(n)</code> / <code>df.repartition(n)</code> before <code>.write</code> — but you had to guess <code>n</code>, and the right <code>n</code> changes with data volume. Optimized writes sizes files automatically toward 128&nbsp;MB.</li>
+      <li><strong>It's on automatically where it matters most.</strong> For <code>MERGE</code>, <code>UPDATE</code> with subqueries, and <code>DELETE</code> with subqueries, optimized writes is <strong>always on and cannot be turned off</strong> — exactly the row-level ops that otherwise spray tiny files across many partitions.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Optimized writes already shuffles to size files — so <strong>do NOT add <code>coalesce(n)</code> or <code>repartition(n)</code> right before the write</strong>. Doing so fights the mechanism and reintroduces the small files it was built to prevent.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: write-pipeline step-through ============ -->
+  <section>
+    <h2>See it work — write-pipeline step-through</h2>
+    <p>Toggle optimized writes <strong>ON</strong> / <strong>OFF</strong>, then click <strong>Next</strong> to walk the write pipeline stage by stage. Watch the resulting files on disk — and note the extra shuffle stage that ON adds.</p>
+
+    <div class="lab" id="lab-pipe">
+      <div class="lab-head">
+        <span class="lab-title">Write-pipeline step-through</span>
+      </div>
+      <p class="lab-sub">Writing a partitioned <code>sales</code> table from the same input data.</p>
+
+      <div class="controls">
+        <div class="seg" id="pw-seg" role="group" aria-label="Optimized writes">
+          <button data-ow="off" aria-pressed="true">Optimized writes OFF</button>
+          <button data-ow="on" aria-pressed="false">Optimized writes ON</button>
+        </div>
+      </div>
+
+      <div class="pipe" id="pw-pipe" aria-live="polite"></div>
+
+      <div class="stepbar">
+        <button id="pw-prev" disabled>&larr; Prev</button>
+        <button id="pw-next">Next &rarr;</button>
+        <span class="ctr" id="pw-ctr"></span>
+      </div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="pw-gridLabel">Files on disk (after write)</div>
+        <div class="grid" id="pw-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw" style="background:var(--paper-2)"></i> tiny file (&lt; target)</span>
+        <span><i class="sw" style="background:linear-gradient(135deg,#bfeaf3,#8fd6e8)"></i> right-sized ~128 MB file</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="pw-files">—</div><div class="lbl">files written</div></div>
+        <div class="stat"><div class="big" id="pw-avg">—</div><div class="lbl">avg file size</div></div>
+        <div class="stat win"><div class="big" id="pw-shuffle">—</div><div class="lbl">extra shuffle stage</div></div>
+      </div>
+      <div class="verdict" id="pw-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real file counts depend on data volume, the 128 MB target, partition count, and AQE; the shuffle cost is paid once at write time.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: which operations get it automatically ============ -->
+  <section>
+    <h2>See it work — which operations get it automatically?</h2>
+    <p>Click each operation to reveal whether optimized writes is <strong>on by default</strong> — and why. The row-level operations are <strong>always on and can't be disabled</strong>; plain appends need you to opt in.</p>
+
+    <div class="lab" id="lab-matrix">
+      <div class="lab-head">
+        <span class="lab-title">Auto-enablement matrix</span>
+      </div>
+      <p class="lab-sub">Tap an operation. <span class="badge q" style="display:inline-block">?</span> = click to reveal.</p>
+
+      <div class="matrix" id="mx-rows"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="mx-on">—</div><div class="lbl">always-on (locked)</div></div>
+        <div class="stat"><div class="big" id="mx-default">—</div><div class="lbl">on by default</div></div>
+        <div class="stat win"><div class="big" id="mx-opt">—</div><div class="lbl">opt-in needed</div></div>
+      </div>
+      <div class="verdict" id="mx-verdict">Reveal the operations to see the breakdown.</div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Automatic coverage for CTAS/INSERT depends on compute (SQL warehouse) and on DBR 13.3 LTS+ + Unity Catalog registration + partitioned tables. Set the table property to guarantee the behavior.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3>1 · Shuffle before write → fewer, larger files per partition</h3>
+    <p>Without optimized writes, Spark writes about <strong>one file per write task per output partition</strong> — 200 tasks holding a few <code>region=EU</code> rows each ⇒ ~200 tiny <code>EU</code> files. Optimized writes adds an <strong>extra shuffle stage immediately before the write</strong> that concentrates each partition's data into a <strong>few tasks</strong>, each writing one <strong>right-sized</strong> file (target <strong>128&nbsp;MB</strong>). File count becomes a function of <em>data size + the target</em>, not of how parallel the job happened to be. The cost is the shuffle's network movement = some added write latency.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># Session config: DBR sizes files toward ~128 MB on writes in this session.</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.optimizeWrite.enabled"</span>, <span class="s">"true"</span>)
+
+(spark.table(<span class="s">"main.delta_opt_demo.sales_src"</span>)
+      .write.mode(<span class="s">"overwrite"</span>)
+      <span class="c"># DON'T add .coalesce(n)/.repartition(n) here — let optimized writes size files.</span>
+      .saveAsTable(<span class="s">"main.delta_opt_demo.sales"</span>))</pre>
+
+    <h3>2 · Most effective for partitioned tables</h3>
+    <p>On a <strong>partitioned</strong> table the default write fans each partition's rows across many tasks → the worst small-file explosion (many tiny files <em>per partition directory</em>). A job touching 50 partitions with 200 tasks can write up to 50&nbsp;×&nbsp;200 files. The pre-write shuffle groups rows by output partition first, so each partition is written by just a few tasks — which is why the docs call partitioned tables the case it helps most. On unpartitioned tables the benefit is smaller (AQE already coalesces somewhat), but it still right-sizes output.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Most effective on partitioned tables: enable the property so writes self-size.</span>
+<span class="c">-- (For NEW tables, prefer liquid clustering over partitioning — see Lesson 08.)</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.sales
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>);</pre>
+
+    <h3>3 · Turning it on: table property + session config</h3>
+    <p>Two independent switches. The <strong>table property</strong> <code>delta.autoOptimize.optimizeWrite</code> travels with the table (every write to it goes through optimized writes); the <strong>session config</strong> <code>spark.databricks.delta.optimizeWrite.enabled</code> applies to all writes in the current session. Use the property for a table you always want sized; use the session config for one-off jobs. Knowing which scope is in force prevents surprises.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Durable, per-table switch (recommended for a table you always want right-sized):</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.sales
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>);
+
+<span class="c">-- Set it at CREATE time too:</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.sales (
+  sale_id <span class="k">BIGINT</span>, region <span class="k">STRING</span>, amount <span class="k">DOUBLE</span>, sale_date <span class="k">DATE</span>
+)
+<span class="k">PARTITIONED BY</span> (region)
+<span class="k">TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>);</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># Session-scoped switch (one-off jobs, or to toggle broadly without ALTER TABLE):</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.optimizeWrite.enabled"</span>, <span class="s">"true"</span>)</pre>
+
+    <h3>4 · Always on for MERGE, UPDATE w/ subquery, DELETE w/ subquery</h3>
+    <p><span class="chip analogy">Analogy: the packing station you can't switch off</span> <span class="chip usecase">CDC merges into big partitioned tables</span></p>
+    <p>For three row-level operations — <strong><code>MERGE</code></strong>, <strong><code>UPDATE</code> with subqueries</strong>, and <strong><code>DELETE</code> with subqueries</strong> — optimized writes is <strong>enabled by default</strong> and <strong>cannot be disabled</strong>. These ops rewrite scattered subsets of rows across many partitions, the exact pattern that produces the most small files, so Databricks applies the pre-write shuffle automatically. You accept the (small) shuffle cost in return for not flooding the table with tiny files — almost always the right call.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- MERGE gets optimized writes automatically (always on) — no property needed.</span>
+<span class="k">MERGE INTO</span> main.delta_opt_demo.sales <span class="k">AS</span> t
+<span class="k">USING</span> main.delta_opt_demo.sales_updates <span class="k">AS</span> s
+  <span class="k">ON</span> t.sale_id = s.sale_id
+<span class="k">WHEN MATCHED THEN UPDATE SET</span> *
+<span class="k">WHEN NOT MATCHED THEN INSERT</span> *;
+
+<span class="c">-- UPDATE/DELETE *with a subquery* also get optimized writes by default:</span>
+<span class="k">UPDATE</span> main.delta_opt_demo.sales
+  <span class="k">SET</span> amount = amount * <span class="s">1.05</span>
+  <span class="k">WHERE</span> region <span class="k">IN</span> (<span class="k">SELECT</span> region <span class="k">FROM</span> main.delta_opt_demo.promo_regions);  <span class="c">-- subquery → optimized write</span></pre>
+
+    <h3>5 · Also for CTAS + INSERT on SQL warehouses; UC tables in DBR 13.3 LTS+</h3>
+    <p>Beyond the always-on row-level ops, optimized writes is also applied for <strong><code>CTAS</code></strong> and <strong><code>INSERT</code></strong> statements <strong>run on SQL warehouses</strong>. Additionally, since <strong>DBR 13.3 LTS+</strong>, <strong>all Unity Catalog–registered tables</strong> get optimized writes for <strong>CTAS and INSERT on partitioned tables</strong>. Coverage depends on <em>where you run</em> and on <em>runtime + registration</em> — when in doubt, set the table property so the behavior is guaranteed.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- CTAS on a SQL warehouse gets optimized writes automatically.</span>
+<span class="c">-- (Set the property anyway to make it durable across compute types.)</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.sales_eu
+  <span class="k">PARTITIONED BY</span> (region)
+  <span class="k">TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.optimizeWrite'</span> = <span class="s">'true'</span>)
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> main.delta_opt_demo.sales <span class="k">WHERE</span> region = <span class="s">'EU'</span>;
+
+<span class="c">-- INSERT into a partitioned UC table (DBR 13.3 LTS+) is sized by optimized writes too:</span>
+<span class="k">INSERT INTO</span> main.delta_opt_demo.sales
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.delta_opt_demo.sales_late_arrivals;</pre>
+
+    <h3>6 · The trade-off: extra shuffle latency vs far fewer small files</h3>
+    <p>The single cost is the <strong>extra shuffle stage</strong> (a network redistribution before the write). The single benefit is <strong>far fewer, ~128&nbsp;MB files</strong>. Small files are expensive <em>forever</em> (slow listing, slow scans, metadata bloat, more compaction work); the shuffle is paid <strong>once</strong> at write time. Trading a one-time write cost to avoid a permanent read-and-maintenance cost is usually a clear win — reconsider only for an extremely latency-sensitive streaming micro-batch.</p>
+
+    <h3>7 · Hard rule: don't <code>coalesce</code>/<code>repartition</code> before the write</h3>
+    <p>Optimized writes already shuffles to size files. Adding a manual <code>df.coalesce(n)</code> or <code>df.repartition(n)</code> right before <code>.write</code> <strong>fights that mechanism</strong>: <code>coalesce</code> can re-create skew and small files; <code>repartition</code> forces a <em>second</em>, redundant shuffle with a number you guessed. <strong>Databricks explicitly says: do NOT use <code>coalesce(n)</code> / <code>repartition(n)</code> just before a write when optimized writes is enabled.</strong> Let it size the files; only set <code>delta.targetFileSize</code> if you need a different target.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># ANTI-PATTERN — fights optimized writes (guessed n, redundant/again-skewed shuffle):</span>
+(df.repartition(<span class="s">16</span>)            <span class="c"># don't do this when optimized writes is on</span>
+   .write.mode(<span class="s">"overwrite"</span>)
+   .saveAsTable(<span class="s">"main.delta_opt_demo.sales"</span>))
+
+<span class="c"># CORRECT — let optimized writes size the files; no manual partition count:</span>
+(df.write.mode(<span class="s">"overwrite"</span>)    <span class="c"># optimized writes adds its own shuffle, targets ~128 MB</span>
+   .saveAsTable(<span class="s">"main.delta_opt_demo.sales"</span>))</pre>
+
+    <h3>8 · Where it sits: write-time vs post-write vs manual</h3>
+    <ul>
+      <li><strong>Optimized writes (this lesson) = write-time.</strong> Shuffles <em>before</em> the write so files land right-sized. <em>Prevents</em> small files.</li>
+      <li><strong>Auto compaction (Lesson 06) = post-write.</strong> Runs <em>after</em> a write commits and merges small files <em>within partitions</em> in a follow-up step. <em>Cleans up</em> small files.</li>
+      <li><strong>Manual <code>OPTIMIZE</code> (Lesson 04) = on-demand.</strong> A separate command you (or a schedule) run later to bin-pack the table or a partition subset.</li>
+      <li><strong>They compose.</strong> Both optimized writes and auto compaction are <strong>always on for MERGE/UPDATE/DELETE</strong>. They <em>reduce</em> but do <strong>not replace</strong> <code>OPTIMIZE</code> — tables over 1 TB still need scheduled <code>OPTIMIZE</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Comparison — optimized writes vs auto compaction vs manual OPTIMIZE</h2>
+    <table class="tbl">
+      <thead><tr><th>Aspect</th><th>Optimized writes (L05)</th><th>Auto compaction (L06)</th><th>Manual OPTIMIZE (L04)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>When it runs</strong></td><td><em>Before</em> the write (write-time)</td><td><em>After</em> the write commits</td><td>On demand / scheduled</td></tr>
+        <tr><td><strong>How</strong></td><td>Extra shuffle → fewer, larger files</td><td>Synchronous compaction within partitions</td><td>Bin-packing command you run</td></tr>
+        <tr><td><strong>Goal</strong></td><td><strong>Prevent</strong> small files</td><td><strong>Clean up</strong> small files just written</td><td>Consolidate the table later</td></tr>
+        <tr><td><strong>Target size</strong></td><td><strong>128 MB</strong> when enabled</td><td><code>auto</code> (autotunes) / <code>true</code> = 128 MB</td><td>Autotuned / <code>targetFileSize</code></td></tr>
+        <tr><td><strong>Switch</strong></td><td class="mono">autoOptimize.optimizeWrite</td><td class="mono">autoOptimize.autoCompact</td><td class="mono">OPTIMIZE t [ZORDER BY …]</td></tr>
+        <tr><td><strong>Always on for MERGE/UPDATE/DELETE?</strong></td><td><strong>Yes — can't disable</strong></td><td><strong>Yes — can't disable</strong></td><td>No (manual)</td></tr>
+        <tr><td><strong>Adds shuffle / latency?</strong></td><td>Yes (pre-write shuffle)</td><td>Some (post-write rewrite)</td><td>N/A (separate job)</td></tr>
+        <tr><td><strong>Replaces OPTIMIZE?</strong></td><td>No — reduces its frequency</td><td>No — reduces its frequency</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Partitioned tables</strong> with per-partition write fan-out — the case it helps most.</li>
+      <li><strong>MERGE / UPDATE-with-subquery / DELETE-with-subquery</strong> — already on (and can't be turned off), so just rely on it.</li>
+      <li><strong>CTAS / INSERT bulk loads</strong>, especially on SQL warehouses and UC-registered partitioned tables (DBR 13.3 LTS+) — set the table property to guarantee it.</li>
+      <li><strong>Replacing <code>coalesce</code>/<code>repartition</code> tuning</strong> — turn it on and remove the manual partition-count hacks.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>You <code>repartition</code>/<code>coalesce</code> before the write anyway</strong> → you fight the mechanism and re-create small files or a redundant shuffle. Remove it.</li>
+      <li><strong>Unpartitioned table</strong> → smaller benefit (AQE already coalesces somewhat); shuffle cost is the same — payoff is largest on partitioned tables.</li>
+      <li><strong>Latency-critical streaming micro-batch</strong> → the pre-write shuffle adds latency; weigh it, though file-count savings usually still win.</li>
+      <li><strong>Expecting it to compact EXISTING files</strong> → it doesn't; it sizes <em>new</em> writes only. Use <code>OPTIMIZE</code> / auto compaction for files already on disk.</li>
+      <li><strong>Plain CTAS/INSERT on a cluster (not a SQL warehouse) on older DBR</strong> → may not get it automatically; set the property explicitly.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>It is a <strong>write-time</strong> mechanism: it sizes new files, it does <strong>not</strong> rewrite files already in the table.</li>
+      <li>For <strong>MERGE/UPDATE/DELETE it is always on and cannot be disabled</strong> (same for auto compaction).</li>
+      <li>Automatic coverage for <strong>CTAS/INSERT</strong> depends on compute (SQL warehouse) and on <strong>DBR 13.3 LTS+ + UC registration + partitioned</strong> for the broad case.</li>
+      <li>It adds an <strong>extra shuffle</strong> → some added write latency.</li>
+      <li>It <strong>reduces but does not replace</strong> <code>OPTIMIZE</code>; tables &gt; 1 TB still need scheduled <code>OPTIMIZE</code>.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Don't <code>coalesce</code>/<code>repartition</code> right before the write.</strong> Databricks says not to when optimized writes is on — it overrides the sizing and reintroduces small files.</li>
+      <li><strong>It won't fix files you already have.</strong> Write-time only; run <code>OPTIMIZE</code> or rely on auto compaction to repair an already-small-file table.</li>
+      <li><strong>MERGE/UPDATE/DELETE: it's always on — you can't turn it off.</strong> Don't burn time trying to disable it; design around the small shuffle cost.</li>
+      <li><strong>Know your coverage.</strong> Plain CTAS/INSERT get it automatically on SQL warehouses, and broadly on UC tables in DBR 13.3 LTS+ for partitioned tables — elsewhere set the table property to be sure.</li>
+      <li><strong>Write-time vs post-write are different tools.</strong> Optimized writes prevents small files; auto compaction (Lesson 06) cleans them up after the commit — they compose, they don't replace each other.</li>
+      <li><strong>It complements, not replaces, <code>OPTIMIZE</code>.</strong> For large tables (&gt; 1 TB) still schedule <code>OPTIMIZE</code>; prefer liquid clustering for skipping.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Configure Delta Lake to control data file size (optimized writes, 128 MB target, properties, always-on for MERGE/UPDATE/DELETE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE — optimize data file layout</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">When to partition tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: write-pipeline step-through ---------- */
+(function(){
+  const root = document.getElementById('lab-pipe');
+  if(!root) return;
+  const pipeEl = root.querySelector('#pw-pipe');
+  const gridEl = root.querySelector('#pw-grid');
+  const prevB  = root.querySelector('#pw-prev');
+  const nextB  = root.querySelector('#pw-next');
+  const ctr    = root.querySelector('#pw-ctr');
+  let mode = 'off';   // 'off' | 'on'
+  let step = 0;
+
+  // Pipeline stages for each mode. ON inserts an extra shuffle stage.
+  const STAGES = {
+    off: [
+      {k:'Input', t:'Input data', d:'Rows for many partitions'},
+      {k:'Write tasks', t:'Write tasks', d:'1 file per task per partition', cls:''},
+      {k:'Storage', t:'Files on disk', d:'MANY small files', cls:''}
+    ],
+    on: [
+      {k:'Input', t:'Input data', d:'Rows for many partitions'},
+      {k:'Shuffle', t:'Extra shuffle', d:'Redistribute rows per partition', cls:'shuffle'},
+      {k:'Write tasks', t:'Fewer write tasks', d:'Each partition → a few tasks', cls:''},
+      {k:'Storage', t:'Files on disk', d:'FEWER ~128 MB files', cls:''}
+    ]
+  };
+  // Resulting files visual: OFF = 48 tiny; ON = 6 right-sized.
+  const RESULT = { off:{files:48, sized:false}, on:{files:6, sized:true} };
+
+  function renderPipe(){
+    const stages = STAGES[mode];
+    pipeEl.innerHTML='';
+    stages.forEach((s,i)=>{
+      const n=document.createElement('div');
+      n.className='pnode'+(s.cls?(' '+s.cls):'');
+      if(i<=step) n.classList.add('on');
+      if(i===step) n.classList.add('active');
+      n.innerHTML='<div class="pk">'+s.k+'</div><div class="pt">'+s.t+'</div><div class="pd">'+s.d+'</div>';
+      pipeEl.appendChild(n);
+    });
+    ctr.textContent='Stage '+(step+1)+' of '+stages.length;
+    prevB.disabled = step===0;
+    nextB.disabled = step===stages.length-1;
+  }
+
+  function renderGrid(reveal){
+    const r = RESULT[mode];
+    gridEl.innerHTML='';
+    // Only paint the result once the pipeline reaches the final (storage) stage.
+    const show = reveal;
+    const n = show ? r.files : 0;
+    for(let i=0;i<n;i++){
+      const f=document.createElement('div');
+      f.className='file';
+      if(r.sized){ f.classList.add('clustered'); f.querySelectorAll; }
+      const v=document.createElement('span'); v.className='v';
+      v.textContent = r.sized ? '128' : '';
+      f.appendChild(v);
+      gridEl.appendChild(f);
+      f.style.opacity=0; f.style.transform='scale(.7)';
+      setTimeout(()=>{ f.style.opacity=1; f.style.transform=''; }, i*9);
+    }
+    root.querySelector('#pw-gridLabel').textContent = show
+      ? (r.sized ? 'Files on disk — fewer, right-sized (~128 MB each)' : 'Files on disk — many small files')
+      : 'Files on disk (step to the final stage to see them)';
+    root.querySelector('#pw-files').textContent = show ? r.files : '—';
+    root.querySelector('#pw-avg').textContent   = show ? (r.sized ? '~128 MB' : '~16 MB') : '—';
+    root.querySelector('#pw-shuffle').textContent = mode==='on' ? 'YES' : 'no';
+  }
+
+  function renderVerdict(atEnd){
+    const vd=root.querySelector('#pw-verdict');
+    if(mode==='off'){
+      vd.innerHTML = atEnd
+        ? "With optimized writes <b>OFF</b>, each task writes its own file per partition → <b>48 small files</b>. They're cheap now but expensive forever: slow listing, slow scans, and a later <code>OPTIMIZE</code>/auto-compaction pass to clean up."
+        : "Optimized writes <b>OFF</b>: data flows straight to write tasks with no reshuffle. Step to the final stage to see the resulting files.";
+    } else {
+      vd.innerHTML = atEnd
+        ? "With optimized writes <b>ON</b>, the extra shuffle concentrates each partition's rows into a few tasks → <b>6 right-sized ~128 MB files</b>. You pay one shuffle at write time and skip the small-file mess entirely."
+        : "Optimized writes <b>ON</b>: note the <b>extra shuffle stage</b> (amber) before the write tasks — that's what lets each partition land as a few large files.";
+    }
+  }
+
+  function render(){
+    const stages = STAGES[mode];
+    const atEnd = step===stages.length-1;
+    renderPipe();
+    renderGrid(atEnd);
+    renderVerdict(atEnd);
+  }
+
+  root.querySelectorAll('#pw-seg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      mode=btn.dataset.ow; step=0;
+      root.querySelectorAll('#pw-seg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render();
+    });
+  });
+  nextB.addEventListener('click',()=>{ if(step<STAGES[mode].length-1){ step++; render(); } });
+  prevB.addEventListener('click',()=>{ if(step>0){ step--; render(); } });
+
+  render();
+})();
+
+/* ---------- Interactive 2: which operations get it automatically ---------- */
+(function(){
+  const root = document.getElementById('lab-matrix');
+  if(!root) return;
+  const wrap = root.querySelector('#mx-rows');
+
+  // status: 'lock' = always on / can't disable; 'default' = on by default; 'opt' = opt-in needed.
+  const OPS = [
+    {op:"MERGE", status:'lock',
+      why:"Always on and <b>cannot be disabled</b>. A merge rewrites scattered rows across many partitions — the worst small-file pattern — so the pre-write shuffle is applied automatically."},
+    {op:"UPDATE … WHERE (SELECT …)", status:'lock',
+      why:"<b>UPDATE with a subquery</b> is always on (can't disable). Subquery-driven updates touch a little data in many partitions, so optimized writes keeps each from gaining a tiny file."},
+    {op:"DELETE … WHERE (SELECT …)", status:'lock',
+      why:"<b>DELETE with a subquery</b> is always on (can't disable) — same reasoning as UPDATE: scattered row-level rewrites are reshuffled before the write."},
+    {op:"CTAS on a SQL warehouse", status:'default',
+      why:"On by default for <b>CTAS run on SQL warehouses</b>. Bulk creation into partitioned tables fans out per partition, so optimized writes right-sizes the load."},
+    {op:"INSERT into partitioned UC table", status:'default',
+      why:"Since <b>DBR 13.3 LTS+</b>, all <b>Unity Catalog–registered</b> tables get optimized writes for CTAS + INSERT on <b>partitioned</b> tables. Outside that, set the table property."},
+    {op:"Plain append (df.write on a cluster)", status:'opt',
+      why:"Not automatic in general — <b>opt in</b> with <code>delta.autoOptimize.optimizeWrite='true'</code> on the table, or the session config <code>spark.databricks.delta.optimizeWrite.enabled</code>."}
+  ];
+
+  const LABEL = {
+    lock:   {cls:'on',  badge:'lock',  text:'Always on · locked'},
+    default:{cls:'on',  badge:'on-d',  text:'On by default'},
+    opt:    {cls:'off', badge:'off-d', text:'Opt-in needed'}
+  };
+
+  function recount(){
+    let lock=0, def=0, opt=0;
+    OPS.forEach(o=>{ if(o.status==='lock') lock++; else if(o.status==='default') def++; else opt++; });
+    root.querySelector('#mx-on').textContent = lock;
+    root.querySelector('#mx-default').textContent = def;
+    root.querySelector('#mx-opt').textContent = opt;
+  }
+
+  OPS.forEach((o,i)=>{
+    const L = LABEL[o.status];
+    const row=document.createElement('div');
+    row.className='mrow '+L.cls;
+    row.innerHTML =
+      '<div class="mhead"><span class="mop">'+o.op+'</span>'+
+      '<span class="badge q" data-badge>?</span></div>'+
+      '<div class="mwhy">'+o.why+'</div>';
+    row.addEventListener('click',()=>{
+      const revealed = row.classList.toggle('revealed');
+      const b = row.querySelector('[data-badge]');
+      if(revealed){ b.className='badge '+L.badge; b.textContent=L.text; }
+      else { b.className='badge q'; b.textContent='?'; }
+      const anyRevealed = wrap.querySelectorAll('.mrow.revealed').length;
+      const vd = root.querySelector('#mx-verdict');
+      if(!anyRevealed){ vd.innerHTML='Reveal the operations to see the breakdown.'; return; }
+      vd.innerHTML="<b>MERGE, UPDATE-with-subquery and DELETE-with-subquery are always on and can't be disabled.</b> CTAS/INSERT are on by default on SQL warehouses (and on UC partitioned tables in DBR 13.3 LTS+). A <b>plain append</b> needs you to opt in via the table property or session config.";
+    });
+    wrap.appendChild(row);
+  });
+
+  recount();
+})();
+</script>
+</body>
+</html>

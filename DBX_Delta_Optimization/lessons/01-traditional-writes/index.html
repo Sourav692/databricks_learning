@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Traditional Writes &amp; the Small-File Problem · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .filterbar input[type=range]{accent-color:var(--frost);cursor:pointer;width:220px;max-width:60vw}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  /* tiny vs large file visual scale (small-file lab) */
+  .file.tiny{background:linear-gradient(135deg,#f1d9bf,#e7b98a);border-color:#d8a978;color:#7a4f23}
+  .file.big{background:linear-gradient(135deg,#bfeaf3,#7cc9de);border-color:#5bb4cd;color:#0d4d5e}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.tiny{background:linear-gradient(135deg,#f1d9bf,#e7b98a)}
+  .sw.big{background:linear-gradient(135deg,#bfeaf3,#7cc9de)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 01</p>
+    <h1>Traditional Writes &amp;<br>the <span class="drip">Small-File</span> Problem.</h1>
+    <p class="lede">A default Spark write makes roughly one file per writing task. Do that on every micro-batch and you get thousands of tiny files — the quiet tax that makes every future query slower. This is the problem the whole track exists to fix.</p>
+    <div class="meta">
+      <span class="pill">Foundation <b>Lesson 01</b></span>
+      <span class="pill">~1 file <b>per task</b></span>
+      <span class="pill">Default shuffle <b>200 partitions</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p>When Spark writes a DataFrame to a Delta table, it does <em>not</em> write one tidy file. The data is split into partitions; each parallel <strong>task</strong> writes <strong>its own file</strong>. So if 200 tasks are writing, you get roughly <strong>200 files</strong> — even for a tiny result. Repeat that on every append, and you accumulate <strong>thousands of tiny files</strong>: the <strong>small-file problem</strong>.</p>
+    <p><span class="chip analogy">Analogy</span> 200 cashiers each bag one item into its own bag. You leave with 200 bags instead of a few well-packed ones — carrying them later (reading them) is slow and clumsy.</p>
+    <p><span class="chip usecase">Use case</span> A streaming job appends a micro-batch every 10 seconds. After a day that's ~8,600 commits, each writing several files. A dashboard query over that table now opens tens of thousands of files to answer one question.</p>
+  </section>
+
+  <section>
+    <h2>Why it matters — the cost of a tiny file</h2>
+    <p>A query's cost is not just <em>how many bytes</em> — it's also <em>how many files</em>. Every file carries fixed overhead the engine pays no matter how small it is:</p>
+    <ul>
+      <li><strong>File open / object-store request</strong> — each file is a separate cloud-storage <code>GET</code>; listing and opening 50,000 files is dominated by request latency, not data size.</li>
+      <li><strong>Footer read</strong> — Parquet keeps its schema + column metadata in a footer the engine must read per file before reading data.</li>
+      <li><strong>Min/max statistics parse</strong> — Delta records per-file min/max/null/count stats; more files = more stats to load and evaluate.</li>
+      <li><strong>Task scheduling</strong> — Spark schedules ~one read task per file; 50,000 files = 50,000 tasks to plan, ship, and collect, flooding the driver.</li>
+      <li><strong>Metadata bloat</strong> — every file is an entry in the transaction log (<code>_delta_log</code>); millions of tiny files make the log huge and slow to replay.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Do <strong>not</strong> <code>coalesce(n)</code> / <code>repartition(n)</code> right before a write when <strong>optimized writes</strong> is enabled — it fights the engine's own file sizing. Let the platform size files for you.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: Write -> files simulator ============ -->
+  <section>
+    <h2>See it work — write &rarr; files</h2>
+    <p>Pick how many writing tasks (shuffle partitions) the write fans out to, then choose a manual control. Watch the file grid, the file count, the approximate average file size, and a qualitative read-cost indicator.</p>
+
+    <div class="lab" id="lab-write">
+      <div class="lab-head">
+        <span class="lab-title">Write &rarr; files simulator</span>
+      </div>
+      <p class="lab-sub">A single write of a ~1&nbsp;GB result. More tasks = more, smaller files unless the engine sizes them.</p>
+
+      <div class="filterbar">
+        <label for="w-tasks">Writing tasks (shuffle partitions):</label>
+        <input type="range" id="w-tasks" min="1" max="64" value="48" step="1">
+        <span class="qstr" id="w-tasksval">48</span>
+      </div>
+
+      <div class="controls">
+        <div class="seg" id="w-modeSeg" role="group" aria-label="Manual control">
+          <button data-mode="none" aria-pressed="true">none (plain write)</button>
+          <button data-mode="coalesce" aria-pressed="false">coalesce(8)</button>
+          <button data-mode="repartition" aria-pressed="false">repartition(8)</button>
+          <button data-mode="optimized" aria-pressed="false">optimized writes</button>
+        </div>
+      </div>
+      <div class="qstr" id="w-code"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="w-gridlabel">Files on disk</div>
+        <div class="grid" id="w-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw tiny"></i> small file (overhead-heavy)</span>
+        <span><i class="sw big"></i> right-sized file</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="w-files">—</div><div class="lbl">files written</div></div>
+        <div class="stat"><div class="big" id="w-avg">—</div><div class="lbl">approx avg file size</div></div>
+        <div class="stat win"><div class="big" id="w-cost">—</div><div class="lbl">relative read cost</div></div>
+      </div>
+      <div class="verdict" id="w-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real file counts depend on AQE coalescing, data size, skew, and the target file size; sizes shown are approximate for a ~1&nbsp;GB write.</p>
+  </section>
+
+  <section>
+    <h2>How it works — deep dive</h2>
+
+    <h3>1 · One file per writing task</h3>
+    <p>A write is a distributed job. Each partition is processed by one task, and each task writes its own file — so output files &asymp; partitions <em>at write time</em>. More parallelism = a faster write but more, smaller files; less parallelism = fewer files but a slower write. You want both right-sized files <em>and</em> parallelism — exactly what optimized writes gives you for free later.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># The number of DataFrame partitions decides the number of output files</span>
+df = spark.range(<span class="s">0</span>, <span class="s">1_000_000</span>)
+<span class="k">print</span>(df.rdd.getNumPartitions())   <span class="c"># e.g. 8 -> a plain write makes ~8 files</span>
+
+<span class="c"># Plain write: ~one Parquet file per partition. Delta is the default format.</span>
+df.write.mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>)</pre>
+
+    <h3>2 · <code>spark.sql.shuffle.partitions</code> &amp; micro-batch appends multiply files</h3>
+    <p>Any shuffle (join, groupBy, window) resets the partition count to <code>spark.sql.shuffle.partitions</code> (historically <strong>200</strong>). A shuffle right before a write &rarr; ~200 files <em>per write</em>. Streaming/frequent batch jobs append on every micro-batch, so 200 files &times; thousands of commits = a tiny-file avalanche — and nothing in a plain write merges across commits.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># A shuffle repartitions the data to spark.sql.shuffle.partitions</span>
+spark.conf.get(<span class="s">"spark.sql.shuffle.partitions"</span>)   <span class="c"># historically "200"</span>
+
+agg = df.groupBy((df.id % <span class="s">5</span>).alias(<span class="s">"bucket"</span>)).count()  <span class="c"># forces a shuffle</span>
+<span class="c"># Without AQE/optimized writes this write would emit ~200 files for a tiny result.</span>
+agg.write.mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.delta_opt_demo.events_agg"</span>)</pre>
+
+    <h3>3 · The old manual controls: <code>coalesce(n)</code> vs <code>repartition(n)</code></h3>
+    <p><strong><code>coalesce(n)</code> — no shuffle.</strong> Merges neighboring partitions down to <code>n</code>. Cheap, but makes <em>uneven</em> files and can cut the upstream stage's parallelism. <strong><code>repartition(n)</code> — full shuffle.</strong> Evenly redistributes into <code>n</code> partitions (clean sizes) but pays a full network shuffle. Both are brittle because you must <strong>guess <code>n</code></strong>, and it goes stale as data grows.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># Naive (brittle) — guess a file count and force it before writing:</span>
+df.coalesce(<span class="s">1</span>).write.saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>)      <span class="c"># one big file, kills parallelism</span>
+df.repartition(<span class="s">8</span>).write.saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>)   <span class="c"># full shuffle, must guess 8</span>
+
+<span class="c"># Right (Databricks): DON'T coalesce/repartition before a write when</span>
+<span class="c"># optimized writes is on — let the platform size files (Lesson 05).</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.optimizeWrite.enabled"</span>, <span class="k">True</span>)
+df.write.mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>)</pre>
+
+    <h3>4 · AQE coalescing — a partial mitigation</h3>
+    <p>Adaptive Query Execution (on by default) inspects the <em>actual</em> shuffle output sizes at runtime and <strong>coalesces</strong> many small post-shuffle partitions into fewer, larger ones — so a job that would have made 200 tiny partitions may collapse to ~12, with no tuning. But AQE tunes a <strong>single query</strong>; it never merges files <em>across separate commits</em> and isn't a layout solution. Append-heavy tables still accumulate small files.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># AQE is on by default; these are the relevant knobs (read, don't blindly change):</span>
+spark.conf.get(<span class="s">"spark.sql.adaptive.enabled"</span>)                      <span class="c"># "true"</span>
+spark.conf.get(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>)   <span class="c"># "true"</span></pre>
+
+    <h3>5 · What a Delta write actually does (Parquet + <code>_delta_log</code>)</h3>
+    <p>A Delta table = <strong>Parquet data files</strong> + a <strong>transaction log</strong> (<code>_delta_log</code>). A write (a) writes new Parquet files, then (b) commits one <strong>atomic JSON log entry</strong> listing the added files with their size + min/max/null/count stats. Readers trust the log, not the directory listing — that's what makes writes ACID. But a plain write does <strong>no file sizing</strong>; sizing only happens via optimized writes, auto compaction, or OPTIMIZE.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- The transaction log is the source of truth. Inspect what a write produced:</span>
+<span class="k">DESCRIBE DETAIL</span> main.delta_opt_demo.events;   <span class="c">-- numFiles, sizeInBytes, format = delta</span>
+<span class="k">DESCRIBE HISTORY</span> main.delta_opt_demo.events;  <span class="c">-- one row per commit: WRITE / MERGE / OPTIMIZE</span></pre>
+
+    <h3>6 · <code>spark.sql.files.maxRecordsPerFile</code> — capping rows per file</h3>
+    <p>Caps how many <strong>rows</strong> go into one output file; when a task exceeds the cap it rolls to a new file. <code>0</code> or negative = no limit (the default). It's a guardrail against one task writing a single enormous file — but it bounds <em>rows</em>, not a true <em>byte</em> target, and set too low it <em>creates</em> small files.</p>
+    <pre><span class="tag">PySpark</span><span class="c"># Cap rows per file (a guardrail against one giant file). 0/neg = no limit.</span>
+spark.conf.set(<span class="s">"spark.sql.files.maxRecordsPerFile"</span>, <span class="s">5_000_000</span>)
+
+<span class="c"># Or as a per-write option (does not change the session-wide config):</span>
+df.write.option(<span class="s">"maxRecordsPerFile"</span>, <span class="s">5_000_000</span>) \
+  .mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>)</pre>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: Delta write lifecycle accordion ============ -->
+  <section>
+    <h2>The lifecycle of a Delta write</h2>
+    <p>Click each step to expand. This is exactly what happens between <code>df.write</code> and a committed, queryable table.</p>
+
+    <div class="lab" id="lab-life">
+      <div class="lab-head"><span class="lab-title">Delta write, step by step</span></div>
+      <p class="lab-sub">Job &rarr; tasks (one file each) &rarr; Parquet in cloud storage &rarr; atomic commit to <code>_delta_log</code>.</p>
+
+      <div class="step" data-step>
+        <div class="head"><span class="ix">01</span> Job is planned</div>
+        <div class="detail">Spark turns <code>df.write</code> into a distributed job. The DataFrame's partition count (set by the input split or the last shuffle, e.g. <code>spark.sql.shuffle.partitions</code>) decides how many writing <strong>tasks</strong> there will be — and therefore the rough file count.</div>
+      </div>
+      <div class="step" data-step>
+        <div class="head"><span class="ix">02</span> Tasks write — one file each</div>
+        <div class="detail">Each task runs on an executor and writes <strong>its own Parquet file</strong>. Tasks can't safely append to a shared file, so parallelism maps directly to file count. This is the root of the small-file problem: high parallelism on a small result &rarr; many tiny files.</div>
+      </div>
+      <div class="step" data-step>
+        <div class="head"><span class="ix">03</span> Parquet files land in cloud storage</div>
+        <div class="detail">The new Parquet files are written to the table's storage location (a UC Volume / cloud path). At this moment they are <em>not yet</em> part of the table — readers can't see them. No file sizing has happened: the files are exactly what the tasks produced.</div>
+      </div>
+      <div class="step" data-step>
+        <div class="head"><span class="ix">04</span> Atomic commit to <code>_delta_log</code></div>
+        <div class="detail">Delta writes a single JSON commit to <code>_delta_log</code> that lists the added files plus per-file size and min/max/null/count statistics. The commit is <strong>atomic</strong>: until it lands, the write is invisible; once it lands, the whole batch appears at once. This is Delta's ACID guarantee.</div>
+      </div>
+      <div class="step" data-step>
+        <div class="head"><span class="ix">05</span> File sizing? Only if you asked for it</div>
+        <div class="detail">A plain write stops here — whatever files the tasks made are now the table's layout. To get fewer, right-sized files you need <strong>optimized writes</strong> (size at write time), <strong>auto compaction</strong> (merge right after the commit), or <strong>OPTIMIZE</strong> (compact later). Those are Lessons 04&ndash;06.</div>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of the Delta write path; real commits also handle conflict detection, checkpoints, and protocol metadata.</p>
+  </section>
+
+  <section>
+    <h2>What fixes this later</h2>
+    <p>This lesson defines the problem; the rest of the track is the cure:</p>
+    <ul>
+      <li><strong>Lesson 04 — OPTIMIZE (bin-packing):</strong> merge many small files into fewer right-sized ones <em>after the fact</em>.</li>
+      <li><strong>Lesson 05 — Optimized writes:</strong> size files <em>as you write</em> (a shuffle before the write). On by default for MERGE/UPDATE/DELETE.</li>
+      <li><strong>Lesson 06 — Auto compaction:</strong> a small compaction that runs right after a successful write to merge the just-written small files.</li>
+      <li><strong>Lesson 08 — Liquid clustering:</strong> the modern layout that keeps related data together <em>and</em> files right-sized — replacing partitioning + Z-order.</li>
+      <li><strong>Lesson 09 — Predictive optimization:</strong> Databricks runs OPTIMIZE/VACUUM/ANALYZE for you on UC managed tables.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Comparison — the file-count controls</h2>
+    <table class="tbl">
+      <thead><tr><th>Control</th><th>Shuffle?</th><th>What it does</th><th>Why it's brittle / its role</th><th>For new code</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">coalesce(n)</td><td>No</td><td>Merge partitions to <code>n</code></td><td>Guess <code>n</code>; uneven files; cuts upstream parallelism</td><td>Avoid before writes</td></tr>
+        <tr><td class="mono">repartition(n)</td><td>Yes (full)</td><td>Even redistribution into <code>n</code></td><td>Guess <code>n</code>; full-shuffle cost; goes stale</td><td>Avoid before writes</td></tr>
+        <tr><td class="mono">shuffle.partitions</td><td>sets width</td><td>Default post-shuffle count (~200)</td><td>Global knob; big default &rarr; many tiny files</td><td>Leave to AQE</td></tr>
+        <tr><td>AQE coalesce</td><td>runtime</td><td>Collapse small post-shuffle partitions</td><td>Per-query only; can't merge across commits</td><td>Keep on (default)</td></tr>
+        <tr><td class="mono">maxRecordsPerFile</td><td>No</td><td>Cap <em>rows</em> per file</td><td>Row cap, not a byte target; can create small files</td><td>Guardrail only</td></tr>
+        <tr><td><strong>Optimized writes</strong></td><td>Yes (managed)</td><td>Size files at write time</td><td>The recommended fix (L05)</td><td><strong>Prefer</strong></td></tr>
+        <tr><td><strong>OPTIMIZE / auto compaction</strong></td><td>n/a</td><td>Compact files after write</td><td>Cleans up what exists (L04/L06)</td><td><strong>Prefer</strong></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses (when the manual controls still make sense)</h3>
+    <ul>
+      <li>One-off <strong>non-Databricks / OSS Spark</strong> jobs where optimized writes isn't available — <code>repartition(n)</code> is the pragmatic file-count control.</li>
+      <li>A deliberate <strong>single-file export</strong> (small CSV/Parquet handoff) via <code>coalesce(1)</code> — fine for small data, never for large tables.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Streaming sink, tiny trigger:</strong> each micro-batch commits files; thousands of micro-batches &rarr; file explosion. Fix with auto compaction / OPTIMIZE.</li>
+      <li><strong><code>repartition(1)</code> on a growing table:</strong> fine on day 1, then a multi-GB single file (or OOM) — the classic stale-hardcode trap.</li>
+      <li><strong><code>coalesce</code> reducing upstream parallelism:</strong> <code>coalesce(1)</code> before a wide transform can serialize the <em>whole</em> stage, not just the write.</li>
+      <li><strong>AQE false safety:</strong> it fixes one query's partitions but never compacts across commits — small files still pile up on append.</li>
+      <li><strong><code>maxRecordsPerFile</code> too low:</strong> turns a guardrail into a small-file generator.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>A plain Delta write does <strong>no automatic file sizing</strong> — files are appended exactly as tasks produced them.</li>
+      <li><code>coalesce</code>/<code>repartition</code> need a hand-picked <code>n</code> that doesn't adapt to growth — guesswork by design.</li>
+      <li>AQE coalescing works <strong>within a single query</strong>, not across the table's history.</li>
+      <li>Hive-style directory layout is <strong>not</strong> the source of truth for Delta — the <code>_delta_log</code> is.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Don't <code>coalesce</code>/<code>repartition</code> right before a write</strong> when optimized writes is enabled — it fights the engine's own file sizing.</li>
+      <li><strong>A shuffle resets your partition count</strong> to <code>spark.sql.shuffle.partitions</code>. If a small write makes ~200 files, a join/groupBy is why.</li>
+      <li><strong>Tiny-file pain is about count, not bytes.</strong> 100,000 &times; 50&nbsp;KB files can be slower than a few hundred-MB files holding the same data.</li>
+      <li><strong>Appends never self-merge.</strong> Frequent small appends accumulate until you OPTIMIZE / auto-compact.</li>
+      <li><strong><code>maxRecordsPerFile</code> is a ceiling, not a target.</strong> It can't raise file size; it only caps rows.</li>
+      <li><strong>Read the log, not the folder.</strong> Use <code>DESCRIBE DETAIL</code> / <code>DESCRIBE HISTORY</code> for <code>numFiles</code> and what each commit did.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Control / tune file size (optimized writes, auto compaction, maxRecordsPerFile, target size)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">When to partition tables</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: Write -> files simulator (scoped IIFE) ---------- */
+(function(){
+  const root = document.getElementById('lab-write');
+  if(!root) return;
+  const N_MAX = 64;                 // grid capacity
+  const TOTAL_MB = 1024;            // ~1 GB write
+  const TARGET_MB = 128;            // optimized-writes target file size (Azure docs)
+  const grid   = root.querySelector('#w-grid');
+  const slider = root.querySelector('#w-tasks');
+  const tasksVal = root.querySelector('#w-tasksval');
+  const codeEl = root.querySelector('#w-code');
+  let mode = 'none';
+
+  // Effective file count given the chosen mode + task count.
+  function fileCount(tasks){
+    if(mode === 'coalesce')    return 8;                 // forced to 8 (no shuffle)
+    if(mode === 'repartition') return 8;                 // forced to 8 (full shuffle)
+    if(mode === 'optimized')   return Math.max(1, Math.round(TOTAL_MB / TARGET_MB)); // ~8 @128MB
+    return tasks;                                        // plain write: ~one file per task
+  }
+
+  function render(){
+    const tasks = parseInt(slider.value, 10);
+    tasksVal.textContent = tasks;
+    const files = fileCount(tasks);
+    const avg = TOTAL_MB / files;                        // MB per file
+    const tiny = avg < 64;                               // qualitative "small file"
+
+    // code line reflecting the chosen control
+    const code = {
+      none:        "df.write.saveAsTable('events')   # ~"+tasks+" tasks -> ~"+tasks+" files",
+      coalesce:    "df.coalesce(8).write.saveAsTable('events')   # no shuffle, guess n=8",
+      repartition: "df.repartition(8).write.saveAsTable('events')   # full shuffle, guess n=8",
+      optimized:   "spark.conf.set('spark.databricks.delta.optimizeWrite.enabled', True)"
+    }[mode];
+    codeEl.textContent = code;
+
+    // build grid
+    grid.innerHTML = '';
+    const cells = Math.min(files, N_MAX);
+    for(let i=0;i<cells;i++){
+      const cell = document.createElement('div');
+      cell.className = 'file ' + (tiny ? 'tiny' : 'big');
+      const v = document.createElement('span');
+      v.className = 'v';
+      v.textContent = avg >= 1024 ? (avg/1024).toFixed(1)+'G' : Math.round(avg)+'M';
+      cell.appendChild(v);
+      grid.appendChild(cell);
+      cell.style.opacity = 0; cell.style.transform = 'scale(.7)';
+      setTimeout(()=>{ cell.style.opacity = 1; cell.style.transform=''; }, i*6);
+    }
+
+    // readouts
+    root.querySelector('#w-files').textContent = files + (files > N_MAX ? '' : '');
+    root.querySelector('#w-avg').textContent = avg >= 1024 ? (avg/1024).toFixed(1)+' GB' : Math.round(avg)+' MB';
+    // relative read cost ~ scales with file count (per-file overhead dominates)
+    const costX = (files / 8);
+    root.querySelector('#w-cost').textContent = costX >= 1 ? costX.toFixed(1)+'x' : costX.toFixed(2)+'x';
+    root.querySelector('#w-gridlabel').textContent =
+      'Files on disk' + (files > N_MAX ? '  (showing first '+N_MAX+' of '+files+')' : '');
+
+    const vd = root.querySelector('#w-verdict');
+    if(mode === 'optimized'){
+      vd.innerHTML = "<b>Optimized writes</b> shuffles to hit a ~128&nbsp;MB target, so a 1&nbsp;GB write lands in ~"+files+" right-sized files regardless of the task slider. This is the recommended path — no guessing <code>n</code>.";
+    } else if(mode === 'coalesce'){
+      vd.innerHTML = "<b>coalesce(8)</b> forces 8 files with no shuffle — cheap, but file sizes can be uneven and it can cut upstream parallelism. You still had to <b>guess 8</b>.";
+    } else if(mode === 'repartition'){
+      vd.innerHTML = "<b>repartition(8)</b> gives 8 even files but pays a <b>full shuffle</b>. Clean now, but the hardcoded 8 goes stale as the table grows.";
+    } else if(tiny){
+      vd.innerHTML = "Plain write with <b>"+tasks+" tasks</b> &rarr; <b>"+files+" files</b> at ~"+Math.round(avg)+"&nbsp;MB each. These are small — per-file overhead (opens, footers, stats, tasks) makes reads ~"+costX.toFixed(1)+"x costlier than a well-sized layout.";
+    } else {
+      vd.innerHTML = "Plain write with <b>"+tasks+" tasks</b> &rarr; <b>"+files+" files</b> at ~"+Math.round(avg)+"&nbsp;MB each — already reasonably sized for this one write. But every future append adds more files with no merging.";
+    }
+  }
+
+  slider.addEventListener('input', render);
+  root.querySelectorAll('#w-modeSeg button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      mode = btn.dataset.mode;
+      root.querySelectorAll('#w-modeSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      // disable slider when the mode forces a fixed count
+      slider.disabled = (mode !== 'none');
+      slider.style.opacity = slider.disabled ? .45 : 1;
+      render();
+    });
+  });
+
+  render();
+})();
+
+/* ---------- Interactive 2: Delta write lifecycle accordion (scoped IIFE) ---------- */
+(function(){
+  const root = document.getElementById('lab-life');
+  if(!root) return;
+  root.querySelectorAll('[data-step]').forEach(step=>{
+    step.addEventListener('click', ()=>{ step.classList.toggle('open'); });
+  });
+})();
+</script>
+</body>
+</html>

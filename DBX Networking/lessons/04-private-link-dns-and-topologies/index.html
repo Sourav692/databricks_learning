@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 4 — Private Link, DNS &amp; Topologies · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:780px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"\2713";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"\2715";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 4</div>
+  <h1>Private Link, DNS &amp; Topologies</h1>
+  <div class="subtitle">The stage where the three connectivity paths stop being
+    <strong>backbone-private-by-default</strong> and become <strong>fully private with no public-IP hop</strong> —
+    the reference answer to every regulated "no public internet / prove no exfil" network review.
+    Private Link is a building retrofit, not a new building.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">4.1 Connection Types</span>
+    <span class="badge">4.2 Private DNS</span>
+    <span class="badge">4.3 Hub-and-Spoke</span>
+    <span class="badge">4.4 Exfiltration Protection</span>
+    <span class="badge">Architect altitude</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t41">4.1 · Connection Types</button>
+  <button data-tab="t42">4.2 · Private DNS</button>
+  <button data-tab="t43">4.3 · Hub-and-Spoke</button>
+  <button data-tab="t44">4.4 · Exfiltration Protection</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Private Link is a retrofit of the building you already have</h2>
+  <p>Stage 2 gave you a workspace with three doors — ① users in, ② clusters to the control plane, ③ clusters to
+    storage — already on the <strong>Microsoft backbone</strong> but reachable at a <strong>public phone number</strong>.
+    This stage installs <strong>private extensions</strong> (4.1), edits the <strong>directory (DNS)</strong> so callers
+    land on them (4.2), builds <strong>one guarded lobby</strong> reused fleet-wide (4.3), and puts a
+    <strong>customs officer on the single exit</strong> (4.4).</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>A building retrofit.</strong> <em>Private Link swaps the public hop on each path for a private IP; DNS
+      decides whether anyone lands on it; hub-and-spoke decides where the endpoints physically live; and DEP forces the
+      residual internet egress through one inspected, default-deny chokepoint.</em> Flip
+      <strong>Public Network Access = Disabled</strong> once all three paths are private.</p>
+  </div>
+
+  <h3>The four subtopics map onto the three doors</h3>
+  <table>
+    <thead><tr><th>Subtopic</th><th>What it does</th><th>Path(s) it hardens</th><th>Sharpest edge</th></tr></thead>
+    <tbody>
+      <tr><td><strong>4.1 Connection types</strong></td><td>Three private extensions: front-end / back-end / web-auth</td><td>① &amp; ②</td><td>Web-auth = 1 per region (delete it → region-wide login outage)</td></tr>
+      <tr><td><strong>4.2 Private DNS</strong></td><td>CNAME→A override so the public name resolves to the private IP</td><td>① &amp; ②</td><td>#1 cause of "it doesn't work"; forget <code>pl-auth</code> → SSO fails</td></tr>
+      <tr><td><strong>4.3 Hub-and-spoke</strong></td><td>Build private ingress/DNS/egress once in a transit VNet, peer spokes</td><td>① ② ③</td><td>Peering ≠ DNS; Standard vs Simplified = blast radius vs cost</td></tr>
+      <tr><td><strong>4.4 Exfiltration protection</strong></td><td>UDR forces egress through one Azure Firewall FQDN allowlist</td><td>egress side</td><td>Routing SCC through the firewall (self-inflicted outage)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks Private Link topology: corporate user to front-end and web-auth
+      private endpoints in a transit hub VNet (path 1), classic container subnet outbound to a back-end private endpoint
+      and the control plane (path 2), egress forced through an Azure Firewall allowlist (path 3), and ADLS Gen2 over a
+      private/service endpoint (path 4); a private DNS zone linked to both VNets." />
+    <figcaption class="caption">Transit hub (front-end + web-auth PEs, firewall, DNS) · workspace spoke (back-end PE,
+      clusters, ADLS) · all three paths private, internet egress through one inspected door.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Every Databricks path — user-in, cluster-out, and the SSO callback — sits on a <strong>private IP inside your
+      VNet</strong>, so we set <strong>Public Network Access = Disabled</strong> and nothing touches the internet. The
+      control plane and your storage bypass the firewall on private paths, so we pay to inspect a <strong>trickle of
+      genuine internet egress</strong>, not your data."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive lives in the named module)</h4>
+    <dl>
+      <dt>Private Endpoint (PE)</dt><dd>A NIC with a <em>private</em> IP in your subnet mapped to a service. A PE <em>is</em> a NIC. → 4.1</dd>
+      <dt>groupId</dt><dd>The PE target sub-resource. ADB has exactly two: <code>databricks_ui_api</code> and <code>browser_authentication</code>. → 4.1</dd>
+      <dt>Private DNS zone</dt><dd>Fixed name <code>privatelink.azuredatabricks.net</code> — resolves the workspace URL to the PE's private IP. → 4.2</dd>
+      <dt>Transit VNet (hub)</dt><dd>Central VNet holding the inbound PEs, DNS, and firewall; spokes peer to it. → 4.3</dd>
+      <dt>UDR</dt><dd>User-defined route; <code>0.0.0.0/0 → firewall</code> forces egress through the chokepoint. → Stage 3 / 4.4</dd>
+      <dt>SCC relay</dt><dd>Control-plane endpoint clusters dial <em>out</em> to (no inbound door). Back-end PL makes that hop private. → Stage 2.3</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 4.1 -->
+<section class="panel" id="t41">
+  <h2>4.1 · Private Link connection types</h2>
+  <p>Three private extensions, one per direction. Switch the diagram between <strong>front-end</strong>,
+    <strong>back-end</strong>, and <strong>web-auth</strong> — the highlighted arrow is the active path; click any box
+    for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d41','frontend',this)">Front-end (inbound)</button>
+    <button onclick="switchView('d41','backend',this)">Back-end (classic)</button>
+    <button onclick="switchView('d41','webauth',this)">Web-auth (browser)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d41" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d41" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d41" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d41" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d41info"><strong>Tip</strong>Pick a connection type, then click a box to see what it secures and why.</div>
+
+  <div class="callout key">
+    <h4>Two facts to anchor on</h4>
+    <p>Only <strong>two <code>groupId</code>s</strong> exist: <code>databricks_ui_api</code> (used by <em>both</em>
+      front-end and back-end — the <em>VNet you place it in</em> makes it one or the other) and
+      <code>browser_authentication</code> (SSO only). And <strong>Private Link does not replace SCC</strong> — it removes
+      the last public hop SCC left behind.</p>
+  </div>
+
+  <h3>The three connection types side by side</h3>
+  <table>
+    <thead><tr><th></th><th>Back-end (classic)</th><th>Front-end (inbound)</th><th>Web-auth</th></tr></thead>
+    <tbody>
+      <tr><td>Secures</td><td>Cluster → control plane (SCC relay + REST)</td><td>User/BI/REST → workspace</td><td>SSO/OAuth login callback</td></tr>
+      <tr><td><code>groupId</code></td><td><code>databricks_ui_api</code></td><td><code>databricks_ui_api</code></td><td><code>browser_authentication</code></td></tr>
+      <tr><td>Lives in</td><td>Workspace VNet</td><td>Transit VNet</td><td>Transit VNet (web-auth ws)</td></tr>
+      <tr><td>How many</td><td>1 per workspace VNet</td><td>1 per transit VNet</td><td><strong>1 per region / DNS zone</strong></td></tr>
+      <tr><td>Required NSG Rules</td><td><code>NoAzureDatabricksRules</code></td><td><code>AllRules</code> (hybrid)</td><td><code>NoAzureDatabricksRules</code></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the three endpoints + the two flags</h3>
+  <p class="caption">Terraform (azurerm). Full apply-ready module deferred; only DEP (4.4) ships a standalone main.tf.</p>
+  <pre><code>resource "azurerm_private_endpoint" "backend" {        # BACK-END: in the WORKSPACE VNet
+  subnet_id = var.workspace_pe_subnet_id                # dedicated /27
+  private_service_connection {
+    private_connection_resource_id = var.workspace_id
+    subresource_names = ["databricks_ui_api"]           # SAME groupId as front-end; location decides the role
+    is_manual_connection = false
+  }
+  private_dns_zone_group { private_dns_zone_ids = [azurerm_private_dns_zone.adb.id] }
+}
+# FRONT-END: same groupId, placed in the TRANSIT VNet.
+# WEB-AUTH:  subresource_names = ["browser_authentication"] on the LOCKED web-auth workspace (1 per region).
+# Flags: back-end/full = public_network_access_enabled=false + NSG "NoAzureDatabricksRules";
+#        front-end hybrid = public_network_access_enabled=true + NSG "AllRules".</code></pre>
+  <p class="caption">Portal: workspace → Settings → Networking → Private endpoint connections → + Private endpoint →
+    Target sub-resource → transit (front-end/web-auth) or workspace (back-end) VNet → Integrate with private DNS zone = Yes.</p>
+
+  <div class="callout warn">
+    <h4>Why it breaks (cause → effect)</h4>
+    <p><strong>Forget web-auth</strong> → REST works but browser login spins/fails region-wide (the #1 Private Link
+      outage). <strong>Wrong NSG mode</strong> → connectivity drops. <strong>Delete the web-auth host workspace</strong>
+      → every workspace in the region loses browser login.</p>
+  </div>
+</section>
+
+<!-- 4.2 -->
+<section class="panel" id="t42">
+  <h2>4.2 · Private DNS for Private Link</h2>
+  <p>Private Link gives you the private IP; <strong>DNS is the switch that decides whether anyone lands on it.</strong>
+    Switch the diagram between the <strong>workspace</strong> name and the <strong>SSO</strong> name to see the CNAME→A
+    override chain; click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d42','workspace',this)">Workspace URL (databricks_ui_api)</button>
+    <button onclick="switchView('d42','sso',this)">SSO callback (pl-auth)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d42" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d42" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d42" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d42" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d42info"><strong>Tip</strong>Pick a name above, then click a box to trace how it resolves to a private IP.</div>
+
+  <div class="callout key">
+    <h4>The resolution chain</h4>
+    <p>The public zone hands out a <strong>CNAME</strong> to <code>….privatelink.azuredatabricks.net</code>; your
+      <strong>private zone</strong> holds the <strong>A record</strong> to the private IP. <code>nslookup</code> from
+      inside the VNet proves it: the public name is an <em>alias</em>, the <strong>Address</strong> is the PE's private
+      IP. The zone name is <strong>fixed</strong>: <code>privatelink.azuredatabricks.net</code>.</p>
+  </div>
+
+  <h3>Automatic vs custom DNS</h3>
+  <table>
+    <thead><tr><th>Aspect</th><th>Azure-integrated Private DNS</th><th>Custom DNS (own server)</th></tr></thead>
+    <tbody>
+      <tr><td>Who writes records</td><td>Azure auto-creates on PE creation</td><td><strong>You</strong> (forwarding or manual A records)</td></tr>
+      <tr><td>SSO (<code>pl-auth</code>) name</td><td>Handled automatically</td><td><strong>Must add explicitly</strong> — easy to forget</td></tr>
+      <tr><td>Shared PE, multi-workspace</td><td>Azure maps many names → right IPs</td><td><strong>Single-entry risk</strong> — clean to do 1 ws / PE</td></tr>
+      <tr><td>When to use</td><td>Greenfield Azure-DNS</td><td>Enterprises with central/on-prem DNS</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — zone, two records, VNet link</h3>
+  <pre><code>resource "azurerm_private_dns_zone" "adb" {
+  name = "privatelink.azuredatabricks.net"               # FIXED zone name — do not change
+  resource_group_name = "dns-rg"
+}
+resource "azurerm_private_dns_a_record" "workspace" {    # adb-&lt;id&gt;.&lt;n&gt; -> databricks_ui_api PE IP
+  name = "adb-1234567890123456.7"                        # host LABEL only (zone supplies the suffix)
+  zone_name = azurerm_private_dns_zone.adb.name ; resource_group_name = "dns-rg" ; ttl = 10
+  records = [azurerm_private_endpoint.ui_api.private_service_connection[0].private_ip_address]
+}
+# webauth A record: name = "westus.pl-auth" -> browser_authentication PE IP (required for front-end SSO)
+# Link the zone to EVERY VNet that must resolve privately (workspace + transit + spokes).</code></pre>
+  <p class="caption">Custom DNS: conditional-forward <code>*.azuredatabricks.net</code>,
+    <code>*.privatelink.azuredatabricks.net</code>, <code>*.databricksapps.com</code> to <code>168.63.129.16</code>.</p>
+
+  <div class="callout warn">
+    <h4>Why it breaks (cause → effect)</h4>
+    <p><strong>PE created but zone not linked</strong> → clients resolve the <em>public</em> IP →
+      <code>Control Plane Request Failure</code>. <strong>Workspace record present, <code>pl-auth</code> forgotten</strong>
+      → login page loads, then the SSO callback fails. <strong>Full FQDN in the A-record name</strong> → no resolution
+      (use just the host label).</p>
+  </div>
+</section>
+
+<!-- 4.3 -->
+<section class="panel" id="t43">
+  <h2>4.3 · Transit / hub-and-spoke</h2>
+  <p>Build the private front door, DNS, and egress firewall <strong>once</strong> in a transit VNet, then peer every
+    workspace spoke to it. Switch between the <strong>Standard</strong> and <strong>Simplified</strong> deployments;
+    click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d43','standard',this)">Standard (dedicated web-auth ws)</button>
+    <button onclick="switchView('d43','simplified',this)">Simplified (combined PE host)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d43" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d43" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d43" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d43" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d43info"><strong>Tip</strong>Pick a deployment, then click a box to see what lives where and why.</div>
+
+  <div class="callout warn">
+    <h4>Peering gives a hallway, not a directory</h4>
+    <p><strong>VNet peering gives IP reachability only — not DNS.</strong> You still must link the
+      <code>privatelink.azuredatabricks.net</code> zone to <em>both</em> VNets (or conditional-forward), or clusters and
+      users resolve the <strong>public</strong> IP and Private Link silently does nothing.</p>
+  </div>
+
+  <h3>Standard vs Simplified — blast radius vs cost/effort</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Standard (separate transit VNet)</th><th>Simplified (combined PE host)</th></tr></thead>
+    <tbody>
+      <tr><td><code>browser_authentication</code> PE</td><td>Dedicated <strong>locked</strong> web-auth workspace</td><td>On an <strong>existing</strong> workspace</td></tr>
+      <tr><td>Blast radius of deleting the host</td><td>Low — web-auth ws does nothing else</td><td><strong>High</strong> — breaks SSO for all regional ws</td></tr>
+      <tr><td>Infra &amp; cost</td><td>More (extra VNet + workspace)</td><td>Fewer resources</td></tr>
+      <tr><td>Recommended for</td><td><strong>Production</strong>, multi-ws, regulated</td><td>Non-prod, single-ws-per-region, PoC</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — peering + PE placement + DNS link</h3>
+  <pre><code>resource "azurerm_virtual_network_peering" "ws_to_hub" {
+  virtual_network_name      = azurerm_virtual_network.ws.name      # spoke
+  remote_virtual_network_id = azurerm_virtual_network.transit.id   # hub
+  allow_forwarded_traffic   = true                                 # let hub firewall forward spoke egress
+  resource_group_name = "ws-rg" ; name = "ws-to-hub"
+}
+# FRONT-END PE in transit VNet, BACK-END PE in workspace VNet — same groupId, location decides the role.
+# Link the ONE privatelink.azuredatabricks.net zone to BOTH VNets.</code></pre>
+  <p class="caption">Subnet sizing: transit PE subnet /26–/25 · web-auth ws host+container /28 or /27 · classic back-end PE /27.
+    Stop all compute before NSG/Private Link changes (15+ min).</p>
+
+  <div class="callout warn">
+    <h4>Why it breaks (cause → effect)</h4>
+    <p><strong>Forget port 6666 on the PE-subnet NSG</strong> → front-end works, clusters fail.
+      <strong>Route SCC (6666) through the hub firewall</strong> → extra hop that breaks back-end connectivity.
+      <strong>Put <code>browser_authentication</code> on a deletable workspace (Simplified) in prod</strong> → one
+      destroy kills SSO region-wide.</p>
+  </div>
+</section>
+
+<!-- 4.4 -->
+<section class="panel" id="t44">
+  <h2>4.4 · Data exfiltration protection (DEP)</h2>
+  <p>Force <strong>every</strong> internet-bound packet through one inspected, default-deny chokepoint — but keep the
+    control plane and your storage on private paths that <strong>bypass</strong> it. Switch the diagram between the
+    four flows; click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d44','egress',this)">② Internet egress → firewall</button>
+    <button onclick="switchView('d44','private',this)">① Control plane (bypass FW)</button>
+    <button onclick="switchView('d44','data',this)">④ ADLS data (bypass FW)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d44" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d44" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d44" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d44" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d44info"><strong>Tip</strong>Pick a flow above, then click a box to see the control at each hop.</div>
+
+  <div class="callout key">
+    <h4>Two paths bypass the firewall by design</h4>
+    <p>With <strong>back-end Private Link</strong> on, the docs say <em>"the Azure Databricks service tag isn't
+      required"</em> in the UDR — the control plane/SCC drop off the firewall entirely. ADLS data uses a
+      Private/Service Endpoint. So you pay to inspect a <strong>trickle of genuine internet egress</strong>, not your
+      data or control-plane chatter.</p>
+  </div>
+
+  <h3>Egress controls for classic compute</h3>
+  <table>
+    <thead><tr><th>Control</th><th>Restricts</th><th>Cost</th><th>Use when</th></tr></thead>
+    <tbody>
+      <tr><td>NSG egress rules</td><td>By IP/port/service tag (coarse)</td><td>Free</td><td>Cheap coarse guardrail</td></tr>
+      <tr><td>Service Endpoint Policy</td><td>Storage egress to approved accounts</td><td>Free</td><td>Stop data to <em>unapproved</em> ADLS</td></tr>
+      <tr><td><strong>Azure Firewall + UDR (DEP)</strong></td><td><strong>All egress, FQDN/port allowlist</strong></td><td><strong>Hourly + per-GB</strong></td><td><strong>Regulated; exfil-proof pattern</strong></td></tr>
+      <tr><td>Full Private Link (no internet)</td><td>Control + data plane fully private</td><td>PE per-GB</td><td>Maximum isolation; pair <em>with</em> DEP</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — firewall allowlist + the forcing UDR</h3>
+  <p class="caption">A focused, apply-ready main.tf ships alongside the lesson — DEP is the deliverable the network team applies.</p>
+  <pre><code>resource "azurerm_firewall" "hub" {
+  sku_name = "AZFW_VNet" ; sku_tier = "Standard"          # Standard = FQDN application rules
+  ip_configuration {
+    subnet_id = azurerm_subnet.fw.id                      # MUST be named "AzureFirewallSubnet"
+    public_ip_address_id = var.fw_pip                     # stable egress IP for downstream allowlists
+    name = "fw-ipconfig"
+  }
+  name = "adb-hub-fw" ; resource_group_name = "adb-hub-rg" ; location = var.region
+  firewall_policy_id = azurerm_firewall_policy.dep.id
+}
+resource "azurerm_route" "to_firewall" {                  # the forcing function (BOTH subnets)
+  address_prefix = "0.0.0.0/0" ; next_hop_type = "VirtualAppliance"
+  next_hop_in_ip_address = azurerm_firewall.hub.ip_configuration[0].private_ip_address
+  route_table_name = azurerm_route_table.spoke.name ; resource_group_name = "adb-rg" ; name = "to-firewall"
+}
+# With back-end Private Link on, NO AzureDatabricks service-tag route is needed.
+# Allowlist (East US ex.): dbartifactsprodeastus.blob… , ucstprdeastus.dfs… , *.pypi.org , login.microsoftonline.com.
+# Network rules: metastore 3306/TCP, Event Hubs 9093/TCP.</code></pre>
+
+  <div class="callout warn">
+    <h4>Why it breaks (cause → effect) — sequence matters</h4>
+    <p><strong>Attach the <code>0.0.0.0/0</code>→firewall UDR before allowlisting / Private Link</strong> → clusters
+      can't reach the relay/artifacts and <strong>won't launch</strong>. <strong>Route SCC through the firewall</strong>
+      → latency, per-GB cost, fragile FQDN rules. <strong>Route table on only one subnet</strong> → the un-routed
+      subnet's egress escapes the firewall. <strong>Assume DEP covers serverless</strong> → it doesn't (that's NCC,
+      Stage 5).</p>
+  </div>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Full private isolation + DEP</h3>
+      <ul>
+        <li>Regulated (FSI / healthcare / gov), "no public internet" mandate</li>
+        <li>All 3 Private Link types + <code>publicNetworkAccess=Disabled</code></li>
+        <li>Azure Firewall + UDR default-deny egress + Service Endpoint Policy</li>
+        <li>Standard hub-and-spoke (dedicated transit VNet + locked web-auth ws)</li>
+        <li>Premium tier; accept per-endpoint + per-GB cost</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Targeted / cheaper baselines</h3>
+      <ul>
+        <li>Data-plane-only compliance → back-end PL alone, users stay public</li>
+        <li>Restrict ingress but Power BI/SaaS can't traverse hub → front-end hybrid + IP ACLs</li>
+        <li>Greenfield Azure-DNS → Azure-integrated Private DNS ("Integrate = Yes")</li>
+        <li>Stop data to wrong storage → Service Endpoint Policy (free)</li>
+        <li>Dev sandbox → NSG egress rules + Service Endpoint Policy (free)</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision skip">
+      <h3>Don't reach for the full build when…</h3>
+      <ul>
+        <li>Traffic is already backbone-private and there's no "no public-IP hop" mandate</li>
+        <li>A storage firewall + Service Endpoint (free) already satisfies the requirement</li>
+        <li>The customer only wants front-door control — use IP access lists</li>
+        <li>It's serverless — DEP doesn't cover it; that's NCC + network policies (Stage 5)</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Route SCC / control-plane (6666) through the firewall</li>
+        <li>Attach the <code>0.0.0.0/0</code>→firewall UDR before allowlisting / Private Link</li>
+        <li>Put <code>browser_authentication</code> on a deletable workspace in production</li>
+        <li>Peer VNets and forget to link the private DNS zone to both</li>
+        <li>Pin SCC/artifact destinations to IPs instead of FQDNs/service tags</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Start free, step up only when mandated.</strong> SCC + VNet injection + storage firewall + Service
+      Endpoint cost nothing and are backbone-private. Add Private Link / DEP only when a regulator demands <em>no
+      public-IP hop</em> or a <em>provable internet allowlist</em>. Use <strong>Standard</strong> hub-and-spoke for
+      production and <strong>Simplified</strong> only for non-prod / single-workspace-per-region.</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Private Link puts every Databricks path — user-in, cluster-out, and the SSO callback — on a
+      private IP inside your VNet, so we set Public Network Access to Disabled and answer 'nothing touches the internet.'
+      DNS is the switch that moves traffic onto those private IPs. We build the private front door, DNS, and one
+      inspected egress firewall once in a transit hub and reuse it fleet-wide; the control plane and your storage bypass
+      the firewall, so you pay to inspect a trickle of internet egress, not your data."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"Does any Databricks traffic ever hit the public internet?"</td><td>With all 3 PL types + <code>publicNetworkAccess=Disabled</code>, no — only the explicit FQDN allowlist (pypi, artifacts, Entra ID) egresses, via the firewall's single public IP.</td></tr>
+      <tr><td>"Prove a compromised notebook can't POST our data out."</td><td>The firewall's implicit deny-all + the FQDN allowlist; we show the rule collection (and disable notebook download/export too).</td></tr>
+      <tr><td>"Can we keep a few trusted IPs / Power BI on the public URL during rollout?"</td><td>Yes — front-end hybrid (<code>publicNetworkAccess=Enabled</code> + <code>AllRules</code>) gated by IP access lists.</td></tr>
+      <tr><td>"Will Private Link replace SCC / VNet injection?"</td><td>No — it complements them; they're prerequisites for back-end.</td></tr>
+      <tr><td>"Give us one stable egress IP for partner allowlists."</td><td>The Azure Firewall's public IP (classic). Serverless IPs are dynamic — pivot to the service tag / NCC.</td></tr>
+      <tr><td>"Does this cover our serverless SQL warehouses?"</td><td>No — DEP is classic compute in your VNet; serverless egress is NCC + network policies (Stage 5). Set this expectation early.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>Browser login spins but REST works</h4><p>Web-auth missing or its DNS wrong.<span class="fix">First check: does <code>&lt;region&gt;.pl-auth.azuredatabricks.net</code> resolve to the browser_authentication PE's private IP?</span></p></div>
+    <div class="scenario"><h4>Cluster start fails <code>Control Plane Request Failure</code></h4><p>Back-end path not actually private.<span class="fix">First check: is the zone linked to the workspace VNet, and does the URL resolve to the private IP from a cluster subnet?</span></p></div>
+    <div class="scenario"><h4>Connectivity drops after enabling back-end</h4><p>Wrong NSG mode.<span class="fix">First check: <code>NoAzureDatabricksRules</code> for back-end, <code>AllRules</code> for hybrid front-end.</span></p></div>
+    <div class="scenario"><h4>Region-wide login outage</h4><p>Web-auth host workspace/endpoint deleted.<span class="fix">First check: does <code>WEB_AUTH_DO_NOT_DELETE_&lt;region&gt;</code> still exist with a Delete lock?</span></p></div>
+    <div class="scenario"><h4>Clusters won't launch after the UDR goes on</h4><p>UDR attached before allowlist/Private Link.<span class="fix">First check: firewall deny logs for the artifact-blob / <code>tunnel.&lt;region&gt;</code> FQDN.</span></p></div>
+    <div class="scenario"><h4>Egress "leaks" past the firewall</h4><p>Route table on only one subnet.<span class="fix">First check: is it associated with BOTH host and container subnets?</span></p></div>
+  </div>
+
+  <h3>Three questions to ask before recommending an architecture</h3>
+  <ol>
+    <li>Is there a regulatory mandate for <em>no public-IP hop</em> / a <em>provable internet allowlist</em>, or is backbone-private enough?</li>
+    <li>Is the customer on <strong>Premium</strong> with <strong>VNet injection + SCC</strong> (prerequisites for back-end / DEP)?</li>
+    <li>Do they run their own DNS (custom DNS + conditional forwarding) — and is it classic or serverless (DEP vs NCC)?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks docs — Private Link concepts 2026-05, back-end 2026-05-04, front-end/DNS 2026-06-23, UDR 2026-05-04, IP/domain 2026-06-23, deployment guide 2026-06-17; live-checked 2026-06-26)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/concepts/private-link" target="_blank">Azure Private Link concepts (three types, groupIds, web-auth one-per-region, ports)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/private-link-standard" target="_blank">Configure classic compute plane (back-end) private connectivity</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/front-end/front-end-private-connect" target="_blank">Configure Inbound (front-end) Private Link — transit VNet, web-auth, custom DNS</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/udr" target="_blank">User-defined route settings (service tags; "Private Link removes the AzureDatabricks tag")</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/resources/ip-domain-region" target="_blank">IP addresses and domains for Azure Databricks services (per-region FQDNs/ports)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/lakehouse-architecture/deployment-guide/network" target="_blank">Phase 4: Design network architecture (DEP, hub-and-spoke)</a></li>
+    <li>· <a href="https://www.databricks.com/blog/data-exfiltration-protection-with-azure-databricks" target="_blank">Databricks blog: Data exfiltration protection with Azure Databricks</a></li>
+  </ul>
+  <p style="margin-top:8px;">Version/region-sensitive: the fixed zone name, the two groupIds, the <code>pl-auth</code> SSO pattern,
+    one-web-auth-per-region, ports (443/6666/3306/8443–8451), the custom-DNS forwarding domains, and the per-region
+    firewall FQDNs/SSO domain list — reconfirm in the docs and get the exact list from your Databricks account team before quoting a customer.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- shared nodes ----------
+const CP = {id:'cp', x:660,y:40,w:210,h:80,color:'#FF3621',label:'Control plane',sub:'Databricks sub · metadata only',
+  info:'<strong>Control plane (Databricks subscription)</strong>Web app, REST API, Unity Catalog, and the SCC relay. Private Link makes the paths to it resolve to a private IP; the control plane itself holds metadata + orchestration only, never your table data.'};
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 4.1 connection types ----
+  d41:{ info:'d41info', tip:'<strong>Tip</strong>Pick a connection type, then click a box to see what it secures and why.',
+    views:{
+      frontend:{ nodes:[
+        {id:'user',x:30,y:150,w:150,h:60,color:'#2272B4',label:'User / BI / REST',sub:'corp net · VPN',
+          info:'<strong>User / BI / REST</strong>Reaches the workspace UI/API. Front-end Private Link makes the workspace reachable only from inside your network — the public login page disappears once Public Network Access = Disabled.'},
+        {id:'fe',x:330,y:150,w:200,h:70,color:'#2272B4',label:'Front-end PE',sub:'databricks_ui_api · transit VNet',
+          info:'<strong>Front-end PE (databricks_ui_api, transit VNet)</strong>An inbound private endpoint in the hub. Secures the web app, REST API, and Databricks Connect. Hybrid mode keeps public on (gated by IP access lists, NSG=AllRules); no-public mode requires back-end + web-auth.'},
+        CP,
+        {id:'ws',x:330,y:250,w:200,h:70,color:'#6B7280',label:'Workspace',sub:'Premium · VNet injection + SCC',
+          info:'<strong>Workspace</strong>The Microsoft.Databricks/workspaces resource. Front-end is independent of back-end — you can enable it alone, gated by IP access lists during rollout.'}
+      ], arrows:[
+        {from:'user',to:'fe',cls:'hot',label:'① private IP · 443'},
+        {from:'fe',to:'cp',cls:'hot',label:'backbone'},
+        {from:'ws',to:'cp',cls:'muted'}
+      ]},
+      backend:{ nodes:[
+        {id:'cont',x:30,y:230,w:200,h:78,color:'#2272B4',label:'Container subnet',sub:'clusters · NO public IP',
+          info:'<strong>Container subnet — clusters (NPIP)</strong>Spark runs here in your VNet. Under SCC the cluster dials OUT only; with back-end Private Link that outbound call to the control plane goes to a private IP instead of a public one (the last public hop removed).'},
+        {id:'be',x:330,y:230,w:200,h:78,color:'#FF3621',label:'Back-end PE',sub:'databricks_ui_api · workspace VNet',
+          info:'<strong>Back-end PE (databricks_ui_api, workspace VNet)</strong>Carries TWO channels privately: the SCC relay (reverse tunnel) and REST/web-app control. SAME groupId as front-end — its location in the WORKSPACE VNet makes it back-end. Requires NSG = NoAzureDatabricksRules.'},
+        CP,
+        {id:'user',x:330,y:130,w:200,h:60,color:'#6B7280',label:'Users (still public)',sub:'unless front-end too',
+          info:'<strong>Users</strong>Back-end can stand alone — clusters go private while users still come in publicly. Add front-end + web-auth + Public Network Access = Disabled for full isolation.'}
+      ], arrows:[
+        {from:'cont',to:'be',cls:'hot',label:'② OUTBOUND 443 + 6666 (SCC)'},
+        {from:'be',to:'cp',cls:'hot',label:'private IP'},
+        {from:'user',to:'cp',cls:'muted'}
+      ]},
+      webauth:{ nodes:[
+        {id:'user',x:30,y:160,w:150,h:60,color:'#2272B4',label:'User browser',sub:'SSO login',
+          info:'<strong>User browser (SSO)</strong>Browser login redirects to Entra ID and back via an OAuth callback to a REGIONAL Databricks auth URL. On a fully private network that public callback is blocked → login spins. Web-auth privatizes only that callback (not REST API auth).'},
+        {id:'wa',x:330,y:150,w:210,h:78,color:'#FF3621',label:'Web-auth PE',sub:'browser_authentication · 1/region',
+          info:'<strong>Web-auth PE (browser_authentication)</strong>ONE per region per DNS zone — serves every workspace in the region. Hosted on a dedicated LOCKED workspace (WEB_AUTH_DO_NOT_DELETE) with a Delete lock and no workloads. Delete it → region-wide login outage.'},
+        CP,
+        {id:'entra',x:660,y:170,w:200,h:70,color:'#00A972',label:'Microsoft Entra ID',sub:'SSO / OAuth',
+          info:'<strong>Microsoft Entra ID (SSO)</strong>Issues the OAuth tokens. The web-auth endpoint makes the callback resolve to a private IP via the <region>.pl-auth.azuredatabricks.net record.'}
+      ], arrows:[
+        {from:'user',to:'wa',cls:'hot',label:'SSO callback → private IP'},
+        {from:'wa',to:'cp',cls:'hot'},
+        {from:'cp',to:'entra',cls:'cold',label:'OAuth'}
+      ]}
+    }},
+
+  // ---- 4.2 private DNS ----
+  d42:{ info:'d42info', tip:'<strong>Tip</strong>Pick a name above, then click a box to trace how it resolves to a private IP.',
+    views:{
+      workspace:{ nodes:[
+        {id:'cli',x:30,y:160,w:160,h:62,color:'#2272B4',label:'Client',sub:'browser / BI / cluster',
+          info:'<strong>Client</strong>Resolves adb-&lt;id&gt;.&lt;n&gt;.azuredatabricks.net. Out of the box this returns a PUBLIC control-plane IP; Private DNS overrides it to the PE private IP without changing the name.'},
+        {id:'pub',x:250,y:60,w:200,h:62,color:'#6B7280',label:'Public Azure DNS',sub:'CNAME',
+          info:'<strong>Public Azure DNS (CNAME)</strong>Hands out a CNAME pointing the public name at adb-&lt;id&gt;.&lt;n&gt;.privatelink.azuredatabricks.net. The business card number never changes — only the directory answer.'},
+        {id:'zone',x:250,y:170,w:200,h:62,color:'#2272B4',label:'Private DNS zone',sub:'privatelink.azuredatabricks.net',
+          info:'<strong>Private DNS zone (A record)</strong>Fixed name privatelink.azuredatabricks.net, linked to your VNet. Holds the A record adb-&lt;id&gt;.&lt;n&gt; → the PE private IP (e.g. 10.10.1.4). The A-record name is just the host LABEL.'},
+        {id:'pe',x:520,y:170,w:180,h:62,color:'#00A972',label:'PE databricks_ui_api',sub:'private IP 10.10.1.4',
+          info:'<strong>PE databricks_ui_api</strong>The private endpoint NIC. Carries workspace UI/REST/Databricks Connect and (back-end) the SCC relay. Until DNS points at it, this PE is invisible.'},
+        CP
+      ], arrows:[
+        {from:'cli',to:'pub',cls:'',label:'resolve'},
+        {from:'pub',to:'zone',cls:'hot',label:'CNAME → privatelink'},
+        {from:'zone',to:'pe',cls:'hot',label:'A → private IP'},
+        {from:'pe',to:'cp',cls:'',label:'443 / 6666'}
+      ]},
+      sso:{ nodes:[
+        {id:'cli',x:30,y:160,w:160,h:62,color:'#2272B4',label:'Browser SSO',sub:'westus.pl-auth…',
+          info:'<strong>Browser SSO</strong>After Entra ID login, the OAuth callback bounces through &lt;region&gt;.pl-auth.azuredatabricks.net. This is a SECOND hostname — the one most people forget. If it resolves public/NXDOMAIN, login loads then bounces (OAuth denial).'},
+        {id:'zone',x:260,y:160,w:210,h:62,color:'#2272B4',label:'Private DNS / forwarder',sub:'pl-auth A record',
+          info:'<strong>Private DNS / forwarder</strong>Holds the A record &lt;region&gt;.pl-auth → the browser_authentication PE private IP. Some regions use multiple control-plane SSO instances → you may need SEVERAL pl-auth A records (ask the account team — never guess).'},
+        {id:'pe',x:520,y:160,w:180,h:62,color:'#00A972',label:'PE browser_authentication',sub:'private IP 10.10.1.5',
+          info:'<strong>PE browser_authentication</strong>The SSO-callback endpoint, one per region per DNS zone, on the locked web-auth workspace. The workspace URL can resolve privately and you STILL fail login if this record is missing.'},
+        {id:'entra',x:520,y:60,w:180,h:60,color:'#FF3621',label:'Microsoft Entra ID',sub:'SSO',
+          info:'<strong>Microsoft Entra ID</strong>Completes the OAuth callback once pl-auth resolves to the private IP.'}
+      ], arrows:[
+        {from:'cli',to:'zone',cls:'hot',label:'resolve pl-auth'},
+        {from:'zone',to:'pe',cls:'hot',label:'A → private IP'},
+        {from:'pe',to:'entra',cls:'cold',label:'OAuth callback'}
+      ]}
+    }},
+
+  // ---- 4.3 hub-and-spoke ----
+  d43:{ info:'d43info', tip:'<strong>Tip</strong>Pick a deployment, then click a box to see what lives where and why.',
+    views:{
+      standard:{ nodes:[
+        {id:'hub',x:30,y:40,w:240,h:90,color:'#2272B4',label:'Transit / hub VNet',sub:'front-end PE · DNS · firewall',
+          info:'<strong>Transit / hub VNet (the guarded lobby)</strong>Holds the shared front-end databricks_ui_api PE, the Private DNS zone, the egress Azure Firewall, and VPN/ExpressRoute gateways. Every workspace spoke peers to it. Build it once, reuse fleet-wide.'},
+        {id:'wa',x:30,y:160,w:240,h:78,color:'#FF3621',label:'Locked web-auth workspace',sub:'browser_authentication only',
+          info:'<strong>Locked web-auth workspace (Standard)</strong>WEB_AUTH_DO_NOT_DELETE_&lt;region&gt; — its ONLY job is to host the regional browser_authentication PE. Public Network Access = Disabled, NSG = NoAzureDatabricksRules, a Delete lock, no workloads. Low blast radius: deleting a real workspace can\'t break regional SSO.'},
+        {id:'spoke',x:360,y:120,w:230,h:90,color:'#00A972',label:'Workspace spoke VNet',sub:'clusters + back-end PE',
+          info:'<strong>Workspace spoke VNet</strong>Each injected workspace: host + container subnets + a dedicated /27 classic PE subnet for the back-end databricks_ui_api PE. Peers to the hub; resolves names via the shared DNS zone.'},
+        CP
+      ], arrows:[
+        {from:'spoke',to:'hub',cls:'',label:'VNet peering'},
+        {from:'hub',to:'cp',cls:'hot',label:'① front-end → CP'},
+        {from:'spoke',to:'cp',cls:'hot',label:'② back-end → CP'}
+      ]},
+      simplified:{ nodes:[
+        {id:'combo',x:30,y:120,w:280,h:100,color:'#FFC107',label:'Existing workspace (combined PE host)',sub:'front-end + web-auth on one ws',
+          info:'<strong>Combined PE host (Simplified)</strong>Instead of a dedicated transit VNet + locked web-auth workspace, you host browser_authentication on an EXISTING workspace alongside its databricks_ui_api PE. Less infra — but deleting THIS workspace breaks SSO for every other workspace in the region. Non-prod / single-ws-per-region only.'},
+        {id:'spoke',x:380,y:120,w:220,h:90,color:'#00A972',label:'Other workspaces',sub:'depend on the shared SSO PE',
+          info:'<strong>Other regional workspaces</strong>They share the single browser_authentication endpoint hosted on the combined-PE workspace — which is exactly why deleting that host is a region-wide SSO outage (high blast radius).'},
+        CP
+      ], arrows:[
+        {from:'combo',to:'cp',cls:'hot',label:'① + web-auth'},
+        {from:'spoke',to:'combo',cls:'cold',label:'shared SSO PE'},
+        {from:'spoke',to:'cp',cls:'',label:'② back-end'}
+      ]}
+    }},
+
+  // ---- 4.4 DEP ----
+  d44:{ info:'d44info', tip:'<strong>Tip</strong>Pick a flow above, then click a box to see the control at each hop.',
+    views:{
+      egress:{ nodes:'BASE44', arrows:[
+        {from:'cont',to:'fw',cls:'hot',label:'② 0.0.0.0/0 via UDR'},
+        {from:'fw',to:'net',cls:'hot',label:'③ allowlist only'},
+        {from:'cont',to:'pe',cls:'muted'},
+        {from:'cont',to:'adls',cls:'muted'}
+      ]},
+      private:{ nodes:'BASE44', arrows:[
+        {from:'cont',to:'pe',cls:'hot',label:'① SCC + CP (back-end PL)'},
+        {from:'pe',to:'cp',cls:'hot',label:'private · bypass FW'},
+        {from:'cont',to:'fw',cls:'muted'},
+        {from:'cont',to:'adls',cls:'muted'}
+      ]},
+      data:{ nodes:'BASE44', arrows:[
+        {from:'cont',to:'adls',cls:'cold',label:'④ ADLS (PE / Service Endpoint)'},
+        {from:'cont',to:'fw',cls:'muted'},
+        {from:'cont',to:'pe',cls:'muted'}
+      ]}
+    }}
+};
+
+// shared base node set for the 4.4 DEP diagram
+const BASE44 = [
+  {id:'cont',x:30,y:150,w:170,h:72,color:'#2272B4',label:'Container subnet',sub:'clusters (NPIP)',
+    info:'<strong>Container subnet — clusters (NPIP)</strong>VNet injection puts the cluster VMs in your VNet so you own the route tables. A UDR on BOTH host and container subnets forces 0.0.0.0/0 to the firewall; SCC + control plane and ADLS bypass it on private paths.'},
+  {id:'pe',x:300,y:40,w:200,h:70,color:'#FF3621',label:'Private Endpoints',sub:'back-end (+ front-end)',
+    info:'<strong>Private Endpoints (hub)</strong>Back-end Private Link carries the SCC relay + control-plane traffic privately, so the AzureDatabricks service tag DROPS OUT of the UDR — control plane bypasses the firewall (no latency, no per-GB cost, no fragile FQDN rules).'},
+  {id:'fw',x:300,y:150,w:200,h:72,color:'#FF3621',label:'Azure Firewall',sub:'AzureFirewallSubnet',
+    info:'<strong>Azure Firewall (the customs officer)</strong>Standard SKU; application rules allow by FQDN (pypi, artifacts, Entra ID), network rules by IP/port (metastore 3306, Event Hubs 9093). Implicit DENY-ALL is the protection. Stable public egress IP for downstream allowlists. Hourly + per-GB — so only internet egress flows through it.'},
+  {id:'adls',x:300,y:260,w:200,h:66,color:'#00A972',label:'ADLS Gen2',sub:'PE / Service Endpoint',
+    info:'<strong>ADLS Gen2 (your storage)</strong>Reached over a Private Endpoint (private IP) or a free Service Endpoint (backbone) — NOT through the firewall (that would be ruinous per-GB). Pair with the storage account firewall so it only accepts the workspace subnets/PE.'},
+  {id:'cp',x:640,y:40,w:210,h:70,color:'#FF3621',label:'Control plane',sub:'private (bypass FW)',
+    info:'<strong>Control plane</strong>Reached privately over the back-end PE. Kept OFF the firewall by design — control-plane chatter is constant and latency-sensitive, and it\'s already private.'},
+  {id:'net',x:640,y:150,w:210,h:72,color:'#6B7280',label:'Public internet',sub:'allowlist only',
+    info:'<strong>Public internet</strong>Only the short FQDN allowlist (pypi, *.ubuntu.com, artifact/log blob, login.microsoftonline.com) gets out, via the firewall. Everything else — including a compromised notebook\'s POST to attacker.example — is denied and logged.'}
+];
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes==='BASE44' ? BASE44 : view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d41','frontend');
+renderDiagram('d42','workspace');
+renderDiagram('d43','standard');
+renderDiagram('d44','egress');
+</script>
+</body>
+</html>

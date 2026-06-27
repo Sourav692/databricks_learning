@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakehouse Federation · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note2{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.84rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: federate vs ingest toggle */
+  .switch{display:flex;gap:8px;margin-bottom:10px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .box{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff;text-align:center;font-size:.84rem}
+  .box.src{border-color:var(--brand-2)}
+  .ar{color:var(--brand);font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+  .note{font-family:"Spline Sans Mono",monospace;font-size:.76rem;color:#48555f;margin-top:8px}
+  /* diagram 2: pushdown */
+  .steps{display:flex;flex-direction:column;gap:8px}
+  .st{border:1px solid var(--line);border-radius:10px;padding:11px 13px;background:#fff;cursor:pointer;transition:.18s}
+  .st:hover{border-color:var(--brand-2)}.st.open{border-color:var(--teal)}
+  .st .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .st .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.st.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 9.2</p>
+  <h1><em>Lakehouse Federation</em></h1>
+  <p class="lede">Query external databases (Postgres, MySQL, Snowflake, BigQuery…) in place — no ingestion, no copies — via connections + foreign catalogs, governed by Unity Catalog, with query pushdown. This deep dive walks setup, queries, and governance.</p>
+  <div class="pills"><span class="pill">query in place</span><span class="pill">foreign catalog</span><span class="pill">pushdown</span><span class="pill">cross-source join</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Lakehouse Federation</strong> = a <strong>connection</strong> + <strong>foreign catalog</strong> that lets you query an external DB's tables with normal SQL, <strong>read-only and without copying</strong>, governed by UC, pushing filters down to the source.</div>
+  <div class="card analogy" style="margin-top:10px">📚 <strong>Analogy:</strong> a <strong>library inter-loan</strong> — instead of buying a copy of every book (ingestion), your card lets you read books that live in other libraries through one catalog. They stay on their own shelves.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: federate vs ingest -->
+<section id="fi">
+  <h2>Federate vs ingest — click each</h2>
+  <div class="switch">
+    <div class="opt on" data-o="fed">Federate (no copy)</div>
+    <div class="opt" data-o="ing">Ingest (copy)</div>
+  </div>
+  <div class="flow" id="flow"></div>
+  <div class="note" id="finote"></div>
+</section>
+
+<section id="setup">
+  <h2>1 · Connection + foreign catalog</h2>
+  <pre class="code"><span class="c">-- 1) connection holds credentials/host (a UC securable; reuse it)</span>
+<span class="k">CREATE CONNECTION</span> pg_conn <span class="k">TYPE</span> postgresql
+  <span class="k">OPTIONS</span> (host <span class="s">'db.corp.net'</span>, port <span class="s">'5432'</span>,
+           user secret(<span class="s">'kv'</span>,<span class="s">'pg_user'</span>), password secret(<span class="s">'kv'</span>,<span class="s">'pg_pwd'</span>));
+
+<span class="c">-- 2) foreign catalog maps the remote namespace into UC 3-level naming</span>
+<span class="k">CREATE FOREIGN CATALOG</span> pg <span class="k">USING CONNECTION</span> pg_conn <span class="k">OPTIONS</span> (database <span class="s">'appdb'</span>);</pre>
+  <p class="codecap">Supported sources (connector TYPE)</p>
+  <table>
+    <tr><th>Source</th><th>TYPE</th><th>Source</th><th>TYPE</th></tr>
+    <tr><td>PostgreSQL</td><td><code>postgresql</code></td><td>Snowflake</td><td><code>snowflake</code></td></tr>
+    <tr><td>MySQL</td><td><code>mysql</code></td><td>Redshift</td><td><code>redshift</code></td></tr>
+    <tr><td>SQL Server</td><td><code>sqlserver</code></td><td>BigQuery</td><td><code>bigquery</code></td></tr>
+  </table>
+</section>
+
+<section id="query">
+  <h2>2 · Query in place + pushdown + cross-source join</h2>
+  <pre class="code"><span class="c">-- read-only; supported predicates/aggregations push down to Postgres</span>
+<span class="k">SELECT</span> region, count(*) <span class="k">FROM</span> pg.public.orders
+<span class="k">WHERE</span> order_date &gt; current_date() - <span class="f">7</span> <span class="k">GROUP BY</span> region;
+
+<span class="c">-- the real power: join a LIVE external table to a lakehouse table</span>
+<span class="k">SELECT</span> o.order_id, o.amount, c.segment
+<span class="k">FROM</span> pg.public.orders o                       <span class="c">-- federated (Postgres, live)</span>
+<span class="k">JOIN</span> main.sales.dim_customer c                <span class="c">-- native Delta</span>
+  <span class="k">ON</span> o.customer_id = c.id;</pre>
+</section>
+
+<section id="govern">
+  <h2>3 · Governance — foreign tables are UC objects</h2>
+  <pre class="code"><span class="k">GRANT USE CATALOG</span> <span class="k">ON CATALOG</span> pg <span class="k">TO</span> `analysts`;
+<span class="k">GRANT USE SCHEMA</span>  <span class="k">ON SCHEMA</span>  pg.public <span class="k">TO</span> `analysts`;
+<span class="k">GRANT SELECT</span>      <span class="k">ON TABLE</span>   pg.public.orders <span class="k">TO</span> `analysts`;</pre>
+  <p style="margin-top:6px">Foreign tables get UC <strong>grants, lineage, and discovery</strong> like native tables — governance doesn't stop at the lakehouse boundary.</p>
+</section>
+
+<!-- diagram 2: how it works steps -->
+<section id="how">
+  <h2>How it works — click each</h2>
+  <div class="steps">
+    <div class="st open" onclick="this.classList.toggle('open')"><div class="h"><span>1 · Connection</span><span>▸</span></div><div class="d">Holds the credentials + host for the external system (Postgres, Snowflake…). Created once, reused.</div></div>
+    <div class="st" onclick="this.classList.toggle('open')"><div class="h"><span>2 · Foreign catalog</span><span>▸</span></div><div class="d">Surfaces the remote databases/schemas/tables into UC's 3-level namespace as <strong>foreign tables</strong> — governed like native tables.</div></div>
+    <div class="st" onclick="this.classList.toggle('open')"><div class="h"><span>3 · Query with pushdown</span><span>▸</span></div><div class="d">Query foreign tables with normal SQL; supported filters/aggregations are <strong>pushed down</strong> to the source so it does the work and less data moves. Complex expressions may run in Databricks — check the query profile.</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>Federation vs ingestion vs Delta Sharing</h2>
+  <table>
+    <tr><th></th><th>Federation</th><th>Ingestion</th><th>Delta Sharing</th></tr>
+    <tr><td>Data moves?</td><td class="win">No — in place</td><td>Yes — copied</td><td>No — shared in place</td></tr>
+    <tr><td>Direction</td><td>Read others' DBs</td><td>Pull into lakehouse</td><td>Share out to recipients</td></tr>
+    <tr><td>Best for</td><td>Ad-hoc / live</td><td>Repeated heavy use</td><td>Cross-org sharing</td></tr>
+  </table>
+  <div class="card note2" style="margin-top:12px">💡 <strong>Decision rule:</strong> <strong>federate</strong> for exploration &amp; one-off joins; <strong>ingest</strong> once a query is frequent/heavy (cheaper, faster, insulates the OLTP source); <strong>share</strong> when giving <em>your</em> data to someone else.</div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Not all data should be copied — federation gives <strong>live, governed access</strong> for ad-hoc queries without ETL.</li>
+    <li>"Query Postgres without a pipeline?" → federate; "land it for heavy repeated use?" → ingest. Knowing <strong>federate vs ingest</strong> is the interview point.</li>
+  </ul>
+  <div class="card usecase">📊 <strong>Real-world use case:</strong> analysts join a live <strong>Postgres</strong> orders table with lakehouse customers for a one-off report — a foreign catalog exposes it as <code>pg.public.orders</code>, queried directly, no pipeline.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> ad-hoc reporting on operational DBs, incremental migration, hybrid architectures, exploring before ingesting, joining live external data to lakehouse tables.</li>
+    <li><strong>Edge cases:</strong> queries hit the <strong>live source</strong> — heavy/repeated queries can load the operational DB; <strong>pushdown coverage varies by connector</strong> (check the query profile).</li>
+    <li><strong>Limitation:</strong> <strong>read-only</strong>; performance depends on the remote system &amp; network. For frequent heavy workloads, ingesting is usually faster/cheaper.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Confusing <strong>federation</strong> (query others' DBs) with <strong>Delta Sharing</strong> (share yours out) — opposite directions.</li>
+    <li>❌ Hammering a production OLTP DB with heavy federated analytics.</li>
+    <li>❌ Expecting <strong>writes</strong> — federation is read-only.</li>
+    <li>❌ Federating a table you query constantly when ingesting once is cheaper/faster.</li>
+    <li>❌ Assuming full pushdown — complex expressions may pull rows then compute in Databricks.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/query-federation/" target="_blank" rel="noopener">Lakehouse Federation</a> ·
+  <a href="https://docs.databricks.com/aws/en/query-federation/foreign-catalogs" target="_blank" rel="noopener">Foreign catalogs</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-connection" target="_blank" rel="noopener">CREATE CONNECTION</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta-sharing/" target="_blank" rel="noopener">Delta Sharing (contrast)</a>
+  <p style="margin-top:10px">Topic 9.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — federate vs ingest (scoped to #fi)
+const flow=document.getElementById('flow'), finote=document.getElementById('finote');
+function setFI(k){
+  document.querySelectorAll('#fi .opt').forEach(o=>o.classList.toggle('on',o.dataset.o===k));
+  if(k==='fed'){
+    flow.innerHTML='<div class="box src">Postgres<br><span style="font-size:.7rem">data stays here</span></div><div class="ar">— query (pushdown) →</div><div class="box">Databricks<br><span style="font-size:.7rem">reads live, no copy</span></div>';
+    finote.textContent='Federation: no copy, live data, read-only. Best for ad-hoc / exploration.';
+  } else {
+    flow.innerHTML='<div class="box src">Postgres</div><div class="ar">— copy (ETL) →</div><div class="box">Bronze Delta<br><span style="font-size:.7rem">a copy lives here</span></div>';
+    finote.textContent='Ingestion: data copied into Delta. Best for repeated, heavy use (faster/cheaper at scale).';
+  }
+}
+document.querySelectorAll('#fi .opt').forEach(o=>o.addEventListener('click',()=>setFI(o.dataset.o)));
+setFI('fed');
+// Diagram 2 (#how) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

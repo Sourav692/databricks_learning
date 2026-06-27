@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learning Plan · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--ink:#0c1116;--paper:#f4efe6;--paper-2:#ebe3d5;--frost:#1f6f8b;--frost-2:#3fa9c9;--amber:#e07a2f;--line:#d6cbb6;--shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);--radius:14px;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);background-attachment:fixed;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code{font-family:"Spline Sans Mono",monospace;background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px;padding-top:34px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.4rem,6vw,3.8rem);line-height:1;margin:0 0 16px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.12rem;max-width:62ch;color:#33414b;margin-bottom:10px}
+  section{padding:28px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.5rem,3vw,2rem);margin:.2em 0 .5em}
+  h3{font-weight:700;font-size:1.05rem;margin:1.4em 0 .3em}
+  ul{padding-left:1.1em}li{margin:.35em 0}
+  .tbl{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:10px 12px;font-weight:600;font-size:.8rem}
+  .tbl td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+  .tbl a{color:var(--frost);text-decoration:none;font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:18px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  .nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-top:8px}
+  .nums div{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:.9rem;box-shadow:var(--shadow)}
+  footer{padding:30px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.85rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="crumb"><a href="../index.html">← Delta Optimization track</a></p>
+  <div class="eyebrow">Databricks · Delta Optimization</div>
+  <h1>Learning <span class="drip">plan.</span></h1>
+  <p class="lede">A nine-lesson path through how Databricks stores, skips, compacts, and maintains Delta data. Built from the official Azure Databricks docs (verified June 2026). Finish able to <strong>design</strong> a table's layout, <strong>defend</strong> it in an interview, and <strong>debug</strong> it in production.</p>
+
+  <section>
+    <h2>The story arc</h2>
+    <p>A <strong>write</strong> makes files → <strong>layout</strong> decides what queries can skip → <strong>data skipping</strong> is the payoff → <strong>compaction &amp; auto file sizing</strong> keep files right-sized → <strong>liquid clustering</strong> is the modern layout → <strong>predictive optimization</strong> runs the maintenance for you.</p>
+  </section>
+
+  <section>
+    <h2>Lessons, timings &amp; self-check</h2>
+    <p>Go in order — each lesson builds on the last. After each one, answer its question without looking. Roughly <strong>5 hours</strong> total, plus notebook runtime.</p>
+    <table class="tbl">
+      <thead><tr><th>#</th><th>Lesson</th><th>Time</th><th>Self-check</th></tr></thead>
+      <tbody>
+        <tr><td>01</td><td><a href="../lessons/01-traditional-writes/index.html">Traditional writes &amp; small files</a></td><td>25m</td><td>Why does a Spark write make many small files, and why is that slow to read?</td></tr>
+        <tr><td>02</td><td><a href="../lessons/02-partitioning/index.html">Partitioning (and when not to)</a></td><td>35m</td><td>When should you partition, and why is partitioning on <code>customer_id</code> bad?</td></tr>
+        <tr><td>03</td><td><a href="../lessons/03-data-skipping-and-zorder/index.html">Data skipping &amp; Z-ordering</a></td><td>40m</td><td>What stats does Delta keep per file, and how does <code>ZORDER BY</code> help?</td></tr>
+        <tr><td>04</td><td><a href="../lessons/04-optimize-compaction/index.html">OPTIMIZE / compaction</a></td><td>30m</td><td>What does <code>OPTIMIZE</code> do, why is it idempotent, and when do you need <code>OPTIMIZE FULL</code>?</td></tr>
+        <tr><td>05</td><td><a href="../lessons/05-optimized-writes/index.html">Optimized writes</a></td><td>30m</td><td>How do optimized writes work, and which operations enable them automatically?</td></tr>
+        <tr><td>06</td><td><a href="../lessons/06-auto-compaction/index.html">Auto compaction</a></td><td>30m</td><td>How is auto compaction different from optimized writes and predictive optimization?</td></tr>
+        <tr><td>07</td><td><a href="../lessons/07-auto-optimize/index.html">Auto optimize &amp; autotuning</a></td><td>35m</td><td>What's the autotuned target file size for a 5 TB table, and what doesn't auto optimize replace?</td></tr>
+        <tr><td>08</td><td><a href="../lessons/08-liquid-clustering/index.html">Liquid clustering</a></td><td>45m</td><td>Why can you change clustering keys with no rewrite, and why is it incompatible with partition/ZORDER?</td></tr>
+        <tr><td>09</td><td><a href="../lessons/09-deletion-vectors/index.html">Deletion vectors (merge-on-read)</a></td><td>35m</td><td>How do deletion vectors make DELETE/UPDATE/MERGE cheap, and how are the soft-deletes applied physically?</td></tr>
+        <tr><td>10</td><td><a href="../lessons/10-vacuum-time-travel/index.html">VACUUM, time travel &amp; retention</a></td><td>40m</td><td>Why does VACUUM limit time travel, and which two retention dials must you raise to time-travel further back?</td></tr>
+        <tr><td>11</td><td><a href="../lessons/11-predictive-optimization/index.html">Predictive optimization</a></td><td>35m</td><td>What does predictive optimization run, on which tables, and how do you enable it?</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>The decision framework to memorize</h2>
+    <div class="callout">
+      <span class="lbl">New table</span>
+      Use a Unity Catalog <strong>managed</strong> table, add <strong>liquid clustering</strong> on your top filter/join columns (≤ 4 keys), and enable <strong>predictive optimization</strong>. The platform then handles layout (<code>OPTIMIZE</code>), cleanup (<code>VACUUM</code>), and stats (<code>ANALYZE</code>).
+    </div>
+    <div class="callout" style="border-left-color:var(--frost);background:linear-gradient(180deg,#fff,#eef7f9);border-color:#cfe6ed">
+      <span class="lbl" style="color:var(--frost)">Legacy / external / special very-large case</span>
+      You may still need partitioning (low-cardinality keys, ≥ 1 GB partitions, tables ≥ 1 TB), Z-order, a scheduled <code>OPTIMIZE</code>, or an explicit <code>delta.targetFileSize</code>. Lessons 02–07 teach exactly when.
+    </div>
+  </section>
+
+  <section>
+    <h2>Key numbers worth memorizing</h2>
+    <div class="nums">
+      <div><strong>&lt; 1 TB</strong> → don't partition; <strong>≥ 1 GB</strong> per partition</div>
+      <div>Data-skipping stats: first <strong>32 columns</strong> by default</div>
+      <div>Autotune file size: <strong>256 MB</strong> (&lt; 2.56 TB) → <strong>1 GB</strong> (&gt; 10 TB)</div>
+      <div>Optimized writes / auto compaction (<code>true</code>): <strong>128 MB</strong></div>
+      <div>Liquid clustering: GA <strong>DBR 15.4 LTS+</strong>, up to <strong>4 keys</strong></div>
+      <div><code>OPTIMIZE FULL</code>: <strong>DBR 16.0+</strong> · convert partitioned: <strong>18.1+</strong></div>
+      <div>Deletion vectors: <strong>merge-on-read</strong>; write <strong>DBR 14.3 LTS+</strong>, read <strong>12.2 LTS+</strong></div>
+      <div>Retention dials: data files <strong>7 days</strong> + history (log) <strong>30 days</strong> — time travel needs both</div>
+      <div>Predictive optimization: UC <strong>managed</strong> only, on by default for accounts ≥ <strong>Nov 11 2024</strong></div>
+      <div>VACUUM retention default: <strong>7 days</strong> (<code>delta.deletedFileRetentionDuration</code>)</div>
+    </div>
+  </section>
+
+  <footer>
+    <p>Sources — official Azure Databricks docs (verified June 2026):
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">clustering</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">data skipping</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">file size</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">partitions</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/features/deletion-vectors" target="_blank" rel="noopener">deletion vectors</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/vacuum" target="_blank" rel="noopener">VACUUM</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/history" target="_blank" rel="noopener">time travel</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">predictive optimization</a>.
+    </p>
+  </footer>
+</div>
+</body>
+</html>

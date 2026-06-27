@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Predictive Optimization · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- inheritance tree (lesson 09) ---------- */
+  .tree{display:flex;flex-direction:column;gap:0;margin:6px 0 4px}
+  .node{display:flex;align-items:center;gap:14px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative}
+  .node + .node{margin-top:26px}
+  .node + .node::before{content:"";position:absolute;top:-22px;left:30px;width:2px;height:22px;background:var(--line)}
+  .node .lvl{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#7a868f;min-width:74px}
+  .node .name{font-weight:600;flex:1}
+  .node .name .sub{display:block;font-weight:400;font-size:.8rem;color:#7a868f;font-family:"Spline Sans Mono",monospace}
+  .node .eff{font-family:"Spline Sans Mono",monospace;font-size:.72rem;padding:4px 9px;border-radius:999px;border:1px solid var(--line);white-space:nowrap}
+  .node .eff.on{background:#e3f3e6;color:#2e7d46;border-color:#bfe0c7}
+  .node .eff.off{background:#fbe3e3;color:#b5392f;border-color:#f0c2bd}
+  .node .eff.inh{background:var(--paper-2);color:#7a868f}
+  .node.tableNode{border-style:dashed;border-color:var(--frost-2);background:linear-gradient(180deg,#fff,#f0f7f9)}
+  .setseg{display:inline-flex;background:#fff;border:1px solid var(--line);border-radius:9px;padding:3px;gap:3px}
+  .setseg button{font-family:"Spline Sans Mono",monospace;font-size:.7rem;font-weight:600;border:none;background:transparent;color:#56636d;padding:5px 9px;border-radius:6px;cursor:pointer;transition:.15s}
+  .setseg button:hover{color:var(--ink)}
+  .setseg button[aria-pressed="true"]{background:var(--frost);color:#fff}
+
+  /* ---------- maintenance queue (lesson 09) ---------- */
+  .queue{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:8px 0 4px}
+  .qtbl{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:12px 14px;transition:.3s;opacity:.55}
+  .qtbl .tn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;font-weight:600;color:var(--ink)}
+  .qtbl .why{font-size:.74rem;color:#7a868f;margin-top:3px;min-height:2.2em}
+  .qtbl .op{display:inline-block;margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.06em;padding:3px 8px;border-radius:999px;background:#fff;border:1px solid var(--line);color:#7a868f}
+  .qtbl.scanning{opacity:1;border-color:var(--frost-2);box-shadow:0 4px 14px -8px rgba(31,111,139,.6)}
+  .qtbl.queued{opacity:1}
+  .qtbl.queued .op{background:linear-gradient(135deg,var(--frost-2),var(--frost));color:#eafaff;border-color:#15596f}
+  .qtbl.skipped{opacity:.4}
+  .qtbl.skipped .op{background:var(--paper-2)}
+
+  /* ---------- ladder recap (lesson 09) ---------- */
+  .ladder{counter-reset:rung;margin:14px 0}
+  .rung{display:flex;gap:14px;align-items:flex-start;padding:11px 0;border-top:1px dashed var(--line)}
+  .rung:first-child{border-top:none}
+  .rung .n{font-family:"Fraunces",serif;font-weight:900;font-size:1.4rem;color:var(--frost-2);min-width:1.4em;line-height:1.1}
+  .rung.final .n{color:var(--amber)}
+  .rung .t{font-size:.95rem}
+  .rung .t b{font-weight:600}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 11</p>
+    <h1>Predictive<br><span class="drip">Optimization.</span></h1>
+    <p class="lede">Let the platform run your table maintenance. On Unity Catalog managed tables, Databricks automatically runs <strong>OPTIMIZE</strong>, <strong>VACUUM</strong>, and <strong>ANALYZE</strong> on serverless — so you stop scheduling maintenance jobs entirely.</p>
+    <div class="meta">
+      <span class="pill">UC <b>managed only</b></span>
+      <span class="pill">Default-on <b>accts ≥ Nov 11 2024</b></span>
+      <span class="pill">Runs on <b>serverless</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><span class="chip analogy">Analogy</span> <span class="chip usecase">Use case</span></p>
+    <p><strong>Predictive optimization (PO)</strong> is Databricks running your table maintenance <em>for you</em>, automatically, on Unity Catalog <strong>managed</strong> tables (Delta <em>and</em> Iceberg). It watches how each table is written and queried, then runs the three commands you'd otherwise schedule by hand:</p>
+    <ul>
+      <li><strong><code>OPTIMIZE</code></strong> — compacts small files into right-sized ones (Lesson 04), and for liquid-clustered tables groups data by the clustering keys (Lesson 08).</li>
+      <li><strong><code>VACUUM</code></strong> — deletes old, unreferenced data files to reclaim storage.</li>
+      <li><strong><code>ANALYZE</code></strong> — collects/refreshes the statistics that power data skipping (Lesson 03).</li>
+    </ul>
+    <p>It also <strong>collects stats on write</strong> and <strong>eliminates manual maintenance</strong> on managed tables. PO runs on <strong>serverless</strong> compute in the background, so it never competes with your clusters.</p>
+    <p><strong>Analogy.</strong> It's a <em>self-cleaning oven</em>: you cook (write + query); the oven decides when it's dirty enough and runs a cleaning cycle quietly on its own. You never schedule "clean the oven Tuesdays at 2am" again.</p>
+    <p><strong>Use case.</strong> A platform team owns 4,000 UC managed tables. Hand-scheduling OPTIMIZE/VACUUM/ANALYZE per table is unmaintainable. Enable PO once at the <strong>catalog</strong> level; every table inherits it and Databricks runs the right maintenance on each — no jobs, no schedules.</p>
+    <div class="callout">
+      <span class="lbl">The closing message of this track</span>
+      For new work, stop hand-tuning layout and maintenance. Use a <strong>UC managed table + liquid clustering + predictive optimization</strong>, and let the platform do it.
+    </div>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Manual maintenance doesn't scale and silently rots.</strong> Hand-scheduled jobs are guesswork — too often burns compute, too rarely slows queries and bloats storage. PO decides <em>which</em> tables benefit and <em>when</em>, per table, from real signals.</li>
+      <li><strong>It closes the loop on the whole track.</strong> Small files → OPTIMIZE. Stale skipping stats → ANALYZE. Dead files → VACUUM. Liquid-clustered tables → PO triggers clustering and <strong>drives automatic key selection</strong> for <code>CLUSTER BY AUTO</code>.</li>
+      <li><strong>Default-on going forward.</strong> PO is enabled by default for <strong>accounts created on/after Nov 11, 2024</strong>, with a gradual rollout to existing accounts (expected complete <strong>~Aug 2026</strong>).</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      PO's <code>OPTIMIZE</code> <strong>does not run <code>ZORDER</code></strong> (it ignores Z-ordered files). For colocation-for-skipping under PO, use <strong>liquid clustering</strong> — and raise <code>delta.deletedFileRetentionDuration</code> <strong>before</strong> enabling PO if you need long time travel.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: inheritance tree ============ -->
+  <section>
+    <h2>See it work — enablement inheritance</h2>
+    <p>Enablement flows <strong>down a hierarchy</strong>: account → catalog → schema → table. Lower levels <strong>INHERIT</strong> by default; a table's <em>effective</em> state is the <strong>nearest explicit ENABLE/DISABLE above it</strong>. Click a level to set its state and watch the effective state on the table change. Note the trap: a <strong>child DISABLE wins over a parent ENABLE</strong>.</p>
+
+    <div class="lab" id="lab-tree">
+      <div class="lab-head"><span class="lab-title">Enablement inheritance tree</span></div>
+      <p class="lab-sub">Set each level to <code>ENABLE</code> / <code>DISABLE</code> / <code>INHERIT</code>. The dashed node is a UC managed table; its effective state is computed by walking up.</p>
+
+      <div class="tree">
+        <div class="node" data-level="account">
+          <span class="lvl">Account</span>
+          <span class="name">accounts console<span class="sub">Settings → Feature enablement</span></span>
+          <span class="setseg" role="group" aria-label="Account state">
+            <button data-set="ENABLE" aria-pressed="true">ENABLE</button>
+            <button data-set="DISABLE" aria-pressed="false">DISABLE</button>
+          </span>
+          <span class="eff" data-eff>—</span>
+        </div>
+        <div class="node" data-level="catalog">
+          <span class="lvl">Catalog</span>
+          <span class="name">analytics<span class="sub">ALTER CATALOG …</span></span>
+          <span class="setseg" role="group" aria-label="Catalog state">
+            <button data-set="ENABLE" aria-pressed="false">ENABLE</button>
+            <button data-set="DISABLE" aria-pressed="false">DISABLE</button>
+            <button data-set="INHERIT" aria-pressed="true">INHERIT</button>
+          </span>
+          <span class="eff" data-eff>—</span>
+        </div>
+        <div class="node" data-level="schema">
+          <span class="lvl">Schema</span>
+          <span class="name">analytics.prod<span class="sub">ALTER SCHEMA …</span></span>
+          <span class="setseg" role="group" aria-label="Schema state">
+            <button data-set="ENABLE" aria-pressed="false">ENABLE</button>
+            <button data-set="DISABLE" aria-pressed="false">DISABLE</button>
+            <button data-set="INHERIT" aria-pressed="true">INHERIT</button>
+          </span>
+          <span class="eff" data-eff>—</span>
+        </div>
+        <div class="node tableNode" data-level="table">
+          <span class="lvl">Table</span>
+          <span class="name">analytics.prod.events<span class="sub">UC MANAGED · inherits unless set</span></span>
+          <span class="setseg" role="group" aria-label="Table state">
+            <button data-set="ENABLE" aria-pressed="false">ENABLE</button>
+            <button data-set="DISABLE" aria-pressed="false">DISABLE</button>
+            <button data-set="INHERIT" aria-pressed="true">INHERIT</button>
+          </span>
+          <span class="eff" data-eff>—</span>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="stat win"><div class="big" id="tree-eff">—</div><div class="lbl">effective on table</div></div>
+        <div class="stat"><div class="big" id="tree-src" style="font-size:1rem">—</div><div class="lbl">decided at level</div></div>
+      </div>
+      <div class="verdict" id="tree-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of the inheritance model. "Effective" = the nearest explicit ENABLE/DISABLE walking up from the table; the account has no INHERIT (it's the root). Verify real state with <code>DESCRIBE … EXTENDED</code>.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: maintenance queue ============ -->
+  <section>
+    <h2>See it work — the maintenance queue</h2>
+    <p>Once enabled, PO <strong>scans</strong> your managed tables, <strong>queues the ones that would benefit</strong>, and runs the right operation on <strong>serverless</strong>. Step through a cycle and watch which table gets which op — and which gets skipped because it's already healthy.</p>
+
+    <div class="lab" id="lab-queue">
+      <div class="lab-head"><span class="lab-title">Predictive optimization — maintenance queue</span></div>
+      <p class="lab-sub">Five UC managed tables. PO scans each, then queues OPTIMIZE / VACUUM / ANALYZE only where it helps.</p>
+
+      <div class="controls">
+        <div class="seg" role="group" aria-label="Queue controls">
+          <button id="q-step" aria-pressed="false">Step ▶</button>
+          <button id="q-auto" aria-pressed="false">Auto-run</button>
+          <button id="q-reset" aria-pressed="false">Reset</button>
+        </div>
+      </div>
+
+      <div class="queue" id="q-grid"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="q-scanned">0</div><div class="lbl">tables scanned</div></div>
+        <div class="stat win"><div class="big" id="q-queued">0</div><div class="lbl">maintenance ops queued</div></div>
+        <div class="stat"><div class="big" id="q-skipped">0</div><div class="lbl">already healthy (skipped)</div></div>
+      </div>
+      <div class="verdict" id="q-verdict">Click <b>Step ▶</b> to scan the first table.</div>
+      <div class="legend">
+        <span><i class="sw" style="background:linear-gradient(135deg,var(--frost-2),var(--frost))"></i> queued op</span>
+        <span><i class="sw" style="background:var(--paper-2);opacity:.5"></i> skipped (healthy)</span>
+      </div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real PO uses internal heuristics over write/query signals to decide which tables to maintain and when; it runs asynchronously on serverless.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3><span class="num">01</span>What PO runs: OPTIMIZE, VACUUM, ANALYZE (+ stats on write)</h3>
+    <p>On UC <strong>managed</strong> tables (Delta + Iceberg), PO automatically runs <strong>OPTIMIZE</strong> (compaction; clustering for LC tables), <strong>VACUUM</strong> (remove unreferenced files), and <strong>ANALYZE</strong> (refresh skipping stats), and collects <strong>stats on write</strong>. These three commands are the <em>entire</em> manual-maintenance burden — automating them means no jobs to author. PO is the <em>operational</em> layer; you still pick the layout (liquid clustering vs. legacy partitioning/Z-order) and PO keeps it healthy.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- There is no "run PO" command — it runs automatically once enabled.</span>
+<span class="c">-- These are the ops PO performs FOR you on a managed table; you stop scheduling them:</span>
+<span class="c">--   OPTIMIZE  analytics.prod.events;                        -- compaction (+ clustering for LC)</span>
+<span class="c">--   VACUUM    analytics.prod.events;                        -- reclaim files past retention</span>
+<span class="c">--   ANALYZE   analytics.prod.events COMPUTE DELTA STATISTICS; -- refresh skipping stats</span>
+<span class="c">-- After enabling PO, DELETE the hand-scheduled jobs that ran the above.</span></pre>
+
+    <h3><span class="num">02</span>Prerequisites</h3>
+    <ul>
+      <li>Workspace on the <strong>Premium</strong> plan.</li>
+      <li>A <strong>supported region</strong>.</li>
+      <li>A <strong>SQL warehouse</strong> or <strong>DBR 12.2 LTS+</strong>.</li>
+      <li>The table is a <strong>Unity Catalog managed</strong> table (PO's maintenance runs on serverless).</li>
+    </ul>
+    <p>If any prerequisite is missing (external table, hive_metastore, non-Premium, unsupported region), PO simply won't run there — you're back to manual maintenance for those tables.</p>
+
+    <h3><span class="num">03</span>The enablement inheritance model</h3>
+    <p>Set a state at the <strong>account</strong>, <strong>catalog</strong>, or <strong>schema</strong> level; lower levels <strong>inherit</strong> by default, and a table's effective state is the <strong>nearest explicit ENABLE/DISABLE above it</strong>. States: <code>ENABLE</code> (on here + below), <code>DISABLE</code> (off here + below), <code>INHERIT</code> (defer to parent). <strong>A child DISABLE wins over a parent ENABLE</strong> — set the level back to <code>INHERIT</code>/<code>ENABLE</code> to re-cover it.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- CATALOG level: turn PO on for the whole catalog; schemas/tables inherit unless overridden.</span>
+<span class="k">ALTER CATALOG</span> analytics <span class="k">ENABLE PREDICTIVE OPTIMIZATION</span>;
+
+<span class="c">-- SCHEMA / DATABASE level: explicitly OFF for one schema (this wins over the catalog ENABLE).</span>
+<span class="k">ALTER SCHEMA</span> analytics.staging <span class="k">DISABLE PREDICTIVE OPTIMIZATION</span>;
+
+<span class="c">-- Go back to inheriting the parent's decision (removes the explicit override).</span>
+<span class="k">ALTER SCHEMA</span> analytics.staging <span class="k">INHERIT PREDICTIVE OPTIMIZATION</span>;</pre>
+
+    <h3><span class="num">04</span>Account-level enablement is UI-driven</h3>
+    <p>The <strong>account-level</strong> toggle lives in the <strong>accounts console</strong>, not in SQL. Catalog/schema overrides are then done in SQL (above).</p>
+    <p><strong>Step-by-step UI actions (account-level):</strong></p>
+    <ul>
+      <li>Sign in to the <strong>Databricks accounts console</strong> as an <strong>account admin</strong>.</li>
+      <li>In the left sidebar, click <strong>Settings</strong>.</li>
+      <li>Open the <strong>Feature enablement</strong> tab.</li>
+      <li>Find <strong>Predictive optimization</strong>.</li>
+      <li>Set the enablement state (enable for the account). Save/confirm.</li>
+      <li>(Optional) Override below with SQL <code>ALTER CATALOG …</code> / <code>ALTER SCHEMA …</code> to <code>ENABLE</code> / <code>DISABLE</code> / <code>INHERIT</code> specific catalogs or schemas.</li>
+    </ul>
+    <p style="font-size:.85rem;color:#7a868f">Verify the exact labels against the current docs — accounts-console wording drifts.</p>
+
+    <h3><span class="num">05</span>Privileges</h3>
+    <ul>
+      <li><strong>Account</strong> state → <strong>account admin</strong> (accounts console).</li>
+      <li><strong>Catalog</strong> state → <strong>catalog owner</strong>.</li>
+      <li><strong>Schema</strong> state → <strong>schema owner</strong>.</li>
+    </ul>
+    <p>PO enablement is a governance decision tied to UC ownership — if you're not the owner, request the owner (or an account admin) to set it.</p>
+
+    <h3><span class="num">06</span>PO's OPTIMIZE does NOT run ZORDER — use liquid clustering</h3>
+    <p>The <code>OPTIMIZE</code> PO runs does <strong>compaction (and clustering for LC tables)</strong> but <strong>does not run <code>ZORDER</code></strong> — it <strong>ignores Z-ordered files</strong>. For colocation-for-skipping under PO, use <strong>liquid clustering</strong>; PO even <strong>drives automatic key selection</strong> for <code>CLUSTER BY AUTO</code>. If you rely on <code>ZORDER</code> and expect PO to maintain it — it won't.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- WRONG expectation: PO will NOT maintain this Z-order layout (it ignores Z-ordered files).</span>
+<span class="c">-- OPTIMIZE legacy_tbl ZORDER BY (customer_id);   -- manual-only; PO does not run ZORDER</span>
+
+<span class="c">-- RIGHT for PO: use liquid clustering so PO's OPTIMIZE colocates data by the keys.</span>
+<span class="k">CREATE OR REPLACE TABLE</span> analytics.prod.events (
+  event_id   <span class="k">BIGINT</span>,
+  event_type <span class="k">STRING</span>,
+  event_date <span class="k">DATE</span>
+)
+<span class="k">CLUSTER BY</span> (event_type, event_date);   <span class="c">-- PO maintains this; CLUSTER BY AUTO lets PO pick keys</span></pre>
+
+    <h3><span class="num">07</span>VACUUM retention: <code>delta.deletedFileRetentionDuration</code> (default 7 days)</h3>
+    <p>PO's <code>VACUUM</code> deletes unreferenced files older than the retention window set by <code>delta.deletedFileRetentionDuration</code> (default <strong>7 days</strong>). Time travel can only reach as far back as files still exist, so the window bounds how far back you can travel. <strong>If you need longer time travel, raise the property BEFORE enabling PO</strong> — otherwise PO can delete files you expected to reach.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Need 30 days of time travel? RAISE retention BEFORE enabling PO,</span>
+<span class="c">-- or PO's VACUUM (default 7 days) reclaims files you wanted to keep.</span>
+<span class="k">ALTER TABLE</span> analytics.prod.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'30 days'</span>);
+
+<span class="c">-- THEN enable PO (e.g. at schema or catalog level) so it respects the new window.</span>
+<span class="k">ALTER SCHEMA</span> analytics.prod <span class="k">ENABLE PREDICTIVE OPTIMIZATION</span>;</pre>
+
+    <h3><span class="num">08</span>Runs on serverless compute (serverless jobs SKU)</h3>
+    <p>PO executes on <strong>serverless</strong> compute, billed under the <strong>serverless jobs SKU</strong>, <strong>asynchronously in the background</strong> — it never runs on, or competes with, your interactive/job clusters. It's not free, but it's typically cheaper and more correct than over-running hand-scheduled jobs. Monitor cost via the system table (below).</p>
+
+    <h3><span class="num">09</span>Monitor with the system table</h3>
+    <p>Every PO operation is logged to <code>system.storage.predictive_optimization_operations_history</code> — query which tables PO touched, which op ran, and the metrics/cost.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- What has PO done lately, and what did it cost? Audit + cost attribution.</span>
+<span class="k">SELECT</span> operation_type, catalog_name, schema_name, table_name,
+       operation_status, start_time
+<span class="k">FROM</span> system.storage.predictive_optimization_operations_history
+<span class="k">WHERE</span> start_time &gt;= current_timestamp() - <span class="k">INTERVAL</span> <span class="s">7 DAYS</span>
+<span class="k">ORDER BY</span> start_time <span class="k">DESC</span>;</pre>
+
+    <h3><span class="num">10</span>Verify the effective state with DESCRIBE … EXTENDED</h3>
+    <p>Use <code>DESCRIBE (CATALOG | SCHEMA | TABLE) EXTENDED name</code> to read the <strong>"Predictive Optimization"</strong> field and see the <strong>effective</strong> state (including whether it's inherited). Because of inheritance + overrides, the effective state isn't always obvious — this is the source of truth per object.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Confirm PO is in effect (and whether it's inherited) at each level:</span>
+<span class="k">DESCRIBE CATALOG EXTENDED</span> analytics;                 <span class="c">-- catalog-level state</span>
+<span class="k">DESCRIBE SCHEMA  EXTENDED</span> analytics.prod;            <span class="c">-- schema-level state</span>
+<span class="k">DESCRIBE TABLE   EXTENDED</span> analytics.prod.events;     <span class="c">-- table "Predictive Optimization" field</span></pre>
+
+    <h3><span class="num">11</span>What PO does NOT run on</h3>
+    <ul>
+      <li><strong>OpenSharing (Delta Sharing) recipient tables</strong> — managed by the provider.</li>
+      <li><strong>EXTERNAL tables</strong> — managed via your own external storage/jobs.</li>
+    </ul>
+    <p>PO needs ownership/lifecycle control over the table's files. For external/legacy tables you still schedule maintenance manually, or migrate them to UC managed tables to get PO.</p>
+  </section>
+
+  <section>
+    <h2>PO vs. hand-scheduled maintenance</h2>
+    <table class="tbl">
+      <thead><tr><th>Dimension</th><th>Predictive optimization (managed)</th><th>Hand-scheduled OPTIMIZE/VACUUM/ANALYZE</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Who runs it</strong></td><td>Databricks, automatically</td><td>You, via jobs/schedules</td></tr>
+        <tr><td><strong>What it runs</strong></td><td>OPTIMIZE, VACUUM, ANALYZE (+ stats on write)</td><td>Whatever you script</td></tr>
+        <tr><td><strong>Table scope</strong></td><td>UC <strong>managed</strong> only (Delta + Iceberg)</td><td>Any table (managed/external/hive_metastore)</td></tr>
+        <tr><td><strong>Z-order</strong></td><td><strong>Not run</strong> (ignores Z-ordered files) — use liquid clustering</td><td>You can run <code>ZORDER</code> manually</td></tr>
+        <tr><td><strong>Compute</strong></td><td><strong>Serverless</strong> (serverless jobs SKU), async</td><td>Your clusters/warehouses</td></tr>
+        <tr><td><strong>Tuning</strong></td><td>Platform decides which tables + when</td><td>You guess frequency per table</td></tr>
+        <tr><td><strong>Enablement</strong></td><td>Inherited account → catalog → schema → table</td><td>n/a (you author each job)</td></tr>
+        <tr><td><strong>Time travel</strong></td><td>Bound by <code>deletedFileRetentionDuration</code> (default 7d)</td><td>Same property, but you control VACUUM timing</td></tr>
+        <tr><td><strong>Verdict for new code</strong></td><td>✔ <strong>Prefer on UC managed tables</strong></td><td>Legacy/external tables, or special timing needs</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses (when to reach for it)</h3>
+    <ul>
+      <li><strong>Default for UC managed tables.</strong> Enable at catalog/schema level and let PO run OPTIMIZE/VACUUM/ANALYZE — especially across many tables where hand-scheduling doesn't scale.</li>
+      <li><strong>Pairs with liquid clustering.</strong> PO maintains LC tables and drives <code>CLUSTER BY AUTO</code> key selection — the modern "managed table + LC + PO" default.</li>
+      <li><strong>When NOT to:</strong> external/hive_metastore tables, OpenSharing recipient tables, or when you need manual control over VACUUM timing.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Child DISABLE vs. later parent ENABLE</strong> → the DISABLE wins; set to INHERIT/ENABLE to re-cover.</li>
+      <li><strong>You relied on ZORDER</strong> → PO won't maintain it (ignores Z-ordered files); migrate to liquid clustering.</li>
+      <li><strong>You need long time travel</strong> → raise <code>deletedFileRetentionDuration</code> <em>before</em> enabling PO.</li>
+      <li><strong>External or shared-in table</strong> → PO doesn't run there at all.</li>
+      <li><strong>Cost surprise</strong> → PO bills serverless jobs DBUs; check the system table.</li>
+      <li><strong>Not owner</strong> → you can't flip the toggle (need catalog/schema owner or account admin).</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li><strong>UC managed tables only</strong> (Delta + Iceberg); not external, not OpenSharing recipients.</li>
+      <li>Requires <strong>Premium plan</strong>, <strong>supported region</strong>, <strong>SQL warehouse or DBR 12.2 LTS+</strong>.</li>
+      <li>PO's <code>OPTIMIZE</code> <strong>does not run <code>ZORDER</code></strong>.</li>
+      <li>Account-level enablement is <strong>UI-only</strong> (accounts console); catalog/schema via SQL.</li>
+      <li>Runs on <strong>serverless</strong> (billed serverless jobs SKU).</li>
+      <li>VACUUM is bound by <code>delta.deletedFileRetentionDuration</code> (<strong>default 7 days</strong>).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Raise retention BEFORE enabling PO</strong> if you need long time travel — PO's VACUUM uses the 7-day default.</li>
+      <li><strong>PO does not Z-order.</strong> Use liquid clustering (and let PO drive <code>CLUSTER BY AUTO</code>).</li>
+      <li><strong>A child DISABLE beats a parent ENABLE.</strong> Set the level back to <code>INHERIT</code>/<code>ENABLE</code> to re-cover it.</li>
+      <li><strong>Managed-only.</strong> External, hive_metastore, and OpenSharing recipient tables get nothing — keep manual maintenance or migrate.</li>
+      <li><strong>Account toggle is in the accounts console</strong>, not SQL — catalog/schema overrides are SQL.</li>
+      <li><strong>It's billed.</strong> PO consumes serverless jobs DBUs; monitor <code>system.storage.predictive_optimization_operations_history</code>.</li>
+      <li><strong>Verify, don't assume.</strong> Use <code>DESCRIBE … EXTENDED</code> to confirm the <em>effective</em> state per object.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Whole-track recap — the decision ladder</h2>
+    <p>This is the final lesson, so here is the entire track as one decision ladder. Each rung solves a problem the previous rung exposed.</p>
+    <div class="ladder">
+      <div class="rung"><span class="n">1</span><span class="t"><b>Traditional write</b> (L01) — the baseline and the <b>small-file problem</b>: Spark writes ~1 file per task.</span></div>
+      <div class="rung"><span class="n">2</span><span class="t"><b>Partitioning</b> (L02) — the old physical layout; only for large (&gt;1 TB), low-cardinality tables. Over-partitioning makes small files <em>worse</em>.</span></div>
+      <div class="rung"><span class="n">3</span><span class="t"><b>Data skipping &amp; Z-ordering</b> (L03) — <em>why</em> layout matters: per-file min/max stats let the engine skip files; Z-order colocates rows.</span></div>
+      <div class="rung"><span class="n">4</span><span class="t"><b>OPTIMIZE / compaction</b> (L04) — the <b>manual</b> fix for small files (bin-packing), idempotent, optionally <code>WHERE</code>/<code>FULL</code>.</span></div>
+      <div class="rung"><span class="n">5</span><span class="t"><b>Optimized writes + auto compaction</b> (L05–06) — <b>automatic file sizing</b> at and just-after write (always on for MERGE/UPDATE/DELETE).</span></div>
+      <div class="rung"><span class="n">6</span><span class="t"><b>Auto optimize</b> (L07) — the umbrella over the two, plus target-file-size autotuning by table size.</span></div>
+      <div class="rung"><span class="n">7</span><span class="t"><b>Liquid clustering</b> (L08) — the <b>modern layout</b>: <code>CLUSTER BY</code> replaces partitioning <em>and</em> Z-order; change keys with no rewrite.</span></div>
+      <div class="rung"><span class="n">8</span><span class="t"><b>Deletion vectors</b> (L09) — <b>merge-on-read</b> modifications: DELETE/UPDATE/MERGE mark rows deleted instead of rewriting whole Parquet files.</span></div>
+      <div class="rung"><span class="n">9</span><span class="t"><b>VACUUM, time travel &amp; retention</b> (L10) — manage the <b>file history</b> operations leave behind: time-travel to old versions, then VACUUM to reclaim storage.</span></div>
+      <div class="rung final"><span class="n">10</span><span class="t"><b>Predictive optimization</b> (L11 — this one) — <b>fully managed maintenance</b>: the platform runs OPTIMIZE/VACUUM/ANALYZE on UC managed tables so you don't.</span></div>
+    </div>
+    <div class="callout">
+      <span class="lbl">The one-line modern default</span>
+      <strong>UC managed table + liquid clustering + predictive optimization.</strong> Pick a governed managed table, lay it out with liquid clustering (or <code>CLUSTER BY AUTO</code>), enable predictive optimization — and <strong>let the platform do it</strong>. Reach for partitioning, Z-order, or hand-scheduled maintenance only for legacy/external tables or special cases.
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization for managed tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">Data skipping for Delta Lake</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Final lesson of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ============ DIAGRAM 1: enablement inheritance tree ============ */
+(function(){
+  const root = document.getElementById('lab-tree');
+  if(!root) return;
+  const ORDER = ['account','catalog','schema','table'];
+  const LABEL = {account:'account', catalog:'catalog analytics', schema:'schema analytics.prod', table:'table analytics.prod.events'};
+  // account is the root: it has no INHERIT (defaults effectively); start states:
+  const state = {account:'ENABLE', catalog:'INHERIT', schema:'INHERIT', table:'INHERIT'};
+
+  // Compute the effective state for the table by walking UP from table to account,
+  // taking the NEAREST explicit ENABLE/DISABLE. A child DISABLE beats a parent ENABLE
+  // simply because we stop at the first non-INHERIT level on the way up.
+  function effectiveAt(level){
+    const i = ORDER.indexOf(level);
+    for(let j=i;j>=0;j--){
+      const s = state[ORDER[j]];
+      if(s !== 'INHERIT') return {state:s, level:ORDER[j]};
+    }
+    return {state:'DISABLE', level:'account'}; // root never inherits; fallback off
+  }
+
+  function classFor(s){ return s==='ENABLE'?'on':(s==='DISABLE'?'off':'inh'); }
+
+  function render(){
+    root.querySelectorAll('.node').forEach(node=>{
+      const level = node.dataset.level;
+      // reflect button pressed state
+      node.querySelectorAll('.setseg button').forEach(b=>{
+        b.setAttribute('aria-pressed', b.dataset.set===state[level]);
+      });
+      // per-node effective badge (what PO would be for an object at this level)
+      const eff = effectiveAt(level);
+      const badge = node.querySelector('[data-eff]');
+      const own = state[level];
+      if(own==='INHERIT'){
+        badge.textContent = 'inherits → ' + eff.state;
+      } else {
+        badge.textContent = own;
+      }
+      badge.className = 'eff ' + classFor(eff.state);
+    });
+
+    const tEff = effectiveAt('table');
+    document.getElementById('tree-eff').textContent = tEff.state;
+    document.getElementById('tree-src').textContent = tEff.level;
+    const vd = document.getElementById('tree-verdict');
+    if(tEff.state==='ENABLE'){
+      vd.innerHTML = "PO is <b>ENABLED</b> on <code>analytics.prod.events</code> — decided at the <b>"+tEff.level+"</b> level (nearest explicit ENABLE walking up). Databricks will run OPTIMIZE / VACUUM / ANALYZE on it automatically.";
+    } else {
+      let why;
+      if(tEff.level==='table') why = "the table is explicitly DISABLED";
+      else if(tEff.level==='account') why = "the <b>account</b> level is explicitly DISABLED and nothing below re-enables it";
+      else why = "the <b>"+tEff.level+"</b> level is explicitly DISABLED — and a DISABLE below an ENABLE wins";
+      vd.innerHTML = "PO is <b>OFF</b> on <code>analytics.prod.events</code> because "+why+". Set that level back to <code>INHERIT</code> or <code>ENABLE</code> to re-cover the table.";
+    }
+  }
+
+  root.querySelectorAll('.node').forEach(node=>{
+    const level = node.dataset.level;
+    node.querySelectorAll('.setseg button').forEach(btn=>{
+      btn.addEventListener('click',()=>{ state[level]=btn.dataset.set; render(); });
+    });
+  });
+
+  render();
+})();
+
+/* ============ DIAGRAM 2: maintenance queue ============ */
+(function(){
+  const root = document.getElementById('lab-queue');
+  if(!root) return;
+  // Each table carries the symptom PO detects and the op it queues (or skip if healthy).
+  const TABLES = [
+    {name:'bronze.events',    why:'thousands of tiny streaming files',     op:'OPTIMIZE'},
+    {name:'silver.orders',    why:'stale skipping stats after big load',   op:'ANALYZE'},
+    {name:'silver.customers', why:'old versions piling up past retention', op:'VACUUM'},
+    {name:'gold.daily_kpis',  why:'already compacted & analyzed — healthy', op:'SKIP'},
+    {name:'gold.dim_date',    why:'tiny, rarely written — nothing to do',   op:'SKIP'}
+  ];
+  const gridEl = document.getElementById('q-grid');
+  let cursor = -1, scanned=0, queued=0, skipped=0, auto=null;
+
+  function build(){
+    gridEl.innerHTML='';
+    TABLES.forEach((t,i)=>{
+      const c=document.createElement('div');
+      c.className='qtbl'; c.id='qt-'+i;
+      c.innerHTML = '<div class="tn">'+t.name+'</div><div class="why">'+t.why+'</div><div class="op">queued?</div>';
+      gridEl.appendChild(c);
+    });
+  }
+  function setStats(){
+    document.getElementById('q-scanned').textContent=scanned;
+    document.getElementById('q-queued').textContent=queued;
+    document.getElementById('q-skipped').textContent=skipped;
+  }
+  function reset(){
+    if(auto){clearInterval(auto);auto=null;document.getElementById('q-auto').setAttribute('aria-pressed','false');}
+    cursor=-1;scanned=0;queued=0;skipped=0;
+    build();setStats();
+    document.getElementById('q-verdict').innerHTML='Click <b>Step ▶</b> to scan the first table.';
+  }
+  function step(){
+    // clear previous "scanning" highlight
+    if(cursor>=0){ const prev=document.getElementById('qt-'+cursor); if(prev) prev.classList.remove('scanning'); }
+    cursor++;
+    if(cursor>=TABLES.length){
+      document.getElementById('q-verdict').innerHTML='Cycle complete. PO queued <b>'+queued+'</b> maintenance ops on serverless and left <b>'+skipped+'</b> healthy tables alone. Nothing was scheduled by hand.';
+      if(auto){clearInterval(auto);auto=null;document.getElementById('q-auto').setAttribute('aria-pressed','false');}
+      return;
+    }
+    const t=TABLES[cursor];
+    const el=document.getElementById('qt-'+cursor);
+    el.classList.add('scanning'); scanned++;
+    const opEl=el.querySelector('.op');
+    if(t.op==='SKIP'){
+      el.classList.add('skipped'); skipped++; opEl.textContent='skip';
+      document.getElementById('q-verdict').innerHTML='Scanned <code>'+t.name+'</code>: '+t.why+' → <b>skipped</b> (no maintenance needed).';
+    } else {
+      el.classList.add('queued'); queued++; opEl.textContent=t.op;
+      document.getElementById('q-verdict').innerHTML='Scanned <code>'+t.name+'</code>: '+t.why+' → PO queues <b>'+t.op+'</b> on serverless.';
+    }
+    setStats();
+  }
+
+  document.getElementById('q-step').addEventListener('click',step);
+  document.getElementById('q-reset').addEventListener('click',reset);
+  document.getElementById('q-auto').addEventListener('click',function(){
+    if(auto){ clearInterval(auto); auto=null; this.setAttribute('aria-pressed','false'); return; }
+    if(cursor>=TABLES.length-1) reset();
+    this.setAttribute('aria-pressed','true');
+    auto=setInterval(()=>{ step(); if(cursor>=TABLES.length){clearInterval(auto);auto=null;this.setAttribute('aria-pressed','false');} }, 1100);
+  });
+
+  reset();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="aho" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="ahg" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="960" height="560" fill="#FAFAF9"/>
+  <text x="24" y="34" font-size="20" font-weight="700" fill="#1B3139">Security, Identity &amp; Access — the guarded front door (path ①)</text>
+  <text x="24" y="54" font-size="12" fill="#6B7280">Identity (6.1): who are you + how proven · Network access (6.2): from where · All on path ① user → control plane</text>
+
+  <!-- Entra ID (source of truth) -->
+  <rect x="24" y="84" width="250" height="170" rx="12" fill="#fff" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="5,4"/>
+  <text x="149" y="106" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Microsoft Entra ID (your tenant)</text>
+  <text x="149" y="122" text-anchor="middle" font-size="10" fill="#6B7280">source of truth · the keymaker</text>
+  <rect x="44" y="134" width="210" height="34" rx="6" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="149" y="156" text-anchor="middle" font-size="11" fill="#1B3139">Users · Groups (+nested) · Entra SPs</text>
+  <rect x="44" y="176" width="210" height="32" rx="6" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="149" y="197" text-anchor="middle" font-size="10.5" fill="#1B3139">SSO + MFA + Conditional Access</text>
+  <rect x="44" y="214" width="210" height="30" rx="6" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="149" y="234" text-anchor="middle" font-size="10.5" fill="#1B3139">SCIM / Automatic identity mgmt →</text>
+
+  <!-- Databricks account -->
+  <rect x="320" y="120" width="220" height="120" rx="10" fill="#FFF4F2" stroke="#FF3621" stroke-width="1.5"/>
+  <text x="430" y="142" text-anchor="middle" font-size="12" font-weight="700" fill="#FF3621">Databricks account</text>
+  <text x="430" y="158" text-anchor="middle" font-size="10" fill="#4A5860">accounts.azuredatabricks.net</text>
+  <text x="430" y="178" text-anchor="middle" font-size="10.5" fill="#4A5860">account users / groups / SPs</text>
+  <text x="430" y="195" text-anchor="middle" font-size="10.5" fill="#4A5860">identity federation → workspaces</text>
+  <text x="430" y="215" text-anchor="middle" font-size="10.5" fill="#4A5860">service principals (OAuth M2M)</text>
+  <text x="430" y="231" text-anchor="middle" font-size="10" fill="#6B7280">token report · PAT policy</text>
+
+  <!-- sync arrow Entra -> account -->
+  <path d="M274 229 C 295 229, 300 200, 320 195" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="276" y="252" font-size="9.5" fill="#6B7280">sync</text>
+
+  <!-- Clients -->
+  <rect x="24" y="300" width="250" height="120" rx="10" fill="#fff" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="149" y="322" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Clients</text>
+  <rect x="44" y="334" width="210" height="32" rx="6" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="149" y="355" text-anchor="middle" font-size="10.5" fill="#1B3139">Human (browser SSO + MFA)</text>
+  <rect x="44" y="374" width="210" height="34" rx="6" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="149" y="389" text-anchor="middle" font-size="10" fill="#1B3139">Job / CI-CD (service principal,</text>
+  <text x="149" y="402" text-anchor="middle" font-size="10" fill="#4A5860">OAuth M2M — bypasses Cond. Access)</text>
+
+  <!-- Front door gate (6.2) -->
+  <rect x="330" y="290" width="270" height="200" rx="10" fill="#fff" stroke="#FFC107" stroke-width="2"/>
+  <text x="465" y="312" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Workspace front door (gated)</text>
+  <rect x="350" y="324" width="230" height="36" rx="6" fill="#FEF3C7" stroke="#FFC107" stroke-width="1.5"/>
+  <text x="465" y="340" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1B3139">Conditional Access (at sign-in)</text>
+  <text x="465" y="353" text-anchor="middle" font-size="9.5" fill="#6B7280">MFA · device · named location</text>
+  <rect x="350" y="368" width="230" height="36" rx="6" fill="#FEF3C7" stroke="#FFC107" stroke-width="1.5"/>
+  <text x="465" y="384" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1B3139">Context-based ingress (account)</text>
+  <text x="465" y="397" text-anchor="middle" font-size="9.5" fill="#6B7280">+ IP access list (workspace) — pass BOTH</text>
+  <rect x="350" y="412" width="230" height="32" rx="6" fill="#fff" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="465" y="432" text-anchor="middle" font-size="10" fill="#1B3139">IPv4 only · must allow SCC egress IP</text>
+  <text x="465" y="464" text-anchor="middle" font-size="9.5" fill="#6B7280">All three controls require Premium</text>
+  <text x="465" y="478" text-anchor="middle" font-size="9.5" fill="#6B7280">Conditional Access also needs Entra ID Premium</text>
+
+  <!-- Workspace / control plane -->
+  <rect x="700" y="300" width="236" height="120" rx="10" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="818" y="324" text-anchor="middle" font-size="12" font-weight="700" fill="#FF3621">Workspace control plane</text>
+  <text x="818" y="342" text-anchor="middle" font-size="10" fill="#4A5860">adb-&lt;id&gt;.azuredatabricks.net</text>
+  <text x="818" y="360" text-anchor="middle" font-size="10" fill="#4A5860">UI · REST API · Databricks Connect</text>
+  <text x="818" y="384" text-anchor="middle" font-size="10" fill="#6B7280">Public Network Access =</text>
+  <text x="818" y="398" text-anchor="middle" font-size="10" fill="#6B7280">Disabled → public door bricked</text>
+
+  <!-- Public door path -->
+  <path d="M274 360 C 300 360, 305 345, 330 345" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <path d="M600 360 C 650 360, 660 360, 700 360" fill="none" stroke="#6B7280" stroke-width="2" marker-end="url(#ah)"/>
+  <text x="612" y="352" font-size="10" font-weight="600" fill="#1B3139">① public door (gated, 443)</text>
+
+  <!-- Conditional access from Entra to gate -->
+  <path d="M254 192 C 300 270, 360 290, 400 322" fill="none" stroke="#FFC107" stroke-width="2" stroke-dasharray="4,3" marker-end="url(#ah)"/>
+  <text x="270" y="282" font-size="9.5" fill="#B8860B">Conditional Access policy</text>
+
+  <!-- Private Link tunnel -->
+  <rect x="330" y="500" width="606" height="48" rx="10" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="350" y="520" font-size="11" font-weight="700" fill="#00A972">Front-end Private Link (the strongest control — replaces the public door)</text>
+  <text x="350" y="537" font-size="10" fill="#4A5860">databricks_ui_api + browser_authentication PEs in your transit VNet · privatelink.azuredatabricks.net → private IP · needs VNet injection</text>
+  <path d="M149 408 C 149 470, 300 524, 330 524" fill="none" stroke="#00A972" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#ahg)"/>
+  <path d="M820 500 C 820 470, 818 440, 818 422" fill="none" stroke="#00A972" stroke-width="2.5" stroke-dasharray="6,3" marker-end="url(#ahg)"/>
+  <text x="160" y="455" font-size="9.5" fill="#00A972">private path</text>
+
+  <!-- Legend -->
+  <rect x="640" y="120" width="296" height="120" rx="8" fill="#fff" stroke="#E5E7EB"/>
+  <text x="654" y="140" font-size="11" font-weight="700" fill="#1B3139">How the layers stack (weakest → strongest)</text>
+  <text x="654" y="160" font-size="10" fill="#4A5860">1. Conditional Access — conditions who walks through</text>
+  <text x="654" y="177" font-size="10" fill="#4A5860">2. IP access list / context ingress — filters by IP</text>
+  <text x="654" y="194" font-size="10" fill="#4A5860">3. Front-end Private Link — removes the public door</text>
+  <text x="654" y="216" font-size="9.5" fill="#6B7280">Identity (6.1) proves WHO; these prove FROM WHERE.</text>
+  <text x="654" y="231" font-size="9.5" fill="#6B7280">PATs / pre-issued tokens bypass Conditional Access.</text>
+</svg>

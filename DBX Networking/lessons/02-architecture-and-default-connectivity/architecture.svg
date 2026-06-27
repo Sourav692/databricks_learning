@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 620" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+    <filter id="label-shadow" x="-10%" y="-20%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#1B3139" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1080" height="620" fill="#FAFAF9"/>
+  <text x="32" y="36" font-size="21" font-weight="700" fill="#1B3139">Azure Databricks: Two Planes, Three Connectivity Paths</text>
+  <text x="32" y="58" font-size="12" fill="#6B7280">Control plane in Databricks, classic compute in your subscription, serverless compute in Databricks, and data in ADLS Gen2.</text>
+
+  <!-- User -->
+  <rect x="34" y="264" width="132" height="64" rx="10" fill="#FFFFFF" stroke="#2272B4" stroke-width="2"/>
+  <text x="100" y="292" text-anchor="middle" font-size="13" font-weight="700" fill="#2272B4">User / BI / REST</text>
+  <text x="100" y="310" text-anchor="middle" font-size="10" fill="#6B7280">browser, JDBC, CLI</text>
+
+  <!-- Customer subscription -->
+  <rect x="228" y="126" width="470" height="404" rx="14" fill="#FFFFFF" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="463" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">YOUR Azure subscription</text>
+
+  <!-- Classic VNet -->
+  <rect x="256" y="176" width="414" height="150" rx="12" fill="#F2F8FE" stroke="#2272B4" stroke-width="1.5"/>
+  <text x="463" y="200" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Classic compute plane VNet (managed RG)</text>
+  <rect x="282" y="220" width="170" height="82" rx="9" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="367" y="256" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Host subnet</text>
+  <text x="367" y="273" text-anchor="middle" font-size="10" fill="#6B7280">VM host NICs</text>
+
+  <rect x="476" y="220" width="168" height="82" rx="9" fill="#FFFFFF" stroke="#2272B4" stroke-width="2"/>
+  <text x="560" y="245" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet</text>
+  <text x="560" y="261" text-anchor="middle" font-size="10" fill="#4A5860">clusters / SQL WH</text>
+  <text x="560" y="277" text-anchor="middle" font-size="10" fill="#4A5860">NPIP + SCC</text>
+  <text x="560" y="293" text-anchor="middle" font-size="10" fill="#4A5860">no inbound ports</text>
+
+  <!-- Storage -->
+  <rect x="256" y="374" width="414" height="126" rx="12" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="463" y="398" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Your storage (your subscription)</text>
+  <rect x="282" y="416" width="182" height="64" rx="9" fill="#FFFFFF" stroke="#00A972" stroke-width="2"/>
+  <text x="373" y="440" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2</text>
+  <text x="373" y="456" text-anchor="middle" font-size="10" fill="#4A5860">governed business data</text>
+  <text x="373" y="470" text-anchor="middle" font-size="10" fill="#4A5860">UC external locations</text>
+  <rect x="494" y="416" width="150" height="64" rx="9" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="569" y="440" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Workspace storage</text>
+  <text x="569" y="456" text-anchor="middle" font-size="10" fill="#4A5860">system data + DBFS</text>
+  <text x="569" y="470" text-anchor="middle" font-size="10" fill="#4A5860">legacy housekeeping</text>
+
+  <!-- Databricks-owned subscription -->
+  <rect x="770" y="126" width="276" height="274" rx="14" fill="#FFFFFF" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="908" y="150" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Databricks-owned Azure subscription</text>
+
+  <rect x="804" y="176" width="208" height="84" rx="10" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="908" y="204" text-anchor="middle" font-size="13" font-weight="700" fill="#FF3621">Control plane</text>
+  <text x="908" y="222" text-anchor="middle" font-size="10" fill="#4A5860">web app, REST, Unity Catalog</text>
+  <text x="908" y="238" text-anchor="middle" font-size="10" fill="#4A5860">cluster mgr, SCC relay</text>
+
+  <rect x="804" y="292" width="208" height="78" rx="10" fill="#FFFFFF" stroke="#00A972" stroke-width="2"/>
+  <text x="908" y="318" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Serverless compute plane</text>
+  <text x="908" y="336" text-anchor="middle" font-size="10" fill="#4A5860">no public IPs</text>
+  <text x="908" y="352" text-anchor="middle" font-size="10" fill="#4A5860">egress via NCC (Stage 5)</text>
+
+  <!-- Path 1: user to control plane -->
+  <path d="M166 284 C 280 86, 650 86, 804 205" fill="none" stroke="#6B7280" stroke-width="2.2" marker-end="url(#arrow-gray)"/>
+  <rect x="274" y="76" width="230" height="44" rx="8" fill="#FFFFFF" stroke="#E5E7EB" filter="url(#label-shadow)"/>
+  <circle cx="294" cy="98" r="11" fill="#6B7280"/>
+  <text x="294" y="102" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="312" y="94" font-size="11" font-weight="700" fill="#1B3139">User to Databricks</text>
+  <text x="312" y="109" font-size="10" fill="#6B7280">443, IP ACL, front-end Private Link</text>
+
+  <!-- Path 2: classic compute to control plane -->
+  <path d="M644 250 C 710 250, 746 230, 804 224" fill="none" stroke="#FF3621" stroke-width="2.6" marker-end="url(#arrow-red)"/>
+  <rect x="612" y="164" width="174" height="46" rx="8" fill="#FFFFFF" stroke="#FFE2DD" filter="url(#label-shadow)"/>
+  <circle cx="632" cy="187" r="11" fill="#FF3621"/>
+  <text x="632" y="191" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="650" y="183" font-size="11" font-weight="700" fill="#FF3621">Outbound only</text>
+  <text x="650" y="198" font-size="10" fill="#FF3621">SCC relay, 443, back-end PL</text>
+
+  <!-- Path 2: serverless backbone -->
+  <path d="M908 292 L908 260" fill="none" stroke="#00A972" stroke-width="2.2" stroke-dasharray="5,3" marker-end="url(#arrow-green)"/>
+  <rect x="820" y="410" width="220" height="42" rx="8" fill="#FFFFFF" stroke="#D9F3EA" filter="url(#label-shadow)"/>
+  <circle cx="840" cy="431" r="11" fill="#00A972"/>
+  <text x="840" y="435" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="858" y="427" font-size="11" font-weight="700" fill="#00A972">Serverless to control</text>
+  <text x="858" y="442" font-size="10" fill="#00A972">cloud backbone + TLS, managed</text>
+
+  <!-- Path 3: classic compute to ADLS -->
+  <path d="M555 302 C 535 350, 450 388, 382 416" fill="none" stroke="#6B7280" stroke-width="2.2" marker-end="url(#arrow-gray)"/>
+  <rect x="332" y="328" width="222" height="44" rx="8" fill="#FFFFFF" stroke="#E5E7EB" filter="url(#label-shadow)"/>
+  <circle cx="352" cy="350" r="11" fill="#6B7280"/>
+  <text x="352" y="354" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="370" y="346" font-size="11" font-weight="700" fill="#1B3139">Classic compute to storage</text>
+  <text x="370" y="361" font-size="10" fill="#6B7280">Service Endpoint or Private Endpoint</text>
+
+  <!-- Path 3: serverless to ADLS -->
+  <path d="M804 348 C 724 532, 520 548, 386 480" fill="none" stroke="#00A972" stroke-width="2.2" stroke-dasharray="5,3" marker-end="url(#arrow-green)"/>
+  <rect x="548" y="542" width="250" height="44" rx="8" fill="#FFFFFF" stroke="#D9F3EA" filter="url(#label-shadow)"/>
+  <circle cx="568" cy="564" r="11" fill="#00A972"/>
+  <text x="568" y="568" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="586" y="560" font-size="11" font-weight="700" fill="#00A972">Serverless compute to storage</text>
+  <text x="586" y="575" font-size="10" fill="#00A972">service tag or NCC private endpoint</text>
+
+  <!-- Legend -->
+  <rect x="34" y="392" width="172" height="108" rx="9" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="48" y="414" font-size="11" font-weight="700" fill="#1B3139">Legend</text>
+  <line x1="48" y1="432" x2="76" y2="432" stroke="#FF3621" stroke-width="2.6"/>
+  <text x="84" y="436" font-size="10" fill="#4A5860">outbound-only SCC</text>
+  <line x1="48" y1="450" x2="76" y2="450" stroke="#6B7280" stroke-width="2.2"/>
+  <text x="84" y="454" font-size="10" fill="#4A5860">classic path</text>
+  <line x1="48" y1="468" x2="76" y2="468" stroke="#00A972" stroke-width="2.2" stroke-dasharray="5,3"/>
+  <text x="84" y="472" font-size="10" fill="#4A5860">serverless path</text>
+  <text x="48" y="490" font-size="9" fill="#6B7280">Data does not flow through</text>
+  <text x="48" y="502" font-size="9" fill="#6B7280">the control plane.</text>
+</svg>

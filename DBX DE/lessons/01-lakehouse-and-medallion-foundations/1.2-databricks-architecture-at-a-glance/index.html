@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Architecture at a Glance · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:14px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.78rem;line-height:1.55;margin:.5em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.94rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:10px;overflow:hidden;font-size:.92rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: planes */
+  .planes{display:flex;flex-direction:column;gap:10px}
+  .plane{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:#fff;cursor:pointer;transition:.18s}
+  .plane:hover{border-color:var(--brand-2)}
+  .plane.open{border-color:var(--teal)}
+  .plane .h{font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .plane .who{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#8a939c}
+  .plane .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .plane.open .d{display:block}
+  .arrow{text-align:center;color:var(--brand);font-size:1.1rem;margin:-4px 0}
+  /* diagram 2: tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.8rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 14px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}
+  .tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}
+  .panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 1.2</p>
+  <h1>Databricks <em>Architecture</em> at a Glance</h1>
+  <p class="lede">Databricks runs as two planes — a control plane it manages, and a compute plane that processes your data. Your data stays in your cloud storage; Unity Catalog governs it account-wide.</p>
+  <div class="pills">
+    <span class="pill">Control vs Compute plane</span>
+    <span class="pill">Classic vs Serverless</span>
+    <span class="pill">Account → workspace → metastore</span>
+  </div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Control plane</strong> (Databricks-managed: UI, scheduler, APIs) issues the work; the <strong>compute plane</strong> (clusters / SQL warehouses) does the work, reading your data directly from <strong>your</strong> cloud storage. Compute and storage scale independently; Unity Catalog governs it at the account level.</div>
+  <div class="card analogy" style="margin-top:10px">🍽️ <strong>Analogy:</strong> the control plane is the restaurant's <em>front desk + ordering system</em>; the compute plane is the <em>kitchen that cooks</em>. <strong>Serverless</strong> = use Databricks' shared kitchen (no setup); <strong>classic</strong> = the kitchen is built inside your own house (more control).</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: clickable planes -->
+<section id="planes">
+  <h2>How it works — the two planes</h2>
+  <p class="hint">▸ click each block to expand</p>
+  <div class="planes">
+    <div class="plane" onclick="this.classList.toggle('open')">
+      <div class="h"><span>🧠 Control Plane</span><span class="who">Databricks' account</span></div>
+      <div class="d">Web UI, notebooks, job scheduler, cluster manager, REST APIs. Always managed by Databricks — you can't self-host it. Holds workspace metadata, not your tables.</div>
+    </div>
+    <div class="arrow">▼ issues work to</div>
+    <div class="plane" onclick="this.classList.toggle('open')">
+      <div class="h"><span>⚙️ Compute Plane</span><span class="who">your account (classic) or Databricks (serverless)</span></div>
+      <div class="d">Clusters &amp; SQL warehouses that actually process data. <strong>Classic</strong> runs in your VPC; <strong>serverless</strong> runs in Databricks' account and starts in seconds.</div>
+    </div>
+    <div class="arrow">▼ reads / writes</div>
+    <div class="plane" onclick="this.classList.toggle('open')">
+      <div class="h"><span>🗄️ Your Data (cloud storage)</span><span class="who">your S3 / ADLS / GCS</span></div>
+      <div class="d">Unity Catalog tables &amp; Volumes live in cloud object storage, governed by UC. Separate from workspace storage (notebooks, results, logs).</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · Control plane vs compute plane — what lives where</h3>
+  <p class="mech"><b>Mechanism:</b> the <strong>control plane</strong> (Databricks' account) hosts UI, scheduler, notebooks, APIs; the <strong>compute plane</strong> runs the clusters/warehouses. Control plane <em>issues</em> work, compute plane <em>does</em> it. <b>Trade-off:</b> control plane is always Databricks-managed — you choose only the compute variant.</p>
+  <pre class="code"><span class="c"># A CLI/API call hits the CONTROL plane (scheduler/APIs); the job runs on the</span>
+<span class="c"># COMPUTE plane. Same split whether you click the UI or call the API.</span>
+<span class="f">databricks</span> jobs run-now --job-id <span class="s">620</span> --profile prod</pre>
+
+  <h3>2 · Compute-plane variants — serverless vs classic</h3>
+  <p class="mech"><b>Mechanism:</b> <strong>serverless</strong> runs in a serverless compute plane in Databricks' account (seconds to start, near-zero ops); <strong>classic</strong> runs in your account/VPC (natural isolation, you size it). <b>Trade-off:</b> isolation/control vs speed/low-ops.</p>
+  <pre class="code"><span class="c"># Serverless: a SQL warehouse with serverless enabled (no cluster to size).</span>
+<span class="y">resources</span>:
+  <span class="y">sql_warehouses</span>:
+    <span class="y">bi_wh</span>: { <span class="y">name</span>: bi, <span class="y">cluster_size</span>: Small, <span class="y">enable_serverless_compute</span>: <span class="k">true</span> }
+  <span class="c"># Classic: a job cluster you size, running in your account's compute plane.</span>
+  <span class="y">jobs</span>:
+    <span class="y">etl</span>:
+      <span class="y">job_clusters</span>:
+        - <span class="y">job_cluster_key</span>: main
+          <span class="y">new_cluster</span>: { <span class="y">spark_version</span>: <span class="s">15.4.x-scala2.12</span>, <span class="y">node_type_id</span>: i3.xlarge, <span class="y">num_workers</span>: <span class="s">4</span> }</pre>
+
+  <h3>3 · Account → workspaces → metastore (Unity Catalog)</h3>
+  <p class="mech"><b>Mechanism:</b> one <strong>account</strong> holds many <strong>workspaces</strong>; UC is <strong>account-level</strong>, with <strong>one metastore per region</strong> that region's workspaces attach to. <b>Trade-off:</b> workspaces must match the metastore's region; isolate data at the <strong>catalog</strong> level.</p>
+  <pre class="code"><span class="c">-- UC governs every workspace via the 3-level namespace:</span>
+<span class="c">-- (metastore → catalog → schema → table)</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> prod_catalog.sales.orders;   <span class="c">-- catalog.schema.table</span>
+<span class="c">-- One regional metastore backs all workspaces in that region; isolate by catalog.</span></pre>
+
+  <h3>4 · Compute types — match the tool to the job</h3>
+  <p class="mech"><b>Mechanism:</b> <strong>all-purpose clusters</strong> (interactive dev), <strong>jobs clusters</strong> (ephemeral, per-run), <strong>SQL warehouses</strong> (BI/SQL), and <strong>serverless</strong> variants — all read the same UC data. <b>Trade-off:</b> wrong tool wastes money (always-on cluster for scheduled ETL; a cluster for BI).</p>
+  <pre class="code"><span class="c"># Right tool per workload (all read the same governed tables):</span>
+<span class="c">#   all-purpose cluster → interactive dev    (attach a notebook)</span>
+<span class="c">#   jobs cluster        → scheduled ETL      (ephemeral job_clusters)</span>
+<span class="c">#   SQL warehouse       → dashboards / BI SQL (resources.sql_warehouses)</span>
+<span class="c">#   serverless          → instant, low-ops    (enable_serverless_compute: true)</span></pre>
+
+  <h3>5 · How a query/job flows through the planes</h3>
+  <p class="mech"><b>Mechanism:</b> submit via the <strong>control plane</strong> → it uses <strong>compute-plane</strong> clusters/warehouses → those read/write your <strong>data in cloud storage</strong> (UC-governed) → results return to the UI. <b>Trade-off:</b> more moving parts than a single box, but each scales independently.</p>
+  <pre class="code">You ──(control plane: UI/API/schedule)──▶ provision compute
+        compute plane (classic VPC or serverless) ──reads/writes──▶ your cloud storage
+        UC governs access at every step ──▶ results back to the control-plane UI</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: classic vs serverless tabs -->
+<section id="compute">
+  <h2>Classic vs Serverless compute</h2>
+  <p class="hint">▸ click a tab</p>
+  <div class="tabs">
+    <button class="tab on" data-t="cl">Classic</button>
+    <button class="tab" data-t="sv">Serverless</button>
+  </div>
+  <div class="panel on" data-p="cl">
+    <div class="card"><strong>Classic</strong> — compute runs in <strong>your</strong> cloud account (VPC).
+    <ul><li>✅ Network isolation in your VPC; full control</li><li>❌ Minutes to start; you size &amp; manage clusters</li><li>🏦 Use for strict data-residency / no-egress needs</li></ul></div>
+  </div>
+  <div class="panel" data-p="sv">
+    <div class="card"><strong>Serverless</strong> — compute runs in <strong>Databricks'</strong> account.
+    <ul><li>✅ Starts in seconds; near-zero ops; pay-per-use</li><li>⚠️ Managed multi-layer isolation; availability varies by region/feature</li><li>🚀 Use for fast, bursty, low-ops workloads</li></ul></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Classic</th><th>Serverless</th></tr>
+    <tr><td>Compute runs in</td><td>Your account (VPC)</td><td class="win">Databricks' account</td></tr>
+    <tr><td>Startup</td><td>Minutes</td><td class="win">Seconds</td></tr>
+    <tr><td>Ops overhead</td><td>You manage clusters</td><td class="win">Near zero</td></tr>
+    <tr><td>Best for</td><td>Strict network control</td><td>Fast, bursty, low-ops</td></tr>
+  </table>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> picking the right compute model; explaining where data lives in a security review; reasoning about cost (idle clusters vs pay-per-use).</li>
+    <li><strong>Edge case:</strong> strict data-residency / no-egress requirements push to <strong>classic</strong> in your own VPC; serverless availability varies by region/feature.</li>
+    <li><strong>Limitation:</strong> the control plane is always Databricks-managed — not self-hostable. Don't delete workspace storage: it's tied to control-plane state and is unrecoverable.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Thinking Databricks "stores your data." It <strong>orchestrates</strong>; your tables live in <strong>your</strong> cloud storage (or serverless managed storage), governed by UC.</li>
+    <li>❌ Confusing <strong>workspace storage</strong> (notebooks/logs) with <strong>data storage</strong> (UC tables/Volumes).</li>
+    <li>❌ Assuming serverless = classic with less setup — the compute runs in a <strong>different account</strong> with different isolation &amp; networking.</li>
+    <li>❌ Expecting a workspace to attach to a metastore in <strong>another region</strong> — it must match the regional metastore.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/getting-started/high-level-architecture" target="_blank" rel="noopener">High-level architecture</a> ·
+  <a href="https://docs.databricks.com/aws/en/compute/serverless/" target="_blank" rel="noopener">Serverless compute</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/" target="_blank" rel="noopener">Unity Catalog</a> ·
+  <a href="https://docs.databricks.com/aws/en/compute/" target="_blank" rel="noopener">Compute types</a>
+  <p style="margin-top:10px">Topic 1.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 2 — tabs scoped to #compute
+document.querySelectorAll('#compute .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#compute .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#compute .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+// Diagram 1 (#planes) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

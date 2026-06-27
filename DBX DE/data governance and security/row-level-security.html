@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Row-Level Security (RLS) in Databricks</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2d3441;
+    --text:#e6edf3; --muted:#9aa7b4; --accent:#ff6b35; --accent2:#3fb950;
+    --blue:#58a6ff; --red:#f85149; --yellow:#e3b341; --code:#0b0f15;
+    --shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:linear-gradient(180deg,#0a0e14,#0d1117 240px);
+    color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6; padding:0 0 80px;
+  }
+  header{
+    padding:48px 24px 36px; text-align:center;
+    background:radial-gradient(1200px 300px at 50% -120px, rgba(255,107,53,.18), transparent);
+    border-bottom:1px solid var(--border);
+  }
+  header .kicker{color:var(--accent); font-weight:700; letter-spacing:.14em; font-size:.8rem; text-transform:uppercase}
+  header h1{margin:.3em 0 .2em; font-size:2.2rem}
+  header p{color:var(--muted); max-width:680px; margin:0 auto; font-size:1.05rem}
+  .wrap{max-width:920px; margin:0 auto; padding:0 24px}
+  section{margin-top:40px}
+  h2{font-size:1.5rem; border-left:4px solid var(--accent); padding-left:12px; margin-bottom:.4em}
+  h3{font-size:1.15rem; color:var(--blue); margin:1.4em 0 .4em}
+  p,li{color:#cdd6e0}
+  .lead{font-size:1.1rem; color:var(--text)}
+  .card{background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 22px; box-shadow:var(--shadow)}
+  code{background:var(--code); padding:.12em .4em; border-radius:5px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:.88em; color:#ffd9c2}
+  pre{background:var(--code); border:1px solid var(--border); border-radius:10px; padding:16px 18px; overflow:auto; font-size:.86rem}
+  pre code{background:none; padding:0; color:#c9d6e3}
+  .kw{color:#ff7b72} .fn{color:#d2a8ff} .str{color:#a5d6ff} .com{color:#8b949e; font-style:italic} .num{color:#79c0ff}
+  table{width:100%; border-collapse:collapse; margin-top:10px; font-size:.95rem}
+  th,td{border:1px solid var(--border); padding:10px 12px; text-align:left; vertical-align:top}
+  th{background:var(--panel2); color:var(--text)}
+  td{color:#cdd6e0}
+  .pill{display:inline-block; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px; letter-spacing:.03em}
+  .pill.rls{background:rgba(63,185,80,.16); color:var(--accent2); border:1px solid rgba(63,185,80,.4)}
+  .pill.ddm{background:rgba(88,166,255,.16); color:var(--blue); border:1px solid rgba(88,166,255,.4)}
+  .note{border-left:4px solid var(--yellow); background:rgba(227,179,65,.08); padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0}
+  .danger{border-left:4px solid var(--red); background:rgba(248,81,73,.08); padding:12px 16px; border-radius:0 8px 8px 0; margin:14px 0}
+  ol li,ul li{margin:.3em 0}
+
+  /* ---- interactive diagram ---- */
+  .demo{background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:22px; box-shadow:var(--shadow)}
+  .demo-controls{display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-bottom:18px}
+  .demo-controls label{display:block; font-size:.8rem; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:.05em}
+  select,button{font:inherit}
+  select{background:var(--panel2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:9px 12px; min-width:230px}
+  button{cursor:pointer; border:none; border-radius:8px; padding:10px 18px; font-weight:700}
+  .btn-run{background:var(--accent); color:#1a0f08}
+  .btn-run:hover{filter:brightness(1.08)}
+  .btn-ghost{background:transparent; color:var(--muted); border:1px solid var(--border)}
+  .btn-ghost:hover{color:var(--text)}
+  .stage{display:grid; grid-template-columns:1fr; gap:18px}
+  @media(min-width:760px){.stage{grid-template-columns:1.1fr .9fr}}
+  .panel-title{font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:8px}
+  .rowbox{border:1px solid var(--border); border-radius:10px; overflow:hidden}
+  .srow{display:grid; grid-template-columns:46px 1fr 92px 96px; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--border); transition:background .25s, opacity .35s, transform .35s}
+  .srow:last-child{border-bottom:none}
+  .srow .sid{color:var(--muted); font-variant-numeric:tabular-nums}
+  .srow .sregion{font-weight:600}
+  .srow .verdict{font-size:.74rem; font-weight:700; text-align:center; border-radius:6px; padding:3px 0; opacity:0}
+  .srow.eval{background:rgba(255,107,53,.10)}
+  .srow.pass .verdict{background:rgba(63,185,80,.2); color:var(--accent2); opacity:1}
+  .srow.fail .verdict{background:rgba(248,81,73,.18); color:var(--red); opacity:1}
+  .srow.hidden-row{opacity:.28}
+  .srow.removed{opacity:0; transform:translateX(18px); pointer-events:none}
+  .tag{font-size:.7rem; color:var(--muted)}
+  .maptable{font-size:.84rem; border-radius:10px; overflow:hidden; border:1px solid var(--border)}
+  .maptable .mrow{display:grid; grid-template-columns:1fr 80px; padding:8px 12px; border-bottom:1px solid var(--border)}
+  .maptable .mrow:last-child{border-bottom:none}
+  .maptable .mrow.me{background:rgba(88,166,255,.14)}
+  .maptable .mhead{background:var(--panel2); font-weight:700; color:var(--text)}
+  .who{font-size:.9rem; color:var(--muted); margin-bottom:10px}
+  .who b{color:var(--blue)}
+  .fnbox{margin-top:16px; background:var(--code); border:1px solid var(--border); border-radius:10px; padding:14px 16px; font-family:"SF Mono",Menlo,Consolas,monospace; font-size:.82rem}
+  .fnbox .hl{background:rgba(255,107,53,.22); border-radius:4px; padding:0 3px}
+  .resultline{margin-top:14px; font-size:.95rem; min-height:1.4em}
+  .resultline b{color:var(--accent2)}
+  .legend{display:flex; gap:18px; flex-wrap:wrap; margin-top:14px; font-size:.8rem; color:var(--muted)}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .dot{width:11px; height:11px; border-radius:3px; display:inline-block}
+  .dot.g{background:var(--accent2)} .dot.r{background:var(--red)}
+  footer{text-align:center; color:var(--muted); font-size:.85rem; margin-top:50px; padding-top:22px; border-top:1px solid var(--border)}
+  a{color:var(--accent)}
+  .src li{font-size:.9rem}
+</style>
+</head>
+<body>
+<header>
+  <div class="kicker">Databricks Data Engineering &middot; Data Access Control</div>
+  <h1>Row-Level Security (RLS)</h1>
+  <p>Same table, different eyes &mdash; each user sees only the <em>rows</em> they're allowed to see. Not masking values inside a column; hiding entire records.</p>
+</header>
+
+<div class="wrap">
+
+  <section>
+    <h2>The idea in one sentence</h2>
+    <div class="card">
+      <p class="lead">RLS means: <strong>same table, but each user only sees the rows they're allowed to see.</strong></p>
+      <p>You are <strong>not</strong> hiding values <em>inside</em> a column (that's masking) &mdash; you're <strong>restricting which whole rows</strong> come back. A manager for the East region queries the shared <code>stores</code> table and gets only East rows; the West manager runs the <em>same</em> query and gets only West rows.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>RLS vs Dynamic Data Masking</h2>
+    <table>
+      <tr><th></th><th><span class="pill ddm">Dynamic Data Masking</span></th><th><span class="pill rls">Row-Level Security</span></th></tr>
+      <tr><td><b>What it controls</b></td><td>Values <b>inside a column</b></td><td><b>Which rows</b> are returned</td></tr>
+      <tr><td><b>Effect</b></td><td>You see the row, but a field is hidden (<code>***-**-****</code>)</td><td>You never even see the row exists</td></tr>
+      <tr><td><b>Databricks feature</b></td><td>Column mask &mdash; <code>SET MASK</code></td><td>Row filter &mdash; <code>SET ROW FILTER</code></td></tr>
+      <tr><td><b>Function returns</b></td><td>A masked <b>value</b></td><td>A <b>BOOLEAN</b> (keep row / drop row)</td></tr>
+      <tr><td><b>Example</b></td><td>Hide SSN/salary from non-HR staff</td><td>East manager sees only East stores</td></tr>
+    </table>
+    <p style="margin-top:12px">Both are built from the same building block &mdash; a SQL function (UDF) registered in Unity Catalog. The difference is what the function returns.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE DIAGRAM ============ -->
+  <section>
+    <h2>Interactive: watch the filter run, row by row</h2>
+    <p>Pick who is logged in, then step the rows of the <code>stores</code> table through the row-filter function. Each row's <code>region</code> is checked against the mapping table for the current user. <span style="color:var(--accent2)"><b>TRUE</b></span> rows stay; <span style="color:var(--red)"><b>FALSE</b></span> rows get filtered out.</p>
+
+    <div class="demo">
+      <div class="demo-controls">
+        <div>
+          <label for="userSel">Who is logged in? <code>current_user()</code></label>
+          <select id="userSel">
+            <option value="east">east_owner@example.com (East)</option>
+            <option value="west">west_owner@example.com (West)</option>
+            <option value="north">north_owner@example.com (North)</option>
+            <option value="south">south_owner@example.com (South)</option>
+            <option value="ne">regional_lead@example.com (East + North)</option>
+            <option value="none">guest@example.com (no mapping)</option>
+          </select>
+        </div>
+        <button class="btn-run" id="runBtn">&#9654;&nbsp; Run query &amp; filter</button>
+        <button class="btn-ghost" id="resetBtn">Reset</button>
+      </div>
+
+      <div class="who" id="whoLine"></div>
+
+      <div class="stage">
+        <div>
+          <div class="panel-title">SELECT * FROM databricks_orange.silver.stores</div>
+          <div class="rowbox" id="rowbox"></div>
+          <div class="legend">
+            <span><span class="dot g"></span> Returned to user (TRUE)</span>
+            <span><span class="dot r"></span> Filtered out (FALSE / NULL)</span>
+          </div>
+        </div>
+        <div>
+          <div class="panel-title">arls_mapping &mdash; access-control list</div>
+          <div class="maptable" id="maptable"></div>
+          <div class="fnbox" id="fnbox"></div>
+        </div>
+      </div>
+
+      <div class="resultline" id="resultLine"></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it works (the mechanism)</h2>
+    <p>A <strong>row filter</strong> is a scalar SQL <strong>UDF</strong> (a reusable function you register in the catalog) that:</p>
+    <ul>
+      <li>Takes one or more <strong>columns of the row</strong> as input,</li>
+      <li>Returns a <strong>BOOLEAN</strong>,</li>
+      <li>Is evaluated <strong>once per row, at query time</strong>.</li>
+    </ul>
+    <div class="note"><b>The core rule:</b> if the function returns <code>FALSE</code> or <code>NULL</code>, the row is filtered out. Only <code>TRUE</code> rows are returned.</div>
+    <p>To decide "is this user allowed to see this region?", you use a <strong>mapping table</strong> (an access-control list) that records which user belongs to which region. The filter function looks the user up via <code>current_user()</code> &mdash; a built-in that returns the identity of whoever is running the query.</p>
+  </section>
+
+  <section>
+    <h2>Prerequisites &amp; the "groundwork" order</h2>
+    <ul>
+      <li><strong>Unity Catalog</strong> is required &mdash; this is a UC-only feature.</li>
+      <li><strong>Compute:</strong> a SQL warehouse, <em>or</em> Databricks Runtime <strong>12.2 LTS+</strong> (standard access mode), <em>or</em> <strong>15.4 LTS+</strong> (dedicated access mode). Older runtimes "fail secure" &mdash; they return <strong>no data</strong> rather than unfiltered data.</li>
+    </ul>
+    <p>Build it in this exact sequence:</p>
+    <ol>
+      <li>Create the <strong>mapping table</strong> and populate it.</li>
+      <li>Create the <strong>filter function</strong> (UDF).</li>
+      <li><strong>Apply</strong> it with <code>ALTER TABLE &hellip; SET ROW FILTER</code>.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>Step-by-step (runnable Spark SQL)</h2>
+
+    <h3>1 &middot; Create the mapping table</h3>
+<pre><code><span class="kw">CREATE TABLE</span> databricks_orange.silver.arls_mapping (
+  user_email <span class="kw">STRING</span>,
+  region     <span class="kw">STRING</span>
+);</code></pre>
+
+    <h3>2 &middot; Populate it (don't forget <code>VALUES</code>)</h3>
+<pre><code><span class="kw">INSERT INTO</span> databricks_orange.silver.arls_mapping <span class="kw">VALUES</span>
+  (<span class="str">'east_owner@example.com'</span>,  <span class="str">'East'</span>),
+  (<span class="str">'west_owner@example.com'</span>,  <span class="str">'West'</span>),
+  (<span class="str">'south_owner@example.com'</span>, <span class="str">'South'</span>),
+  (<span class="str">'north_owner@example.com'</span>, <span class="str">'North'</span>);</code></pre>
+
+    <h3>3 &middot; Build the intuition first</h3>
+    <p>Before writing the function, prove the lookup works. This returns <code>true</code>/<code>false</code> for whether <em>you</em> are mapped to a region:</p>
+<pre><code><span class="kw">SELECT</span> <span class="fn">EXISTS</span> (
+  <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> databricks_orange.silver.arls_mapping
+  <span class="kw">WHERE</span> user_email = <span class="fn">current_user</span>()
+    <span class="kw">AND</span> <span class="fn">lower</span>(region) = <span class="fn">lower</span>(<span class="str">'East'</span>)
+);</code></pre>
+    <p><code>EXISTS(&hellip;)</code> collapses "did I find a matching row?" into a clean <code>TRUE</code>/<code>FALSE</code> &mdash; exactly what a row filter needs.</p>
+
+    <h3>4 &middot; Create the filter function</h3>
+<pre><code><span class="kw">CREATE OR REPLACE FUNCTION</span> databricks_orange.silver.arls_region_filter(p_region <span class="kw">STRING</span>)
+<span class="kw">RETURN</span> <span class="fn">EXISTS</span> (
+  <span class="kw">SELECT</span> <span class="num">1</span> <span class="kw">FROM</span> databricks_orange.silver.arls_mapping
+  <span class="kw">WHERE</span> user_email = <span class="fn">current_user</span>()
+    <span class="kw">AND</span> <span class="fn">lower</span>(region) = <span class="fn">lower</span>(p_region)   <span class="com">-- case-insensitive match</span>
+);</code></pre>
+    <p>The return type (<code>BOOLEAN</code>) is inferred from <code>EXISTS</code>, so you write <code>RETURN EXISTS(&hellip;)</code> &mdash; not <code>RETURN SELECT &hellip;</code>. A scalar function returns a single value, not a result set.</p>
+
+    <h3>5 &middot; Apply the filter to the table</h3>
+<pre><code><span class="kw">ALTER TABLE</span> databricks_orange.silver.stores
+<span class="kw">SET ROW FILTER</span> databricks_orange.silver.arls_region_filter <span class="kw">ON</span> (region);</code></pre>
+
+    <h3>6 &middot; Query the table</h3>
+<pre><code><span class="kw">SELECT</span> * <span class="kw">FROM</span> databricks_orange.silver.stores;
+<span class="com">-- East manager -> only East stores; everything else is invisible</span></code></pre>
+  </section>
+
+  <section>
+    <h2>What happens at query time</h2>
+    <div class="card">
+      <p>For <strong>every row</strong> Databricks reads from <code>stores</code>:</p>
+      <ol>
+        <li>It passes that row's <code>region</code> into <code>arls_region_filter(p_region)</code>.</li>
+        <li>The function runs <code>EXISTS(&hellip; user_email = current_user() AND region = p_region &hellip;)</code> against the <strong>mapping table</strong>.</li>
+        <li>User <strong>is</strong> mapped to that region &rarr; <code>TRUE</code> &rarr; row returned.</li>
+        <li>User is <strong>not</strong> &rarr; <code>FALSE</code> &rarr; row silently dropped.</li>
+      </ol>
+      <p>The filter runs the moment the row is fetched, so unauthorized rows never reach the result set. To change access, just edit the <strong>mapping table</strong> &mdash; no code changes, no re-applying the filter.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>Common mistakes &amp; gotchas</h2>
+    <ul>
+      <li><strong>Only one row filter per table.</strong> Need multiple conditions? Put them all inside the one function.</li>
+      <li><strong>Drop in the right order.</strong> Run <code>ALTER TABLE &hellip; DROP ROW FILTER</code> <em>before</em> <code>DROP FUNCTION</code>.</li>
+      <li><strong>Case sensitivity bites.</strong> If the mapping stores <code>'East'</code> but the column is <code>'east'</code>, a plain <code>=</code> won't match. Normalize both sides with <code>lower()</code>.</li>
+      <li><strong><code>NULL</code> filters the row out</strong>, same as <code>FALSE</code>.</li>
+      <li><strong>Type mismatches can silently become <code>NULL</code></strong> (with ANSI mode off) &rarr; rows unexpectedly dropped. Keep parameter types matching column types.</li>
+      <li><strong><code>REPLACE TABLE</code> keeps the filter</strong> &mdash; by design.</li>
+    </ul>
+    <div class="danger"><b>Inaccessible-table trap:</b> if you drop the function before dropping the row filter, the table becomes unreadable. Fix it with <code>ALTER TABLE &lt;table&gt; DROP ROW FILTER;</code> to clear the orphaned reference.</div>
+  </section>
+
+  <section>
+    <h2>Sources</h2>
+    <ul class="src">
+      <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/manually-apply" target="_blank">Manually apply row filters and column masks &mdash; Databricks</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-row-filter" target="_blank">ROW FILTER clause &mdash; Databricks SQL reference</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/" target="_blank">Row filters and column masks (overview) &mdash; Databricks</a></li>
+    </ul>
+  </section>
+
+  <footer>Databricks Data Engineering &middot; Personal learning tool &middot; Verified against docs.databricks.com (current as of 2026)</footer>
+</div>
+
+<script>
+  // ---- data model ----
+  var USERS = {
+    east:  {email:"east_owner@example.com",  regions:["East"]},
+    west:  {email:"west_owner@example.com",  regions:["West"]},
+    north: {email:"north_owner@example.com", regions:["North"]},
+    south: {email:"south_owner@example.com", regions:["South"]},
+    ne:    {email:"regional_lead@example.com", regions:["East","North"]},
+    none:  {email:"guest@example.com", regions:[]}
+  };
+  var MAPPING = [
+    {email:"east_owner@example.com",  region:"East"},
+    {email:"west_owner@example.com",  region:"West"},
+    {email:"south_owner@example.com", region:"South"},
+    {email:"north_owner@example.com", region:"North"},
+    {email:"regional_lead@example.com", region:"East"},
+    {email:"regional_lead@example.com", region:"North"}
+  ];
+  var STORES = [
+    {id:5,  name:"Store 5",  region:"East"},
+    {id:8,  name:"Store 8",  region:"West"},
+    {id:10, name:"Store 10", region:"East"},
+    {id:11, name:"Store 11", region:"North"},
+    {id:12, name:"Store 12", region:"South"},
+    {id:13, name:"Store 13", region:"East"},
+    {id:21, name:"Store 21", region:"West"},
+    {id:24, name:"Store 24", region:"North"}
+  ];
+
+  var userSel = document.getElementById("userSel");
+  var rowbox  = document.getElementById("rowbox");
+  var maptable= document.getElementById("maptable");
+  var fnbox   = document.getElementById("fnbox");
+  var whoLine = document.getElementById("whoLine");
+  var resultLine = document.getElementById("resultLine");
+  var runBtn  = document.getElementById("runBtn");
+  var resetBtn= document.getElementById("resetBtn");
+  var running = false;
+
+  function currentUser(){ return USERS[userSel.value]; }
+
+  function renderWho(){
+    var u = currentUser();
+    whoLine.innerHTML = "current_user() &rarr; <b>" + u.email + "</b>";
+  }
+
+  function renderMapping(){
+    var u = currentUser();
+    var html = '<div class="mrow mhead"><div>user_email</div><div>region</div></div>';
+    MAPPING.forEach(function(m){
+      var mine = (m.email === u.email);
+      html += '<div class="mrow'+(mine?' me':'')+'"><div>'+m.email+'</div><div>'+m.region+'</div></div>';
+    });
+    maptable.innerHTML = html;
+  }
+
+  function renderFn(region){
+    var u = currentUser();
+    var r = region ? region : "p_region";
+    fnbox.innerHTML =
+      'EXISTS( SELECT 1 FROM arls_mapping<br>'+
+      '&nbsp;&nbsp;WHERE user_email = <span class="hl">'+u.email+'</span><br>'+
+      '&nbsp;&nbsp;AND lower(region) = lower(<span class="hl">'+r+'</span>) )';
+  }
+
+  function renderRows(){
+    var html = '';
+    STORES.forEach(function(s){
+      html += '<div class="srow" data-id="'+s.id+'">'+
+                '<div class="sid">#'+s.id+'</div>'+
+                '<div><span class="sregion">'+s.region+'</span> <span class="tag">'+s.name+'</span></div>'+
+                '<div class="tag">region</div>'+
+                '<div class="verdict"></div>'+
+              '</div>';
+    });
+    rowbox.innerHTML = html;
+  }
+
+  function resetDemo(){
+    renderWho(); renderMapping(); renderFn(null); renderRows();
+    resultLine.innerHTML = "";
+  }
+
+  function isAllowed(region){
+    var u = currentUser();
+    return u.regions.map(function(x){return x.toLowerCase();}).indexOf(region.toLowerCase()) !== -1;
+  }
+
+  function sleep(ms){ return new Promise(function(res){ setTimeout(res, ms); }); }
+
+  async function runQuery(){
+    if(running) return;
+    running = true; runBtn.disabled = true; resetBtn.disabled = true;
+    resetDemo();
+    var rows = Array.prototype.slice.call(rowbox.querySelectorAll(".srow"));
+    var kept = 0;
+    for(var i=0;i<STORES.length;i++){
+      var s = STORES[i], el = rows[i];
+      el.classList.add("eval");
+      renderFn("'"+s.region+"'");
+      resultLine.innerHTML = "Evaluating row #"+s.id+" &mdash; region <b style='color:var(--text)'>"+s.region+"</b> &hellip;";
+      await sleep(650);
+      var pass = isAllowed(s.region);
+      el.classList.remove("eval");
+      var v = el.querySelector(".verdict");
+      if(pass){ el.classList.add("pass"); v.textContent="TRUE"; kept++; }
+      else { el.classList.add("fail"); v.textContent="FALSE"; }
+      await sleep(500);
+    }
+    // fade out the filtered rows
+    await sleep(300);
+    rows.forEach(function(el){ if(el.classList.contains("fail")) el.classList.add("removed"); });
+    renderFn(null);
+    var u = currentUser();
+    if(kept===0){
+      resultLine.innerHTML = "<b style='color:var(--red)'>0 rows returned.</b> "+u.email+" is mapped to no region &mdash; every row evaluates FALSE.";
+    } else {
+      resultLine.innerHTML = "<b>"+kept+" row"+(kept>1?"s":"")+" returned</b> to "+u.email+" &mdash; only the region(s) they're mapped to.";
+    }
+    running = false; runBtn.disabled = false; resetBtn.disabled = false;
+  }
+
+  userSel.addEventListener("change", resetDemo);
+  runBtn.addEventListener("click", runQuery);
+  resetBtn.addEventListener("click", function(){ if(!running) resetDemo(); });
+  resetDemo();
+</script>
+</body>
+</html>

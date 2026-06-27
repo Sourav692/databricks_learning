@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 2 - Architecture & Default Connectivity, Simple Mode</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.65;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:22px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--db-navy);font-weight:700;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 14px 22px;} li{margin-bottom:7px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:700;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .callout p{margin:0;font-size:14px;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0;}
+  .card{background:var(--db-light);border:1px solid var(--db-border);border-top:3px solid var(--db-blue);
+        border-radius:10px;padding:15px;}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--db-navy);}
+  .card p{font-size:13px;margin:0;color:#4A5860;}
+  .card.orange{border-top-color:var(--db-orange);}
+  .card.green{border-top-color:var(--db-green);}
+  .card.gray{border-top-color:var(--db-gray);}
+
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:390px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.blue{stroke:var(--db-blue);stroke-width:2.4;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:700;}
+  .alabel.cold{fill:var(--db-green);font-weight:700;}
+  .alabel.blue{fill:var(--db-blue);font-weight:700;}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+  .flow-box{background:#fff;border:1px solid var(--db-border);border-left:4px solid var(--db-orange);
+           border-radius:8px;padding:16px 20px;margin-top:14px;}
+  .flow-box h4{margin-bottom:8px;color:var(--db-navy);font-size:15px;}
+  .flow-box ol{margin:0 0 8px 20px;}
+  .flow-box li{margin-bottom:5px;font-size:13.5px;}
+  .flow-box .flow-bottom{margin:0;font-size:13.5px;color:#2A3439;}
+
+  figure{margin:14px 0;}
+  figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks - Networking &amp; Security - Simple Mode</div>
+  <h1>The Two Planes and Three Doors, Explained Simply</h1>
+  <div class="subtitle">A plain-English version of Lesson 2. The goal is to draw the architecture on a
+    whiteboard: what runs where, who owns it, which way connections point, and where data lives. Once you
+    can say that, every later control is just "harden one hop on this map."</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">Who owns what</span>
+    <span class="badge">Customer talk-track</span>
+    <span class="badge">No port memorization</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="planes">Control vs Compute</button>
+  <button data-tab="boundary">Secure Boundary</button>
+  <button data-tab="backbone">Backbone vs Internet</button>
+  <button data-tab="paths">Three Paths</button>
+  <button data-tab="deploy">Deployment &amp; Storage</button>
+  <button data-tab="field">Field Notes</button>
+</nav>
+
+<section class="panel active" id="overview">
+  <h2>The One Mental Model</h2>
+  <p>Think of Azure Databricks as <strong>an airport with exactly three doors</strong>.</p>
+
+  <div class="cards">
+    <div class="card orange"><h3>Control plane</h3><p>The control tower. Databricks runs it in their own subscription. It directs; it never holds your cargo.</p></div>
+    <div class="card"><h3>Compute plane</h3><p>The runway and aircraft where your data is processed.</p></div>
+    <div class="card"><h3>Classic</h3><p>Your runway at your airport - compute in your subscription and VNet.</p></div>
+    <div class="card green"><h3>Serverless</h3><p>Rented runway at Databricks' airport - no VNet of yours.</p></div>
+    <div class="card gray"><h3>Door ①</h3><p>User to Databricks - the front door.</p></div>
+    <div class="card gray"><h3>Door ②</h3><p>Compute to control - the staff intercom, outbound only.</p></div>
+    <div class="card gray"><h3>Door ③</h3><p>Compute to storage - the loading dock.</p></div>
+    <div class="card green"><h3>Your data</h3><p>Lives in your ADLS Gen2 behind Unity Catalog. Never flows through the control tower.</p></div>
+  </div>
+
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks two-plane architecture: user to control plane, classic compute outbound to the SCC relay, compute to ADLS Gen2, and serverless plane reaching control and storage over the backbone">
+    <figcaption class="caption">The same architecture map, used as a story: two planes, three doors, and data that stays in your storage.</figcaption>
+  </figure>
+
+  <div class="callout tip">
+    <h4>Interactive diagrams live in each tab</h4>
+    <p>Each tab below has its own clickable whiteboard: <strong>Two planes</strong> &rarr; <em>Control vs Compute</em>, <strong>Three doors</strong> &rarr; <em>Three Paths</em>, <strong>Deployment map</strong> &rarr; <em>Deployment &amp; Storage</em>. Open a tab, then click a box to see what it does in plain English.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Customer data stays in the customer's storage and is processed in the compute plane; the control plane holds <strong>metadata and orchestration only</strong>. Classic compute to control and all serverless traffic ride the <strong>Microsoft backbone</strong> - not the public internet."</p>
+  </div>
+</section>
+
+<section class="panel" id="planes">
+  <h2>Control Plane vs Compute Plane: Who Owns What</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Picture a delivery company: a <strong>dispatch office</strong> takes orders and tells drivers where to go, and the <strong>trucks</strong> actually carry the goods. Databricks splits the platform the same way - a brain that gives orders and muscle that does the heavy lifting - and the two live in different places owned by different people.</p>
+  </div>
+
+  <ul>
+    <li><strong>Control plane (the brain)</strong> - the dispatch office that directs work; Databricks runs it.</li>
+    <li><strong>Compute plane (the muscle)</strong> - the trucks that process your data; this is where Spark actually runs.</li>
+    <li><strong>Subscription</strong> - an Azure account that owns and pays for resources; "whose subscription" just means whose bill and whose control.</li>
+  </ul>
+
+  <p>Two separate sets of machines, run by two parties, in two subscriptions.</p>
+  <ul>
+    <li><strong>Control plane = the brains.</strong> Web UI, REST APIs, job/cluster managers, Unity Catalog metadata and access decisions, and the SCC relay. Databricks owns and runs it. You get <strong>no network knobs inside it</strong>.</li>
+    <li><strong>Compute plane = the muscle.</strong> Where clusters and SQL warehouses actually run Spark. The only real difference between flavors is whose subscription the VMs live in.</li>
+  </ul>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see who owns it and what runs there.</p>
+  <div class="diagram-block" data-view="planes"></div>
+
+  <h3>How the brain runs the muscle (without dialing in)</h3>
+  <p>If the two planes are separate machines in separate subscriptions, how does the control plane "run this" on compute it can't connect into? Through a <strong>reverse tunnel</strong> via the <strong>SCC relay</strong> (which lives in the control plane):</p>
+  <ol>
+    <li><strong>The compute node dials out first.</strong> At launch each No-Public-IP cluster VM opens one <strong>outbound 443</strong> connection to the SCC relay - never the other way around (this is Door &#9313;).</li>
+    <li><strong>The connection is held open.</strong> The control plane then pushes run / scale / terminate commands <strong>back down that already-open tunnel</strong>.</li>
+    <li>The direction of <em>connection setup</em> (outbound, from compute) is not the direction of <em>commands</em> (control plane &rarr; compute). That is how "the brain directs the muscle" with <strong>no inbound port</strong> on your network.</li>
+  </ol>
+
+  <div class="callout key">
+    <h4>Control travels the tunnel; data does not</h4>
+    <p>The relay carries <strong>orchestration only</strong> - "run this," logs, status. Your business data moves <strong>directly</strong> between the compute plane and ADLS Gen2 (Door &#9314;), never through the control plane. Serverless reaches the control plane over the Microsoft backbone + TLS instead - no relay, because there is no VNet of yours. (Full mechanism on the <strong>Secure Boundary</strong> tab.)</p>
+  </div>
+
+  <h3>Why the plane decides which toolbox is on the table</h3>
+  <p>In <strong>classic</strong>, compute is in your VNet, so you can attach an NSG, a UDR, a firewall, or a Private Endpoint. In <strong>serverless</strong>, there is no VNet of yours, so none of those apply. That is exactly why <strong>NCC</strong> (Network Connectivity Configuration) exists - the serverless answer to "VNet controls" (Stage 5).</p>
+
+  <table>
+    <thead><tr><th>Dimension</th><th>Classic</th><th>Serverless</th></tr></thead>
+    <tbody>
+      <tr><td>Runs in</td><td>Your subscription / VNet</td><td>Databricks-owned subscription</td></tr>
+      <tr><td>Network you control</td><td>The VNet (managed or injected)</td><td>None - no customer VNet</td></tr>
+      <tr><td>VMs visible to you</td><td>Yes (in a managed RG)</td><td>No</td></tr>
+      <tr><td>Public IPs on compute</td><td>No (NPIP)</td><td>No</td></tr>
+      <tr><td>Secure egress with</td><td>NSG / UDR / NAT / Firewall / Private Endpoint</td><td><strong>NCC</strong> + network policies</td></tr>
+      <tr><td>Startup</td><td>Minutes (VMs provision)</td><td>Seconds (pre-warmed)</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"Two planes. Databricks runs the brain in its own subscription; your data is processed in the compute plane and never leaves your storage. Classic puts compute in your VNet so you own the network controls; serverless trades that VNet for speed and uses NCC instead."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Portal naming gotcha</h4>
+    <p>A classic workspace is labelled a <strong>"Hybrid workspace"</strong> in the Azure Portal (CLI <code>--compute-mode Hybrid</code>). "Hybrid" means classic compute in your subscription - it does <em>not</em> mean hybrid-cloud.</p>
+  </div>
+</section>
+
+<section class="panel" id="boundary">
+  <h2>The Secure Boundary: Connections Point Outward</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of your compute as a house with <strong>no doorbell on the outside</strong> - no one can knock and be let in. Instead, the house calls the office first, and the office only ever talks back on that call it already answered. So the compute always starts the conversation; nothing from outside can start one with it.</p>
+  </div>
+
+  <ul>
+    <li><strong>No inbound ports</strong> - nothing on the internet can open a connection <em>into</em> your compute (no doorbell).</li>
+    <li><strong>Outbound / reverse connection</strong> - the cluster dials <em>out</em> first, and replies come back on that same open line.</li>
+    <li><strong>SCC relay</strong> - the "switchboard" in the control plane that the cluster calls, so the brain can send commands down the line it answered.</li>
+  </ul>
+
+  <p>The platform's single most important security property is "<strong>no inbound ports</strong>." It is not magic - it is a <strong>reversed connection</strong>.</p>
+
+  <h3>How it works with SCC / No Public IP (the default)</h3>
+  <ol>
+    <li>Cluster VMs have <strong>no public IPs</strong>; your VNet has <strong>no open inbound ports</strong>. Nothing on the internet - or the control plane - can dial into a cluster.</li>
+    <li>So how does "start this job" arrive? <strong>The cluster dials out first.</strong> At startup, each cluster opens an <strong>outbound</strong> connection on <strong>port 443</strong> to the <strong>SCC relay</strong>, forming a reverse tunnel.</li>
+    <li>The control plane sends instructions <strong>back down that already-open tunnel</strong>. It never initiates inbound.</li>
+  </ol>
+
+  <div class="callout key">
+    <h4>The phone analogy</h4>
+    <p>You call support; they answer on your open line. They can never call your phone. That is why "no inbound ports" is a consequence of reversing the connection, not a feature you toggle.</p>
+  </div>
+
+  <h3>Serverless reaches the same property differently</h3>
+  <p>Serverless VMs also have <strong>no public IPs</strong>, and compute-to-control is <strong>always over the Microsoft backbone</strong> with TLS. There is no SCC relay because there is no VNet of yours.</p>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"'No inbound ports' is not a feature we toggle - it is a consequence of reversing the connection. The cluster dials out to the relay on 443; the control plane only ever answers down that tunnel. Nothing outside can open a connection to your compute."</p>
+  </div>
+
+  <div class="callout tip">
+    <h4>Stable egress IP</h4>
+    <p>For classic, route egress through an <strong>Azure NAT Gateway</strong> so partners can allowlist a fixed IP. Serverless egress IPs are dynamic - pivot to the <code>AzureDatabricksServerless</code> service tag or NCC instead.</p>
+  </div>
+</section>
+
+<section class="panel" id="backbone">
+  <h2>Backbone vs Internet: The "Is Our Data On The Internet?" Talk</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>There are two ways to drive across town: the <strong>public roads</strong> (the open internet) that anyone can use, or Microsoft's own <strong>private toll road</strong> (the backbone) that only Azure traffic rides. Most Databricks traffic is already on the private toll road by default - it never touches the public roads.</p>
+  </div>
+
+  <ul>
+    <li><strong>Public internet</strong> - the shared, open roads anyone can travel; what auditors worry about.</li>
+    <li><strong>Microsoft backbone</strong> - Microsoft's private global network; Azure-to-Azure traffic stays on it.</li>
+    <li><strong>"Public IP"</strong> - here it just means an address reachable <em>over the backbone</em>, not necessarily exposed to the open internet.</li>
+  </ul>
+
+  <p>The <strong>Microsoft backbone</strong> is Microsoft's private global network. Azure-to-Azure traffic rides it <strong>without ever touching the public internet</strong>.</p>
+
+  <p>A lot of Databricks traffic is already off the public internet by default:</p>
+  <ul>
+    <li><strong>All</strong> classic compute-to-control-plane traffic rides the backbone - <strong>even with SCC disabled</strong>.</li>
+    <li><strong>All</strong> serverless traffic rides the backbone.</li>
+  </ul>
+
+  <div class="callout key">
+    <h4>Important idea</h4>
+    <p>"Public IP" here means <em>routable over the backbone</em>, not <em>exposed to the open internet</em>. Private Link removes the public-IP <strong>hop</strong> the auditor cares about. It does not "get you off the internet," because you mostly already are.</p>
+  </div>
+
+  <h3>What "back-end Private Link removes the public-IP hop" means</h3>
+  <p>The back-end path is <strong>compute &rarr; control plane</strong> (Door &#9313;, the cluster dialing the SCC relay on 443). SCC and back-end Private Link remove public IPs from <strong>two different ends</strong> of that same connection:</p>
+  <table>
+    <thead><tr><th>Which end</th><th>Removed by</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Source</strong> - your cluster VM</td><td><strong>SCC / No Public IP</strong></td><td>VM has no public IP and no inbound port; it only dials out.</td></tr>
+      <tr><td><strong>Destination</strong> - the relay endpoint</td><td><strong>Back-end Private Link</strong></td><td>Replaces the relay's <strong>public</strong> endpoint with a <strong>Private Endpoint (<code>databricks_ui_api</code>) inside your VNet</strong>.</td></tr>
+    </tbody>
+  </table>
+  <p>With SCC alone, your VM has no public IP, <strong>but the address it dials is still the relay's public IP</strong> (over the backbone) - which is exactly why you keep the <code>AzureDatabricks</code> service tag in your egress allowlist. Back-end Private Link puts that relay behind a private IP in your own VNet, so the outbound 443 connection <strong>never targets a public address at all</strong>. That last public-IP hop is gone.</p>
+
+  <div class="callout tip">
+    <h4>The consequence</h4>
+    <p>Add back-end Private Link and you <strong>no longer need the <code>AzureDatabricks</code> egress tag</strong> for the relay - there is nothing public to allow out to. SCC handles the <strong>source</strong>, back-end PL handles the <strong>destination</strong>; together the whole compute&rarr;control path is private on both ends.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"A lot is already off the public internet by default. Private Link and NCC just remove the last public-IP hop the auditor cares about. So let's not over-buy Private Link you don't actually need."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks if you skip this</h4>
+    <p>Customers over-buy Private Link (per-GB cost, Premium prerequisite, DNS work) to solve a problem they did not have.</p>
+  </div>
+</section>
+
+<section class="panel" id="paths">
+  <h2>The Three Connectivity Paths</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of one building with exactly three openings: a <strong>front door</strong> for visitors, a <strong>staff intercom</strong> to call head office, and a <strong>loading dock</strong> for goods. Databricks has the same three - and almost every security control just locks down one of them.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card"><h3>Front door</h3><p>User to Databricks - people signing in or running queries against the workspace.</p></div>
+    <div class="card orange"><h3>Staff intercom</h3><p>Compute to control - clusters phoning head office to be told what to do.</p></div>
+    <div class="card green"><h3>Loading dock</h3><p>Compute to storage - clusters reading and writing your actual data.</p></div>
+  </div>
+
+  <p>Secure a building and you ask exactly three questions: who comes in the front door, how staff reach head office, and how the loading dock is locked. Same three for Databricks - and almost every control protects one of them.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see what travels through that door and how it is secured.</p>
+  <div class="diagram-block" data-view="doors"></div>
+
+  <table>
+    <thead><tr><th>#</th><th>Path</th><th>Who talks to whom</th><th>Analogy</th></tr></thead>
+    <tbody>
+      <tr><td><strong>①</strong></td><td>User to Databricks (front-end)</td><td>Browser, BI (JDBC/ODBC), REST/CLI to the workspace URL</td><td>Front door</td></tr>
+      <tr><td><strong>②</strong></td><td>Compute to Control plane (back-end)</td><td>Cluster phoning home to be managed</td><td>Staff intercom</td></tr>
+      <tr><td><strong>③</strong></td><td>Compute to Storage (data path)</td><td>Cluster reading/writing your ADLS Gen2 data</td><td>Loading dock</td></tr>
+    </tbody>
+  </table>
+
+  <h3>How each door hardens</h3>
+  <ul>
+    <li><strong>Path ① (front door)</strong> is identical for classic and serverless - always to the control plane over HTTPS 443. Hardens from open public, to <strong>IP access lists</strong>, to <strong>front-end Private Link</strong> with public access disabled.</li>
+    <li><strong>Path ② (intercom)</strong> differs most by plane. Classic = SCC relay, outbound 443; <strong>back-end Private Link</strong> replaces the public-IP hop. Serverless = always backbone + TLS, no SCC.</li>
+    <li><strong>Path ③ (loading dock)</strong> is scrutinized most. Classic to ADLS hardens from public endpoint, to <strong>storage firewall + Service Endpoint</strong> (free, backbone-private), to <strong>Private Endpoint</strong> (private IP, per-GB cost). Serverless to ADLS uses <strong>NCC</strong>.</li>
+  </ul>
+
+  <table>
+    <thead><tr><th></th><th>① User to DBX</th><th>② Compute to Control</th><th>③ Compute to Storage</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Direction</strong></td><td>Inbound to control plane</td><td>Outbound from compute (SCC reverses it)</td><td>Outbound from compute</td></tr>
+      <tr><td><strong>Classic control</strong></td><td>IP access list / front-end PL</td><td>SCC + VNet injection, back-end PL</td><td>Storage firewall + Service/Private Endpoint</td></tr>
+      <tr><td><strong>Serverless control</strong></td><td>Same (front-end PL / IP ACL)</td><td>Managed backbone + TLS (no SCC)</td><td><strong>NCC</strong> service tag / NCC PE</td></tr>
+      <tr><td><strong>Key port</strong></td><td>443</td><td>443 (SCC)</td><td>443 to storage</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"There are only three traffic paths: users in, clusters to control, clusters to data. We secure each one independently. When something breaks, which path failed tells us which control to inspect."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Time-sensitive (verify)</h4>
+    <p>By <strong>2026-06-09</strong>, a storage account that allowlists serverless must onboard to an <strong>Azure Network Security Perimeter (NSP)</strong> and allow the <code>AzureDatabricksServerless.&lt;region&gt;</code> service tag - the older "allow serverless subnet IDs" pattern is retiring.</p>
+  </div>
+</section>
+
+<section class="panel" id="deploy">
+  <h2>Deployment &amp; Workspace Storage</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>When you create a workspace, Azure drops the pieces into two folders: <strong>your folder</strong>, which you fully control, and a <strong>Databricks-run folder</strong> you can look in but should not touch. And there are two separate sets of keys - one for the Azure resource, a different one for governing the data - so holding one does not give you the other.</p>
+  </div>
+
+  <ul>
+    <li><strong>Resource group</strong> - an Azure folder that groups related resources together.</li>
+    <li><strong>Managed RG</strong> - the folder Databricks creates and runs for you; view it, but do not edit it (lock it).</li>
+    <li><strong>Metastore</strong> - the central catalog that decides who can see which data, one per region.</li>
+    <li><strong>Azure RBAC vs account admin</strong> - Azure roles create the workspace resource; a separate Databricks account admin governs the data. Being Azure Owner does not make you a Databricks admin.</li>
+  </ul>
+
+  <p>Azure Databricks is a <strong>first-party Azure service</strong> (<code>Microsoft.Databricks/workspaces</code>) - sold, billed, and RBAC'd by Azure itself. One <code>create</code> lands resources in <strong>two resource groups</strong>.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see who owns it after a single workspace create.</p>
+  <div class="diagram-block" data-view="deploy"></div>
+
+  <table>
+    <thead><tr><th>Resource group</th><th>What it holds</th><th>Who edits it</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Your RG</strong></td><td>The <code>Microsoft.Databricks/workspaces</code> object</td><td>You (Azure RBAC, Policy, locks, tags)</td></tr>
+      <tr><td><strong>Managed RG</strong></td><td>Workspace storage account, managed identity, managed VNet (if not injected), cluster disks</td><td>Databricks-managed - <strong>viewable, not editable. Lock it.</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>The governance spine</h3>
+  <p>The <strong>account to workspace to metastore</strong> spine is the backbone every later lesson hangs off:</p>
+  <ul>
+    <li><strong>Account</strong> - identity, billing, Unity Catalog metastores. Holds many workspaces.</li>
+    <li><strong>Workspace</strong> - the runtime/collaboration unit, in one region.</li>
+    <li><strong>Metastore</strong> - account-level, <strong>regional</strong> governance root. <strong>One per region</strong>, shared by that region's workspaces.</li>
+  </ul>
+
+  <table>
+    <thead><tr><th>Concern</th><th>Workspace storage / DBFS root</th><th>Unity Catalog + ADLS Gen2</th></tr></thead>
+    <tbody>
+      <tr><td>Governance</td><td>Workspace-scoped, coarse</td><td>Central metastore, fine-grained grants</td></tr>
+      <tr><td>Lineage &amp; audit</td><td>None for raw paths</td><td>Full lineage + <code>system.access</code> audit</td></tr>
+      <tr><td>Status</td><td>Deprecated / legacy</td><td>Recommended, GA</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"Housekeeping goes in workspace storage; governed data goes in ADLS Gen2 behind Unity Catalog - never the DBFS root. And there are two role systems: Azure RBAC creates the workspace resource, but a Databricks account admin governs the account and metastore. Being Azure Owner does not make you a Databricks account admin."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Two deadlines and a danger</h4>
+    <p><strong>Standard tier is EOL 2026-10-01</strong> - treat Premium as baseline (Private Link, CMK, IP ACLs, CSP are Premium-only). And deleting the workspace storage account makes the workspace <strong>unrecoverable</strong> - lock the managed RG.</p>
+  </div>
+</section>
+
+<section class="panel" id="field">
+  <h2>Field Notes: Symptom to First Thought</h2>
+  <p>Do not start by memorizing ports or service tags. Start by asking which plane, which direction, and which of the three doors is involved.</p>
+
+  <table>
+    <thead><tr><th>Symptom</th><th>First Thing To Think</th></tr></thead>
+    <tbody>
+      <tr><td>Clusters stuck "Pending" on a fresh VNet</td><td>Is there outbound egress (NAT Gateway / UDR to firewall)? New VNets have no default outbound after 2026-03-31.</td></tr>
+      <tr><td>"We see a public IP" panic</td><td>Check the cluster VM in the managed RG - under NPIP the Public IP field is empty.</td></tr>
+      <tr><td>Intermittent control-plane loss after firewall lockdown</td><td>Did they allowlist the SCC relay by raw IP instead of FQDN?</td></tr>
+      <tr><td>Serverless can't reach firewalled storage</td><td>Is the NCC bound, with the <code>AzureDatabricksServerless.&lt;region&gt;</code> service tag or NCC PE allowed?</td></tr>
+      <tr><td>"Private now" but ADLS still public</td><td>Path ③ forgotten - is storage still "Enabled from all networks"?</td></tr>
+      <tr><td>Jobs/notebooks fail on <code>dbfs:/</code> paths</td><td>New accounts ship without DBFS root - migrate to a UC volume / external location.</td></tr>
+      <tr><td>"I'm Owner but can't admin the account/metastore"</td><td>Wrong role system - Azure RBAC creates the resource; a Databricks account admin governs the account.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The architect one-liner</div>
+    <div class="quote">"Two planes: Databricks runs the brain in its own subscription; your data is processed in the compute plane and never leaves your storage. There are only three traffic paths - users in, clusters to control, clusters to data - and we secure each one independently. A lot is already off the public internet by default; Private Link and NCC just remove the last public-IP hop the auditor cares about."</div>
+  </div>
+
+  <h3>The seven questions</h3>
+  <ol>
+    <li>Which plane is the compute - classic (your VNet) or serverless (no VNet)?</li>
+    <li>Which direction does the connection point? (Compute always dials out.)</li>
+    <li>Is this traffic on the backbone or genuinely on the public internet?</li>
+    <li>Which of the three paths is involved - front door, intercom, or loading dock?</li>
+    <li>Where does the data actually live - UC + ADLS Gen2, or (wrongly) the DBFS root?</li>
+    <li>Which resource group owns this - my RG, or the locked managed RG?</li>
+    <li>Which role system is in play - Azure RBAC, or Databricks account admin?</li>
+  </ol>
+</section>
+
+<footer>
+  Companion files: `lesson1.md` and `index1.html`. Original detailed lesson remains in `lesson.md` and `index.html`.
+</footer>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(item => item.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+const ARCH = {
+  planes: {
+    tip: '<strong>Two planes</strong>Click each box to see who owns it and what runs there.',
+    nodes: [
+      {id:'user',x:30,y:150,w:150,h:64,color:'#2272B4',label:'User / BI / REST',sub:'browser · JDBC · CLI',
+        info:'<strong>User / BI / REST</strong>Reaches the workspace URL over HTTPS 443. Always lands on the control plane (the front door), regardless of which compute plane runs the jobs.'},
+      {id:'cp',x:246,y:46,w:260,h:80,color:'#FF3621',label:'Control plane',sub:'Databricks sub · metadata only',
+        info:'<strong>Control plane (Databricks subscription)</strong>Web app, REST API, Unity Catalog, cluster/jobs manager, and the SCC relay. Databricks runs it; you have no network knobs inside. Holds metadata and orchestration only, never your table data.'},
+      {id:'classic',x:246,y:236,w:260,h:74,color:'#2272B4',label:'Classic compute plane',sub:'your VNet · no public IP',
+        info:'<strong>Classic compute plane (your subscription)</strong>Clusters run Spark in YOUR VNet, so you can attach NSGs, UDRs, firewalls, and Private Endpoints. No public IPs; dials OUT to the SCC relay on 443.'},
+      {id:'svr',x:556,y:236,w:230,h:74,color:'#00A972',label:'Serverless compute plane',sub:'Databricks sub · no public IP',
+        info:'<strong>Serverless compute plane (Databricks subscription)</strong>Pre-warmed, fully managed - no VNet of yours, no SCC relay, but still no public IPs. Egress IPs are dynamic, so you secure it with NCC, not NSGs. That single fact is why NCC exists.'},
+      {id:'adls',x:700,y:120,w:190,h:70,color:'#00A972',label:'ADLS Gen2',sub:'your data',
+        info:'<strong>ADLS Gen2 (your storage)</strong>Your governed business data, behind Unity Catalog external locations, in your subscription. Read directly by compute - never through the control plane.'}
+    ],
+    arrows: [
+      {from:'user',to:'cp',cls:'',label:'① front door 443',labelX:206,labelY:120},
+      {from:'classic',to:'cp',cls:'hot',label:'② SCC outbound 443',labelX:300,labelY:180},
+      {from:'svr',to:'cp',cls:'cold',label:'② backbone + TLS',via:[{x:671,y:160}],labelX:660,labelY:150},
+      {from:'classic',to:'adls',cls:'',label:'③ to storage',via:[{x:640,y:273}],labelX:600,labelY:300}
+    ]
+  },
+  doors: {
+    tip: '<strong>Three doors</strong>Click a box to see what travels through each door and how it is secured.',
+    nodes: [
+      {id:'user',x:30,y:150,w:150,h:64,color:'#2272B4',label:'User / BI / REST',sub:'browser · JDBC · CLI',
+        info:'<strong>① Front door (User to Databricks)</strong>Browser, BI tool, or REST/CLI reaching the workspace URL over 443 - always to the control plane. Hardens from open public, to IP access lists, to front-end Private Link.'},
+      {id:'cp',x:360,y:42,w:240,h:78,color:'#FF3621',label:'Control plane',sub:'where ① and ② terminate',
+        info:'<strong>Control plane</strong>Where Paths ① and ② terminate. Holds the UI/REST, Unity Catalog, and the SCC relay. Metadata and orchestration only.'},
+      {id:'cluster',x:360,y:236,w:240,h:74,color:'#2272B4',label:'Compute (classic / serverless)',sub:'no public IP',
+        info:'<strong>② Staff intercom (Compute to Control)</strong>Classic dials OUT to the SCC relay (443); back-end Private Link replaces the public-IP hop. Serverless is always backbone + TLS, no SCC. Either way: no inbound ports.'},
+      {id:'adls',x:700,y:236,w:190,h:74,color:'#00A972',label:'ADLS Gen2 / storage',sub:'your subscription',
+        info:'<strong>③ Loading dock (Compute to Storage)</strong>Classic reaches it via storage firewall + Service Endpoint (free) or Private Endpoint. Serverless via the AzureDatabricksServerless service tag or an NCC private endpoint. Your data, your subscription.'}
+    ],
+    arrows: [
+      {from:'user',to:'cp',cls:'hot',label:'① front door · 443',labelX:248,labelY:120},
+      {from:'cluster',to:'cp',cls:'hot',label:'② outbound · 443',labelX:498,labelY:182},
+      {from:'cluster',to:'adls',cls:'cold',label:'③ to storage',labelX:660,labelY:288}
+    ]
+  },
+  deploy: {
+    tip: '<strong>Deployment map</strong>One create, two resource groups. Click a box to see who owns it.',
+    nodes: [
+      {id:'cp',x:660,y:42,w:230,h:74,color:'#FF3621',label:'Control plane',sub:'Databricks sub',
+        info:'<strong>Control plane</strong>Provisioned in the Databricks subscription. Talks to your workspace resource over TLS for control and management.'},
+      {id:'ws',x:30,y:150,w:200,h:70,color:'#2272B4',label:'Workspace resource',sub:'Microsoft.Databricks/workspaces',
+        info:'<strong>Workspace resource (your RG)</strong>The first-party Azure resource you manage with Azure RBAC, Policy, locks, and tags. Creating it provisions the managed RG.'},
+      {id:'mrg',x:300,y:42,w:300,h:60,color:'#6B7280',label:'Managed resource group',sub:'Databricks-managed · DO NOT edit',
+        info:'<strong>Managed RG (in your subscription)</strong>Databricks creates and manages it for the workspace plumbing. Viewable, not editable - lock it. Hand-edits or deletes can brick the workspace.'},
+      {id:'sa',x:300,y:150,w:300,h:64,color:'#00A972',label:'Workspace storage account',sub:'system data + DBFS root (legacy)',
+        info:'<strong>Workspace storage account</strong>Databricks housekeeping: job results, notebook revisions, cluster logs, and the legacy DBFS root. NOT your data lake. Deleting it makes the workspace unrecoverable.'},
+      {id:'mvnet',x:300,y:250,w:300,h:54,color:'#6B7280',label:'Managed VNet',sub:'only if NOT VNet-injected',
+        info:'<strong>Managed VNet</strong>Auto-created for the classic compute plane when you do not inject your own VNet. With VNet injection you supply your own instead (Stage 3).'},
+      {id:'ms',x:670,y:230,w:210,h:74,color:'#00A972',label:'Metastore',sub:'one per region',
+        info:'<strong>Unity Catalog metastore</strong>Account-level, regional governance root. One per region, shared by that region workspaces. Governed by a Databricks account admin - not by Azure RBAC.'}
+    ],
+    arrows: [
+      {from:'ws',to:'mrg',cls:'',label:'provisions',via:[{x:265,y:185}],labelX:268,labelY:120},
+      {from:'cp',to:'ws',cls:'blue',label:'TLS control',via:[{x:640,y:79},{x:265,y:79}],labelX:430,labelY:68},
+      {from:'ws',to:'ms',cls:'cold',label:'attached to',via:[{x:430,y:330}],labelX:470,labelY:340}
+    ]
+  }
+};
+
+const FLOWS = {
+  planes: '<h4>Scenario: an analyst runs a notebook on a classic cluster, then a teammate runs the same query serverless</h4>'
+    + '<ol>'
+    + '<li><strong>User / BI / REST</strong> signs in (Microsoft Entra ID) and hits the workspace URL over HTTPS 443 — the request lands on the <strong>Control plane</strong>, never on a cluster directly.</li>'
+    + '<li>The <strong>Control plane</strong> (Databricks subscription) holds the web app, REST API, Unity Catalog metadata and the jobs/cluster manager. It decides "run this" but holds <strong>metadata and orchestration only</strong> — no table data.</li>'
+    + '<li>For classic, the <strong>Classic compute plane</strong> spins up VMs in <em>your</em> VNet with no public IPs. Each cluster dials <strong>out</strong> to the SCC relay on 443 (the <code>② SCC outbound 443</code> arrow), so the control plane manages it down that reverse tunnel.</li>'
+    + '<li>For serverless, the <strong>Serverless compute plane</strong> (Databricks subscription, pre-warmed, no VNet of yours) reaches the control plane over the <code>② backbone + TLS</code> path — no SCC relay, because there is no VNet to inject.</li>'
+    + '<li>Either cluster reads/writes your business data straight from <strong>ADLS Gen2</strong> via the <code>③ to storage</code> path — Unity Catalog authorizes it, but the bytes never route through the control plane.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> the brain (control plane) directs both compute planes, but your data only ever moves between compute and ADLS Gen2 — classic adds SCC because it lives in your VNet; serverless skips it.</p>',
+
+  doors: '<h4>Scenario: a query travels through all three doors, from login to reading a table</h4>'
+    + '<ol>'
+    + '<li><strong>Door ① (front door):</strong> the <strong>User / BI / REST</strong> client opens the workspace over HTTPS 443 — inbound to the <strong>Control plane</strong>. Harden it with IP access lists, then front-end Private Link with public access disabled.</li>'
+    + '<li>The <strong>Control plane</strong> is where Doors ① and ② terminate — UI/REST, Unity Catalog, and the SCC relay. It authenticates the user and queues the work.</li>'
+    + '<li><strong>Door ② (staff intercom):</strong> the <strong>Compute (classic / serverless)</strong> box has no public IP and dials <strong>outbound</strong> on 443 (the <code>② outbound 443</code> arrow). Classic uses the SCC relay (back-end Private Link removes the public-IP hop); serverless is always backbone + TLS, no SCC.</li>'
+    + '<li><strong>Door ③ (loading dock):</strong> compute reaches <strong>ADLS Gen2 / storage</strong> over the <code>③ to storage</code> path. Classic uses a storage firewall + Service Endpoint or Private Endpoint; serverless uses the <code>AzureDatabricksServerless</code> service tag or an NCC private endpoint.</li>'
+    + '<li>When something breaks, name the failing door: login fails = ①, cluster cannot phone home = ②, table reads fail = ③ — that tells you which control to inspect.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> only three doors exist — users in (①), compute to control (②), compute to storage (③) — and every networking control just hardens one of them.</p>',
+
+  deploy: '<h4>Scenario: you run one <code>az databricks workspace create</code> and watch where the pieces land</h4>'
+    + '<ol>'
+    + '<li>You create the <strong>Workspace resource</strong> (<code>Microsoft.Databricks/workspaces</code>) in <em>your</em> RG — the first-party Azure object you control with Azure RBAC, Policy, locks, and tags.</li>'
+    + '<li>That create <code>provisions</code> the <strong>Managed resource group</strong> in your subscription — Databricks-managed plumbing you can view but must not edit. Lock it.</li>'
+    + '<li>Inside the managed RG sit the <strong>Workspace storage account</strong> (job results, notebook revisions, cluster logs, legacy DBFS root — <em>not</em> your data lake; deleting it makes the workspace unrecoverable) and, if you did not VNet-inject, the <strong>Managed VNet</strong> for classic compute.</li>'
+    + '<li>The <strong>Control plane</strong> (Databricks subscription) connects to your workspace resource over the <code>TLS control</code> path to manage it.</li>'
+    + '<li>The workspace is <code>attached to</code> a <strong>Metastore</strong> — the account-level, regional Unity Catalog governance root, one per region, governed by a Databricks account admin (not Azure RBAC).</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> one create yields two resource groups and two role systems — Azure RBAC owns the workspace resource; a Databricks account admin owns the metastore — so being Azure Owner does not make you a Databricks account admin.</p>'
+};
+
+function svgEl(name, attrs){
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const key in attrs) element.setAttribute(key, attrs[key]);
+  return element;
+}
+
+function edgePoint(rect, tx, ty){
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  const scale = 1 / Math.max(Math.abs(dx) / (rect.w / 2), Math.abs(dy) / (rect.h / 2));
+  return {x: cx + dx * scale, y: cy + dy * scale};
+}
+
+function markerDefs(suffix){
+  return ''
+    + '<marker id="ar-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>'
+    + '<marker id="arb-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#2272B4"/></marker>'
+    + '<marker id="aro-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>'
+    + '<marker id="arg-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>';
+}
+
+function buildDiagram(mount){
+  const viewKey = mount.getAttribute('data-view');
+  const view = ARCH[viewKey];
+  if (!view) return;
+  mount.innerHTML =
+    '<div class="diagram-canvas"><svg viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + markerDefs(viewKey)
+    + '</defs><g class="dg-content"></g></svg></div>'
+    + '<div class="info-box diag-info"><strong>Tip</strong>Click a box for a plain-English explanation of what it does.</div>'
+    + '<div class="flow-box diag-flow"></div>';
+  const svg = mount.querySelector('svg');
+  const group = svg.querySelector('.dg-content');
+  const info = mount.querySelector('.diag-info');
+  const flow = mount.querySelector('.diag-flow');
+  const byId = {};
+  view.nodes.forEach(node => { byId[node.id] = node; });
+
+  view.arrows.forEach(arrow => {
+    const from = byId[arrow.from];
+    const to = byId[arrow.to];
+    const route = arrow.via || [];
+    const firstTarget = route[0] || {x: to.x + to.w / 2, y: to.y + to.h / 2};
+    const lastSource = route[route.length - 1] || {x: from.x + from.w / 2, y: from.y + from.h / 2};
+    const start = edgePoint(from, firstTarget.x, firstTarget.y);
+    const end = edgePoint(to, lastSource.x, lastSource.y);
+    const points = [start, ...route, end];
+    const line = svgEl('polyline', {
+      points: points.map(point => point.x + ',' + point.y).join(' '),
+      class:'arrow ' + (arrow.cls || '')
+    });
+    const marker = arrow.cls === 'hot' ? 'aro-'+viewKey : arrow.cls === 'cold' ? 'arg-'+viewKey : arrow.cls === 'blue' ? 'arb-'+viewKey : arrow.cls === 'muted' ? null : 'ar-'+viewKey;
+    if (marker) line.setAttribute('marker-end', 'url(#' + marker + ')');
+    group.appendChild(line);
+    if (arrow.label) {
+      const labelX = arrow.labelX || (start.x + end.x) / 2;
+      const labelY = arrow.labelY || ((start.y + end.y) / 2 - 6);
+      const bgWidth = Math.max(54, arrow.label.length * 6.2 + 14);
+      const bg = svgEl('rect', {
+        x: labelX - bgWidth / 2,
+        y: labelY - 13,
+        width: bgWidth,
+        height: 18,
+        rx: 5,
+        fill: '#FFFFFF',
+        stroke: '#E5E7EB'
+      });
+      group.appendChild(bg);
+      const text = svgEl('text', {x:labelX, y:labelY, 'text-anchor':'middle', class:'alabel ' + (arrow.cls || '')});
+      text.textContent = arrow.label;
+      group.appendChild(text);
+    }
+  });
+
+  view.nodes.forEach(node => {
+    const item = svgEl('g', {class:'node'});
+    item.appendChild(svgEl('rect', {x:node.x, y:node.y, width:node.w, height:node.h, rx:8, class:'node-bg', fill:'#fff', stroke:node.color, 'stroke-width':2}));
+    const isContainer = node.w >= 240 && node.h >= 120;
+    const labelY = isContainer ? node.y + 26 : node.y + node.h / 2 - 4;
+    const subY = isContainer ? node.y + 44 : node.y + node.h / 2 + 14;
+    const label = svgEl('text', {x:node.x + node.w / 2, y:labelY, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:node.color});
+    label.textContent = node.label;
+    item.appendChild(label);
+    const sub = svgEl('text', {x:node.x + node.w / 2, y:subY, 'text-anchor':'middle', 'font-size':10.5, fill:'#6B7280'});
+    sub.textContent = node.sub;
+    item.appendChild(sub);
+    const show = () => { info.innerHTML = node.info; };
+    item.addEventListener('click', show);
+    item.addEventListener('mouseenter', show);
+    group.appendChild(item);
+  });
+
+  info.innerHTML = view.tip;
+  if (typeof FLOWS !== 'undefined' && FLOWS[viewKey]) flow.innerHTML = FLOWS[viewKey];
+}
+
+document.querySelectorAll('.diagram-block').forEach(buildDiagram);
+</script>
+</body>
+</html>

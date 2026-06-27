@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GRANT & REVOKE in SQL — Unity Catalog</title>
+<style>
+  :root{
+    --bg:#0f1117; --panel:#171a23; --panel2:#1e222d; --border:#2a2f3d;
+    --text:#e6e8ee; --muted:#9aa3b2; --accent:#ff5f3c; --accent2:#2f7dff;
+    --green:#34c759; --red:#ff453a; --amber:#ffb020; --code:#0b0d12;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;}
+  .wrap{max-width:920px;margin:0 auto;padding:40px 24px 80px;}
+  header.hero{border-bottom:1px solid var(--border);padding-bottom:24px;margin-bottom:32px;}
+  .kicker{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:.75rem;}
+  h1{font-size:2.1rem;margin:.3em 0 .2em;line-height:1.15;}
+  h2{font-size:1.45rem;margin:2.2em 0 .6em;padding-top:.3em;}
+  h3{font-size:1.1rem;margin:1.6em 0 .4em;color:#cdd3df;}
+  .sub{color:var(--muted);font-size:1.05rem;max-width:680px;}
+  p{margin:.6em 0;}
+  code{font-family:var(--mono);background:var(--panel2);padding:.12em .4em;border-radius:5px;font-size:.88em;color:#ffd9cf;}
+  pre{background:var(--code);border:1px solid var(--border);border-radius:10px;padding:16px 18px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;line-height:1.55;}
+  pre code{background:none;padding:0;color:#d7dce6;}
+  .cmt{color:#6b7484;}
+  .kw{color:#ff8a6b;font-weight:600;}
+  .fn{color:#5fb3ff;}
+  .str{color:#9ece6a;}
+  table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.92rem;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--border);}
+  th{color:var(--muted);font-weight:600;font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;}
+  tr:hover td{background:var(--panel);}
+  .callout{border-left:3px solid var(--accent2);background:var(--panel);border-radius:0 10px 10px 0;padding:14px 18px;margin:1.2em 0;}
+  .callout.warn{border-left-color:var(--amber);}
+  .callout.tip{border-left-color:var(--green);}
+  .callout b{color:#fff;}
+
+  /* Simulator */
+  .sim{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;margin:1.4em 0;}
+  .sim h3{margin-top:0;}
+  .sim-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:stretch;}
+  @media(max-width:680px){.sim-grid{grid-template-columns:1fr;}}
+  .toggles{display:flex;flex-direction:column;gap:12px;}
+  .tg{display:flex;align-items:center;justify-content:space-between;gap:12px;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s;user-select:none;}
+  .tg:hover{border-color:var(--accent2);}
+  .tg.on{border-color:var(--green);background:rgba(52,199,89,.08);}
+  .tg .lbl{display:flex;flex-direction:column;}
+  .tg .lbl strong{font-family:var(--mono);font-size:.85rem;}
+  .tg .lbl span{color:var(--muted);font-size:.78rem;}
+  .switch{width:42px;height:24px;border-radius:20px;background:#3a3f4d;position:relative;flex:none;transition:.2s;}
+  .tg.on .switch{background:var(--green);}
+  .switch::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s;}
+  .tg.on .switch::after{left:21px;}
+
+  .tower{display:flex;flex-direction:column;gap:10px;}
+  .lvl{border:2px solid var(--border);border-radius:12px;padding:14px 16px;background:var(--panel2);transition:.2s;position:relative;}
+  .lvl .tag{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.04em;}
+  .lvl .name{font-weight:700;margin-top:2px;}
+  .lvl .req{font-size:.74rem;color:var(--muted);margin-top:4px;}
+  .lvl.reachable{border-color:var(--green);background:rgba(52,199,89,.07);}
+  .lvl.blocked{opacity:.45;}
+  .lvl .state{position:absolute;top:12px;right:14px;font-size:1.1rem;}
+  .arrow{text-align:center;color:var(--muted);font-size:1rem;line-height:.4;}
+  .verdict{margin-top:18px;border-radius:10px;padding:14px 16px;font-weight:600;text-align:center;border:1px solid var(--border);}
+  .verdict.ok{background:rgba(52,199,89,.12);border-color:var(--green);color:#7ee49a;}
+  .verdict.no{background:rgba(255,69,58,.1);border-color:var(--red);color:#ff8b82;}
+  .gen{margin-top:14px;}
+  .gen pre{margin:0;}
+  .resetbtn{margin-top:14px;background:none;border:1px solid var(--border);color:var(--muted);padding:7px 14px;border-radius:8px;cursor:pointer;font-size:.82rem;}
+  .resetbtn:hover{border-color:var(--accent);color:var(--text);}
+
+  /* Accordion */
+  .acc{border:1px solid var(--border);border-radius:10px;margin:10px 0;overflow:hidden;background:var(--panel);}
+  .acc summary{cursor:pointer;padding:14px 18px;font-weight:600;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  .acc summary::-webkit-details-marker{display:none;}
+  .acc summary::after{content:"+";color:var(--accent);font-size:1.3rem;font-weight:400;}
+  .acc[open] summary::after{content:"–";}
+  .acc .body{padding:0 18px 16px;border-top:1px solid var(--border);}
+  footer{margin-top:60px;padding-top:24px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem;}
+  footer a{color:var(--accent2);}
+  .pill{display:inline-block;font-family:var(--mono);font-size:.72rem;padding:2px 8px;border-radius:20px;background:var(--panel2);border:1px solid var(--border);color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">Databricks · Unity Catalog</div>
+    <h1>GRANT &amp; REVOKE in SQL</h1>
+    <p class="sub">How to give and take away access to data — and why <code>SELECT</code> alone is never enough. Includes a live access simulator.</p>
+  </header>
+
+  <h2>The simple idea</h2>
+  <p>Think of your data platform as an office building. <b>GRANT</b> hands someone a key; <b>REVOKE</b> takes it back. You never delete the room — you just control who can walk in and what they can do once inside.</p>
+  <p>In Databricks these keys are called <b>privileges</b>, and the rooms are <b>securable objects</b> arranged in a hierarchy: <code>catalog → schema → table</code>.</p>
+
+  <h2>Basic syntax</h2>
+<pre><code><span class="cmt">-- Give a privilege</span>
+<span class="kw">GRANT</span> &lt;privilege&gt; <span class="kw">ON</span> &lt;object_type&gt; &lt;object_name&gt; <span class="kw">TO</span> `&lt;principal&gt;`;
+
+<span class="cmt">-- Take it back</span>
+<span class="kw">REVOKE</span> &lt;privilege&gt; <span class="kw">ON</span> &lt;object_type&gt; &lt;object_name&gt; <span class="kw">FROM</span> `&lt;principal&gt;`;</code></pre>
+  <p>Three slots to fill: the <b>privilege</b> (what they can do), the <b>object</b> (what they can do it on), and the <b>principal</b> (who — a user email, a group, or a service principal). Wrap the principal in <b>backticks</b> because emails contain special characters. The only structural difference between the two statements is <code>TO</code> vs <code>FROM</code>.</p>
+
+  <!-- ===================== INTERACTIVE SIMULATOR ===================== -->
+  <h2>Interactive: the access simulator</h2>
+  <p>Unity Catalog access is <b>hierarchical</b> — a user must be able to <i>reach</i> a table before they can read it. Toggle the privileges below and watch the path to <code>sales.analytics.orders</code> light up.</p>
+
+  <div class="sim">
+    <h3>Can this user query the table?</h3>
+    <div class="sim-grid">
+      <div>
+        <div class="toggles" id="toggles">
+          <div class="tg" data-priv="usecat">
+            <div class="lbl"><strong>USE CATALOG</strong><span>on catalog <code>sales</code></span></div>
+            <div class="switch"></div>
+          </div>
+          <div class="tg" data-priv="usesch">
+            <div class="lbl"><strong>USE SCHEMA</strong><span>on schema <code>sales.analytics</code></span></div>
+            <div class="switch"></div>
+          </div>
+          <div class="tg" data-priv="select">
+            <div class="lbl"><strong>SELECT</strong><span>on table <code>sales.analytics.orders</code></span></div>
+            <div class="switch"></div>
+          </div>
+        </div>
+        <button class="resetbtn" id="reset">Reset</button>
+        <div class="gen">
+          <div class="tag" style="font-size:.72rem;color:var(--muted);font-family:var(--mono);margin-bottom:6px;">GRANT statements to run:</div>
+          <pre id="genSql"><code class="cmt">— toggle a privilege to build the SQL —</code></pre>
+        </div>
+      </div>
+
+      <div>
+        <div class="tower">
+          <div class="lvl" id="lvl-cat">
+            <span class="state" id="st-cat">🔒</span>
+            <div class="tag">CATALOG</div>
+            <div class="name">sales</div>
+            <div class="req">needs <code>USE CATALOG</code> to enter</div>
+          </div>
+          <div class="arrow">▼</div>
+          <div class="lvl" id="lvl-sch">
+            <span class="state" id="st-sch">🔒</span>
+            <div class="tag">SCHEMA</div>
+            <div class="name">analytics</div>
+            <div class="req">needs <code>USE SCHEMA</code> to enter</div>
+          </div>
+          <div class="arrow">▼</div>
+          <div class="lvl" id="lvl-tbl">
+            <span class="state" id="st-tbl">🔒</span>
+            <div class="tag">TABLE</div>
+            <div class="name">orders</div>
+            <div class="req">needs <code>SELECT</code> to read</div>
+          </div>
+        </div>
+        <div class="verdict no" id="verdict">❌ User cannot query the table yet</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout tip"><b>The lesson:</b> <code>USE CATALOG</code> and <code>USE SCHEMA</code> are like a building keycard — they let you <i>reach</i> the room but grant no data access. <code>SELECT</code> is the key to the room itself. You need the whole chain. (Shortcut: grant <code>SELECT</code> at the schema or catalog level to cover all current <i>and future</i> tables at once.)</p></div>
+
+  <!-- ===================== EXAMPLES ===================== -->
+  <h2>Worked examples</h2>
+<pre><code><span class="cmt">-- Let a group create tables in a schema</span>
+<span class="kw">GRANT</span> <span class="kw">CREATE TABLE</span> <span class="kw">ON</span> <span class="kw">SCHEMA</span> sales.analytics <span class="kw">TO</span> `data-engineers`;
+
+<span class="cmt">-- Give a single user read access to one table</span>
+<span class="kw">GRANT</span> <span class="kw">SELECT</span> <span class="kw">ON</span> <span class="kw">TABLE</span> sales.analytics.orders <span class="kw">TO</span> `sourav.banerjee@databricks.com`;
+
+<span class="cmt">-- Give everything on a schema to a group</span>
+<span class="kw">GRANT</span> <span class="kw">ALL PRIVILEGES</span> <span class="kw">ON</span> <span class="kw">SCHEMA</span> sales.analytics <span class="kw">TO</span> `analytics-admins`;
+
+<span class="cmt">-- Take read access away from one person</span>
+<span class="kw">REVOKE</span> <span class="kw">SELECT</span> <span class="kw">ON</span> <span class="kw">TABLE</span> sales.analytics.orders <span class="kw">FROM</span> `sourav.banerjee@databricks.com`;</code></pre>
+
+  <!-- ===================== PRIVILEGE TABLE ===================== -->
+  <h2>The most common privileges</h2>
+  <table>
+    <thead><tr><th>Privilege</th><th>What it lets you do</th><th>Typical object</th></tr></thead>
+    <tbody>
+      <tr><td><code>USE CATALOG</code></td><td>Enter / see into a catalog</td><td>Catalog</td></tr>
+      <tr><td><code>USE SCHEMA</code></td><td>Enter / see into a schema</td><td>Schema</td></tr>
+      <tr><td><code>SELECT</code></td><td>Read data</td><td>Table, view</td></tr>
+      <tr><td><code>MODIFY</code></td><td>Insert, update, delete data</td><td>Table</td></tr>
+      <tr><td><code>CREATE TABLE</code></td><td>Create tables in a schema</td><td>Schema, catalog</td></tr>
+      <tr><td><code>EXECUTE</code></td><td>Run a function / load a model</td><td>Function, model</td></tr>
+      <tr><td><code>READ VOLUME</code> / <code>WRITE VOLUME</code></td><td>Read / write files in a volume</td><td>Volume</td></tr>
+      <tr><td><code>ALL PRIVILEGES</code></td><td>Everything applicable + children</td><td>Any</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== GOTCHAS ===================== -->
+  <h2>Common mistakes &amp; gotchas</h2>
+
+  <details class="acc">
+    <summary>“I granted SELECT but the user still can’t query”</summary>
+    <div class="body"><p>Almost always missing <code>USE CATALOG</code> and/or <code>USE SCHEMA</code>. Access is hierarchical — see the simulator above. Run all three grants, or grant <code>SELECT</code> higher up the tree.</p></div>
+  </details>
+
+  <details class="acc">
+    <summary>“GRANT CREATE ON SCHEMA throws an error”</summary>
+    <div class="body"><p>The bare <code>CREATE</code> privilege is <b>legacy Hive metastore</b> syntax. In Unity Catalog it was split into specific privileges: <code>CREATE TABLE</code>, <code>CREATE FUNCTION</code>, <code>CREATE VOLUME</code>, <code>CREATE MATERIALIZED VIEW</code>, <code>CREATE MODEL</code>. Use <code>GRANT CREATE TABLE ON SCHEMA …</code>.</p></div>
+  </details>
+
+  <details class="acc">
+    <summary>“What does ALL PRIVILEGES actually cover?”</summary>
+    <div class="body"><p>Everything applicable to the object and its children — but it does <b>not</b> include <code>MANAGE</code>, <code>EXTERNAL USE SCHEMA</code>, or <code>EXTERNAL USE LOCATION</code>. Grant those explicitly when needed.</p></div>
+  </details>
+
+  <details class="acc">
+    <summary>“REVOKE didn’t remove the user’s access”</summary>
+    <div class="body"><p>Privileges inherit downward. <code>REVOKE</code> only removes a grant made at <i>that</i> level — it can’t cancel out a privilege inherited from a parent object. Revoke at the level where the grant was actually made.</p></div>
+  </details>
+
+  <details class="acc">
+    <summary>“Should I grant to users or groups?”</summary>
+    <div class="body"><p><b>Groups</b> are the default — grant once, then add/remove people without rewriting SQL. Use <b>individual users</b> only for genuine one-offs (e.g. a stakeholder doing a quick ad-hoc analysis where a whole group isn’t worth creating).</p></div>
+  </details>
+
+  <!-- ===================== INSPECT ===================== -->
+  <h2>Inspecting current access</h2>
+<pre><code><span class="cmt">-- See who has what on an object</span>
+<span class="kw">SHOW GRANTS</span> <span class="kw">ON</span> <span class="kw">TABLE</span> sales.analytics.orders;
+
+<span class="cmt">-- See what a specific principal can do</span>
+<span class="kw">SHOW GRANTS</span> `analysts` <span class="kw">ON</span> <span class="kw">SCHEMA</span> sales.analytics;</code></pre>
+  <div class="callout"><b>Prerequisites:</b> a Unity Catalog–enabled workspace and a SQL warehouse (or UC-enabled cluster). You can only grant privileges you have authority to manage — object owner, the <code>MANAGE</code> privilege, or metastore admin.</div>
+
+  <footer>
+    <p>Sources: <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/access-control/privileges-reference" target="_blank">Unity Catalog privileges reference</a> · <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/" target="_blank">Show, grant, and revoke privileges</a></p>
+    <p><span class="pill">Personal learning tool</span> &nbsp; Databricks Data Engineering</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  var state = {usecat:false, usesch:false, select:false};
+  var toggles = document.querySelectorAll('.tg');
+
+  function lines(){
+    var out=[];
+    if(state.usecat) out.push('GRANT USE CATALOG ON CATALOG sales TO `analysts`;');
+    if(state.usesch) out.push('GRANT USE SCHEMA  ON SCHEMA  sales.analytics TO `analysts`;');
+    if(state.select) out.push('GRANT SELECT      ON TABLE   sales.analytics.orders TO `analysts`;');
+    return out;
+  }
+
+  function render(){
+    // toggle visuals
+    toggles.forEach(function(t){
+      t.classList.toggle('on', state[t.dataset.priv]);
+    });
+
+    var cat=document.getElementById('lvl-cat'), sch=document.getElementById('lvl-sch'), tbl=document.getElementById('lvl-tbl');
+    var sc=document.getElementById('st-cat'), ss=document.getElementById('st-sch'), st=document.getElementById('st-tbl');
+    [cat,sch,tbl].forEach(function(el){el.classList.remove('reachable','blocked');});
+
+    // catalog
+    if(state.usecat){cat.classList.add('reachable');sc.textContent='🔓';}
+    else{cat.classList.add('blocked');sc.textContent='🔒';}
+    // schema reachable only if catalog reachable AND use schema
+    var schemaReachable = state.usecat && state.usesch;
+    if(schemaReachable){sch.classList.add('reachable');ss.textContent='🔓';}
+    else{sch.classList.add('blocked');ss.textContent='🔒';}
+    // table readable only if full chain
+    var canQuery = state.usecat && state.usesch && state.select;
+    if(canQuery){tbl.classList.add('reachable');st.textContent='✅';}
+    else{tbl.classList.add('blocked');st.textContent= state.select ? '🔑' : '🔒';}
+
+    // verdict
+    var v=document.getElementById('verdict');
+    if(canQuery){v.className='verdict ok';v.textContent='✅ User can query the table';}
+    else{
+      v.className='verdict no';
+      var missing=[];
+      if(!state.usecat)missing.push('USE CATALOG');
+      if(!state.usesch)missing.push('USE SCHEMA');
+      if(!state.select)missing.push('SELECT');
+      v.textContent='❌ Missing: '+missing.join(', ');
+    }
+
+    // generated SQL
+    var g=document.getElementById('genSql');
+    var L=lines();
+    if(L.length===0){ g.innerHTML='<code class="cmt">— toggle a privilege to build the SQL —</code>'; }
+    else{
+      g.innerHTML='<code>'+L.map(function(l){
+        return l.replace(/\b(GRANT|ON|TO|CATALOG|SCHEMA|TABLE|USE|SELECT)\b/g,'<span class="kw">$1</span>');
+      }).join('\n')+'</code>';
+    }
+  }
+
+  toggles.forEach(function(t){
+    t.addEventListener('click', function(){
+      var p=t.dataset.priv; state[p]=!state[p]; render();
+    });
+  });
+  document.getElementById('reset').addEventListener('click', function(){
+    state={usecat:false,usesch:false,select:false}; render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

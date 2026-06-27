@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Connect · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2rem,5vw,3.2rem);line-height:1.02;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: client/server split */
+  .split{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+  .side{flex:1;min-width:220px;border:1px solid var(--line);border-radius:12px;padding:14px;background:#fff}
+  .side.local{border-color:var(--brand-2)}
+  .side.remote{border-color:var(--teal)}
+  .side h3{margin:0 0 6px;font-family:"Fraunces",serif;font-size:1.05rem}
+  .side .tag{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#8a939c}
+  .wire{text-align:center;color:var(--brand);font-family:"Spline Sans Mono",monospace;font-size:.74rem;margin:6px 0}
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:6px;padding:3px 8px;margin:3px 3px 0 0}
+  .chip.run{background:#dff0e6;border-color:#9ed3b2;color:#1f6b3a}
+  /* diagram 2: connect vs notebook */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 11.3</p>
+  <h1>Databricks <em>Connect</em></h1>
+  <p class="lede">Run DataFrame/Spark code from your local IDE against remote Databricks compute — IDE-native development &amp; debugging, with data and heavy compute staying in Databricks.</p>
+  <div class="pills"><span class="pill">local IDE → remote compute</span><span class="pill">Spark Connect (gRPC)</span><span class="pill">DBR 13.3 LTS+</span><span class="pill">dev tool</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Databricks Connect</strong> = code in VS Code/PyCharm locally, but DataFrame transformations run on a <strong>remote Databricks cluster/serverless</strong> (via the Spark Connect gRPC protocol). You get IDE tooling (debuggers, tests, git) without moving data to your laptop.</div>
+  <div class="card analogy" style="margin-top:10px">🎮 <strong>Analogy:</strong> a <strong>remote control for a powerful machine</strong> — you hold the remote (laptop/IDE) and press buttons (DataFrame code); the actual work runs on the big machine in the data center (Databricks), and results come back.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: client/server split -->
+<section id="split">
+  <h2>What runs where — click to trace a query</h2>
+  <p class="hint">▸ general code = local · DataFrame ops = remote</p>
+  <div class="split">
+    <div class="side local"><h3>🖥️ Local (your IDE)</h3><div class="tag">general Python/Scala/R</div>
+      <div id="localchips"><span class="chip">edit + debug</span><span class="chip">build the DataFrame plan</span></div></div>
+    <div class="side remote"><h3>☁️ Remote (Databricks)</h3><div class="tag">cluster / serverless + your data</div>
+      <div id="remotechips"><span class="chip">Spark plan executes</span><span class="chip">UC data read</span></div></div>
+  </div>
+  <div class="wire" id="wire">↑ DataFrame plan sent over Spark Connect ↓ results returned</div>
+  <button class="tab" style="margin-top:8px" onclick="trace()">▶ Trace df.groupBy(...).sum()</button>
+  <div class="hint" id="tracenote" style="margin-top:6px"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · The Spark Connect architecture (v2)</h3>
+  <p class="mech"><b>Mechanism:</b> modern Databricks Connect (<strong>DBR 13.0+</strong>, the <code>databricks-connect</code> PyPI package) is a <strong>thin client</strong> speaking <strong>Spark Connect gRPC</strong> — DataFrame ops serialize to a plan run on the remote driver. <b>Trade-off:</b> the v2 package is a clean break from the legacy pre-DBR-13 one — don't mix them up.</p>
+  <pre class="code"><span class="c"># The modern client: pip install "databricks-connect"</span>
+<span class="c"># Builds DataFrame plans locally, runs them remotely over Spark Connect (gRPC).</span>
+<span class="k">from</span> databricks.connect <span class="k">import</span> DatabricksSession   <span class="c"># the v2 entry point</span></pre>
+
+  <h3>2 · Install &amp; version-match to the cluster</h3>
+  <p class="mech"><b>Mechanism:</b> install a <code>databricks-connect</code> version that <strong>matches the cluster's DBR</strong> (available <strong>DBR 13.3 LTS+</strong>), in an isolated venv. <b>Trade-off:</b> each target DBR may need its own pinned client — standardize one DBR per environment.</p>
+  <pre class="code"><span class="c"># Isolated env; pin the client to the cluster's DBR (e.g. 15.4 LTS).</span>
+<span class="f">python</span> -m venv .venv &amp;&amp; <span class="k">source</span> .venv/bin/activate
+<span class="f">pip</span> install --upgrade <span class="s">"databricks-connect==15.4.*"</span>   <span class="c"># match the cluster DBR</span>
+<span class="c"># ⚠️ verify — confirm the exact version against your cluster's runtime.</span></pre>
+
+  <h3>3 · Build a <code>DatabricksSession</code></h3>
+  <p class="mech"><b>Mechanism:</b> <code>DatabricksSession.builder</code> replaces <code>SparkSession.builder</code>. <code>getOrCreate()</code> reuses/auto-configs; <code>.serverless()</code> / <code>.clusterId(...)</code> / <code>.remote("sc://...")</code> target compute explicitly. <b>Trade-off:</b> serverless sessions <strong>expire after 10 min idle</strong> (client auto-closes).</p>
+  <pre class="code"><span class="k">from</span> databricks.connect <span class="k">import</span> DatabricksSession
+
+<span class="c"># A) default config (profile/env) — simplest for local dev:</span>
+spark = DatabricksSession.builder.<span class="f">getOrCreate</span>()
+
+<span class="c"># B) target serverless or a specific cluster explicitly:</span>
+spark = DatabricksSession.builder.<span class="f">serverless</span>().<span class="f">getOrCreate</span>()
+<span class="c"># spark = DatabricksSession.builder.clusterId("0712-...-abcd").getOrCreate()</span></pre>
+
+  <h3>4 · Authentication — profiles &amp; config</h3>
+  <p class="mech"><b>Mechanism:</b> Connect uses standard Databricks SDK auth — a <code>.databrickscfg</code> <strong>profile</strong> (host + token/OAuth) or env vars are picked up by <code>getOrCreate()</code>; <code>.remote(...)</code> takes an explicit Spark Connect string. <b>Trade-off:</b> an inline token is handy once but must never be committed — prefer a profile/OAuth.</p>
+  <pre class="code"><span class="c"># Explicit Spark Connect connection string (verified form):</span>
+spark = DatabricksSession.builder.<span class="f">remote</span>(
+    <span class="s">f"sc://{workspace_host}:443/;token={token};x-databricks-cluster-id={cluster_id}"</span>
+).<span class="f">getOrCreate</span>()
+<span class="c"># Prefer a .databrickscfg profile / OAuth so no token lives in code.</span></pre>
+
+  <h3>5 · What runs locally vs remotely</h3>
+  <p class="mech"><b>Mechanism:</b> general Python (loops, app logic, tests) runs <strong>locally</strong>; any <strong>DataFrame/SQL</strong> op becomes a plan executed on the <strong>remote</strong> cluster against governed UC data. UDFs serialize from the client and run on the cluster. <b>Trade-off:</b> <strong>UDF deps must exist on the cluster</strong>, not just locally.</p>
+  <pre class="code"><span class="c"># local control flow + remote Spark execution in one script:</span>
+<span class="k">for</span> region <span class="k">in</span> [<span class="s">"West"</span>, <span class="s">"East"</span>]:                 <span class="c"># runs LOCALLY</span>
+    df = spark.read.table(<span class="s">"prod.sales.orders"</span>)  <span class="c"># executes on the CLUSTER</span>
+    total = df.filter(df.region == region).agg({<span class="s">"amount"</span>: <span class="s">"sum"</span>})  <span class="c"># remote plan</span>
+    <span class="f">print</span>(region, total.collect()[<span class="s">0</span>][<span class="s">0</span>])        <span class="c"># result returned to the IDE</span></pre>
+
+  <h3>6 · Local testing &amp; debugging — and the limits</h3>
+  <p class="mech"><b>Mechanism:</b> it's a normal Python process — set <strong>breakpoints</strong>, run <strong>pytest</strong>, lint/type-check against real remote data, then ship the same code via DABs. <b>Trade-off:</b> not every notebook-only feature maps 1:1 (some <code>dbutils</code>/<code>display</code>); scheduled prod still runs as Jobs/pipelines.</p>
+  <pre class="code"><span class="c"># A pytest unit test exercising a transform against the remote session:</span>
+<span class="k">def</span> <span class="f">test_revenue_by_region</span>(spark):                <span class="c"># spark = DatabricksSession fixture</span>
+    out = revenue_by_region(spark.read.table(<span class="s">"prod.sales.orders"</span>))
+    <span class="k">assert</span> <span class="s">"region"</span> <span class="k">in</span> out.columns <span class="k">and</span> out.count() &gt; <span class="s">0</span></pre>
+</section>
+
+<!-- diagram 2: connect vs notebook -->
+<section id="cmp">
+  <h2>Databricks Connect vs notebooks — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="connect">Databricks Connect</button>
+    <button class="tab" data-t="nb">Notebooks</button>
+  </div>
+  <div class="panel on" data-p="connect"><div class="card"><strong>Databricks Connect</strong> — develop in your IDE.
+    <ul><li>Debuggers, linters, unit tests, native git</li><li>Compute &amp; data remain in Databricks</li><li>Great for app development &amp; testable code</li></ul></div></div>
+  <div class="panel" data-p="nb"><div class="card"><strong>Notebooks</strong> — develop in the workspace.
+    <ul><li>Fast interactive exploration, built-in viz</li><li>All in-platform, no local setup</li><li>Great for ad-hoc analysis &amp; collaboration</li></ul></div></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Teams that prefer <strong>IDE-native development</strong> get debuggers/tests/git without moving data to the laptop.</li>
+    <li>Part of the "develop like software" CI/CD story with DABs &amp; Git folders — a common "how do you develop/test Databricks code locally?" question.</li>
+  </ul>
+  <div class="card usecase">🧑‍💻 <strong>Real-world use case:</strong> build a transform in VS Code with breakpoints + pytest against a dev cluster via Databricks Connect; once green, commit (Git folders) and deploy (DABs) — never hand-pasted into a notebook.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> local dev/debugging, unit-testing transformations, building data apps, IDE-native git.</li>
+    <li><strong>Edge cases:</strong> the Connect client should match the cluster's <strong>DBR version</strong>; UDF libraries must exist on the cluster; serverless sessions <strong>expire after 10 min idle</strong>.</li>
+    <li><strong>Limitation:</strong> runs DataFrame/Spark Connect workloads — not every notebook-only feature maps 1:1; it's a <strong>dev/app</strong> tool, scheduled prod runs as Jobs/pipelines (deployed via DABs).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ <strong>Version mismatch</strong> between the Connect client and the cluster's DBR.</li>
+    <li>❌ Installing the <strong>legacy</strong> pre-DBR-13 package instead of the Spark-Connect-based <code>databricks-connect</code> (13.x+).</li>
+    <li>❌ Expecting a UDF's <strong>local libraries</strong> to exist on the cluster — install them there too.</li>
+    <li>❌ Thinking Spark runs <strong>on your laptop</strong> — compute is remote; only app code is local.</li>
+    <li>❌ Using it as the <strong>deployment</strong> mechanism — it's for development; deploy with DABs.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/dev-tools/databricks-connect/" target="_blank" rel="noopener">Databricks Connect</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/databricks-connect/python/" target="_blank" rel="noopener">Connect for Python</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/databricks-connect/advanced" target="_blank" rel="noopener">Advanced usage</a> ·
+  <a href="https://docs.databricks.com/aws/en/spark/connect" target="_blank" rel="noopener">Spark Connect</a>
+  <p style="margin-top:10px">Topic 11.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — client/server trace (scoped to #split)
+const wire=document.getElementById('wire'), tracenote=document.getElementById('tracenote'),
+      rc=document.getElementById('remotechips');
+let traced=false;
+function trace(){
+  traced=!traced;
+  if(traced){
+    wire.textContent='① build plan locally  →  ② send over Spark Connect  →  ③ execute on cluster  →  ④ results back';
+    rc.innerHTML='<span class="chip run">groupBy+sum EXECUTES here ✅</span><span class="chip run">UC data read here</span>';
+    tracenote.textContent='The transformation ran on remote Databricks compute — your laptop only built the plan and showed results.';
+  } else {
+    wire.textContent='↑ DataFrame plan sent over Spark Connect ↓ results returned';
+    rc.innerHTML='<span class="chip">Spark plan executes</span><span class="chip">UC data read</span>';
+    tracenote.textContent='';
+  }
+}
+// Diagram 2 — connect vs notebook tabs (scoped to #cmp)
+document.querySelectorAll('#cmp .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#cmp .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#cmp .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git Folders · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:10px;overflow:hidden;font-size:.84rem}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: git flow stepper */
+  .flow{display:flex;gap:0;flex-wrap:wrap;align-items:stretch}
+  .gs{flex:1;min-width:84px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;text-align:center;transition:.18s}
+  .gs:hover{transform:translateY(-2px)}.gs.on{border-color:var(--teal);background:#eef7f8}
+  .gs .ic{font-size:1.2rem}.gs .c{font-family:"Spline Sans Mono",monospace;font-size:.74rem;font-weight:600;margin-top:2px}
+  .conn{display:flex;align-items:center;color:var(--brand);padding:0 3px}
+  .gsd{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;min-height:52px}
+  /* diagram 2: git vs dabs */
+  .switch{display:flex;gap:8px;margin-bottom:10px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.conn{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 11.2</p>
+  <h1>Git Folders <em>(Repos)</em></h1>
+  <p class="lede">A visual Git client + API inside the workspace — clone, branch, commit, pull, push your notebooks &amp; code. The source-control foundation for code review and CI/CD.</p>
+  <div class="pills"><span class="pill">clone / branch / PR</span><span class="pill">OAuth / PAT</span><span class="pill">GitHub·GitLab·Azure DevOps</span><span class="pill">feeds DABs</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Databricks Git folders</strong> (was Repos) is a visual Git client in the workspace: clone a repo, work on branches, commit/pull/push — versioning your notebooks &amp; code so you get review, history, and CI/CD. The repo usually also holds your <code>databricks.yml</code>.</div>
+  <div class="card analogy" style="margin-top:10px">📝 <strong>Analogy:</strong> <strong>"Track Changes + sync to the shared drive" built into your editor</strong> — you work as usual, but every change is versioned and can be branched, reviewed, and merged like real software.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: git flow -->
+<section id="git">
+  <h2>The workflow — click a step</h2>
+  <p class="hint">▸ clone → branch → commit → push → PR</p>
+  <div class="flow">
+    <div class="gs on" data-s="clone"><div class="ic">📥</div><div class="c">clone</div></div>
+    <div class="conn">▸</div>
+    <div class="gs" data-s="branch"><div class="ic">🌿</div><div class="c">branch</div></div>
+    <div class="conn">▸</div>
+    <div class="gs" data-s="commit"><div class="ic">💾</div><div class="c">commit</div></div>
+    <div class="conn">▸</div>
+    <div class="gs" data-s="push"><div class="ic">⬆️</div><div class="c">push</div></div>
+    <div class="conn">▸</div>
+    <div class="gs" data-s="pr"><div class="ic">🔀</div><div class="c">PR + merge</div></div>
+  </div>
+  <div class="gsd" id="gsd"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · Connect a Git provider — OAuth or PAT</h3>
+  <p class="mech"><b>Mechanism:</b> Databricks needs credentials to act for you. Hosted GitHub → the <strong>Databricks GitHub app (OAuth 2.0)</strong> (auto-renews, repo-scoped); others → a <strong>PAT</strong>. <b>Trade-off:</b> PATs expire/rotate; the GitHub app needs a one-time admin install.</p>
+  <pre class="code"><span class="c"># Register a PAT credential (git-credentials group).</span>
+<span class="c"># Providers: gitHub, gitLab, azureDevOpsServices, bitbucketCloud, awsCodeCommit, …</span>
+<span class="f">databricks</span> git-credentials create gitHub \
+  --git-provider gitHub \
+  --git-username my-user \
+  --personal-access-token <span class="s">"$GIT_PAT"</span>
+<span class="c"># Hosted GitHub: prefer the Databricks GitHub app / OAuth over a PAT.</span></pre>
+
+  <h3>2 · Clone, branch, commit, push — in-workspace workflow</h3>
+  <p class="mech"><b>Mechanism:</b> clone a remote into a Git folder, then branch/commit/pull/push &amp; resolve conflicts in the Git dialog; the <code>repos</code> API/CLI does the same for automation. <b>Trade-off:</b> the UI client is for dev — prod deploys from a clean pinned ref via DABs.</p>
+  <pre class="code"><span class="c"># Programmatic clone (CI/automation) — databricks repos command group:</span>
+<span class="f">databricks</span> repos create \
+  --url https://github.com/acme/sales-platform \
+  --provider gitHub \
+  --path /Workspace/Repos/ci/sales-platform
+<span class="c"># Day-to-day dev uses the workspace Git dialog (branch/commit/push).</span></pre>
+
+  <h3>3 · Branch-per-feature + PR — the team workflow</h3>
+  <p class="mech"><b>Mechanism:</b> isolate each change on a feature branch, push, open a <strong>PR</strong> for review; merge to <code>main</code> triggers CI. Notebooks are stored as <strong>source files</strong>, so diffs are reviewable. <b>Trade-off:</b> notebook <strong>outputs aren't versioned</strong> (only source); mind notebook merge conflicts.</p>
+  <pre class="code"><span class="c"># git flow that maps to the UI buttons:</span>
+<span class="f">git</span> checkout -b feature/add-returns-metric
+<span class="f">git</span> add src/ resources/ databricks.yml
+<span class="f">git</span> commit -m <span class="s">"Add net-returns metric to sales pipeline"</span>
+<span class="f">git</span> push -u origin feature/add-returns-metric
+<span class="c"># → open a PR; review; merge to main triggers CI.</span></pre>
+
+  <h3>4 · Git + Asset Bundles + CI/CD — wiring it together</h3>
+  <p class="mech"><b>Mechanism:</b> the repo holds source + <code>databricks.yml</code>. On PR, CI runs <code>bundle validate</code>; on merge, CI authenticates as a <strong>service principal</strong> and runs <code>bundle deploy -t prod</code>. <b>Trade-off:</b> CI must auth without a human — use a service principal + OAuth, never a personal token.</p>
+  <pre class="code"><span class="c"># .github/workflows/deploy.yml — GitHub Action calling the Databricks CLI</span>
+<span class="y">name</span>: deploy
+<span class="y">on</span>:
+  <span class="y">push</span>: { <span class="y">branches</span>: [ main ] }
+  <span class="y">pull_request</span>: {}
+<span class="y">jobs</span>:
+  <span class="y">bundle</span>:
+    <span class="y">runs-on</span>: ubuntu-latest
+    <span class="y">env</span>:
+      <span class="y">DATABRICKS_HOST</span>: <span class="s">${{ secrets.DATABRICKS_HOST }}</span>
+      <span class="y">DATABRICKS_CLIENT_ID</span>: <span class="s">${{ secrets.DBX_SP_CLIENT_ID }}</span>      <span class="c"># service principal</span>
+      <span class="y">DATABRICKS_CLIENT_SECRET</span>: <span class="s">${{ secrets.DBX_SP_SECRET }}</span>     <span class="c"># OAuth (M2M)</span>
+    <span class="y">steps</span>:
+      - <span class="y">uses</span>: actions/checkout@v4
+      - <span class="y">uses</span>: databricks/setup-cli@main
+      - <span class="y">run</span>: databricks bundle validate                          <span class="c"># every PR</span>
+      - <span class="y">if</span>: github.ref == 'refs/heads/main'
+        <span class="y">run</span>: databricks bundle deploy -t prod                    <span class="c"># on merge</span></pre>
+
+  <h3>5 · Sparse checkout &amp; allow-lists — scaling monorepos</h3>
+  <p class="mech"><b>Mechanism:</b> enable <strong>sparse checkout</strong> (cone patterns) at clone time so only chosen sub-paths sync; admins can <strong>allow-list</strong> Git URLs/providers workspace-wide. <b>Trade-off:</b> patterns are set at clone &amp; must track repo layout changes.</p>
+  <pre class="code"><span class="c"># Cone sparse-checkout patterns entered in the "Create Git folder" dialog:</span>
+sales-platform/
+docs/        <span class="c"># only these sub-trees sync into the workspace Git folder</span>
+<span class="c"># admin: also allow-list permitted Git URLs/providers for the workspace.</span></pre>
+</section>
+
+<!-- diagram 2: git vs dabs -->
+<section id="cmp">
+  <h2>Git folders vs Asset Bundles — they pair up</h2>
+  <div class="switch">
+    <div class="opt on" data-o="git">Git folders</div>
+    <div class="opt" data-o="dabs">Asset Bundles</div>
+  </div>
+  <div class="view on" data-v="git"><div class="card"><strong>Git folders — version-control.</strong>
+    <ul><li>Clone, branch, commit, PR inside the workspace</li><li>Holds the source (incl. <code>databricks.yml</code>)</li><li>Gives history, review, rollback</li></ul></div></div>
+  <div class="view" data-v="dabs"><div class="card"><strong>Asset Bundles — deploy.</strong>
+    <ul><li>Turn YAML into deployed jobs/pipelines/dashboards</li><li>CLI/CI deploys from the Git repo</li><li>dev/prod targets</li></ul></div></div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Git folders</th><th>Asset Bundles</th></tr>
+    <tr><td>Role</td><td class="win">Version-control</td><td>Deploy</td></tr>
+    <tr><td>Where</td><td>Workspace UI / repos API</td><td>CLI / CI</td></tr>
+    <tr><td>Together</td><td colspan="2" class="win">Git holds the code → CI runs DABs to deploy it</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Workspace-only notebooks have <strong>no history, no review, no rollback</strong>. Git folders brings software discipline to DE.</li>
+    <li>"Version-control &amp; collaborate on Databricks code?" → <strong>Git folders + provider</strong>, feeding <strong>DABs</strong>.</li>
+  </ul>
+  <div class="card usecase">👩‍💻 <strong>Real-world use case:</strong> clone the repo as a Git folder, work on a feature branch, open a GitHub PR for review; on merge a GitHub Action authenticates as a <strong>service principal</strong> and runs <code>databricks bundle deploy</code> — code → review → prod, versioned.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> source control for notebooks/code, branch-based dev, PR review, the repo CI/CD pulls from, automation via the <code>repos</code>/<code>git-credentials</code> APIs.</li>
+    <li><strong>Edge cases:</strong> production jobs should run from a clean, pinned ref (or a DABs deploy) — not a dev Git folder mid-edit; notebook <strong>outputs aren't versioned</strong>; CI must auth as a <strong>service principal</strong>.</li>
+    <li><strong>Limitation:</strong> Git folders versions <strong>workspace assets</strong>; resource <em>deployment</em> + cloud infra is DABs/Terraform's job; some file types/sizes have limits.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Editing prod notebooks directly with no Git → no history/rollback.</li>
+    <li>❌ Pointing a <strong>production job</strong> at a dev Git folder being edited live.</li>
+    <li>❌ Committing <strong>data/secrets</strong> — version code only; use secret scopes.</li>
+    <li>❌ Using a <strong>personal PAT</strong> in CI instead of a service-principal credential.</li>
+    <li>❌ Treating Git folders as the deployer — it version-controls; <strong>DABs</strong> deploy.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/repos/" target="_blank" rel="noopener">Git folders</a> ·
+  <a href="https://docs.databricks.com/aws/en/repos/get-access-tokens-from-git-provider" target="_blank" rel="noopener">Connect a Git provider</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/cli/reference/git-credentials-commands" target="_blank" rel="noopener">git-credentials CLI</a> ·
+  <a href="https://docs.databricks.com/aws/en/dev-tools/bundles/ci-cd" target="_blank" rel="noopener">CI/CD with bundles</a>
+  <p style="margin-top:10px">Topic 11.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — git flow (scoped to #git)
+const GS={
+  clone:'<b>Clone</b> — bring a remote repo (GitHub/GitLab/Bitbucket/Azure DevOps/AWS CodeCommit) into a Git folder using your Git credentials (OAuth app or PAT).',
+  branch:'<b>Branch</b> — create a feature branch so your changes are isolated from main until reviewed.',
+  commit:'<b>Commit</b> — snapshot your notebook/file changes with a message, from the workspace Git dialog.',
+  push:'<b>Push</b> — send commits to the remote so they\'re shareable and CI can see them.',
+  pr:'<b>PR + merge</b> — open a pull request on the provider for review; on merge, CI (e.g. GitHub Actions) authenticates as a service principal and runs <code>databricks bundle deploy</code>.'
+};
+const gsd=document.getElementById('gsd');
+function setGs(k){ document.querySelectorAll('#git .gs').forEach(s=>s.classList.toggle('on',s.dataset.s===k)); gsd.innerHTML=GS[k]; }
+document.querySelectorAll('#git .gs').forEach(s=>s.addEventListener('click',()=>setGs(s.dataset.s)));
+setGs('clone');
+// Diagram 2 — git vs dabs (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+</script>
+</body>
+</html>

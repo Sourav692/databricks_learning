@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VACUUM, Time Travel & Retention · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- lesson 10: version timeline ---------- */
+  .timeline{display:flex;gap:10px;flex-wrap:nowrap;overflow-x:auto;padding:8px 2px 14px;margin:6px 0}
+  .ver{flex:0 0 auto;width:84px;border:1px solid var(--line);border-radius:11px;padding:10px 10px 12px;background:#fff;text-align:center;transition:.3s;position:relative}
+  .ver .vn{font-family:"Spline Sans Mono",monospace;font-size:.72rem;font-weight:600;color:var(--frost)}
+  .ver .op{font-size:.62rem;color:#7a868f;min-height:2.2em;line-height:1.15;margin:3px 0 7px}
+  .ver .files{display:flex;flex-wrap:wrap;gap:3px;justify-content:center}
+  .ver .f{width:13px;height:13px;border-radius:3px;background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border:1px solid #6fc3da}
+  .ver .age{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:#9aa6ad;margin-top:7px}
+  .ver.vacuumed{opacity:.4;filter:grayscale(.6);background:var(--paper-2)}
+  .ver.vacuumed .f{background:repeating-linear-gradient(45deg,#d9cfba,#d9cfba 2px,#cfc3aa 2px,#cfc3aa 4px);border-color:#c0b598}
+  .ver.current{border-color:var(--frost);box-shadow:0 6px 16px -8px rgba(31,111,139,.6)}
+  .ver.earliest{border-color:var(--amber);box-shadow:0 6px 16px -9px rgba(224,122,47,.6)}
+  .ver.earliest::after{content:"earliest live";position:absolute;top:-9px;left:50%;transform:translateX(-50%);font-family:"Spline Sans Mono",monospace;font-size:.5rem;letter-spacing:.04em;background:var(--amber);color:#fff;padding:1px 6px;border-radius:999px;white-space:nowrap}
+  .sliderbox{margin:16px 0 4px}
+  .sliderbox label{display:flex;justify-content:space-between;font-size:.84rem;color:#46535d;font-weight:500;margin-bottom:6px}
+  .sliderbox label b{font-family:"Spline Sans Mono",monospace;color:var(--frost)}
+  input[type=range]{width:100%;accent-color:var(--frost);cursor:pointer}
+  .dialgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;margin:6px 0}
+  .dial{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .dial .dn{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--frost);font-weight:600}
+  .dial .dd{font-size:.78rem;color:#7a868f;margin:2px 0 10px;min-height:2.4em}
+  .winbar{margin:8px 0 2px;height:24px;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;overflow:hidden}
+  .winbar .fill{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(135deg,var(--frost-2),var(--frost));transition:width .3s}
+  .winbar .cap{position:absolute;top:0;bottom:0;width:2px;background:var(--amber)}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 10</p>
+    <h1>VACUUM, Time Travel<br><span class="drip">&amp; Retention.</span></h1>
+    <p class="lede">Every write, <code>OPTIMIZE</code>, <code>MERGE</code>, and deletion-vector op leaves <strong>old files behind</strong>. Time travel <em>uses</em> them, VACUUM <em>reclaims</em> them, and two retention dials govern the trade-off.</p>
+    <div class="meta">
+      <span class="pill">VACUUM retention <b>7 days</b></span>
+      <span class="pill">Log retention <b>30 days</b></span>
+      <span class="pill">VACUUM is <b>one-way</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><span class="chip analogy">Analogy</span> <span class="chip usecase">Use case</span></p>
+    <p>Delta never overwrites data in place. Every change — <code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code>, <code>MERGE</code>, <code>OPTIMIZE</code>, a deletion-vector op — writes <strong>new</strong> Parquet files and commits a new <strong>version</strong> in the transaction log, leaving the <strong>old files</strong> in storage. Those leftovers power two features and one cost dial:</p>
+    <ul>
+      <li><strong>Time travel</strong> <em>uses</em> the old files — query or restore any past version (<code>VERSION AS OF</code>, <code>TIMESTAMP AS OF</code>, <code>RESTORE</code>).</li>
+      <li><strong>VACUUM</strong> <em>reclaims</em> the old files — physically deletes unreferenced files older than a retention window to cut storage and purge deleted data.</li>
+      <li><strong>Two retention dials</strong> govern the trade-off — how long the <strong>log/history</strong> is kept (<code>delta.logRetentionDuration</code>, default 30 days) and how long the <strong>data files</strong> are kept (<code>delta.deletedFileRetentionDuration</code>, default 7 days).</li>
+    </ul>
+    <p><strong>Analogy.</strong> A Delta table is a document with <em>track changes</em> + <em>version history</em> on. Time travel = "open last Tuesday's version." VACUUM = "permanently purge change history older than N days to shrink the file." The two dials = how long you keep the <em>edit log</em> vs. the actual <em>old text</em> — and you can only reopen a past version if <strong>both</strong> still exist.</p>
+    <p><strong>Use case.</strong> An analyst's bad <code>DELETE</code> wipes 2&nbsp;M rows from <code>orders</code>. Because the pre-delete version's files still exist, you <code>RESTORE TABLE orders TO VERSION AS OF 412</code> in seconds — no backup restore, no downtime. Later, for GDPR, <code>VACUUM</code> makes the deleted rows physically gone.</p>
+    <div class="callout">
+      <span class="lbl">The capstone before predictive optimization</span>
+      This is the "manage the file history" lesson. <strong>Lesson 11 (predictive optimization)</strong> then runs <code>VACUUM</code> for you automatically — so raise retention <em>before</em> you enable it.
+    </div>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Mistakes become reversible.</strong> Bad deletes/updates, a broken pipeline run, a wrong overwrite — recover from a past version instead of a backup tape.</li>
+      <li><strong>Storage doesn't grow forever.</strong> Without VACUUM, every rewrite (OPTIMIZE, MERGE, deletion-vector purge) leaves old files you keep paying to store.</li>
+      <li><strong>Compliance needs real deletion.</strong> A soft <code>DELETE</code> only hides rows from queries; the bytes survive in old files until VACUUM removes them past retention.</li>
+      <li><strong>The trade-off is a dial you own.</strong> Longer retention = more recoverability but more storage cost. VACUUM is where you cash in savings — and where you can cut off time travel if too aggressive.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      <strong>VACUUM is one-way.</strong> Once it deletes a version's data files, time travel and <code>RESTORE</code> to that version (and anything older) <strong>fail permanently</strong>. Raise both retention dials <em>before</em> you need long time travel — time travel is <strong>not</strong> a backup strategy.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: version timeline + retention window ============ -->
+  <section>
+    <h2>See it work — version timeline &amp; the VACUUM window</h2>
+    <p>A table with versions <strong>v0…v8</strong> on a timeline, each with its data files. Drag <strong>"now"</strong> to age the table, set the <strong>VACUUM retention</strong>, then click <strong>Run VACUUM</strong>: versions whose files fall <em>outside</em> the retention window get greyed out — their files are gone, so you can no longer time-travel to them. The <span style="color:var(--amber);font-weight:600">earliest live</span> version is the oldest you can still query.</p>
+
+    <div class="lab" id="lab-timeline">
+      <div class="lab-head"><span class="lab-title">Version timeline + retention window</span></div>
+      <p class="lab-sub">Each version was committed 1 day apart. VACUUM deletes files older than the retention window (measured back from "now").</p>
+
+      <div class="sliderbox">
+        <label for="tl-now">"now" — table age since v0 <b><span id="tl-now-val">9</span> days</b></label>
+        <input type="range" id="tl-now" min="9" max="20" value="9" step="1">
+      </div>
+      <div class="sliderbox">
+        <label for="tl-ret">VACUUM retention (<code>delta.deletedFileRetentionDuration</code>) <b><span id="tl-ret-val">7</span> days</b></label>
+        <input type="range" id="tl-ret" min="0" max="14" value="7" step="1">
+      </div>
+
+      <div class="controls">
+        <div class="seg" role="group" aria-label="VACUUM controls">
+          <button id="tl-run" aria-pressed="false">Run VACUUM ▶</button>
+          <button id="tl-dry" aria-pressed="false">DRY RUN (preview)</button>
+          <button id="tl-reset" aria-pressed="false">Reset</button>
+        </div>
+      </div>
+
+      <div class="glabel" id="tl-label">Versions on disk (files = live · hatched = vacuumed)</div>
+      <div class="timeline" id="tl-grid" aria-live="polite"></div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="tl-live">9</div><div class="lbl">versions queryable</div></div>
+        <div class="stat"><div class="big" id="tl-gone">0</div><div class="lbl">versions vacuumed</div></div>
+        <div class="stat win"><div class="big" id="tl-earliest">v0</div><div class="lbl">earliest you can query</div></div>
+      </div>
+      <div class="qstr" id="tl-q">SELECT * FROM orders VERSION AS OF 0;</div>
+      <div class="verdict" id="tl-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real VACUUM deletes unreferenced files older than <code>deletedFileRetentionDuration</code> (default 7 days); the <code>retentionDurationCheck</code> blocks retention &lt; 7 days unless explicitly disabled. Use <code>DRY RUN</code> to preview, and <code>DESCRIBE HISTORY</code> to find versions.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: the two retention dials ============ -->
+  <section>
+    <h2>See it work — the two retention dials</h2>
+    <p>To time-travel N days back you need <strong>both</strong> the log entry <em>and</em> the data files for that version. So the <strong>effective</strong> time-travel window is roughly the <strong>minimum</strong> of the two dials. Drag each slider and watch the effective window — raising only one doesn't extend travel.</p>
+
+    <div class="lab" id="lab-dials">
+      <div class="lab-head"><span class="lab-title">Effective time-travel window = min(log, data files)</span></div>
+      <p class="lab-sub">Set each retention property. The effective reachable window is the shorter of the two — you need the log to <em>reference</em> a version and the files to <em>read</em> it.</p>
+
+      <div class="dialgrid">
+        <div class="dial">
+          <div class="dn">delta.logRetentionDuration</div>
+          <div class="dd">How long the history/log is kept. Default 30 days.</div>
+          <input type="range" id="d-log" min="1" max="60" value="30" step="1">
+          <div class="winbar"><div class="fill" id="d-log-fill"></div></div>
+          <div style="font-size:.8rem;color:#46535d;margin-top:6px"><b id="d-log-val" style="font-family:'Spline Sans Mono',monospace;color:var(--frost)">30</b> days of history</div>
+        </div>
+        <div class="dial">
+          <div class="dn">delta.deletedFileRetentionDuration</div>
+          <div class="dd">VACUUM's data-file threshold. Default 7 days.</div>
+          <input type="range" id="d-data" min="1" max="60" value="7" step="1">
+          <div class="winbar"><div class="fill" id="d-data-fill"></div></div>
+          <div style="font-size:.8rem;color:#46535d;margin-top:6px"><b id="d-data-val" style="font-family:'Spline Sans Mono',monospace;color:var(--frost)">7</b> days of data files</div>
+        </div>
+      </div>
+
+      <div class="readout">
+        <div class="stat win"><div class="big" id="d-eff">7</div><div class="lbl">effective travel (days)</div></div>
+        <div class="stat"><div class="big" id="d-bottleneck" style="font-size:1rem">data files</div><div class="lbl">the bottleneck dial</div></div>
+        <div class="stat"><div class="big" id="d-dbr18" style="font-size:1rem">OK</div><div class="lbl">DBR 18.0+ rule</div></div>
+      </div>
+      <div class="verdict" id="d-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Effective travel ≈ min(log, data files). DBR 18.0+ requires <code>logRetentionDuration ≥ deletedFileRetentionDuration</code> and blocks travel older than <code>deletedFileRetentionDuration</code>.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3><span class="num">01</span>Every modifying op creates a new version (table history)</h3>
+    <p>Each commit appends a JSON entry to <code>_delta_log</code> and bumps the <strong>version</strong> by one, leaving old data files in storage until VACUUM removes them. <code>DESCRIBE HISTORY</code> returns versions <strong>newest first</strong> — columns include <code>version</code>, <code>timestamp</code>, <code>operation</code>, <code>operationMetrics</code>, <code>isolationLevel</code>, <code>isBlindAppend</code>. History is bounded by <code>logRetentionDuration</code> (30 days).</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Full history, newest first: find the version/timestamp you want.</span>
+<span class="k">DESCRIBE HISTORY</span> catalog.schema.orders;
+
+<span class="c">-- Just the latest commit (current version number / last operation).</span>
+<span class="k">DESCRIBE HISTORY</span> catalog.schema.orders <span class="k">LIMIT</span> <span class="s">1</span>;</pre>
+    <pre><span class="tag">PySpark</span><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+hist = DeltaTable.forName(spark, <span class="s">"catalog.schema.orders"</span>).history()   <span class="c"># all versions</span>
+hist.select(<span class="s">"version"</span>, <span class="s">"timestamp"</span>, <span class="s">"operation"</span>, <span class="s">"operationMetrics"</span>).show(truncate=<span class="k">False</span>)
+
+<span class="c"># Last commit version in this session (no extra query):</span>
+print(spark.conf.get(<span class="s">"spark.databricks.delta.lastCommitVersionInSession"</span>))</pre>
+
+    <h3><span class="num">02</span>Querying a past version (<code>VERSION AS OF</code> / <code>TIMESTAMP AS OF</code> / <code>@</code>)</h3>
+    <p>Time travel reads the snapshot live at a version/timestamp — it's a <strong>read</strong>, no table change. Three ways: <code>VERSION AS OF n</code>, <code>TIMESTAMP AS OF '…'</code>, and the <code>@</code> shorthand (<code>t@v123</code> or <code>t@yyyyMMddHHmmssSSS</code>). You can only reach versions whose <strong>files exist</strong> (not vacuumed) <strong>and</strong> whose <strong>log entry exists</strong> (within log retention).</p>
+    <pre><span class="tag">SQL</span><span class="c">-- By version number (from DESCRIBE HISTORY)</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> catalog.schema.orders <span class="k">VERSION AS OF</span> <span class="s">412</span>;
+
+<span class="c">-- By timestamp (resolves to the version live at that instant)</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> catalog.schema.orders <span class="k">TIMESTAMP AS OF</span> <span class="s">'2026-06-20T09:30:00.000Z'</span>;
+
+<span class="c">-- @ shorthand: @v&lt;version&gt; or @&lt;yyyyMMddHHmmssSSS&gt; timestamp</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> catalog.schema.orders@v412;
+<span class="k">SELECT</span> * <span class="k">FROM</span> catalog.schema.orders@20260620093000000;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># versionAsOf / timestampAsOf read options</span>
+df_v = spark.read.option(<span class="s">"versionAsOf"</span>, <span class="s">412</span>).table(<span class="s">"catalog.schema.orders"</span>)
+df_t = spark.read.option(<span class="s">"timestampAsOf"</span>, <span class="s">"2026-06-20"</span>).table(<span class="s">"catalog.schema.orders"</span>)</pre>
+
+    <h3><span class="num">03</span>Fixing accidental changes — <code>RESTORE</code> and read-from-past</h3>
+    <p><code>RESTORE TABLE t TO VERSION/TIMESTAMP AS OF …</code> makes the table's <strong>current</strong> state equal a past version. It is <strong>data-changing</strong> (commits a new version re-pointing to old files) and needs <strong>MODIFY</strong>. For a surgical fix, <code>INSERT</code>/<code>MERGE</code> only the lost rows back from the past version. You <strong>cannot</strong> restore to a version whose files were <strong>vacuumed</strong>, and <code>RESTORE</code> is a write so <strong>downstream streams may reprocess</strong>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Whole-table rollback to a known-good version (data-changing; needs MODIFY)</span>
+<span class="k">RESTORE TABLE</span> catalog.schema.orders <span class="k">TO VERSION AS OF</span> <span class="s">412</span>;
+<span class="c">-- ...or to a point in time</span>
+<span class="k">RESTORE TABLE</span> catalog.schema.orders <span class="k">TO TIMESTAMP AS OF</span> <span class="s">'2026-06-20T09:30:00.000Z'</span>;
+
+<span class="c">-- Surgical: re-insert only the rows a bad DELETE removed, from the past version</span>
+<span class="k">INSERT INTO</span> catalog.schema.orders
+<span class="k">SELECT</span> * <span class="k">FROM</span> catalog.schema.orders <span class="k">VERSION AS OF</span> <span class="s">412</span> <span class="k">AS</span> past
+<span class="k">WHERE</span> past.order_id <span class="k">NOT IN</span> (<span class="k">SELECT</span> order_id <span class="k">FROM</span> catalog.schema.orders);</pre>
+    <pre><span class="tag">PySpark</span><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+dt = DeltaTable.forName(spark, <span class="s">"catalog.schema.orders"</span>)
+dt.restoreToVersion(<span class="s">412</span>)                          <span class="c"># by version</span>
+<span class="c"># dt.restoreToTimestamp("2026-06-20T09:30:00")    # by timestamp</span></pre>
+
+    <h3><span class="num">04</span>VACUUM — reclaim unreferenced files older than retention</h3>
+    <p><code>VACUUM t</code> deletes files that are <strong>no longer referenced</strong> by the current version <strong>and older than the retention threshold</strong> (default <strong>7 days</strong>, set by <code>delta.deletedFileRetentionDuration</code>). Two reasons: <strong>cut storage cost</strong> and <strong>permanently purge</strong> deleted records. Always <code>DRY RUN</code> first — it lists what <em>would</em> be deleted and deletes nothing. VACUUM is the op that actually <strong>caps time travel</strong>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- ALWAYS preview first — lists files that WOULD be deleted, deletes nothing.</span>
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">DRY RUN</span>;
+
+<span class="c">-- Reclaim files older than the table's retention (default 7 days).</span>
+<span class="k">VACUUM</span> catalog.schema.orders;
+
+<span class="c">-- Override the window for this run (168 hours = 7 days; shorter is BLOCKED).</span>
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">RETAIN</span> <span class="s">168</span> <span class="k">HOURS</span>;</pre>
+    <pre><span class="tag">PySpark</span><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+dt = DeltaTable.forName(spark, <span class="s">"catalog.schema.orders"</span>)
+dt.vacuum()        <span class="c"># default retention (7 days)</span>
+dt.vacuum(<span class="s">168</span>)     <span class="c"># RETAIN 168 HOURS</span></pre>
+
+    <h3><span class="num">05</span>LITE vs FULL VACUUM</h3>
+    <ul>
+      <li><strong><code>VACUUM t FULL</code> (default):</strong> lists <strong>every</strong> file under the table path — thorough, slower on huge tables; cleans files not in the log (e.g. aborted-txn leftovers).</li>
+      <li><strong><code>VACUUM t LITE</code> (Public Preview, DBR 16.4 LTS+):</strong> uses the <strong>transaction log</strong> to find expired files — much faster on big tables; <strong>won't</strong> delete files not referenced in the log, and needs a <strong>prior successful VACUUM within the 30-day log retention</strong>.</li>
+    </ul>
+    <pre><span class="tag">SQL</span><span class="c">-- FULL (default): lists all files; thorough; cleans aborted-txn leftovers.</span>
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">FULL</span>;
+
+<span class="c">-- LITE (Public Preview, DBR 16.4 LTS+): uses the txn log; faster on big tables.</span>
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">LITE</span>;</pre>
+
+    <h3><span class="num">06</span>The <code>retentionDurationCheck</code> safety check</h3>
+    <p>Databricks <strong>blocks</strong> <code>VACUUM … RETAIN n HOURS</code> when <code>n</code> is <strong>less than 7 days</strong> unless you set <code>spark.databricks.delta.retentionDurationCheck.enabled = false</code>. The floor protects in-flight work: a too-short window can delete files a <strong>long-running concurrent job</strong> still needs, corrupting it or the table. Disabling it is <strong>strongly discouraged</strong>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- This is BLOCKED by default (retention &lt; 7 days):</span>
+<span class="c">-- VACUUM catalog.schema.orders RETAIN 1 HOURS;</span>
+
+<span class="c">-- Override ONLY if no long-running job needs those files (discouraged):</span>
+<span class="k">SET</span> spark.databricks.delta.retentionDurationCheck.enabled = <span class="s">false</span>;
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">RETAIN</span> <span class="s">1</span> <span class="k">HOURS</span>;
+<span class="k">SET</span> spark.databricks.delta.retentionDurationCheck.enabled = <span class="s">true</span>;   <span class="c">-- re-enable the guard</span></pre>
+
+    <h3><span class="num">07</span>Deletion-vector soft-deletes: <code>REORG … APPLY (PURGE)</code> then VACUUM</h3>
+    <p>With deletion vectors (Lesson 09), <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> mark rows removed <strong>without rewriting</strong> the Parquet file — the bytes stay. <code>REORG TABLE t APPLY (PURGE)</code> rewrites files to physically apply the soft-deletes; then <code>VACUUM</code> (after retention) removes the now-stale old files. This is how soft-deleted data becomes <strong>physically gone</strong> for GDPR — a plain <code>DELETE</code> with DVs does <strong>not</strong> free the bytes.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Step 1: physically apply deletion-vector / column-mapping soft-deletes (rewrites files).</span>
+<span class="k">REORG TABLE</span> catalog.schema.orders <span class="k">APPLY</span> (<span class="k">PURGE</span>);
+
+<span class="c">-- Faster on large tables: only touch files that actually have soft-deletes.</span>
+<span class="k">SET</span> spark.databricks.delta.reorg.purgeMode = <span class="s">rows</span>;
+<span class="k">REORG TABLE</span> catalog.schema.orders <span class="k">APPLY</span> (<span class="k">PURGE</span>);
+
+<span class="c">-- Step 2: after the retention window, VACUUM removes the now-stale old files.</span>
+<span class="k">VACUUM</span> catalog.schema.orders;</pre>
+
+    <h3><span class="num">08</span>The two retention dials — and how they bound time travel</h3>
+    <p><code>delta.logRetentionDuration</code> (default <strong>30 days</strong>) keeps the <strong>history/log</strong>; <code>delta.deletedFileRetentionDuration</code> (default <strong>7 days</strong>) is VACUUM's <strong>data-file</strong> threshold. To time-travel N days back you need <strong>both</strong> — so effective travel ≈ <strong>min</strong> of the two. Raising only one doesn't help. <strong>DBR 18.0+:</strong> <code>logRetentionDuration</code> must be <strong>≥</strong> <code>deletedFileRetentionDuration</code>, and travel older than <code>deletedFileRetentionDuration</code> is blocked.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- To reliably time-travel 30 days back, raise BOTH dials (data files AND the log).</span>
+<span class="k">ALTER TABLE</span> catalog.schema.orders <span class="k">SET TBLPROPERTIES</span> (
+  <span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'interval 30 days'</span>,  <span class="c">-- keep DATA FILES 30 days</span>
+  <span class="s">'delta.logRetentionDuration'</span>         = <span class="s">'interval 30 days'</span>   <span class="c">-- keep HISTORY/LOG 30 days (>= data on DBR 18.0+)</span>
+);
+
+<span class="k">SHOW TBLPROPERTIES</span> catalog.schema.orders;   <span class="c">-- inspect the current dials</span></pre>
+
+    <h3><span class="num">09</span>Time travel to a vacuumed version FAILS (the capstone)</h3>
+    <p>Once VACUUM removes a version's data files, querying or restoring that version (or anything older) <strong>errors out</strong> — the files it would read are gone. This is the trade-off made concrete: VACUUM saves storage by destroying the very files time travel needs. Order matters — set retention <em>before</em> you rely on a long window.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- This SUCCEEDS before vacuuming v412's files...</span>
+<span class="k">SELECT</span> count(*) <span class="k">FROM</span> catalog.schema.orders <span class="k">VERSION AS OF</span> <span class="s">412</span>;
+
+<span class="c">-- ...you run VACUUM (short retention, demo only)...</span>
+<span class="k">SET</span> spark.databricks.delta.retentionDurationCheck.enabled = <span class="s">false</span>;
+<span class="k">VACUUM</span> catalog.schema.orders <span class="k">RETAIN</span> <span class="s">0</span> <span class="k">HOURS</span>;
+<span class="k">SET</span> spark.databricks.delta.retentionDurationCheck.enabled = <span class="s">true</span>;
+
+<span class="c">-- ...and now the SAME query FAILS: v412's data files were deleted.</span>
+<span class="c">-- SELECT count(*) FROM catalog.schema.orders VERSION AS OF 412;   -- ERROR: files no longer exist</span></pre>
+
+    <h3><span class="num">10</span>Predictive optimization runs VACUUM for you (Lesson 11)</h3>
+    <p>On UC <strong>managed</strong> tables, predictive optimization runs <code>VACUUM</code> (and OPTIMIZE/ANALYZE) automatically on serverless — no scheduled job. Because PO's VACUUM uses <code>delta.deletedFileRetentionDuration</code> (default 7 days), <strong>raise that property BEFORE enabling PO</strong> if you need longer time travel; otherwise PO can delete files you expected to reach.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Raise retention BEFORE enabling PO, or PO's VACUUM (7-day default) reclaims files you wanted.</span>
+<span class="k">ALTER TABLE</span> catalog.schema.orders
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'interval 30 days'</span>);
+<span class="c">-- Then enable PO at the schema/catalog level (Lesson 11).</span></pre>
+  </section>
+
+  <section>
+    <h2>Time travel vs VACUUM (and the two dials)</h2>
+    <table class="tbl">
+      <thead><tr><th>Aspect</th><th>Time travel</th><th>VACUUM</th><th>The two retention dials</th></tr></thead>
+      <tbody>
+        <tr><td><strong>What it does</strong></td><td><strong>Reads/restores</strong> an old version from old files</td><td><strong>Deletes</strong> unreferenced files past retention</td><td><strong>Bound</strong> how far back you can travel</td></tr>
+        <tr><td><strong>Data-changing?</strong></td><td><code>SELECT … AS OF</code> no; <code>RESTORE</code> yes</td><td>Yes — permanent file deletion</td><td>No (just properties)</td></tr>
+        <tr><td><strong>Key commands</strong></td><td><code>VERSION/TIMESTAMP AS OF</code>, <code>t@v…</code>, <code>RESTORE</code></td><td><code>VACUUM [RETAIN n HOURS] [DRY RUN] [LITE|FULL]</code></td><td><code>ALTER TABLE … SET TBLPROPERTIES</code></td></tr>
+        <tr><td><strong>Default window</strong></td><td>as far as files <strong>and</strong> log exist</td><td>retention = <strong>7 days</strong></td><td>log <strong>30 days</strong> · data files <strong>7 days</strong></td></tr>
+        <tr><td><strong>Privilege</strong></td><td><code>RESTORE</code> needs <strong>MODIFY</strong></td><td>delete rights on the path</td><td>table owner / ALTER</td></tr>
+        <tr><td><strong>Main risk</strong></td><td>querying a vacuumed version → <strong>fails</strong></td><td>deleting files a job still needs (use <code>DRY RUN</code>)</td><td>raising only one dial doesn't extend travel</td></tr>
+        <tr><td><strong>Relationship</strong></td><td><strong>uses</strong> old files</td><td><strong>reclaims</strong> old files</td><td>effective travel ≈ <strong>min</strong> of the two</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses (when to reach for it)</h3>
+    <ul>
+      <li><strong>Recover from mistakes:</strong> <code>RESTORE</code> (whole table) or <code>INSERT</code>/<code>MERGE</code> from a past version (surgical) after a bad <code>DELETE</code>/<code>UPDATE</code>/overwrite.</li>
+      <li><strong>Audit &amp; reproducibility:</strong> re-run a report against a past day's data; read <code>DESCRIBE HISTORY</code> for who-changed-what.</li>
+      <li><strong>Snapshot isolation:</strong> pin a stable snapshot of a fast-changing table for a long query/join.</li>
+      <li><strong>Reclaim storage &amp; comply:</strong> run <code>VACUUM</code> (after retention) to delete stale files and physically purge soft-deleted data.</li>
+      <li><strong>When NOT to:</strong> as a <strong>backup/DR strategy</strong> (use real backups), or to reach back weeks on a table where you never raised retention.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Vacuumed version</strong> → time travel/<code>RESTORE</code> to it <strong>fails</strong> (files gone).</li>
+      <li><strong>Raised only one dial</strong> → keep the log but vacuum files = query fails; keep files but prune the log = version not referenceable. Raise <strong>both</strong>.</li>
+      <li><strong>Deletion-vector soft-deletes</strong> → a plain <code>DELETE</code> doesn't free bytes; need <code>REORG … APPLY (PURGE)</code> then <code>VACUUM</code>.</li>
+      <li><strong><code>RETAIN &lt; 7 days</code></strong> → blocked by <code>retentionDurationCheck</code>; disabling it can delete files a concurrent job still needs.</li>
+      <li><strong><code>RESTORE</code> &amp; streaming</strong> → it's a write, so downstream streams may reprocess.</li>
+      <li><strong>DBR 18.0+</strong> → <code>logRetentionDuration</code> must be ≥ <code>deletedFileRetentionDuration</code>; travel older than the data-file window is blocked.</li>
+      <li><strong>Big-table VACUUM cost</strong> → phase 1 lists files on workers (parallel); phase 2 deletes from the <strong>driver</strong> (single node) — size the driver up.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li><strong>VACUUM is irreversible</strong> — no undo for deleted files.</li>
+      <li>Default retention <strong>7 days</strong> (data files) / <strong>30 days</strong> (log); longer travel needs raising <strong>both</strong> properties in advance.</li>
+      <li><strong>LITE VACUUM</strong> is <strong>Public Preview (DBR 16.4 LTS+)</strong>, needs a prior successful VACUUM within log retention, and won't delete non-log-referenced files.</li>
+      <li>Time travel is <strong>not</strong> a backup — rely only on the past 7 days unless retention was raised.</li>
+      <li>VACUUM ignores dirs beginning with <code>_</code>/<code>.</code> (e.g. <code>_delta_log</code>, <code>_checkpoints</code>).</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong><code>DRY RUN</code> first.</strong> Preview which files VACUUM would delete before running for real on an unfamiliar table.</li>
+      <li><strong>VACUUM kills old time travel.</strong> After it runs, versions whose files were removed can't be queried or restored — set retention <em>before</em> you need a long window.</li>
+      <li><strong>Raise BOTH dials, not one.</strong> Effective travel ≈ min(log, data-file). On DBR 18.0+, <code>logRetentionDuration</code> must be ≥ <code>deletedFileRetentionDuration</code>.</li>
+      <li><strong>Soft-delete ≠ purged.</strong> With deletion vectors, run <code>REORG … APPLY (PURGE)</code> then <code>VACUUM</code> to physically remove deleted bytes (GDPR).</li>
+      <li><strong>Don't disable <code>retentionDurationCheck</code>.</strong> Sub-7-day VACUUM can corrupt long-running concurrent jobs.</li>
+      <li><strong><code>RESTORE</code> is a write.</strong> Needs MODIFY and may make downstream streams reprocess.</li>
+      <li><strong>Not a backup.</strong> Time travel is for recent recovery/audit, not disaster recovery.</li>
+      <li><strong>PO vacuums for you.</strong> Raise <code>delta.deletedFileRetentionDuration</code> <em>before</em> enabling predictive optimization (Lesson 11) if you need long travel.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/vacuum" target="_blank" rel="noopener">Remove unused data files with VACUUM</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/history" target="_blank" rel="noopener">Work with Delta Lake table history (time travel)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/features/deletion-vectors" target="_blank" rel="noopener">What are deletion vectors?</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization for managed tables</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ============ DIAGRAM 1: version timeline + retention window ============ */
+(function(){
+  const root = document.getElementById('lab-timeline');
+  if(!root) return;
+  const N = 9;                       // versions v0..v8
+  const OPS = ['CREATE','WRITE','MERGE','UPDATE','OPTIMIZE','DELETE','WRITE','MERGE','OPTIMIZE'];
+  const FILES = [2,2,3,2,4,2,3,3,4]; // illustrative file count per version
+  const gridEl = document.getElementById('tl-grid');
+  const nowEl = document.getElementById('tl-now');
+  const retEl = document.getElementById('tl-ret');
+  let now = 9, ret = 7, vacuumed = false, dry = false;
+
+  function ageOf(v){ return now - v; }                 // days old: v0 is oldest
+  // After VACUUM with retention `ret`, files older than `ret` days AND not the current version are gone.
+  function isGone(v){
+    if(!vacuumed) return false;
+    if(v === N-1) return false;                          // current version always kept
+    return ageOf(v) > ret;
+  }
+  function earliestLive(){
+    for(let v=0; v<N; v++){ if(!isGone(v)) return v; }
+    return N-1;
+  }
+
+  function render(){
+    document.getElementById('tl-now-val').textContent = now;
+    document.getElementById('tl-ret-val').textContent = ret;
+    const earliest = earliestLive();
+    gridEl.innerHTML='';
+    let live=0, gone=0;
+    for(let v=0; v<N; v++){
+      const gone_ = isGone(v);
+      if(gone_) gone++; else live++;
+      const cell=document.createElement('div');
+      cell.className='ver'+(gone_?' vacuumed':'')+(v===N-1?' current':'')+(v===earliest&&!gone_?' earliest':'');
+      let dots=''; for(let f=0; f<FILES[v]; f++) dots+='<span class="f"></span>';
+      cell.innerHTML='<div class="vn">v'+v+(v===N-1?' ·now':'')+'</div>'+
+        '<div class="op">'+OPS[v]+'</div>'+
+        '<div class="files">'+dots+'</div>'+
+        '<div class="age">'+ageOf(v)+'d old</div>';
+      gridEl.appendChild(cell);
+    }
+    document.getElementById('tl-live').textContent = live;
+    document.getElementById('tl-gone').textContent = gone;
+    document.getElementById('tl-earliest').textContent = 'v'+earliest;
+    document.getElementById('tl-q').textContent =
+      'SELECT * FROM orders VERSION AS OF '+earliest+';   -- earliest you can still read';
+
+    const vd=document.getElementById('tl-verdict');
+    if(!vacuumed){
+      vd.innerHTML="No VACUUM yet — every version v0…v8 is still queryable because all old files remain in storage. Set a retention and click <b>Run VACUUM</b> to reclaim old files.";
+    } else if(dry){
+      vd.innerHTML="<b>DRY RUN</b>: VACUUM <em>would</em> delete the files for <b>"+gone+"</b> version(s) older than <b>"+ret+" days</b> — but deleted nothing. Earliest still reachable would be <b>v"+earliest+"</b>. Run for real to apply.";
+    } else if(gone===0){
+      vd.innerHTML="VACUUM ran but the retention window (<b>"+ret+" days</b>) still covers every version, so nothing was removed — all of v0…v8 stay queryable.";
+    } else {
+      vd.innerHTML="VACUUM deleted files for <b>"+gone+"</b> version(s) older than <b>"+ret+" days</b>. Time travel to those (and anything older) now <b>fails</b> — the files are gone. The earliest version you can still query is <b>v"+earliest+"</b>.";
+    }
+  }
+
+  nowEl.addEventListener('input',e=>{ now=+e.target.value; if(+retEl.max < now){} render(); });
+  retEl.addEventListener('input',e=>{ ret=+e.target.value; render(); });
+  document.getElementById('tl-run').addEventListener('click',()=>{ vacuumed=true; dry=false; render(); });
+  document.getElementById('tl-dry').addEventListener('click',()=>{ vacuumed=true; dry=true; render(); });
+  document.getElementById('tl-reset').addEventListener('click',()=>{ vacuumed=false; dry=false; now=9; ret=7; nowEl.value=9; retEl.value=7; render(); });
+
+  render();
+})();
+
+/* ============ DIAGRAM 2: the two retention dials ============ */
+(function(){
+  const root = document.getElementById('lab-dials');
+  if(!root) return;
+  const logEl = document.getElementById('d-log');
+  const dataEl = document.getElementById('d-data');
+  const MAX = 60;
+  let log = 30, data = 7;
+
+  function render(){
+    document.getElementById('d-log-val').textContent = log;
+    document.getElementById('d-data-val').textContent = data;
+    document.getElementById('d-log-fill').style.width = (log/MAX*100)+'%';
+    document.getElementById('d-data-fill').style.width = (data/MAX*100)+'%';
+
+    const eff = Math.min(log, data);
+    document.getElementById('d-eff').textContent = eff;
+    const bottleneck = (log < data) ? 'log' : (data < log ? 'data files' : 'tied');
+    document.getElementById('d-bottleneck').textContent = bottleneck;
+
+    // DBR 18.0+: logRetentionDuration must be >= deletedFileRetentionDuration
+    const ok = log >= data;
+    const dbrEl = document.getElementById('d-dbr18');
+    dbrEl.textContent = ok ? 'OK' : 'VIOLATION';
+    dbrEl.style.color = ok ? '' : 'var(--amber)';
+
+    const vd=document.getElementById('d-verdict');
+    if(!ok){
+      vd.innerHTML="On <b>DBR 18.0+</b> this is <b>invalid</b>: <code>logRetentionDuration</code> ("+log+"d) must be <b>≥</b> <code>deletedFileRetentionDuration</code> ("+data+"d). Raise the log retention to at least the data-file retention.";
+    } else if(log===data){
+      vd.innerHTML="Both dials are <b>"+eff+" days</b>, so you can reliably time-travel <b>"+eff+" days</b> back — the log can reference those versions and the files still exist.";
+    } else {
+      const other = bottleneck==='log' ? 'data-file' : 'log';
+      vd.innerHTML="Effective travel is <b>"+eff+" days</b> — capped by the <b>"+bottleneck+"</b> dial. Raising only the "+other+" dial won't help: you need <em>both</em> the log entry <b>and</b> the data files to reach a version. Raise the <b>"+bottleneck+"</b> dial to extend travel.";
+    }
+  }
+
+  logEl.addEventListener('input',e=>{ log=+e.target.value; render(); });
+  dataEl.addEventListener('input',e=>{ data=+e.target.value; render(); });
+  render();
+})();
+</script>
+</body>
+</html>

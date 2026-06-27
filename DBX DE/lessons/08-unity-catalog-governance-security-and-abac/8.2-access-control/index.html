@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UC Access Control · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: access checker (the USE chain) */
+  .toggles{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+  .tog{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:9px 13px;background:#fff;cursor:pointer;font-family:"Spline Sans Mono",monospace;font-size:.84rem;transition:.15s}
+  .tog .badge{font-size:.72rem;padding:3px 9px;border-radius:999px;background:#fdecea;color:#9a2b1a;border:1px solid #f0b3a8}
+  .tog.on .badge{background:#dff0e6;color:#1f6b3a;border-color:#9ed3b2}
+  .door{margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:.86rem;padding:12px;border-radius:8px;text-align:center;font-weight:600}
+  .door.deny{background:#fdecea;color:#9a2b1a;border:1px solid #f0b3a8}
+  .door.allow{background:#dff0e6;color:#1f6b3a;border:1px solid #9ed3b2}
+  /* diagram 2: inheritance */
+  .lvls{display:flex;flex-direction:column;gap:6px}
+  .lv{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fff;cursor:pointer;transition:.18s;font-family:"Spline Sans Mono",monospace;font-size:.82rem}
+  .lv:hover{border-color:var(--brand-2)}.lv.on{border-color:var(--teal);background:#eef7f8}
+  .lvd{margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:12px;font-size:.92rem}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 8.2</p>
+  <h1>UC <em>Access Control</em></h1>
+  <p class="lede">GRANT/REVOKE privileges on securable objects to account groups — with the USE CATALOG → USE SCHEMA → SELECT chain and downward inheritance. This deep dive walks the model and the SQL.</p>
+  <div class="pills"><span class="pill">GRANT / REVOKE</span><span class="pill">USE chain</span><span class="pill">grant to groups</span><span class="pill">MANAGE / ownership</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>GRANT &lt;privilege&gt; ON &lt;securable&gt; TO &lt;group&gt;</strong>. To read a table you need <code>USE CATALOG</code> + <code>USE SCHEMA</code> + <code>SELECT</code>. Privileges inherit downward (catalog → schema → table). Grant to <strong>groups</strong>, not users.</div>
+  <div class="card analogy" style="margin-top:10px">🪪 <strong>Analogy:</strong> an office with keycards — <code>USE CATALOG</code> badges into the <em>building</em>, <code>USE SCHEMA</code> onto the <em>floor</em>, <code>SELECT</code> into the <em>room</em>. You need all three — and you issue keycards to <strong>teams</strong>, not individuals.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: access checker -->
+<section id="check">
+  <h2>The USE chain — toggle grants to open the door</h2>
+  <p class="hint">▸ goal: read <code>prod.sales.orders</code></p>
+  <div class="toggles">
+    <div class="tog" data-g="cat"><span>USE CATALOG prod</span><span class="badge">not granted</span></div>
+    <div class="tog" data-g="sch"><span>USE SCHEMA prod.sales</span><span class="badge">not granted</span></div>
+    <div class="tog" data-g="sel"><span>SELECT ON prod.sales.orders</span><span class="badge">not granted</span></div>
+  </div>
+  <div class="door deny" id="door">🔒 permission denied</div>
+</section>
+
+<section id="grant">
+  <h2>1 · The grant statement &amp; the USE chain</h2>
+  <p><code>GRANT &lt;privilege&gt; ON &lt;securable&gt; &lt;name&gt; TO &lt;principal&gt;</code>. All three rungs are required to read a table. Grant to groups (synced via SCIM / identity federation).</p>
+  <pre class="code"><span class="k">GRANT USE CATALOG</span> <span class="k">ON CATALOG</span> prod              <span class="k">TO</span> `analysts`;   <span class="c">-- badge: building</span>
+<span class="k">GRANT USE SCHEMA</span>  <span class="k">ON SCHEMA</span>  prod.sales        <span class="k">TO</span> `analysts`;   <span class="c">-- badge: floor</span>
+<span class="k">GRANT SELECT</span>      <span class="k">ON TABLE</span>   prod.sales.orders <span class="k">TO</span> `analysts`;   <span class="c">-- key: the room</span></pre>
+</section>
+
+<section id="privs">
+  <h2>2 · The privilege catalog</h2>
+  <table>
+    <tr><th>Category</th><th>Privileges</th></tr>
+    <tr><td>Read/write data</td><td><code>SELECT</code>, <code>MODIFY</code></td></tr>
+    <tr><td>Traverse</td><td><code>USE CATALOG</code>, <code>USE SCHEMA</code>, <code>USE CONNECTION</code></td></tr>
+    <tr><td>Create</td><td><code>CREATE TABLE</code>, <code>CREATE SCHEMA</code>, <code>CREATE VOLUME</code>, <code>CREATE FUNCTION</code>, <code>CREATE MATERIALIZED VIEW</code></td></tr>
+    <tr><td>Functions / files</td><td><code>EXECUTE</code>, <code>READ VOLUME</code>, <code>WRITE VOLUME</code></td></tr>
+    <tr><td>Discovery / governance</td><td><code>BROWSE</code>, <code>APPLY TAG</code></td></tr>
+    <tr><td>Admin</td><td><code>MANAGE</code>, <code>ALL PRIVILEGES</code></td></tr>
+  </table>
+  <pre class="code" style="margin-top:12px"><span class="k">GRANT EXECUTE</span>     <span class="k">ON FUNCTION</span> prod.sales.mask_email <span class="k">TO</span> `analysts`;  <span class="c">-- UC function</span>
+<span class="k">GRANT READ VOLUME</span> <span class="k">ON VOLUME</span>   prod.sales.landing    <span class="k">TO</span> `loaders`;   <span class="c">-- files</span>
+<span class="k">GRANT MODIFY</span>      <span class="k">ON TABLE</span>    prod.sales.orders     <span class="k">TO</span> `data_eng`;  <span class="c">-- write</span></pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: inheritance -->
+<section id="inh">
+  <h2>3 · Inheritance — click a level</h2>
+  <p class="hint">▸ a grant at a level can cover children (grant once, not table-by-table)</p>
+  <div class="lvls">
+    <div class="lv on" data-l="cat">CATALOG prod</div>
+    <div class="lv" data-l="sch">SCHEMA prod.sales</div>
+    <div class="lv" data-l="tab">TABLE prod.sales.orders</div>
+  </div>
+  <div class="lvd" id="lvd"></div>
+  <pre class="code" style="margin-top:10px"><span class="c">-- everyone in analysts reads ALL current & future tables in the schema</span>
+<span class="k">GRANT SELECT</span> <span class="k">ON SCHEMA</span> prod.sales <span class="k">TO</span> `analysts`;   <span class="c">-- (+ USE CATALOG/USE SCHEMA)</span></pre>
+</section>
+
+<section id="own">
+  <h2>4 · Ownership, MANAGE &amp; SHOW GRANTS</h2>
+  <pre class="code"><span class="k">ALTER TABLE</span> prod.sales.orders <span class="k">OWNER TO</span> `data_eng`;   <span class="c">-- transfer ownership (to a group)</span>
+<span class="k">GRANT MANAGE</span> <span class="k">ON SCHEMA</span> prod.sales <span class="k">TO</span> `sales_admins`; <span class="c">-- delegate grant authority</span>
+
+<span class="k">SHOW GRANTS</span> <span class="k">ON TABLE</span> prod.sales.orders;              <span class="c">-- audit who can do what</span>
+<span class="k">REVOKE SELECT</span> <span class="k">ON TABLE</span> prod.sales.orders <span class="k">FROM</span> `analysts`;</pre>
+  <p style="margin-top:8px"><strong>Who can grant:</strong> the object <strong>owner</strong>, holders of <code>MANAGE</code>, or metastore/account admins. Some actions (DROP/ALTER) require ownership.</p>
+</section>
+
+<section>
+  <h2>Grant scope at a glance</h2>
+  <table>
+    <tr><th>Grant level</th><th>Covers</th><th>Use when</th></tr>
+    <tr><td>Table/view</td><td>one object</td><td>fine-grained, exceptional access</td></tr>
+    <tr><td>Schema</td><td>all current + future objects</td><td>a team owns a subject area</td></tr>
+    <tr><td>Catalog</td><td>everything in the catalog</td><td>broad env/domain access</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Day-to-day governance — most "permission denied" bugs are a <strong>missing USE CATALOG/USE SCHEMA</strong>, not the table grant.</li>
+    <li>"Give a team read access to a schema?" → GRANT to a <strong>group</strong> with the USE chain.</li>
+  </ul>
+  <div class="card usecase">👥 <strong>Real-world use case:</strong> analytics gets <code>USE CATALOG prod</code>, <code>USE SCHEMA prod.sales</code>, <code>SELECT ON SCHEMA prod.sales</code> — granted to the <code>analysts</code> group, so onboarding/offboarding is just group membership.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> team read/write access; least-privilege by group; delegating admin via MANAGE/ownership; <code>EXECUTE</code>/<code>READ VOLUME</code> for functions/files.</li>
+    <li><strong>Edge cases:</strong> missing <strong>USE CATALOG/USE SCHEMA</strong> is the #1 denial cause; granting to users instead of groups → sprawl; ownership required for some drop/alter.</li>
+    <li><strong>Limitation:</strong> GRANT controls <strong>whole-object</strong> access — row/column control needs row filters &amp; column masks (8.3); attribute-based needs ABAC (8.4).</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Granting <code>SELECT</code> but forgetting <strong>USE CATALOG/USE SCHEMA</strong> → still denied.</li>
+    <li>❌ Granting to <strong>users</strong> instead of <strong>groups</strong>.</li>
+    <li>❌ Assuming admin = owner — some actions need ownership or MANAGE.</li>
+    <li>❌ Expecting GRANT to hide rows/columns — that's row filters / column masks (8.3).</li>
+    <li>❌ Forgetting <code>EXECUTE</code>/<code>READ VOLUME</code> — tables aren't the only securables.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/" target="_blank" rel="noopener">Manage privileges</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/privileges" target="_blank" rel="noopener">Privileges</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/security-show-grant" target="_blank" rel="noopener">SHOW GRANTS</a> ·
+  <a href="https://docs.databricks.com/aws/en/admin/users-groups/groups" target="_blank" rel="noopener">Manage groups</a>
+  <p style="margin-top:10px">Topic 8.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — access checker (scoped to #check)
+const need={cat:false,sch:false,sel:false};
+const door=document.getElementById('door');
+document.querySelectorAll('#check .tog').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const g=t.dataset.g;
+    need[g]=!need[g];
+    t.classList.toggle('on',need[g]);
+    t.querySelector('.badge').textContent = need[g]?'granted':'not granted';
+    const ok = need.cat && need.sch && need.sel;
+    door.className = 'door '+(ok?'allow':'deny');
+    if(ok){ door.textContent='🔓 SELECT * FROM prod.sales.orders — allowed'; }
+    else {
+      const missing=[];
+      if(!need.cat)missing.push('USE CATALOG'); if(!need.sch)missing.push('USE SCHEMA'); if(!need.sel)missing.push('SELECT');
+      door.textContent='🔒 permission denied — missing: '+missing.join(', ');
+    }
+  });
+});
+// Diagram 2 — inheritance (scoped to #inh)
+const LV={
+  cat:'<b>GRANT at CATALOG</b> — e.g. <code>SELECT ON CATALOG prod</code> can cover all schemas &amp; tables beneath it. Plus <code>USE CATALOG</code> is the entry badge.',
+  sch:'<b>GRANT at SCHEMA</b> — e.g. <code>SELECT ON SCHEMA prod.sales</code> covers all current &amp; future tables in that schema. Needs <code>USE SCHEMA</code> too.',
+  tab:'<b>GRANT at TABLE</b> — most specific: <code>SELECT ON TABLE prod.sales.orders</code>. Still requires USE on the parent catalog &amp; schema.'
+};
+const lvd=document.getElementById('lvd');
+function setLv(k){ document.querySelectorAll('#inh .lv').forEach(l=>l.classList.toggle('on',l.dataset.l===k)); lvd.innerHTML=LV[k]; }
+document.querySelectorAll('#inh .lv').forEach(l=>l.addEventListener('click',()=>setLv(l.dataset.l)));
+setLv('cat');
+</script>
+</body>
+</html>

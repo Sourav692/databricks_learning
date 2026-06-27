@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Declarative Pipelines (SDP) · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.86rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: imperative vs declarative toggle */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .view{display:none}.view.on{display:block;animation:fade .25s ease}
+  /* diagram 2: DAG builder */
+  .dag{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+  .ds{border:1px solid var(--line);border-radius:10px;padding:10px 14px;background:#fff;cursor:pointer;transition:.18s;text-align:center;min-width:110px}
+  .ds:hover{border-color:var(--brand-2)}.ds.on{border-color:var(--teal);background:#eef7f8}
+  .ds .t{font-weight:600}.ds .k{font-family:"Spline Sans Mono",monospace;font-size:.68rem;color:#8a939c}
+  .ar{color:var(--brand);font-family:"Spline Sans Mono",monospace}
+  .det{margin-top:10px}.det .card{display:none}.det .card.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 5.1</p>
+  <h1>Declarative Pipelines <em>(SDP)</em></h1>
+  <p class="lede">Describe the result you want in SQL/Python; Lakeflow Spark Declarative Pipelines builds the dependency graph and runs it — batch or streaming. (Formerly Delta Live Tables / DLT.) This deep dive walks the model and the code.</p>
+  <div class="pills"><span class="pill">was DLT → SDP</span><span class="pill">streaming table vs MV</span><span class="pill">pyspark.pipelines</span><span class="pill">DAG auto-derived</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Lakeflow Spark Declarative Pipelines (SDP)</strong> — you define datasets (streaming tables, materialized views) + flows; Databricks derives the DAG, order, and incremental processing. It's the current name for <strong>Delta Live Tables (DLT)</strong>.</div>
+  <div class="card analogy" style="margin-top:10px">🧭 <strong>Analogy:</strong> declarative = a <strong>GPS destination, not turn-by-turn directions.</strong> You say "clean silver orders from this bronze source"; SDP plans the route (what to run, in what order, incrementally) instead of you hand-coding every step and schedule.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: imperative vs declarative -->
+<section id="cmp">
+  <h2>Imperative job vs declarative pipeline</h2>
+  <p class="hint">▸ toggle the two styles</p>
+  <div class="switch">
+    <div class="opt" data-o="imp">Imperative (manual job)</div>
+    <div class="opt on" data-o="dec">Declarative (SDP)</div>
+  </div>
+  <div class="view" data-v="imp">
+    <div class="card">You write the orchestration yourself:
+      <ul><li>Sequence tasks &amp; handle retries</li><li>Write incremental logic + manage checkpoints</li><li>More code, more to break</li></ul></div>
+  </div>
+  <div class="view on" data-v="dec">
+    <div class="card">You declare datasets; SDP handles the rest:
+      <ul><li>Derives the dependency DAG &amp; run order</li><li>Streaming tables handle incremental processing</li><li>Framework manages checkpoints &amp; optimization</li></ul></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Imperative job</th><th>Declarative (SDP)</th></tr>
+    <tr><td>Task ordering</td><td>You sequence it</td><td class="win">SDP derives the DAG</td></tr>
+    <tr><td>Incremental logic</td><td>You write it</td><td class="win">Streaming tables</td></tr>
+    <tr><td>Checkpoints</td><td>You manage</td><td class="win">Managed</td></tr>
+  </table>
+</section>
+
+<section id="types">
+  <h2>1 · Streaming table vs materialized view</h2>
+  <table>
+    <tr><th></th><th>Streaming table (ST)</th><th>Materialized view (MV)</th></tr>
+    <tr><td>Reads</td><td>a streaming source (<code>readStream</code>)</td><td>a batch query (<code>read</code>)</td></tr>
+    <tr><td>Semantics</td><td>append/incremental; each row once</td><td>result kept equal to the query</td></tr>
+    <tr><td>Use for</td><td class="win">bronze/silver ingestion &amp; incremental transforms</td><td class="win">gold aggregates / dimensions</td></tr>
+  </table>
+  <div class="card" style="margin-top:10px">💡 <strong>Rule of thumb:</strong> ingesting/incrementally transforming new rows → <strong>streaming table</strong>; an aggregate/joined result that must always equal its query → <strong>materialized view</strong>.</div>
+</section>
+
+<section id="python">
+  <h2>2 · Author in Python (current API)</h2>
+  <p>The Python API now lives in <code>pyspark.pipelines</code>. <code>import dlt</code> still works but <code>pipelines</code> is recommended.</p>
+  <pre class="code"><span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp     <span class="c"># current API (replaces `import dlt`)</span>
+
+<span class="f">@dp.table</span>                                <span class="c"># streaming table — reads a stream</span>
+<span class="k">def</span> bronze_orders():
+    <span class="k">return</span> (spark.readStream.format(<span class="s">"cloudFiles"</span>)
+              .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>)
+              .load(<span class="s">"/Volumes/main/raw/orders"</span>))
+
+<span class="f">@dp.table</span>
+<span class="k">def</span> silver_orders():
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze_orders"</span>).dropDuplicates([<span class="s">"order_id"</span>])
+
+<span class="f">@dp.materialized_view</span>                    <span class="c"># batch MV — reads a snapshot</span>
+<span class="k">def</span> gold_daily_revenue():
+    <span class="k">return</span> spark.read.table(<span class="s">"silver_orders"</span>).groupBy(<span class="s">"order_date"</span>).sum(<span class="s">"amount"</span>)</pre>
+</section>
+
+<section id="sql">
+  <h2>3 · Author in SQL</h2>
+  <pre class="code"><span class="c">-- streaming table: incremental ingest (STREAM = streaming read)</span>
+<span class="k">CREATE OR REFRESH STREAMING TABLE</span> bronze_orders
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> read_files(<span class="s">'/Volumes/main/raw/orders'</span>, format => <span class="s">'json'</span>);
+
+<span class="k">CREATE OR REFRESH STREAMING TABLE</span> silver_orders
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> bronze_orders;          <span class="c">-- depends on bronze → SDP orders it</span>
+
+<span class="c">-- materialized view: a gold aggregate kept in sync with its query</span>
+<span class="k">CREATE OR REFRESH MATERIALIZED VIEW</span> gold_daily_revenue
+<span class="k">AS SELECT</span> order_date, sum(amount) <span class="k">AS</span> revenue <span class="k">FROM</span> silver_orders <span class="k">GROUP BY</span> order_date;</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: SDP derives the DAG -->
+<section id="dag">
+  <h2>4 · You declare datasets → SDP builds the graph</h2>
+  <p class="hint">▸ click each dataset</p>
+  <div class="dag">
+    <div class="ds on" data-d="b"><div class="t">bronze_orders</div><div class="k">streaming table</div></div>
+    <span class="ar">▸</span>
+    <div class="ds" data-d="s"><div class="t">silver_orders</div><div class="k">streaming table</div></div>
+    <span class="ar">▸</span>
+    <div class="ds" data-d="g"><div class="t">gold_daily</div><div class="k">materialized view</div></div>
+  </div>
+  <div class="det">
+    <div class="card on" data-dd="b"><strong>bronze_orders</strong> — a <strong>streaming table</strong> ingesting raw orders (e.g. Auto Loader). You just declare it; SDP runs it incrementally.</div>
+    <div class="card" data-dd="s"><strong>silver_orders</strong> — a <strong>streaming table</strong> that cleans/dedupes bronze. SDP sees it depends on bronze and orders the run automatically.</div>
+    <div class="card" data-dd="g"><strong>gold_daily</strong> — a <strong>materialized view</strong> aggregating silver. SDP refreshes it from silver — you never wrote the schedule or the DAG.</div>
+  </div>
+  <p style="margin-top:12px">A normal <strong>update</strong> processes only new data; a <strong>full refresh</strong> recomputes from scratch (re-reads all source data, resets ST state). <strong>Development mode</strong> reuses the cluster &amp; skips retries for fast iteration; <strong>production mode</strong> restarts/retries on failure.</p>
+</section>
+
+<section>
+  <h2>SDP vs Lakeflow Jobs</h2>
+  <table>
+    <tr><th></th><th>Declarative Pipelines (SDP)</th><th>Lakeflow Jobs (Topic 7)</th></tr>
+    <tr><td>Purpose</td><td class="win">build an ETL pipeline (datasets + flows)</td><td>orchestrate tasks</td></tr>
+    <tr><td>Unit</td><td>streaming tables / materialized views</td><td>tasks (notebook, SQL, pipeline…)</td></tr>
+    <tr><td>Ordering</td><td class="win">derived from data dependencies</td><td>you wire task dependencies</td></tr>
+    <tr><td>Together</td><td colspan="2">a Job can run an SDP pipeline as one task, alongside notebooks + SQL</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Hand-built pipelines mean <strong>you write the orchestration</strong> (order, retries, incremental, checkpoints). SDP removes that boilerplate.</li>
+    <li>"DLT vs Lakeflow Declarative Pipelines?" and "imperative vs declarative?" are common interview questions — know the rename and the model.</li>
+  </ul>
+  <div class="card usecase">🥉🥈🥇 <strong>Real-world use case:</strong> a medallion pipeline. You declare each table + its query; SDP builds the dependency graph, runs bronze→silver→gold in order, and incrementally updates only what changed.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> medallion ETL, incremental batch + streaming transforms, pipelines with data-quality rules &amp; SCD (5.2–5.4).</li>
+    <li><strong>Edge case:</strong> declarative ≠ magic — a wrong dependency or non-incremental query still costs; <strong>full refresh vs incremental update</strong> behave differently (full refresh re-reads all source data &amp; resets streaming state). Streaming-table sources should be append-only.</li>
+    <li><strong>Limitation:</strong> it's a framework with its own pipeline runtime/modes — for plain orchestration of notebooks/SQL use <strong>Lakeflow Jobs</strong> (Topic 7). Docs/UI may still say "DLT" in places.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Treating "DLT" as different — <strong>DLT = Lakeflow Spark Declarative Pipelines</strong> now.</li>
+    <li>❌ Using <code>import dlt</code> in new code — prefer <code>from pyspark import pipelines</code> (old import still runs).</li>
+    <li>❌ Expecting it to replace <strong>Lakeflow Jobs</strong> — SDP builds the pipeline; Jobs orchestrate pipelines + notebooks + SQL.</li>
+    <li>❌ Materialized view where you need append/incremental (use a streaming table), or vice-versa.</li>
+    <li>❌ Writing imperative orchestration inside a declarative pipeline — let SDP derive order from dataset definitions.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ldp/" target="_blank" rel="noopener">Declarative Pipelines (SDP)</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/where-is-dlt" target="_blank" rel="noopener">What happened to DLT?</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/developer/python-ref" target="_blank" rel="noopener">Python reference (pyspark.pipelines)</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/" target="_blank" rel="noopener">Pipeline concepts</a>
+  <p style="margin-top:10px">Topic 5.1 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — imperative/declarative (scoped to #cmp)
+document.querySelectorAll('#cmp .opt').forEach(o=>{
+  o.addEventListener('click',()=>{
+    const k=o.dataset.o;
+    document.querySelectorAll('#cmp .opt').forEach(x=>x.classList.toggle('on',x===o));
+    document.querySelectorAll('#cmp .view').forEach(v=>v.classList.toggle('on',v.dataset.v===k));
+  });
+});
+// Diagram 2 — DAG datasets (scoped to #dag)
+document.querySelectorAll('#dag .ds').forEach(d=>{
+  d.addEventListener('click',()=>{
+    const k=d.dataset.d;
+    document.querySelectorAll('#dag .ds').forEach(x=>x.classList.toggle('on',x===d));
+    document.querySelectorAll('#dag .det .card').forEach(c=>c.classList.toggle('on',c.dataset.dd===k));
+  });
+});
+</script>
+</body>
+</html>

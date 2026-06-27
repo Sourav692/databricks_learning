@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CDC, REST & Streaming Ingestion · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.4vw,2.7rem);line-height:1.06;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: pick the source */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.76rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  /* diagram 2: kafka deserialize stepper */
+  .step{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;margin-bottom:8px}
+  .step .lbl{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:#8a939c}
+  .step .val{font-family:"Spline Sans Mono",monospace;font-size:.84rem;margin-top:4px;word-break:break-all}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer}
+  .btn:hover{background:var(--brand);color:#fff}
+  .btn.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 4.4</p>
+  <h1>CDC, REST/JSON &amp; <em>Streaming</em> Ingestion</h1>
+  <p class="lede">Beyond files: capture database changes (CDC), pull REST/JSON APIs, and stream events from Kafka / Azure Event Hubs into Delta. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">Kafka / Event Hubs</span><span class="pill">CDC via Lakeflow Connect</span><span class="pill">REST + JSON</span><span class="pill">exactly-once</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">Three non-file paths into the lakehouse: <strong>database CDC</strong> (Lakeflow Connect), <strong>REST/JSON</strong> pulls, and <strong>message-bus streaming</strong> (Kafka/Event Hubs via Structured Streaming <code>format("kafka")</code>) — all landing in Delta.</div>
+  <div class="card analogy" style="margin-top:10px">📻 <strong>Analogy:</strong> files are <em>mail in a mailbox</em>; a <strong>message bus</strong> (Kafka) is a <em>live radio feed</em> you tune into; <strong>CDC</strong> is a <em>security camera</em> on a database recording every change as it happens.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: pick the source -->
+<section id="src">
+  <h2>Which ingestion path? — click a source</h2>
+  <p class="hint">▸ match the source to the right mechanism</p>
+  <div class="tabs">
+    <button class="tab on" data-t="kafka">Kafka / Event Hubs</button>
+    <button class="tab" data-t="cdc">Operational database</button>
+    <button class="tab" data-t="rest">REST API / JSON</button>
+  </div>
+  <div class="panel on" data-p="kafka"><div class="card"><strong>Message bus → Structured Streaming.</strong> <code>readStream.format("kafka")</code> with <code>kafka.bootstrap.servers</code> + <code>subscribe</code> → deserialize <code>value</code> → write to Delta. Near real-time, exactly-once via checkpoint.</div></div>
+  <div class="panel" data-p="cdc"><div class="card"><strong>Database → Lakeflow Connect (CDC).</strong> Use a managed database connector (ingestion gateway + CDC) to mirror inserts/updates/deletes continuously — no hand-coded change tracking. Apply downstream with AUTO CDC (5.4).</div></div>
+  <div class="panel" data-p="rest"><div class="card"><strong>REST API → land JSON → parse.</strong> Handle auth/pagination/rate-limits, land raw JSON to a Volume, then Auto Loader / <code>from_json</code> into bronze.</div></div>
+</section>
+
+<!-- DEEP DIVE: kafka read -->
+<section id="read">
+  <h2>1 · Read from Kafka / Event Hubs</h2>
+  <p><code>subscribe</code> (exact) / <code>subscribePattern</code> (regex) / <code>assign</code> (partitions) select topics. <code>startingOffsets</code> = latest or earliest; <code>maxOffsetsPerTrigger</code> caps batch size so a backlog doesn't overwhelm you.</p>
+  <p class="codecap">PySpark</p>
+  <pre class="code">df = (spark.readStream.format(<span class="s">"kafka"</span>)
+        .option(<span class="s">"kafka.bootstrap.servers"</span>, <span class="s">"host:9092"</span>)
+        .option(<span class="s">"subscribe"</span>, <span class="s">"events"</span>)            <span class="c"># or subscribePattern / assign</span>
+        .option(<span class="s">"startingOffsets"</span>, <span class="s">"latest"</span>)      <span class="c"># "earliest" to backfill</span>
+        .option(<span class="s">"maxOffsetsPerTrigger"</span>, <span class="f">500000</span>)   <span class="c"># cap per micro-batch</span>
+        .load())</pre>
+  <p class="codecap">SQL — read_kafka streaming TVF</p>
+  <pre class="code"><span class="k">CREATE OR REFRESH STREAMING TABLE</span> cat.sch.bronze_raw <span class="k">AS</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> <span class="k">STREAM</span> read_kafka(bootstrapServers => <span class="s">'host:9092'</span>, subscribe => <span class="s">'events'</span>);</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: kafka deserialize -->
+<section id="deser">
+  <h2>2 · Kafka rows are binary — deserialize the value</h2>
+  <p class="hint">▸ toggle to see why you must parse <code>value</code></p>
+  <div class="controls">
+    <button class="btn on" id="rawb" onclick="setDeser(false)">Raw Kafka row</button>
+    <button class="btn" id="parb" onclick="setDeser(true)">After from_json()</button>
+  </div>
+  <div id="dview"></div>
+  <p class="codecap">Deserialize + keep metadata</p>
+  <pre class="code"><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> col, from_json
+schema = <span class="s">"user_id INT, event STRING, ts TIMESTAMP"</span>
+parsed = (df.select(
+            from_json(col(<span class="s">"value"</span>).cast(<span class="s">"string"</span>), schema).alias(<span class="s">"d"</span>),  <span class="c"># deserialize</span>
+            col(<span class="s">"topic"</span>), col(<span class="s">"partition"</span>), col(<span class="s">"offset"</span>), col(<span class="s">"timestamp"</span>))
+          .select(<span class="s">"d.*"</span>, <span class="s">"topic"</span>, <span class="s">"partition"</span>, <span class="s">"offset"</span>, <span class="s">"timestamp"</span>))   <span class="c"># keep offsets for replay</span></pre>
+</section>
+
+<section id="write">
+  <h2>3 · Write to Delta — exactly-once via checkpoint</h2>
+  <p>The checkpoint gives exactly-once + restart safety (one checkpoint per stream). Event Hubs is consumed through the same Kafka reader (Kafka protocol). Track lag with <code>avgOffsetsBehindLatest</code>.</p>
+  <pre class="code">(parsed.writeStream
+   .option(<span class="s">"checkpointLocation"</span>, <span class="s">"/Volumes/cat/sch/vol/_ck_kafka"</span>)  <span class="c"># unique per stream</span>
+   .trigger(availableNow=<span class="k">True</span>)        <span class="c"># batch-style catch-up; omit for always-on</span>
+   .toTable(<span class="s">"cat.sch.bronze_events"</span>))</pre>
+</section>
+
+<section id="cdcrest">
+  <h2>4 · Database CDC &amp; REST/JSON</h2>
+  <ul>
+    <li><strong>Database CDC:</strong> mirror an OLTP DB via a <strong>Lakeflow Connect</strong> database connector (gateway + staging + CDC, 4.3); apply changes into silver dimensions with <strong>AUTO CDC / APPLY CHANGES</strong> in a Declarative Pipeline (5.4). Don't hand-roll change tracking.</li>
+    <li><strong>REST/JSON:</strong> handle auth/pagination/rate-limits, land raw JSON to a Volume, then ingest with Auto Loader.</li>
+  </ul>
+  <pre class="code"><span class="c"># After landing raw JSON to a Volume, parse incrementally with Auto Loader</span>
+raw = (spark.readStream.format(<span class="s">"cloudFiles"</span>)
+         .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>)
+         .option(<span class="s">"cloudFiles.schemaLocation"</span>, <span class="s">"/Volumes/cat/sch/vol/_api_schema"</span>)
+         .load(<span class="s">"/Volumes/cat/sch/vol/api_landing"</span>))</pre>
+</section>
+
+<section>
+  <h2>Pick the path per source</h2>
+  <table>
+    <tr><th>Source</th><th>Mechanism</th><th>Notes</th></tr>
+    <tr><td>Files in object storage</td><td>Auto Loader / COPY INTO (4.1–4.2)</td><td>incremental file ingest</td></tr>
+    <tr><td>SaaS app / OLTP database</td><td>Lakeflow Connect (4.3)</td><td>managed connector / CDC</td></tr>
+    <tr><td>Kafka / Event Hubs</td><td>Structured Streaming <code>format("kafka")</code></td><td>near real-time events</td></tr>
+    <tr><td>REST / JSON API</td><td>land raw → Auto Loader / from_json</td><td>handle auth/pagination</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Real businesses have databases and event streams, not just files — choosing the right path per source is core DE judgment.</li>
+    <li>"How do you get real-time events / database changes into the lakehouse?" → Kafka/Event Hubs streaming + <strong>CDC via Lakeflow Connect</strong>.</li>
+  </ul>
+  <div class="card usecase">📡 <strong>Real-world use case:</strong> IoT sensors publish to Kafka; a streaming job parses the JSON <code>value</code> into a bronze Delta table in near real-time, while a Lakeflow Connect CDC connector mirrors the orders DB into the same lakehouse.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> real-time events (Kafka/Event Hubs), database mirroring (CDC), API/JSON pulls into bronze.</li>
+    <li><strong>Edge cases:</strong> Kafka <code>value</code> is binary — must deserialize; <code>startingOffsets=earliest</code> backfills everything (cap with <code>maxOffsetsPerTrigger</code>); REST needs auth/pagination/rate-limit handling.</li>
+    <li><strong>Limitation:</strong> message-bus streaming is for events, not big file dumps (use Auto Loader); hand-built REST lacks managed-connector monitoring — prefer Lakeflow Connect where available.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Not deserializing Kafka <code>value</code> (binary) → garbage columns.</li>
+    <li>❌ Accidentally using <code>earliest</code> offsets → massive unintended backfill.</li>
+    <li>❌ Sharing one checkpoint across streams → corrupted state.</li>
+    <li>❌ Hand-coding DB ingestion when a Lakeflow Connect CDC connector exists.</li>
+    <li>❌ Dropping the Kafka offset/partition metadata — keep it in bronze for replay.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/connect/streaming/kafka" target="_blank" rel="noopener">Stream from Kafka</a> ·
+  <a href="https://docs.databricks.com/aws/en/connect/streaming/event-hubs" target="_blank" rel="noopener">Stream from Event Hubs</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/functions/read_kafka" target="_blank" rel="noopener">read_kafka</a> ·
+  <a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/" target="_blank" rel="noopener">Lakeflow Connect (CDC)</a>
+  <p style="margin-top:10px">Topic 4.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — source tabs (scoped to #src)
+document.querySelectorAll('#src .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#src .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#src .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+// Diagram 2 — deserialize toggle (scoped to #deser)
+const dview=document.getElementById('dview');
+function setDeser(parsed){
+  document.getElementById('rawb').classList.toggle('on',!parsed);
+  document.getElementById('parb').classList.toggle('on',parsed);
+  if(!parsed){
+    dview.innerHTML='<div class="step"><div class="lbl">key (binary)</div><div class="val">[B@3f8a2c]</div>'+
+      '<div class="lbl" style="margin-top:8px">value (binary)</div><div class="val">[B@9d11e7]  ← unusable bytes</div>'+
+      '<div class="lbl" style="margin-top:8px">+ topic, partition, offset, timestamp, timestampType</div></div>';
+  } else {
+    dview.innerHTML='<div class="step"><div class="lbl">value cast to string + from_json(schema)</div>'+
+      '<div class="val">{ user_id: 42, event: "click", ts: "2026-06-24T10:00Z" }</div>'+
+      '<div class="lbl" style="margin-top:8px">→ usable columns: user_id, event, ts (+ kept offset/partition) ✅</div></div>';
+  }
+}
+setDeser(false);
+</script>
+</body>
+</html>

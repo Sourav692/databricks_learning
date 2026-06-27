@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakeflow Connect · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,5vw,3.1rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  ol{margin:.4em 0;padding-left:1.3em}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.8rem;line-height:1.5;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .y{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: SaaS vs DB connector flow */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  .pipe{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .node{border:1px solid var(--line);border-radius:8px;padding:8px 11px;background:#fff;font-size:.8rem;text-align:center}
+  .node.hl{border-color:var(--brand-2);background:#fff3e8}
+  .ar{color:var(--brand);font-family:"Spline Sans Mono",monospace}
+  /* diagram 2: connector type cards */
+  .cc{display:flex;flex-direction:column;gap:8px}
+  .cb{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .cb:hover{border-color:var(--brand-2)}.cb.open{border-color:var(--teal)}
+  .cb .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .cb .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.cb.open .d{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 4.3</p>
+  <h1><em>Lakeflow Connect</em> — Managed &amp; Standard Connectors</h1>
+  <p class="lede">Built-in, mostly no-code ingestion from SaaS apps and databases — governed by Unity Catalog, serverless, built on Lakeflow Declarative Pipelines. This deep dive pairs the UI flow with config-as-code.</p>
+  <div class="pills"><span class="pill">Managed connectors</span><span class="pill">CDC + gateway</span><span class="pill">UC connection</span><span class="pill">Asset Bundle</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>Managed connectors</strong> = fully-managed, UI-based ingestion from Salesforce, Workday, ServiceNow, SQL Server, MySQL, Postgres… <strong>Standard/community connectors</strong> reach a wider range of sources from inside your pipelines. Managed = least code, built-in monitoring; reproducible as an Asset Bundle.</div>
+  <div class="card analogy" style="margin-top:10px">✈️ <strong>Analogy:</strong> managed connectors are <strong>direct flights</strong> — Databricks runs the whole trip with monitoring &amp; recovery built in. Standard/community connectors are <strong>connecting flights you book yourself</strong> — more reach, but you wire up more of the journey.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: SaaS vs DB connector architecture -->
+<section id="arch">
+  <h2>Connector architecture — click a type</h2>
+  <p class="hint">▸ SaaS connectors are simpler; database connectors add a CDC gateway</p>
+  <div class="tabs">
+    <button class="tab on" data-t="saas">SaaS connector (Salesforce…)</button>
+    <button class="tab" data-t="db">Database connector (SQL Server…)</button>
+  </div>
+  <div class="panel on" data-p="saas">
+    <div class="card"><strong>connection → pipeline → table</strong>; reads only new/changed records (incremental, often via cursor columns).
+      <div class="pipe"><span class="node">Salesforce</span><span class="ar">▸</span><span class="node hl">UC Connection (OAuth)</span><span class="ar">▸</span><span class="node">Ingestion pipeline (SDP)</span><span class="ar">▸</span><span class="node">Bronze Delta</span></div>
+    </div>
+  </div>
+  <div class="panel" data-p="db">
+    <div class="card">Uses <strong>CDC</strong> + an <strong>ingestion gateway</strong> + staging storage to stream changes continuously.
+      <div class="pipe"><span class="node">SQL Server</span><span class="ar">▸</span><span class="node hl">Gateway (CDC)</span><span class="ar">▸</span><span class="node">Staging</span><span class="ar">▸</span><span class="node">Pipeline</span><span class="ar">▸</span><span class="node">Bronze Delta</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- UI flow -->
+<section id="ui">
+  <h2>1 · The UI flow (Salesforce example)</h2>
+  <ol>
+    <li><strong>Data Ingestion</strong> in the sidebar → choose <strong>Salesforce</strong>.</li>
+    <li>Create or select a <strong>connection</strong> (OAuth) — a UC securable storing auth.</li>
+    <li>Pick destination <strong>catalog/schema</strong> and the objects (e.g. Account, Opportunity).</li>
+    <li>Create the <strong>ingestion pipeline</strong> (a Lakeflow SDP) and set a <strong>schedule</strong>.</li>
+  </ol>
+  <div class="card note">💡 Database connectors add one step: an <strong>ingestion gateway</strong> + staging schema for CDC before the pipeline.</div>
+</section>
+
+<!-- config as code -->
+<section id="code">
+  <h2>2 · The same thing as code (CI/CD)</h2>
+  <p class="codecap">UC connection (databases via SQL; SaaS usually via UI OAuth)</p>
+  <pre class="code"><span class="k">CREATE CONNECTION</span> sqlserver_conn <span class="k">TYPE</span> sqlserver
+<span class="k">OPTIONS</span> (host <span class="s">'db.corp.net'</span>, port <span class="s">'1433'</span>,
+         user secret(<span class="s">'kv'</span>,<span class="s">'sql_user'</span>), password secret(<span class="s">'kv'</span>,<span class="s">'sql_pwd'</span>));</pre>
+  <p class="codecap">Ingestion pipeline as a Databricks Asset Bundle</p>
+  <pre class="code"><span class="c"># databricks.yml</span>
+<span class="y">resources:</span>
+  <span class="y">pipelines:</span>
+    <span class="y">pipeline_sfdc:</span>
+      <span class="y">name:</span> salesforce_ingest
+      <span class="y">catalog:</span> main                      <span class="c"># destination catalog</span>
+      <span class="y">schema:</span> bronze                     <span class="c"># destination schema</span>
+      <span class="y">ingestion_definition:</span>
+        <span class="y">connection_name:</span> salesforce_conn  <span class="c"># the UC connection</span>
+        <span class="y">objects:</span>
+          - <span class="y">table:</span>
+              <span class="y">source_schema:</span> objects
+              <span class="y">source_table:</span> Opportunity    <span class="c"># Salesforce object → bronze table</span>
+              <span class="y">destination_catalog:</span> main
+              <span class="y">destination_schema:</span> bronze</pre>
+  <p class="codecap">Deploy, run & schedule (CLI)</p>
+  <pre class="code">databricks bundle deploy -t prod        <span class="c"># create/update the pipeline</span>
+databricks bundle run pipeline_sfdc     <span class="c"># trigger an ingestion run</span></pre>
+  <pre class="code" style="margin-top:8px"><span class="y">jobs:</span>
+  <span class="y">sfdc_daily:</span>
+    <span class="y">trigger:</span> { <span class="y">periodic:</span> { <span class="y">interval:</span> 1, <span class="y">unit:</span> DAYS } }
+    <span class="y">tasks:</span>
+      - <span class="y">task_key:</span> ingest
+        <span class="y">pipeline_task:</span> { <span class="y">pipeline_id:</span> ${resources.pipelines.pipeline_sfdc.id} }</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: managed vs standard/community -->
+<section id="types">
+  <h2>3 · Connector tiers — click each</h2>
+  <div class="cc">
+    <div class="cb open" onclick="this.classList.toggle('open')"><div class="h"><span>Managed connectors</span><span>▸</span></div><div class="d">Databricks-maintained, UI-based, serverless, UC-governed. Built-in monitoring, orchestration, failure recovery. SaaS (Salesforce, Workday, ServiceNow, HubSpot, Jira), Database/CDC (SQL Server, MySQL, Postgres), File (SharePoint, Google Drive), query-based & streaming.</div></div>
+    <div class="cb" onclick="this.classList.toggle('open')"><div class="h"><span>Standard connectors</span><span>▸</span></div><div class="d">Access a wider range of sources from within your pipelines/queries when no managed connector exists.</div></div>
+    <div class="cb" onclick="this.classList.toggle('open')"><div class="h"><span>Community connectors</span><span>▸</span></div><div class="d">Open-source, community-built. Fill gaps for less common sources but rely on volunteer maintenance and may lack official support.</div></div>
+  </div>
+  <table style="margin-top:12px">
+    <tr><th></th><th>Managed</th><th>Standard / community</th></tr>
+    <tr><td>Setup</td><td class="win">UI + bundle, minimal code</td><td>More wiring</td></tr>
+    <tr><td>Monitoring / recovery</td><td class="win">Built-in</td><td>You implement</td></tr>
+    <tr><td>Source coverage</td><td>Specific list</td><td class="win">Broader</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Hand-building API ingestion (auth, pagination, CDC, retries, schema) is weeks of brittle work; managed connectors make it point-and-click with monitoring &amp; recovery.</li>
+    <li>"How would you ingest Salesforce data?" → "<strong>Lakeflow Connect managed connector</strong>" is the modern expected answer.</li>
+  </ul>
+  <div class="card usecase">💼 <strong>Real-world use case:</strong> finance needs Salesforce opportunities daily. A managed connector ingests them incrementally into bronze — no custom API code, UC-governed, monitored automatically, and captured as a bundle for CI/CD.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> pulling enterprise SaaS/db data (CRM, HR, ITSM, OLTP DBs) into bronze without custom code; CDC from operational databases; CI/CD via Asset Bundles.</li>
+    <li><strong>Edge case:</strong> database connectors need an <strong>ingestion gateway</strong> + staging (heavier than SaaS); sources without a managed connector fall back to standard/community; SaaS auth is OAuth via the UI.</li>
+    <li><strong>Limitation:</strong> managed connectors cover a specific (growing) list; community connectors are best-effort. Verify current source availability in the docs before promising it.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Assuming every SaaS/db has a managed connector — verify the supported list.</li>
+    <li>❌ Forgetting database connectors require an <strong>ingestion gateway</strong>.</li>
+    <li>❌ Hand-rolling API ingestion when a managed connector already exists.</li>
+    <li>❌ Confusing <strong>managed</strong> (Databricks-maintained) with <strong>community</strong> (open-source, best-effort) connectors.</li>
+    <li>❌ Clicking the pipeline together in the UI for prod and never capturing it as a <strong>bundle</strong> — you lose CI/CD.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/" target="_blank" rel="noopener">Lakeflow Connect</a> ·
+  <a href="https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/salesforce-pipeline" target="_blank" rel="noopener">Salesforce pipeline</a> ·
+  <a href="https://docs.databricks.com/aws/en/ingestion/" target="_blank" rel="noopener">Ingestion overview</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-connection" target="_blank" rel="noopener">CREATE CONNECTION</a>
+  <p style="margin-top:10px">Topic 4.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — arch tabs (scoped to #arch)
+document.querySelectorAll('#arch .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#arch .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#arch .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+// Diagram 2 (#types) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks PySpark Performance — Lesson Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
+    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
+    --violet:#6d28d9;--violet-2:#8b5cf6;
+    --line:#ddd1bf;--shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);
+    background-attachment:fixed;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  header{padding:72px 0 30px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.4rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--flame-2);font-style:italic}
+  .lede{font-size:1.16rem;max-width:66ch;color:#43383f}
+  .stat-row{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .stat{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:10px 16px}
+  .stat b{font-family:"Fraunces",serif;font-size:1.5rem;display:block;color:var(--flame);line-height:1}
+  .stat span{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:#857890}
+
+  .band{margin:42px 0 8px}
+  .band h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .band p{font-size:.95rem;color:#5f5460;margin:8px 0 2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin:16px 0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 30px -14px rgba(40,20,10,.5)}
+  .card-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .tnum{background:var(--flame);color:#fff2e8;width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-weight:600;font-size:.9rem}
+  .card-head h3{font-family:"Spline Sans",sans-serif;font-size:1.05rem;color:var(--ink);flex:1;line-height:1.25;margin:0;font-weight:700}
+  .badge{font-family:"Spline Sans Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px;font-weight:600}
+  .badge.live{background:#ede4ff;color:var(--violet);border:1px solid #d8c9f5}
+  .subs{list-style:none;margin:0 0 14px;padding:0}
+  .subs li{font-size:.86rem;color:#4f434b;padding:3px 0 3px 16px;position:relative}
+  .subs li::before{content:"";position:absolute;left:2px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--flame-2)}
+  .card-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .open{background:var(--flame);color:#fff;text-decoration:none;font-size:.84rem;font-weight:600;padding:8px 15px;border-radius:8px}
+  .open:hover{background:#9a3412}
+  .aux{font-family:"Spline Sans Mono",monospace;font-size:.72rem}
+  .aux a{color:var(--flame);text-decoration:none;margin-left:12px;border-bottom:1px solid rgba(194,65,12,.3)}
+  .aux a:hover{border-color:var(--flame)}
+
+  /* tuning ladder */
+  .ladder{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:18px 0}
+  .ladder h3{font-family:"Fraunces",serif;font-size:1.25rem;margin:0 0 4px}
+  .ladder .sub{color:#5f5460;font-size:.92rem;margin:0 0 16px}
+  .rungs{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+  .rung{flex:1 1 130px;min-width:122px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);cursor:pointer;transition:.18s;position:relative}
+  .rung:hover{border-color:var(--flame-2);transform:translateY(-2px)}
+  .rung.active{background:linear-gradient(180deg,#fff,#faf0e9);border-color:var(--flame)}
+  .rung .rn{font-family:"Spline Sans Mono",monospace;font-size:.66rem;color:var(--flame);letter-spacing:.08em}
+  .rung .rt{font-weight:700;font-size:.9rem;margin:3px 0 0}
+  .rung .arrow{color:var(--line);align-self:center;font-size:1.2rem;display:flex;align-items:center;padding:0 2px}
+  .ladder-detail{margin-top:16px;font-size:.95rem;background:var(--paper);border:1px dashed var(--line);border-radius:10px;padding:14px 16px;min-height:1px}
+  .ladder-detail b{color:var(--flame)}
+
+  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:24px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+
+  footer{margin-top:46px;padding:26px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  @media(max-width:560px){header{padding:48px 0 20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Field Engineering enablement · PySpark Performance track</div>
+    <h1>PySpark Performance<br>&amp; <span class="drip">Spark internals.</span></h1>
+    <p class="lede">Eleven connected lessons on how Apache Spark actually runs your PySpark — told as one story: your code becomes jobs, stages, and tasks across a driver and executors; joins and wide operations trigger the expensive shuffle; memory decides what runs, spills, or OOMs; and every tuning lever (AQE, caching, pruning, salting, GC, bucketing) bends that execution. Each lesson is a self-contained interactive page with a runnable notebook and a markdown companion.</p>
+    <div class="stat-row">
+      <div class="stat"><b>11</b><span>topics</span></div>
+      <div class="stat"><b>11</b><span>notebooks</span></div>
+      <div class="stat"><b>33</b><span>interactive diagrams</span></div>
+      <div class="stat"><b>Jun 2026</b><span>doc-verified</span></div>
+    </div>
+  </header>
+
+  <!-- ============ TUNING LADDER ============ -->
+  <div class="band"><h2>The whole track in one picture</h2>
+    <p>Click each rung to see what it does and where it fits. The track follows a Spark job from "how it runs" to "how you make it fast" — read the plan, avoid the shuffle, fix skew, reuse work, then tune memory and GC.</p></div>
+  <div class="ladder" id="ladder">
+    <h3>The execution &amp; tuning ladder</h3>
+    <p class="sub">From how a job runs to the last-mile tuning levers.</p>
+    <div class="rungs" id="rungs"></div>
+    <div class="ladder-detail" id="ladderDetail">Select a rung above.</div>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">The one-line tuning method</span>
+    <b>Slow Spark job?</b> Read the plan (<code>.explain()</code>) and the Spark UI first. Then, in order: <b>read less</b> (partition pruning / DPP, column pruning) → <b>avoid or repair the shuffle</b> (broadcast the small side, bucket repeated joins, let AQE coalesce) → <b>fix skew</b> (AQE skew join, then salting) → <b>reuse work</b> (cache only reused DataFrames) → <b>size memory &amp; GC last</b>. Always verify the change in <code>.explain()</code> / the Spark UI — never assume.
+  </div>
+
+  <!-- ============ PART A ============ -->
+  <div class="band"><h2>Part A · The engine</h2>
+    <p>How a PySpark line of code becomes work on a cluster, the join strategies that move (or save) the most data, and where memory goes on the driver and executors.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">01</div><h3>Spark architecture &amp; the execution model</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Driver, executors, cluster manager &amp; the edge node</li><li>Client vs cluster deploy modes; job → stage → task</li><li>Lazy eval, narrow vs wide deps, and <b>the shuffle</b></li></ul>
+      <div class="card-foot"><a class="open" href="lessons/01-spark-architecture/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/01-spark-architecture/lesson.md">md</a><a href="lessons/01-spark-architecture/01-spark-architecture-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">02</div><h3>Joins: Sort-Merge vs Shuffle-Hash vs Broadcast</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Three strategies &amp; how Spark chooses (10 MB threshold)</li><li><code>broadcast()</code> + <code>/*+ BROADCAST */</code> to skip the shuffle</li><li>Reading the join plan &amp; Spark UI</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/02-joins/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/02-joins/lesson.md">md</a><a href="lessons/02-joins/02-joins-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">03</div><h3>Driver memory &amp; driver OOM</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Driver memory regions; <code>spark.driver.maxResultSize</code></li><li>What lives on the driver: <code>collect()</code>, broadcast build, metadata</li><li>Why &amp; how the driver OOMs — and the fixes</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/03-driver-memory/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/03-driver-memory/lesson.md">md</a><a href="lessons/03-driver-memory/03-driver-memory-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">04</div><h3>Executor memory: unified model, spill &amp; OOM</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Reserved 300 MiB · <code>memory.fraction</code> 0.6 · <code>storageFraction</code> 0.5</li><li>Storage⇄execution borrow &amp; the eviction asymmetry</li><li>Off-heap, PySpark-worker memory, data spilling, OOM</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/04-executor-memory/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/04-executor-memory/lesson.md">md</a><a href="lessons/04-executor-memory/04-executor-memory-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <!-- ============ PART B ============ -->
+  <div class="band"><h2>Part B · Runtime adaptivity &amp; reuse</h2>
+    <p>The plan that rewrites itself at runtime, how to stop recomputing the same DataFrame, and how to read far fewer files.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">05</div><h3>Adaptive Query Execution (AQE)</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Coalesce post-shuffle partitions (advisory 64 MB)</li><li>Split skewed partitions (factor 5 · 256 MB)</li><li>Switch sort-merge → broadcast at runtime</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/05-aqe/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/05-aqe/lesson.md">md</a><a href="lessons/05-aqe/05-aqe-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">06</div><h3>Cache &amp; persist</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li><code>cache()</code> vs <code>persist()</code>; the storage-level matrix</li><li>RDD <code>MEMORY_ONLY</code> vs DataFrame <code>MEMORY_AND_DISK</code></li><li>Lazy materialization; <code>unpersist()</code> when done</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/06-cache-persist/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/06-cache-persist/lesson.md">md</a><a href="lessons/06-cache-persist/06-cache-persist-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">07</div><h3>Partition pruning &amp; dynamic partition pruning</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>On-disk partitions vs in-memory partitions</li><li>Static pruning on a partition-column filter</li><li>DPP: a join prunes fact partitions at runtime</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/07-partition-pruning/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/07-partition-pruning/lesson.md">md</a><a href="lessons/07-partition-pruning/07-partition-pruning-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <!-- ============ PART C ============ -->
+  <div class="band"><h2>Part C · Skew, shared variables &amp; last-mile tuning</h2>
+    <p>The recurring villain (skew) and its fixes, the two shared-variable types, and the JVM-level levers — GC and bucketing.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">08</div><h3>Data skew: salting &amp; SQL hints</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>What skew is &amp; how to spot it in the Spark UI</li><li>Salting aggregations &amp; joins (explode the small side)</li><li>Join hints (BROADCAST/MERGE/SHUFFLE_HASH) + partitioning hints</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/08-salting-hints/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/08-salting-hints/lesson.md">md</a><a href="lessons/08-salting-hints/08-salting-hints-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">09</div><h3>Broadcast variables &amp; accumulators</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li><code>sc.broadcast(v)</code>/<code>.value</code> — read-only, once per executor</li><li>Accumulators — write-only on workers, driver reads <code>.value</code></li><li>Broadcast <em>variable</em> ≠ broadcast <em>join</em>; exactly-once caveat</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/09-broadcast-vars-accumulators/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/09-broadcast-vars-accumulators/lesson.md">md</a><a href="lessons/09-broadcast-vars-accumulators/09-broadcast-vars-accumulators-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">10</div><h3>Garbage-collection tuning</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li>Young/old generations; minor vs major/full GC</li><li>Stop-the-world pauses &amp; the executor's role</li><li>Reduce GC time: serialized cache, fewer objects, G1GC</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/10-garbage-collection/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/10-garbage-collection/lesson.md">md</a><a href="lessons/10-garbage-collection/10-garbage-collection-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">11</div><h3>Bucketing to eliminate the shuffle</h3><span class="badge live">live</span></div>
+      <ul class="subs"><li><code>bucketBy(n,col).sortBy(col).saveAsTable()</code></li><li>Equal buckets on the join key → no <code>Exchange</code></li><li>Bucketing vs partitioning; the metastore-table requirement</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/11-bucketing/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/11-bucketing/lesson.md">md</a><a href="lessons/11-bucketing/11-bucketing-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <!-- ============ PLAN & REFERENCE ============ -->
+  <div class="band"><h2>Plan &amp; reference</h2></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">↳</div><h3>Learning plan</h3></div>
+      <ul class="subs"><li>Suggested order, timings, and self-check questions</li><li>The "how to tune a slow Spark job" decision method</li></ul>
+      <div class="card-foot"><a class="open" href="learning plan/learning-plan.md">Open plan →</a>
+        <span class="aux"></span></div>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>Built from the official Apache Spark &amp; Azure Databricks documentation</strong> (verified June 2026). OSS-Spark vs Databricks defaults are noted where they differ. Primary sources:
+      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html" target="_blank" rel="noopener">SQL performance tuning</a>,
+      <a href="https://spark.apache.org/docs/latest/tuning.html" target="_blank" rel="noopener">tuning (memory &amp; GC)</a>,
+      <a href="https://spark.apache.org/docs/latest/configuration.html" target="_blank" rel="noopener">configuration</a>,
+      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html" target="_blank" rel="noopener">RDD guide</a>,
+      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html" target="_blank" rel="noopener">SQL hints</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe" target="_blank" rel="noopener">Databricks AQE</a>.
+    </p>
+    <p style="margin-top:10px">Part of the FDE interview-prep learning library, alongside the DBX Data Engineering, DBX Networking &amp; Security, and DBX Delta Optimization tracks.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const RUNGS = [
+    {n:"01",t:"Architecture",d:"Your code becomes <b>jobs → stages → tasks</b> across a driver and executors. Wide operations (joins, groupBy) force a <b>shuffle</b> — the network/disk-heavy step everything else in the track tries to avoid or cheapen."},
+    {n:"02",t:"Joins",d:"Three physical strategies. <b>Broadcast</b> the small side and the big table is never shuffled; <b>sort-merge</b> shuffles both for big-vs-big; <b>shuffle-hash</b> is the rare middle ground. Read which one you got in <code>.explain()</code>."},
+    {n:"03",t:"Driver memory",d:"The driver builds the plan, collects results, and builds broadcasts. <code>collect()</code> too much (or broadcast something too big) and it blows <code>maxResultSize</code> → <b>driver OOM</b>."},
+    {n:"04",t:"Executor memory",d:"Unified memory = reserved 300 MiB + user + (storage ⇄ execution). Run out of execution memory and Spark <b>spills</b> to disk; if even that isn't enough, the <b>executor OOMs</b>. Off-heap &amp; Python workers live outside the JVM heap."},
+    {n:"05",t:"AQE",d:"The plan <b>rewrites itself at runtime</b> using real shuffle stats: coalesce too-many tiny partitions, split skewed ones, and switch a sort-merge join to a broadcast once a side is found small. On by default since Spark 3.2."},
+    {n:"06",t:"Cache & persist",d:"Stop recomputing a DataFrame reused across actions. Pick a <b>storage level</b> (memory/disk/off-heap, serialized, replicated) — and <code>unpersist()</code> when done so cache doesn't pressure execution memory and GC."},
+    {n:"07",t:"Pruning & DPP",d:"Read fewer files. <b>Static</b> pruning skips on-disk partitions that can't match a filter; <b>dynamic partition pruning</b> pushes a join's dimension filter onto the fact table's partitions at runtime."},
+    {n:"08",t:"Skew & salting",d:"When one key holds most of the rows, a few tasks run forever. Let <b>AQE skew join</b> split them; for what's left, <b>salt</b> the hot key to spread it, and steer the planner with <b>SQL hints</b>."},
+    {n:"09",t:"Shared variables",d:"<b>Broadcast variables</b> ship a read-only lookup once per executor (not a broadcast <em>join</em>). <b>Accumulators</b> are write-only counters workers add to and only the driver reads — exactly-once only inside actions."},
+    {n:"10",t:"GC tuning",d:"When the JVM stops the world to collect garbage, your tasks pause. Cut GC time with <b>serialized caching</b>, fewer/larger objects, <b>G1GC</b>, off-heap, and a lower <code>memory.fraction</code> when Old gen is full."},
+    {n:"11",t:"Bucketing",d:"Pre-shuffle <b>once on write</b> with <code>bucketBy</code>. Two tables bucketed by the join key into the same number of buckets join with <b>no Exchange</b> — the shuffle never happens again. The end state for repeated joins."}
+  ];
+  const rungsEl = document.getElementById('rungs');
+  const detail = document.getElementById('ladderDetail');
+  RUNGS.forEach((r,i)=>{
+    const div=document.createElement('div'); div.className='rung'; div.dataset.i=i;
+    div.innerHTML='<div class="rn">'+r.n+'</div><div class="rt">'+r.t+'</div>';
+    rungsEl.appendChild(div);
+    if(i<RUNGS.length-1){ const a=document.createElement('div'); a.className='arrow'; a.textContent='→'; rungsEl.appendChild(a); }
+  });
+  function select(i){
+    document.querySelectorAll('#rungs .rung').forEach(el=>el.classList.toggle('active', +el.dataset.i===i));
+    detail.innerHTML='<b>'+RUNGS[i].n+' · '+RUNGS[i].t+'</b> — '+RUNGS[i].d;
+  }
+  rungsEl.addEventListener('click',e=>{ const r=e.target.closest('.rung'); if(r) select(+r.dataset.i); });
+  select(0);
+})();
+</script>
+</body>
+</html>

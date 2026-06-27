@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SQL Editor, Parameters, CTEs, Snippets & Caching · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:15px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.79rem;line-height:1.6;margin:.6em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.4vw,2.7rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.02rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.95rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  table{border-collapse:collapse;width:100%;font-size:.85rem;margin:.6em 0}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2);font-family:"Spline Sans Mono",monospace;font-size:.74rem;text-transform:uppercase;letter-spacing:.04em}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: parameter playground */
+  .pp{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px}
+  .pprow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .pprow label{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#48555f}
+  .pprow input{font-family:"Spline Sans Mono",monospace;font-size:.8rem;border:1px solid var(--line);border-radius:6px;padding:5px 8px}
+  .built{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0d1117;color:#e6edf3;padding:12px;border-radius:8px;white-space:pre-wrap;word-break:break-word}
+  .safe{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:#1f6b3a;margin-top:6px}
+  /* diagram 2: cache simulator */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .sim{border:1px solid var(--line);border-radius:10px;background:#fff;padding:12px}
+  .simbtns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .simbtns button{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 12px;cursor:pointer}
+  .simbtns button:hover{border-color:var(--teal)}
+  .simlog{font-family:"Spline Sans Mono",monospace;font-size:.78rem;background:#0d1117;color:#e6edf3;border-radius:8px;padding:10px;min-height:64px;white-space:pre-wrap}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 10.2</p>
+  <h1>SQL Editor, <em>Parameters</em>, CTEs, Snippets &amp; Caching</h1>
+  <p class="lede">The everyday Databricks SQL toolkit — write &amp; share queries, reuse them with typed <code>:parameters</code>, parameterize names with <code>IDENTIFIER()</code>, structure with CTEs, standardize with snippets, and make BI instant with three caching layers.</p>
+  <div class="pills"><span class="pill">:param (injection-safe)</span><span class="pill">IDENTIFIER()</span><span class="pill">CTEs</span><span class="pill">snippets</span><span class="pill">3 cache layers</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>:named parameters</strong> make queries reusable &amp; injection-safe (typed); <strong>IDENTIFIER()</strong> parameterizes object names; <strong>CTEs</strong> structure complex SQL; <strong>snippets</strong> standardize fragments; and <strong>three cache layers</strong> (UI / result / disk) return repeated BI queries in milliseconds.</div>
+  <div class="card analogy" style="margin-top:10px">📝 <strong>Analogy:</strong> the editor is your <strong>word processor for data</strong>; <strong>parameters</strong> are <strong>mail-merge fields</strong> (one template, many values, safely filled); <strong>CTEs</strong> are named paragraphs; <strong>snippets</strong> are text-expander shortcuts; <strong>caching</strong> is the "recently opened" shelf.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: parameter playground -->
+<section id="pp">
+  <h2>Parameter playground — type values, watch the safe query build</h2>
+  <p class="hint">▸ <code>:param</code> is typed &amp; bound — not string-concatenated, so injection can't execute</p>
+  <div class="pp">
+    <div class="pprow"><label>:start_date</label><input id="p-start" value="2026-06-01"><label>:end_date</label><input id="p-end" value="2026-06-30"><label>:region</label><input id="p-region" value="West"></div>
+    <div class="built" id="built"></div>
+    <div class="safe" id="safe"></div>
+  </div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · The SQL editor — where queries live</h3>
+  <p class="mech"><b>Mechanism:</b> the editor runs statements on a selected <strong>SQL Warehouse</strong> (10.1). Saved queries are first-class, permissioned (UC <code>GRANT</code>) objects reused by dashboards, alerts, and jobs. <b>Trade-off:</b> the editor is free; the warehouse under it drives cost/latency.</p>
+  <pre class="code"><span class="c">-- A saved query targets a UC object with the 3-level namespace.</span>
+<span class="k">SELECT</span> region, <span class="f">count</span>(*) <span class="k">AS</span> orders
+<span class="k">FROM</span> prod.sales.orders            <span class="c">-- catalog.schema.table (Unity Catalog)</span>
+<span class="k">WHERE</span> order_date &gt;= <span class="f">current_date</span>() - <span class="k">INTERVAL</span> <span class="s">7</span> <span class="k">DAYS</span>
+<span class="k">GROUP BY</span> region <span class="k">ORDER BY</span> orders <span class="k">DESC</span>;</pre>
+
+  <h3>2 · Named parameter markers — <code>:param</code> (typed &amp; injection-safe)</h3>
+  <p class="mech"><b>Mechanism:</b> the mandatory <code>:</code> separates parameter names from columns; values are <strong>bound</strong> as typed literals, never spliced into SQL text. <b>Why:</b> that binding is what makes them injection-proof. <b>Trade-off:</b> they replace the <strong>legacy mustache <code>{{ }}</code></strong> of the old editor — old queries must be migrated.</p>
+  <pre class="code"><span class="c">-- :named markers are typed &amp; bound — safe + reusable across every range.</span>
+<span class="k">SELECT</span> region, <span class="f">sum</span>(amount) <span class="k">AS</span> revenue
+<span class="k">FROM</span> prod.sales.orders
+<span class="k">WHERE</span> order_date <span class="k">BETWEEN</span> :start_date <span class="k">AND</span> :end_date   <span class="c">-- bound as typed DATEs</span>
+  <span class="k">AND</span> region = :region                               <span class="c">-- bound as STRING</span>
+<span class="k">GROUP BY</span> region;</pre>
+
+  <h3>3 · <code>IDENTIFIER()</code> — parameterize object <em>names</em> safely</h3>
+  <p class="mech"><b>Mechanism:</b> a plain <code>:param</code> binds a value, not a name — you can't put <code>:table</code> after <code>FROM</code>. <code>IDENTIFIER(:x)</code> interprets the bound string as a catalog/schema/table/column <strong>name</strong>. <b>Trade-off:</b> the object must exist and UC grants still apply — it doesn't bypass permissions.</p>
+  <pre class="code"><span class="c">-- Dynamic, injection-safe table &amp; column selection.</span>
+<span class="k">SELECT</span> <span class="f">IDENTIFIER</span>(:metric_col) <span class="k">AS</span> metric          <span class="c">-- column name as a parameter</span>
+<span class="k">FROM</span> <span class="f">IDENTIFIER</span>(:catalog || <span class="s">'.'</span> || :schema || <span class="s">'.orders'</span>)  <span class="c">-- table name as a parameter</span>
+<span class="k">WHERE</span> order_date &gt;= :since;</pre>
+
+  <h3>4 · CTEs — <code>WITH</code> for readable multi-step SQL</h3>
+  <p class="mech"><b>Mechanism:</b> <code>WITH name AS (subquery)</code> names an intermediate result you reference (and chain) later. <b>Trade-off (gotcha):</b> a CTE is <strong>not guaranteed to materialize</strong> — referenced many times, it may be <strong>recomputed</strong>; persist a temp view/table for heavy reuse.</p>
+  <pre class="code"><span class="c">-- Chained CTEs read top-down; each name is a clean, reusable step.</span>
+<span class="k">WITH</span> recent <span class="k">AS</span> (
+  <span class="k">SELECT</span> * <span class="k">FROM</span> prod.sales.orders
+  <span class="k">WHERE</span> order_date <span class="k">BETWEEN</span> :start_date <span class="k">AND</span> :end_date
+),
+by_region <span class="k">AS</span> (
+  <span class="k">SELECT</span> region, <span class="f">sum</span>(amount) <span class="k">AS</span> revenue, <span class="f">count</span>(*) <span class="k">AS</span> orders
+  <span class="k">FROM</span> recent <span class="k">GROUP BY</span> region
+)
+<span class="k">SELECT</span> region, revenue, revenue / orders <span class="k">AS</span> avg_order_value
+<span class="k">FROM</span> by_region <span class="k">ORDER BY</span> revenue <span class="k">DESC</span>;</pre>
+
+  <h3>5 · Query snippets — team-standard SQL fragments</h3>
+  <p class="mech"><b>Mechanism:</b> save a reusable fragment with a <strong>trigger keyword</strong>; typing it expands the snippet (placeholders allowed). <b>Why:</b> everyone defines common logic ("active customer") identically. <b>Trade-off:</b> snippets aren't governed — for logic that <em>must</em> stay consistent, prefer a <strong>view or SQL UDF</strong> in UC.</p>
+  <pre class="code"><span class="c">-- Snippet "active_cust" expands to a standardized predicate so every</span>
+<span class="c">-- query defines "active" identically:</span>
+<span class="k">SELECT</span> customer_id, region
+<span class="k">FROM</span> prod.sales.customers
+<span class="k">WHERE</span> status = <span class="s">'ACTIVE'</span>
+  <span class="k">AND</span> last_seen &gt;= <span class="f">current_date</span>() - <span class="k">INTERVAL</span> <span class="s">90</span> <span class="k">DAYS</span>;</pre>
+
+  <h3>6 · Query caching — three layers that make BI instant</h3>
+  <p class="mech"><b>Mechanism:</b> three layers, each <strong>auto-invalidated on write</strong>. <b>Why:</b> a re-run of the same query skips compute (result cache); the disk cache speeds different queries over the same hot data.</p>
+  <table>
+    <tr><th>Layer</th><th>Scope &amp; lifetime</th><th>Stores</th></tr>
+    <tr><td><strong>UI cache</strong></td><td>per-user, in the DBSQL UI, up to <strong>7 days</strong></td><td>recent results + visualizations</td></tr>
+    <tr><td><strong>Result cache</strong> — local</td><td>per-warehouse, <strong>in-memory</strong>, until cluster stop/restart</td><td>exact results of a prior run</td></tr>
+    <tr><td><strong>Result cache</strong> — remote</td><td><strong>serverless</strong>, survives restarts, shared workspace-wide, <strong>24 h</strong></td><td>results as workspace system data</td></tr>
+    <tr><td><strong>Disk cache</strong></td><td>per-node local <strong>SSD</strong>, auto-detects data changes</td><td>hot data files, optimized format</td></tr>
+  </table>
+  <pre class="code"><span class="c">-- Force a cold run for benchmarking; re-enable afterward.</span>
+<span class="k">SET</span> use_cached_result = <span class="k">false</span>;   <span class="c">-- bypass the result cache for this session</span>
+<span class="k">SELECT</span> region, <span class="f">sum</span>(amount) <span class="k">FROM</span> prod.sales.orders <span class="k">GROUP BY</span> region;
+<span class="k">SET</span> use_cached_result = <span class="k">true</span>;    <span class="c">-- restore caching</span></pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: cache simulator -->
+<section id="sim">
+  <h2>Cache simulator — run the same query, change the data, watch the cache</h2>
+  <p class="hint">▸ identical query on unchanged data = cache hit; a write invalidates it</p>
+  <div class="sim">
+    <div class="simbtns">
+      <button data-a="run">▶ Run the query</button>
+      <button data-a="write">✎ INSERT into orders</button>
+      <button data-a="reset">⟳ Reset</button>
+    </div>
+    <div class="simlog" id="simlog"></div>
+  </div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li><strong>Parameterized queries</strong> are the safe, reusable way to build dashboards — hard-coding values invites injection &amp; copy-paste sprawl.</li>
+    <li><strong>Caching</strong> is why a dashboard re-opens instantly — knowing <em>which</em> cache served a run (and when each invalidates) is a classic "why was the second run 100× faster?" answer.</li>
+  </ul>
+  <div class="card usecase">📊 <strong>Real-world use case:</strong> a dashboard uses <code>:start_date</code>/<code>:end_date</code> so one query serves every range; a CTE builds the aggregate; the result cache makes re-opening instant; a shared snippet standardizes the "active customer" filter team-wide.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> reusable dashboard queries (<code>:param</code>), env/column-agnostic queries (<code>IDENTIFIER</code>), readable pipelines (CTEs), standard fragments (snippets), millisecond re-opens (caching).</li>
+    <li><strong>Edge cases:</strong> a CTE referenced many times may be <strong>recomputed</strong> (materialize it); any cache <strong>invalidates on write</strong> (first post-load query pays full cost); the <strong>remote result cache</strong> needs a serverless, active warehouse.</li>
+    <li><strong>Limitation:</strong> <code>:param</code>/<code>IDENTIFIER</code>/snippets are Databricks SQL features; the query profile reflects one run's plan — re-check after data/size changes.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ String-concatenating user input into SQL instead of <code>:param</code> → injection + no type safety.</li>
+    <li>❌ Putting <code>:table</code> after <code>FROM</code> — bind <em>values</em> with <code>:param</code>, <em>names</em> with <code>IDENTIFIER(:table)</code>.</li>
+    <li>❌ Pasting legacy <code>{{ mustache }}</code> parameters into the new editor — migrate them to <code>:named</code> markers.</li>
+    <li>❌ Referencing a heavy CTE many times assuming it's computed once — it may be recomputed; materialize it.</li>
+    <li>❌ Assuming the <strong>result cache</strong> still helps after the table changed, or benchmarking with caching on (<code>SET use_cached_result = false</code>).</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/sql/user/queries/query-parameters" target="_blank" rel="noopener">Named parameter markers</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-parameter-marker" target="_blank" rel="noopener">Parameter markers (lang ref)</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/user/queries/query-caching" target="_blank" rel="noopener">Caching</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-qry-select-cte" target="_blank" rel="noopener">CTEs</a>
+  <p style="margin-top:10px">Topic 10.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — parameter playground (scoped to #pp)
+const ps=document.getElementById('p-start'), pe=document.getElementById('p-end'),
+      pr=document.getElementById('p-region'),
+      built=document.getElementById('built'), safe=document.getElementById('safe');
+function buildQ(){
+  const s=ps.value||'…', e=pe.value||'…', r=pr.value||'…';
+  built.textContent =
+    "WITH recent AS (\n"+
+    "  SELECT * FROM prod.sales.orders\n"+
+    "  WHERE order_date BETWEEN :start_date AND :end_date\n"+
+    "    AND region = :region\n"+
+    ")\nSELECT region, SUM(amount) revenue FROM recent GROUP BY region;\n\n"+
+    "-- bound values (typed, escaped):\n"+
+    "--   :start_date = "+s+"   (DATE)\n--   :end_date   = "+e+"   (DATE)\n--   :region     = "+r+"   (STRING)";
+  safe.textContent = "✅ values are bound as typed parameters — not concatenated, so "+
+    "injection like  '; DROP TABLE orders; --  arrives as a harmless string.";
+}
+ps.addEventListener('input',buildQ); pe.addEventListener('input',buildQ); pr.addEventListener('input',buildQ); buildQ();
+// Diagram 2 — cache simulator (scoped to #sim)
+(function(){
+  const log=document.getElementById('simlog'); let cached=false, runs=0;
+  function render(msg){ log.textContent=msg; }
+  render("Cache: EMPTY. Click ▶ Run the query.");
+  document.querySelectorAll('#sim .simbtns button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      const a=b.dataset.a;
+      if(a==='run'){ runs++;
+        if(cached){ render("Run #"+runs+" → ⚡ CACHE HIT (result cache)\nReturned in ~30 ms, zero compute. Same query, unchanged data."); }
+        else{ cached=true; render("Run #"+runs+" → 🐢 CACHE MISS\nFull scan + aggregate (~2.4 s). Result now cached. Run again →"); }
+      } else if(a==='write'){ cached=false;
+        render("✎ INSERT INTO prod.sales.orders …\nUnderlying table changed → every cache layer INVALIDATED.\nNext run will be a miss."); }
+      else { cached=false; runs=0; render("Cache: EMPTY. Click ▶ Run the query."); }
+    });
+  });
+})();
+</script>
+</body>
+</html>

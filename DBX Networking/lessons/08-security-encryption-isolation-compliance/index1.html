@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 8 - Security: Encryption, Isolation &amp; Compliance, Simple Mode</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.65;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:22px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--db-navy);font-weight:700;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 14px 22px;} li{margin-bottom:7px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:700;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .callout p{margin:0;font-size:14px;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0;}
+  .card{background:var(--db-light);border:1px solid var(--db-border);border-top:3px solid var(--db-blue);
+        border-radius:10px;padding:15px;}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--db-navy);}
+  .card p{font-size:13px;margin:0;color:#4A5860;}
+  .card.orange{border-top-color:var(--db-orange);}
+  .card.green{border-top-color:var(--db-green);}
+  .card.gray{border-top-color:var(--db-gray);}
+
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:390px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.blue{stroke:var(--db-blue);stroke-width:2.4;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:700;}
+  .alabel.cold{fill:var(--db-green);font-weight:700;}
+  .alabel.blue{fill:var(--db-blue);font-weight:700;}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+  .flow-box{background:#fff;border:1px solid var(--db-border);border-left:4px solid var(--db-orange);
+           border-radius:8px;padding:16px 20px;margin-top:14px;}
+  .flow-box h4{margin-bottom:8px;color:var(--db-navy);font-size:15px;}
+  .flow-box ol{margin:0 0 8px 20px;}
+  .flow-box li{margin-bottom:5px;font-size:13.5px;}
+  .flow-box .flow-bottom{margin:0;font-size:13.5px;color:#2A3439;}
+
+  figure{margin:14px 0;}
+  figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks - Networking &amp; Security - Simple Mode</div>
+  <h1>Protecting the Data and Proving It to an Auditor</h1>
+  <div class="subtitle">A plain-English version of Lesson 8. Earlier topics locked the doors and hallways
+    (network paths, SCC, Private Link, NCC). This one protects what's inside the rooms - encryption and who
+    holds the key, how serverless isolates tenants, what "certified" actually means, and how you prove it all
+    with an audit trail.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">Encryption &amp; CMK</span>
+    <span class="badge">Serverless isolation</span>
+    <span class="badge">Compliance &amp; audit</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="encryption">Encryption / CMK</button>
+  <button data-tab="isolation">Isolation</button>
+  <button data-tab="compliance">Compliance</button>
+  <button data-tab="audit">Audit &amp; Monitoring</button>
+  <button data-tab="field">Field Notes</button>
+</nav>
+
+<section class="panel active" id="overview">
+  <h2>The One Mental Model</h2>
+  <p>Think of Azure Databricks security like a <strong>secure, certified hotel</strong>. Stages 2-7 locked the
+    doors and hallways. Stage 8 protects what's inside the rooms - and installs the cameras.</p>
+
+  <div class="cards">
+    <div class="card green"><h3>TLS</h3><p>Sealed envelopes on every hop. Always on, no toggle.</p></div>
+    <div class="card orange"><h3>CMK</h3><p>You hold the key in Azure Key Vault, so you can rotate or revoke it.</p></div>
+    <div class="card"><h3>Serverless isolation</h3><p>A hotel where the master key does not exist.</p></div>
+    <div class="card"><h3>1-hour token</h3><p>Scoped keycard that opens one room for one hour.</p></div>
+    <div class="card orange"><h3>CSP / ESM / ESC</h3><p>Certified building, cameras, and the bill.</p></div>
+    <div class="card green"><h3>System tables</h3><p>The CCTV tape, searchable in SQL.</p></div>
+    <div class="card gray"><h3>SIEM export</h3><p>The feed wired to the central security desk.</p></div>
+    <div class="card"><h3>Key idea</h3><p>None of these is a 4th path - they ride, harden, or watch the three you know.</p></div>
+  </div>
+
+  <figure>
+    <img src="architecture.svg" alt="Security, encryption, isolation and compliance architecture for Azure Databricks">
+    <figcaption class="caption">The full topology. Read it as a story: encryption rides every path, isolation protects path 3, CSP/ESM harden compute, and audit watches all three.</figcaption>
+  </figure>
+
+  <div class="callout tip">
+    <h4>Interactive diagrams live in each tab</h4>
+    <p>Each tab below has its own clickable whiteboard: <strong>Encryption &amp; keys</strong> &rarr; <em>Encryption / CMK</em>, <strong>Serverless isolation</strong> &rarr; <em>Isolation</em>, <strong>Audit &amp; SIEM</strong> &rarr; <em>Audit &amp; Monitoring</em>. Open a tab, then click a box to see what it does in plain English.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>What matters for Databricks</h4>
+    <p>Encryption is on by default and CMK only changes who holds the key; serverless isolation is proven by architecture, not your perimeter; CSP is the permanent certified posture you scope to regulated workspaces; and you prove all of it with system tables plus a SIEM export.</p>
+  </div>
+</section>
+
+<section class="panel" id="encryption">
+  <h2>Encryption: TLS, CMK &amp; Azure Key Vault</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p><strong>Encryption</strong> just means scrambling data so only someone with the right <strong>key</strong> can read
+      it - like a locked diary. The only real choice here is <strong>who holds the key</strong>: by default Microsoft does,
+      but you can choose to hold it yourself in your own safe (Azure Key Vault) so you can take it away whenever you want.</p>
+  </div>
+
+  <ul>
+    <li><strong>At rest</strong> - data scrambled while it sits on disk (a locked filing cabinet).</li>
+    <li><strong>In transit (TLS)</strong> - data scrambled while it travels the network (a sealed envelope in the mail).</li>
+    <li><strong>Customer-Managed Key (CMK)</strong> - you keep the key in <strong>Azure Key Vault</strong> instead of Microsoft.</li>
+    <li><strong>Kill switch</strong> - the key is the lock; hold the key and you can <strong>revoke</strong> access instantly by disabling it.</li>
+  </ul>
+
+  <p><strong>In transit:</strong> data is scrambled while it moves. Azure Databricks uses <strong>TLS 1.2+</strong> on every hop - always on, no toggle.</p>
+  <p><strong>At rest:</strong> data is scrambled while it sits on disk. Azure Storage does this with AES-256 automatically.</p>
+  <p>A <strong>key</strong> is the secret that unlocks at-rest encryption. By default Microsoft holds it. With a <strong>Customer-Managed Key (CMK)</strong> you hold it in <strong>Azure Key Vault</strong>, so you can rotate or <strong>revoke</strong> it.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see what CMK protects and where the key lives.</p>
+  <div class="diagram-block" data-view="encryption"></div>
+
+  <table>
+    <thead><tr><th>CMK feature</th><th>Protects</th><th>Where it lives</th><th>Compute</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Managed services</strong></td><td>Notebooks, results, secrets, SQL history, dashboards</td><td>Control plane</td><td>Classic + serverless</td></tr>
+      <tr><td><strong>DBFS root</strong></td><td>Workspace system data, job/SQL results, MLflow, revisions</td><td>Workspace storage account</td><td>Classic + serverless</td></tr>
+      <tr><td><strong>Managed disks</strong></td><td>Temp / shuffle / spill on VM disks</td><td>Compute plane VMs</td><td><strong>Classic only</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>How the key stays safe</h3>
+  <p>Databricks generates a data-encryption key (DEK) and asks Key Vault to <strong>wrap/unwrap</strong> it with your key-encryption key (KEK). The KEK never leaves the vault. That's why you grant only <strong>Get + Wrap Key + Unwrap Key</strong> (the <code>Key Vault Crypto Service Encryption User</code> role).</p>
+
+  <div class="callout key">
+    <h4>The #1 misunderstanding</h4>
+    <p>None of the three CMK features cover your <strong>ADLS Gen2 data lake</strong>. That's a separate storage account - set CMK on it directly in Azure Storage. ADB CMK only covers control-plane data, the workspace root, and VM disks.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"Everything is encrypted in transit with TLS and at rest with AES-256 already, for free. CMK doesn't add a second layer - it hands you the key, in your own Azure Key Vault, so you can rotate it or revoke it as a kill switch."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>Login/reads fail after a key change (key disabled or role lost) · CMK rejected at deploy (used <code>latest</code>, non-RSA, or cross-tenant vault) · worker-to-worker shuffle is unencrypted by default (close it with Azure VNet encryption). Managed-services CMK is <strong>irreversible</strong> and a lost key with no purge protection <strong>bricks</strong> the workspace.</p>
+  </div>
+</section>
+
+<section class="panel" id="isolation">
+  <h2>Compute Security &amp; Isolation</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of a shared apartment building where many tenants live under one roof - that's <strong>multi-tenant</strong>.
+      <strong>Isolation</strong> is the promise that no tenant can ever peek into another's apartment. The tricky case is
+      <strong>serverless</strong>, where your work runs on Databricks' own machines (not your network), so the walls between
+      tenants have to be built into the platform itself.</p>
+  </div>
+
+  <ul>
+    <li><strong>Multi-tenant</strong> - many customers share the same underlying compute, like flats in one building.</li>
+    <li><strong>Isolation</strong> - the guarantee one tenant's work can never see or touch another's.</li>
+    <li><strong>Why serverless is kept separate</strong> - it runs in Databricks' account, so it gets its own freshly-built, wiped-clean compute per workload instead of leaning on your network fence.</li>
+  </ul>
+
+  <p><strong>Isolation</strong> is the guarantee that one running workload can't see, touch, or impersonate another - another customer, another user, or even Databricks code.</p>
+  <p>The hard case is <strong>serverless</strong>: it runs in the Databricks-managed serverless plane, not your VNet. So isolation can't rely on your network boundary - it's built into the platform.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click the boxes to follow the one-hour scoped token to storage.</p>
+  <div class="diagram-block" data-view="isolation"></div>
+
+  <div class="callout key">
+    <h4>The heart of it: the ephemeral scoped token</h4>
+    <p>Instead of a long-lived secret on the cluster, each workload gets a <strong>short-lived (~1-hour) token scoped to exactly that workload's data</strong>, used to talk <strong>directly to your storage</strong>. The control plane mints it but never proxies the bytes.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Layer</th><th>How it isolates</th></tr></thead>
+    <tbody>
+      <tr><td>Between tenants</td><td>Dedicated compute per workload, wiped on completion (no warm pool), no public IPs, no baked-in credentials</td></tr>
+      <tr><td>The token</td><td>Unity Catalog checks <code>READ</code>/<code>WRITE</code>, then vends a down-scoped, time-bound token straight to the workload</td></tr>
+      <tr><td>Inside a workspace</td><td><strong>Lakeguard</strong>: Spark Connect, container sandbox, UDF isolation on shared compute</td></tr>
+      <tr><td>Access modes</td><td><strong>Standard</strong> = multi-user Lakeguard-isolated · <strong>Dedicated</strong> = isolation by not sharing · <strong>Serverless</strong> = Lakeguard + platform</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"If serverless runs in Databricks' account, what stops another tenant - or Databricks - reading our data? Dedicated compute wiped on completion, no warm pool, no public IPs, and UC vends a one-hour, path-scoped token used directly to your ADLS. A stolen keycard buys one room for one hour, nothing more."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>Serverless 403 to firewalled storage (stale subnet-ID rule instead of the regional <code>AzureDatabricksServerless.&lt;region&gt;</code> tag) · permission denied (caller lacks UC grant, or Access Connector lacks Storage Blob Data Contributor) · multi-user job sees another's data (Dedicated misused, not Standard/Lakeguard) · whole firewall breaks (NSP flipped to <strong>Enforced</strong>; stay in Transition).</p>
+  </div>
+
+  <div class="callout tip">
+    <h4>Deadline</h4>
+    <p>By <strong>2026-06-09</strong>, storage accounts that allowlisted serverless subnet IDs must move to an NSP plus the <code>AzureDatabricksServerless</code> service tag.</p>
+  </div>
+</section>
+
+<section class="panel" id="compliance">
+  <h2>Compliance: ESC, ESM &amp; CSP</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>A <strong>compliance standard</strong> is a rulebook a regulator says you must follow to handle sensitive data - like
+      a health inspector's checklist for a restaurant kitchen. To process that data you flip on a stricter, locked-down mode
+      called the <strong>Compliance Security Profile (CSP)</strong>, which makes your workspace meet the rulebook and proves it.</p>
+  </div>
+
+  <ul>
+    <li><strong>Compliance standard</strong> - a named rulebook: <strong>HIPAA</strong> (US health data), <strong>PCI-DSS</strong> (credit-card data), <strong>FedRAMP / IRAP</strong> (government data).</li>
+    <li><strong>Compliance Security Profile (CSP)</strong> - a switch that hardens the workspace and attaches the standard you need; permanent once on.</li>
+  </ul>
+
+  <p>Three layers regulated customers conflate, nested like Russian dolls: <code>CSP &gt; ESM &gt; hardened image</code>.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Plain meaning</th><th>Analogy</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ESC</strong> (Enhanced Security &amp; Compliance add-on)</td><td>The billing/entitlement layer on top of Premium; enabling ESM or CSP activates the charge</td><td>The bill</td></tr>
+      <tr><td><strong>ESM</strong> (Enhanced Security Monitoring)</td><td>CIS L1 hardened image + 3 agents (file-integrity, antivirus, vuln-scan), <strong>classic only</strong></td><td>The cameras</td></tr>
+      <tr><td><strong>CSP</strong> (Compliance Security Profile)</td><td>ESM + automatic cluster update + TLS 1.2+ everywhere + attachable standards (HIPAA, PCI-DSS, IRAP...)</td><td>The certified building</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>CSP is a one-way door</h4>
+    <p>Turning CSP on (and attaching a standard) hardens the classic compute plane <strong>permanently</strong>. There's no toggle off - the only path back is delete + rebuild the workspace. So scope it to the workspaces that actually touch regulated data.</p>
+  </div>
+
+  <h3>The gotchas that bite</h3>
+  <ul>
+    <li><strong>Port 2443:</strong> on a restricted-egress VNet, CSP requires outbound <strong>TCP 2443</strong> on top of normal egress.</li>
+    <li><strong>Gen2 / Arm64 VMs are blocked</strong> on CSP/ESM.</li>
+    <li><strong>Restricted feature surface:</strong> GA + a named-preview allow-list only.</li>
+    <li><strong>Terraform <code>azurerm</code></strong> accepts only <code>HIPAA, PCI_DSS, NONE</code>; other standards need Portal/CLI/PS/ARM.</li>
+  </ul>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"The platform holds the HIPAA/PCI/IRAP attestations, but to <em>process</em> regulated data you turn on the Compliance Security Profile with the matching standard on that workspace. It's the certified posture, and it's permanent, so we scope it. ESC is the bill, ESM is the cameras, CSP is the certified building."</p>
+  </div>
+
+  <div class="callout tip">
+    <h4>Date to watch</h4>
+    <p>HIPAA / HITRUST / IRAP become <strong>CSP-mandatory on 2026-09-01</strong>. Verify the standard x region x plane cell before promising it.</p>
+  </div>
+</section>
+
+<section class="panel" id="audit">
+  <h2>Audit Logs, System Tables &amp; Monitoring</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>An <strong>audit log</strong> is a tamper-evident record of <strong>who did what, to what, and when</strong> - like the
+      security-camera tape for your workspace. You can watch the tape two ways: search it yourself in SQL, or pipe the feed to
+      the central security desk (your <strong>SIEM</strong>) that watches every system in the company.</p>
+  </div>
+
+  <ul>
+    <li><strong>Audit log</strong> - the recording of every action (login, grant, cluster start, denied request).</li>
+    <li><strong>System tables</strong> (<code>system.access.audit</code>) - the tape stored as a table you query in SQL.</li>
+    <li><strong>SIEM / diagnostic settings</strong> - the wiring that ships the feed to your security tooling (Microsoft Sentinel, Splunk) for company-wide monitoring.</li>
+  </ul>
+
+  <p>An <strong>audit log</strong> is an immutable record of actions - login, GRANT, cluster start, failed permission check - answering "who did what, to what, when, from where."</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>One audit stream, two taps. Click the boxes to see why you run both.</p>
+  <div class="diagram-block" data-view="audit"></div>
+
+  <h3>One stream, two taps</h3>
+  <table>
+    <thead><tr><th>Tap</th><th>What it is</th><th>Scope</th></tr></thead>
+    <tbody>
+      <tr><td><strong>System tables</strong></td><td>UC-governed Delta; audit log at <code>system.access.audit</code>, queried in SQL</td><td>The <strong>only</strong> tap with account-level events (<code>workspace_id = 0</code>)</td></tr>
+      <tr><td><strong>Diagnostic settings</strong></td><td>Azure export to Log Analytics / Storage / Event Hub for your SIEM</td><td><strong>Workspace-level only</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>Why you run both</h4>
+    <p>Account-admin, account-SCIM, and metastore-grant events appear <strong>only</strong> in the system table. A SIEM-only strategy has a blind spot - so best practice is both.</p>
+  </div>
+
+  <h3>How to read it</h3>
+  <ul>
+    <li><code>service_name</code> + <code>action_name</code> identify the event.</li>
+    <li><code>response.statusCode != 200</code> is your denied/failed filter.</li>
+    <li>Always add an <code>event_date</code> predicate - system tables reject broad scans.</li>
+    <li>System tables are <strong>not real-time</strong> (~15 min to hours); for sub-minute detection use Event Hub to Sentinel.</li>
+  </ul>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"Where's your audit trail, and can you feed our SIEM? Both. You query the trail in SQL through system tables, and export it natively to Sentinel or Splunk through diagnostic settings. Run both, because account-level events live only in the system table."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>"Too much data" query error (no <code>event_date</code> predicate) · SIEM missing account-admin events (they're <code>ACCOUNT_LEVEL</code>, never flow to diagnostic settings) · analyst can't see the table (missing UC grants, not a workspace permission) · new category missing from Log Analytics (hard-coded list; use a dynamic one).</p>
+  </div>
+</section>
+
+<section class="panel" id="field">
+  <h2>Field Notes: How To Think During Troubleshooting</h2>
+  <p>Don't start from CMK flags or audit columns. Start by asking what's being protected and who holds the key.</p>
+
+  <table>
+    <thead><tr><th>Symptom</th><th>First Thing To Think</th></tr></thead>
+    <tbody>
+      <tr><td>Login/reads fail after a key change</td><td>Is the Key Vault key enabled and does the <code>AzureDatabricks</code> app still hold wrap/unwrap?</td></tr>
+      <tr><td>Auditor says the data lake isn't customer-keyed</td><td>CMK is on the workspace, not on the ADLS account itself</td></tr>
+      <tr><td>Serverless 403 to firewalled storage</td><td>Regional <code>AzureDatabricksServerless.&lt;region&gt;</code> tag, NSP in Transition (not a stale subnet-ID rule)</td></tr>
+      <tr><td>Multi-user job sees another user's data</td><td>Is the access mode Standard (Lakeguard), not Dedicated-misused/legacy?</td></tr>
+      <tr><td>CSP compute won't start on a locked-down VNet</td><td>Outbound TCP 2443 rule (+ Azure VNet encryption / supported VM type)</td></tr>
+      <tr><td>Cluster won't launch on CSP/ESM</td><td>Is the VM Gen2 or Arm64? Both are blocked</td></tr>
+      <tr><td>SIEM missing account-admin events</td><td>They're <code>ACCOUNT_LEVEL</code> (<code>workspace_id = 0</code>); query the system table</td></tr>
+      <tr><td>"Too much data" query error</td><td>Add an <code>event_date</code> predicate</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The architect one-liner</div>
+    <div class="quote">"Encryption and TLS are on by default and answer 'is it encrypted?' for free - CMK just hands you key custody and a kill switch in your own Key Vault. Serverless proves isolation by architecture, not your perimeter: dedicated compute wiped between workloads plus short-lived, path-scoped tokens used directly to your ADLS. For regulated data we turn on the Compliance Security Profile with your standard - it's the certified posture, and it's permanent, so we scope it. And you prove all of it two ways: query the audit trail in SQL via system tables, and export it to your SIEM - run both, because account-level events live only in the system table."</div>
+  </div>
+
+  <h3>The seven questions</h3>
+  <ol>
+    <li>Is it encrypted, and who holds the key?</li>
+    <li>Does the customer need to revoke or rotate that key themselves?</li>
+    <li>Does CMK actually cover the data they care about, or just the workspace root?</li>
+    <li>How does serverless prove isolation without my network boundary?</li>
+    <li>Does this workload truly need regulated certification (CSP), or just a hardened posture?</li>
+    <li>Is CSP scoped only to the workspaces that touch regulated data, given it's permanent?</li>
+    <li>Can I both query the audit trail in SQL and feed the SIEM, with account-level events covered?</li>
+  </ol>
+</section>
+
+<footer>
+  Companion files: <code>lesson1.md</code> and <code>index1.html</code>. Original detailed lesson remains in <code>lesson.md</code> and <code>index.html</code>.
+</footer>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(item => item.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+const ARCH = {
+  encryption: {
+    tip: '<strong>Encryption &amp; keys</strong>Click each box to see what CMK protects and where the key lives.',
+    nodes: [
+      {id:'kv',x:30,y:140,w:170,h:74,color:'#FF3621',label:'Azure Key Vault',sub:'you hold the KEK',
+        info:'<strong>Azure Key Vault (your tenant)</strong>Holds your customer-managed key (KEK). Databricks only calls wrap/unwrap, so the key never leaves the vault. Disable or delete it and the data becomes unreadable - your kill switch. Needs Premium + same tenant + purge protection.'},
+      {id:'cp',x:268,y:40,w:230,h:84,color:'#6B7280',label:'Control plane',sub:'managed services',
+        info:'<strong>Control plane (managed services)</strong>Holds notebooks, results, secrets, SQL history, dashboards. CMK for managed services protects this data and is IRREVERSIBLE once enabled.'},
+      {id:'ws',x:268,y:148,w:230,h:64,color:'#2272B4',label:'Workspace storage (DBFS root)',sub:'system data',
+        info:'<strong>Workspace storage account (DBFS root)</strong>In your subscription. Holds job/SQL results, MLflow models, notebook revisions. CMK for DBFS root puts your key on this account. Not your governed data lake.'},
+      {id:'vm',x:268,y:236,w:230,h:64,color:'#6B7280',label:'Classic VM disks',sub:'temp / shuffle',
+        info:'<strong>Classic compute VM disks</strong>Temp/shuffle/spill data. CMK for managed disks uses your key here. CLASSIC ONLY - serverless disks are ephemeral, so this feature does not apply to them.'},
+      {id:'adls',x:610,y:140,w:280,h:74,color:'#00A972',label:'ADLS Gen2 data lake',sub:'NOT covered by ADB CMK',
+        info:'<strong>ADLS Gen2 data lake</strong>Your real governed data. The #1 misunderstanding: ADB CMK does NOT cover this. Set CMK directly on this storage account in Azure Storage, independent of Databricks.'}
+    ],
+    arrows: [
+      {from:'kv',to:'cp',cls:'hot',label:'wrap/unwrap',via:[{x:234,y:82}],labelX:236,labelY:70},
+      {from:'kv',to:'ws',cls:'hot',label:'wrap/unwrap',labelX:234,labelY:166},
+      {from:'kv',to:'vm',cls:'hot',label:'wrap/unwrap',via:[{x:234,y:268}],labelX:236,labelY:286},
+      {from:'ws',to:'adls',cls:'cold',label:'TLS 1.2+ to data',via:[{x:560,y:180}],labelX:560,labelY:166}
+    ]
+  },
+  isolation: {
+    tip: '<strong>Serverless isolation</strong>Click the boxes to follow the one-hour scoped token to storage.',
+    nodes: [
+      {id:'work',x:30,y:140,w:180,h:80,color:'#2272B4',label:'Serverless workload',sub:'wiped on completion',
+        info:'<strong>Serverless workload</strong>Dedicated compute in the Databricks serverless plane. Private network, no public IPs, no baked-in credentials, and compute + disks wiped on completion. No warm pool holds your data.'},
+      {id:'uc',x:300,y:40,w:230,h:80,color:'#FF3621',label:'Unity Catalog',sub:'token broker',
+        info:'<strong>Unity Catalog (token broker)</strong>Checks the caller READ/WRITE grant, then vends a down-scoped, time-bound token. The control plane mints it but is NEVER on the data path.'},
+      {id:'ac',x:300,y:160,w:230,h:64,color:'#6B7280',label:'Access Connector',sub:'managed identity',
+        info:'<strong>Access Connector (managed identity)</strong>Granted Storage Blob Data Contributor on your ADLS - least privilege, NOT Owner or account key. UC down-scopes from here per request.'},
+      {id:'tok',x:300,y:262,w:230,h:50,color:'#00A972',label:'~1h scoped token',sub:'one path only',
+        info:'<strong>~1-hour scoped token</strong>The heart of isolation. Short-lived and scoped to exactly one path - effectively a time-bound SAS. A stolen keycard buys one room for one hour, nothing more.'},
+      {id:'adls',x:632,y:150,w:258,h:74,color:'#00A972',label:'ADLS Gen2',sub:'NSP + serverless tag',
+        info:'<strong>ADLS Gen2 (your subscription)</strong>The workload reads/writes DIRECTLY here over the backbone + TLS 1.2+. Storage firewall = NSP in Transition + the regional AzureDatabricksServerless.&lt;region&gt; service tag.'}
+    ],
+    arrows: [
+      {from:'work',to:'uc',cls:'',label:'1. request table',via:[{x:240,y:80}],labelX:250,labelY:68},
+      {from:'uc',to:'ac',cls:'muted',label:'uses',labelX:415,labelY:142},
+      {from:'uc',to:'tok',cls:'hot',label:'2. vend token',via:[{x:560,y:80},{x:560,y:287}],labelX:600,labelY:120},
+      {from:'tok',to:'work',cls:'cold',label:'scoped to workload',via:[{x:240,y:287}],labelX:250,labelY:305},
+      {from:'work',to:'adls',cls:'cold',label:'3. direct read/write',via:[{x:230,y:236},{x:600,y:236}],labelX:430,labelY:252}
+    ]
+  },
+  audit: {
+    tip: '<strong>Audit &amp; SIEM</strong>One audit stream, two taps. Click the boxes to see why you run both.',
+    nodes: [
+      {id:'ae',x:30,y:140,w:180,h:76,color:'#6B7280',label:'Audit events',sub:'workspace + account',
+        info:'<strong>Audit events</strong>Every action: login, GRANT, cluster start, failed permission check. Generated at workspace AND account level. Account-level events carry workspace_id = 0.'},
+      {id:'st',x:300,y:40,w:240,h:80,color:'#00A972',label:'system.access.audit',sub:'tap INSIDE (SQL)',
+        info:'<strong>System tables (tap inside)</strong>UC-governed Delta, queried in SQL. The ONLY tap carrying account-level events (workspace_id = 0). 365-day free retention. Not real-time (~15 min to hours). Needs UC grants to read.'},
+      {id:'diag',x:300,y:236,w:240,h:76,color:'#2272B4',label:'Diagnostic settings',sub:'tap OUT (SIEM)',
+        info:'<strong>Azure diagnostic settings (tap out)</strong>Exports the workspace audit stream to Log Analytics / Storage / Event Hub. WORKSPACE-LEVEL ONLY - account-admin and metastore-grant events never flow here. That is the blind spot.'},
+      {id:'sql',x:632,y:40,w:258,h:76,color:'#FF3621',label:'Databricks SQL alert',sub:'scheduled query',
+        info:'<strong>Databricks SQL alert</strong>A saved query runs on a schedule and notifies (email/Slack/PagerDuty/webhook) when a condition fires. Match the cadence to ingestion latency - do not poll a near-real-time alert on an hourly table.'},
+      {id:'siem',x:632,y:236,w:258,h:76,color:'#1B3139',label:'SIEM',sub:'Sentinel / Splunk',
+        info:'<strong>SIEM (Sentinel / Splunk)</strong>Log Analytics feeds Microsoft Sentinel via KQL rules; Event Hub fans out near-real-time to Splunk. Great for correlation, but workspace-level only - so run both taps.'}
+    ],
+    arrows: [
+      {from:'ae',to:'st',cls:'cold',label:'in: SQL tap',via:[{x:250,y:80}],labelX:258,labelY:68},
+      {from:'ae',to:'diag',cls:'blue',label:'out: SIEM tap',via:[{x:250,y:274}],labelX:262,labelY:292},
+      {from:'st',to:'sql',cls:'hot',label:'query + alert',labelX:586,labelY:64},
+      {from:'diag',to:'siem',cls:'blue',label:'export',labelX:586,labelY:260}
+    ]
+  }
+};
+
+const FLOWS = {
+  encryption: '<h4>Real Databricks flow: who holds the key</h4>'
+    + '<ol>'
+    + '<li>You create a key (the KEK) in <strong>Azure Key Vault</strong> in your own tenant and grant Databricks only Get + Wrap Key + Unwrap Key (<code>Key Vault Crypto Service Encryption User</code>).</li>'
+    + '<li>Databricks generates a data-encryption key (DEK) and calls Key Vault <strong>wrap/unwrap</strong> to seal it - the KEK never leaves the vault.</li>'
+    + '<li>That key now protects the <strong>control plane</strong> (notebooks, results, secrets), the <strong>workspace storage / DBFS root</strong> (job results, MLflow, revisions), and <strong>classic VM disks</strong> (temp/shuffle - classic only).</li>'
+    + '<li>Data still moves to your <strong>ADLS Gen2 data lake</strong> over <strong>TLS 1.2+</strong>, but notice the lake is NOT covered by ADB CMK - you set a key on that storage account directly.</li>'
+    + '<li>To revoke access, you <strong>disable or delete the key in Key Vault</strong>: wrap/unwrap calls fail, the DEK can no longer be unwrapped, and reads/logins stop - your kill switch.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Encryption is always on; CMK just moves key custody into your Key Vault so you can rotate or revoke - and it never reaches your data lake.</p>',
+  isolation: '<h4>Real Databricks flow: the one-hour scoped token</h4>'
+    + '<ol>'
+    + '<li>A <strong>serverless workload</strong> spins up on dedicated compute in the Databricks serverless plane - no public IPs, no baked-in credentials, wiped on completion (no warm pool).</li>'
+    + '<li>The workload asks <strong>Unity Catalog</strong> to read a table (arrow 1: request table).</li>'
+    + '<li>UC checks your <code>READ</code>/<code>WRITE</code> grant and, using the <strong>Access Connector</strong> managed identity (Storage Blob Data Contributor, least privilege), down-scopes a credential.</li>'
+    + '<li>UC <strong>vends a ~1-hour token scoped to exactly that one path</strong> (arrow 2) - effectively a time-bound SAS, handed back to the workload.</li>'
+    + '<li>The workload reads/writes <strong>directly to ADLS Gen2</strong> over the backbone + TLS (arrow 3); the control plane mints the token but is never on the data path.</li>'
+    + '<li>Storage stays reachable because the firewall trusts the regional <code>AzureDatabricksServerless.&lt;region&gt;</code> service tag with NSP in <strong>Transition</strong> (not a stale subnet-ID rule).</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Isolation is proven by architecture - dedicated wiped compute plus a short-lived, path-scoped token used directly to your storage. A stolen keycard buys one room for one hour.</p>',
+  audit: '<h4>Real Databricks flow: one stream, two taps</h4>'
+    + '<ol>'
+    + '<li>An action happens - a login, a <code>GRANT</code>, a cluster start, a failed permission check - and emits an <strong>audit event</strong> at workspace AND account level (account events carry <code>workspace_id = 0</code>).</li>'
+    + '<li><strong>Tap inside:</strong> the event lands in <code>system.access.audit</code>, a UC-governed Delta table you query in <strong>SQL</strong> (365-day retention, ~15 min to hours latency, needs UC grants).</li>'
+    + '<li>A <strong>Databricks SQL alert</strong> runs a saved query on a schedule and notifies (email/Slack/PagerDuty) when a condition fires - e.g. <code>response.statusCode != 200</code> with an <code>event_date</code> predicate.</li>'
+    + '<li><strong>Tap out:</strong> <strong>diagnostic settings</strong> export the workspace stream to Log Analytics / Storage / Event Hub - but this is workspace-level only.</li>'
+    + '<li>Your <strong>SIEM</strong> (Sentinel via KQL, or Splunk via Event Hub) correlates the feed near-real-time - yet account-admin and metastore-grant events never reach it.</li>'
+    + '<li>So you <strong>run both taps</strong>: the system table closes the SIEM blind spot for account-level events.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Query the trail in SQL via system tables and export it to your SIEM - run both, because account-level events live only in the system table.</p>'
+};
+
+function svgEl(name, attrs){
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const key in attrs) element.setAttribute(key, attrs[key]);
+  return element;
+}
+
+function edgePoint(rect, tx, ty){
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  const scale = 1 / Math.max(Math.abs(dx) / (rect.w / 2), Math.abs(dy) / (rect.h / 2));
+  return {x: cx + dx * scale, y: cy + dy * scale};
+}
+
+function markerDefs(suffix){
+  return ''
+    + '<marker id="ar-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>'
+    + '<marker id="arb-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#2272B4"/></marker>'
+    + '<marker id="aro-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>'
+    + '<marker id="arg-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>';
+}
+
+function buildDiagram(mount){
+  const viewKey = mount.getAttribute('data-view');
+  const view = ARCH[viewKey];
+  if (!view) return;
+  mount.innerHTML =
+    '<div class="diagram-canvas"><svg viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + markerDefs(viewKey)
+    + '</defs><g class="dg-content"></g></svg></div>'
+    + '<div class="info-box diag-info"><strong>Tip</strong>Click a box for a plain-English explanation of what it does.</div>'
+    + '<div class="flow-box diag-flow"></div>';
+  const svg = mount.querySelector('svg');
+  const group = svg.querySelector('.dg-content');
+  const info = mount.querySelector('.diag-info');
+  const flow = mount.querySelector('.diag-flow');
+  const byId = {};
+  view.nodes.forEach(node => { byId[node.id] = node; });
+
+  view.arrows.forEach(arrow => {
+    const from = byId[arrow.from];
+    const to = byId[arrow.to];
+    const route = arrow.via || [];
+    const firstTarget = route[0] || {x: to.x + to.w / 2, y: to.y + to.h / 2};
+    const lastSource = route[route.length - 1] || {x: from.x + from.w / 2, y: from.y + from.h / 2};
+    const start = edgePoint(from, firstTarget.x, firstTarget.y);
+    const end = edgePoint(to, lastSource.x, lastSource.y);
+    const points = [start, ...route, end];
+    const line = svgEl('polyline', {
+      points: points.map(point => point.x + ',' + point.y).join(' '),
+      class:'arrow ' + (arrow.cls || '')
+    });
+    const marker = arrow.cls === 'hot' ? 'aro-'+viewKey : arrow.cls === 'cold' ? 'arg-'+viewKey : arrow.cls === 'blue' ? 'arb-'+viewKey : arrow.cls === 'muted' ? null : 'ar-'+viewKey;
+    if (marker) line.setAttribute('marker-end', 'url(#' + marker + ')');
+    group.appendChild(line);
+    if (arrow.label) {
+      const labelX = arrow.labelX || (start.x + end.x) / 2;
+      const labelY = arrow.labelY || ((start.y + end.y) / 2 - 6);
+      const bgWidth = Math.max(54, arrow.label.length * 6.2 + 14);
+      const bg = svgEl('rect', {
+        x: labelX - bgWidth / 2,
+        y: labelY - 13,
+        width: bgWidth,
+        height: 18,
+        rx: 5,
+        fill: '#FFFFFF',
+        stroke: '#E5E7EB'
+      });
+      group.appendChild(bg);
+      const text = svgEl('text', {x:labelX, y:labelY, 'text-anchor':'middle', class:'alabel ' + (arrow.cls || '')});
+      text.textContent = arrow.label;
+      group.appendChild(text);
+    }
+  });
+
+  view.nodes.forEach(node => {
+    const item = svgEl('g', {class:'node'});
+    item.appendChild(svgEl('rect', {x:node.x, y:node.y, width:node.w, height:node.h, rx:8, class:'node-bg', fill:'#fff', stroke:node.color, 'stroke-width':2}));
+    const isContainer = node.w >= 240 && node.h >= 120;
+    const labelY = isContainer ? node.y + 26 : node.y + node.h / 2 - 4;
+    const subY = isContainer ? node.y + 44 : node.y + node.h / 2 + 14;
+    const label = svgEl('text', {x:node.x + node.w / 2, y:labelY, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:node.color});
+    label.textContent = node.label;
+    item.appendChild(label);
+    const sub = svgEl('text', {x:node.x + node.w / 2, y:subY, 'text-anchor':'middle', 'font-size':10.5, fill:'#6B7280'});
+    sub.textContent = node.sub;
+    item.appendChild(sub);
+    const show = () => { info.innerHTML = node.info; };
+    item.addEventListener('click', show);
+    item.addEventListener('mouseenter', show);
+    group.appendChild(item);
+  });
+
+  info.innerHTML = view.tip;
+  if (typeof FLOWS !== 'undefined' && FLOWS[viewKey]) flow.innerHTML = FLOWS[viewKey];
+}
+
+document.querySelectorAll('.diagram-block').forEach(buildDiagram);
+</script>
+</body>
+</html>

@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VACUUM & Data Versioning · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,5vw,3rem);line-height:1.03;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .warn{border-left:4px solid #d4452f;background:#fdecea}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: retention timeline slider */
+  .timeline{display:flex;gap:4px;margin:10px 0}
+  .day{flex:1;border:1px solid var(--line);border-radius:6px;padding:8px 4px;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;background:#fff;transition:.3s}
+  .day.kept{background:#dff0e6;border-color:#9ed3b2}
+  .day.purged{background:#fdecea;border-color:#f0b3a8;color:#9a2b1a;text-decoration:line-through}
+  .ctrlrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .ctrlrow label{font-family:"Spline Sans Mono",monospace;font-size:.78rem;color:#48555f}
+  .out{font-family:"Spline Sans Mono",monospace;font-size:.78rem;margin-top:8px;color:#48555f}
+  /* diagram 2: delete vs vacuum flow */
+  .flow{display:flex;flex-direction:column;gap:8px}
+  .fb{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .fb:hover{border-color:var(--brand-2)}.fb.open{border-color:var(--teal)}
+  .fb .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .fb .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .fb.open .d{display:block}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 3.3</p>
+  <h1><em>VACUUM</em> &amp; Time-Travel UNDO</h1>
+  <p class="lede">VACUUM permanently deletes old, unreferenced data files past the retention window (default 7 days) — reclaiming storage, but ending time travel beyond that point. This deep dive walks the lifecycle and the code.</p>
+  <div class="pills"><span class="pill">7-day default</span><span class="pill">RETAIN n HOURS</span><span class="pill">DRY RUN</span><span class="pill">LITE / FULL</span><span class="pill">safety check</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>VACUUM</strong> removes data files no longer referenced and older than the retention threshold (default <strong>7 days</strong>). It reclaims storage and finalizes deletes — but versions older than retention are no longer time-travelable afterward.</div>
+  <div class="card analogy" style="margin-top:10px">🗑️ <strong>Analogy:</strong> VACUUM is <strong>emptying the recycle bin</strong>. A <code>DELETE</code> just moves old files to "trash" (still time-travelable); VACUUM empties the bin for anything older than retention — space back, but no more undo for those.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: retention slider -->
+<section id="ret">
+  <h2>Retention vs time travel — drag the threshold</h2>
+  <p class="hint">▸ files older than retention get purged on VACUUM</p>
+  <div class="ctrlrow">
+    <label>Retention (days):</label>
+    <input type="range" id="retr" min="0" max="10" value="7" step="1" style="flex:1">
+    <span class="mono" id="retval">7</span>
+  </div>
+  <div class="timeline" id="tl"></div>
+  <div class="out" id="retout"></div>
+</section>
+
+<!-- DEEP DIVE: lifecycle -->
+<section id="lifecycle">
+  <h2>1 · The delete → vacuum lifecycle</h2>
+  <p>Row removal happens in <strong>two stages</strong> — the model interviewers want: a <em>logical</em> tombstone (files stay, still time-travelable, no space freed), then a <em>physical</em> removal by VACUUM once past retention.</p>
+  <pre class="code"><span class="k">DELETE FROM</span> main.sales.events <span class="k">WHERE</span> event_date &lt; <span class="s">'2026-01-01'</span>;  <span class="c">-- stage 1: logical</span>
+<span class="k">VACUUM</span> main.sales.events;                                       <span class="c">-- stage 2: physical (past retention)</span></pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: delete vs vacuum -->
+<section id="flow">
+  <h2>2 · DELETE vs VACUUM — click each</h2>
+  <pre class="code"><span class="k">VACUUM</span> main.sales.events <span class="k">RETAIN</span> <span class="f">168</span> <span class="k">HOURS</span>;   <span class="c">-- explicit 7-day retention</span>
+<span class="k">VACUUM</span> main.sales.events <span class="k">DRY RUN</span>;            <span class="c">-- preview what would be purged</span>
+<span class="k">VACUUM</span> main.sales.events <span class="k">LITE</span>;               <span class="c">-- log-only scan (Public Preview, DBR 16.4 LTS+)</span></pre>
+  <div class="flow" style="margin-top:10px">
+    <div class="fb open" onclick="this.classList.toggle('open')"><div class="h"><span>1 · DELETE / UPDATE / MERGE / OPTIMIZE</span><span>▸</span></div><div class="d">Marks old files "unused" (tombstones) in the log but leaves them on disk. Data is still recoverable via time travel — nothing is freed yet.</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>2 · VACUUM … DRY RUN</span><span>▸</span></div><div class="d">Previews exactly which files would be deleted, without removing anything. Always do this first on important tables.</div></div>
+    <div class="fb" onclick="this.classList.toggle('open')"><div class="h"><span>3 · VACUUM</span><span>▸</span></div><div class="d">Permanently deletes unused files older than retention. Storage reclaimed; time travel to those versions is now gone. Below-threshold VACUUM is blocked by a safety check.</div></div>
+  </div>
+  <p class="codecap">PySpark — DeltaTable API</p>
+  <pre class="code"><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+dt = DeltaTable.forName(spark, <span class="s">"main.sales.events"</span>)
+dt.vacuum()        <span class="c"># default retention</span>
+dt.vacuum(<span class="f">168</span>)     <span class="c"># retain 168 hours</span></pre>
+</section>
+
+<section id="safety">
+  <h2>3 · The retention safety check (interview trap)</h2>
+  <p>Files are eligible only past <code>delta.deletedFileRetentionDuration</code> (default 7 days). Databricks blocks a below-threshold VACUUM — a long-running query started before the VACUUM may still need files you'd delete.</p>
+  <div class="card warn">⚠️ <strong>Only if you understand the risk.</strong> This can break time travel AND corrupt concurrent readers/writers. Keep retention ≥ your longest job runtime.</div>
+  <pre class="code" style="margin-top:10px"><span class="k">SET</span> spark.databricks.delta.retentionDurationCheck.enabled = <span class="k">false</span>;
+<span class="k">VACUUM</span> main.sales.events <span class="k">RETAIN</span> <span class="f">0</span> <span class="k">HOURS</span>;   <span class="c">-- dangerous; rarely correct</span></pre>
+  <p class="codecap">Tune retention (longer rollback window, more storage)</p>
+  <pre class="code"><span class="k">ALTER TABLE</span> main.sales.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.deletedFileRetentionDuration'</span> = <span class="s">'interval 30 days'</span>);</pre>
+</section>
+
+<section id="auto">
+  <h2>4 · Automation &amp; the compliance angle</h2>
+  <ul>
+    <li><strong>Predictive Optimization</strong> runs <code>VACUUM</code> automatically on UC <strong>managed</strong> tables — you often don't schedule it. It does not run automatically otherwise (external tables → you schedule it).</li>
+    <li><strong>GDPR / right-to-be-forgotten:</strong> a <code>DELETE</code> alone isn't enough — data persists in old files until VACUUM physically removes it past retention. Pattern: <code>DELETE</code> the records, then ensure <code>VACUUM</code> runs.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Without VACUUM, every rewrite (OPTIMIZE, MERGE, DELETE) leaves stale files → storage grows forever and listing slows.</li>
+    <li>"Why can't I VACUUM with 0 retention?" is a classic interview Q — it would break time travel <em>and</em> can corrupt in-flight concurrent readers/writers.</li>
+  </ul>
+  <div class="card usecase">💽 <strong>Real-world use case:</strong> a heavily-updated silver table balloons in storage. A scheduled <code>VACUUM</code> (7-day retention) clears stale files nightly — keeping a week of rollback while controlling cost.</div>
+</section>
+
+<section>
+  <h2>Logical vs physical removal</h2>
+  <table>
+    <tr><th></th><th>DELETE / MERGE / OPTIMIZE</th><th>VACUUM</th></tr>
+    <tr><td>Effect</td><td>tombstones old files (logical)</td><td>physically deletes them</td></tr>
+    <tr><td>Space freed</td><td>❌ not yet</td><td>✅ (files past retention)</td></tr>
+    <tr><td>Time travel to old version</td><td>✅ still works</td><td>❌ gone after VACUUM</td></tr>
+    <tr><td>Automatic?</td><td>n/a</td><td>only via Predictive Optimization (managed)</td></tr>
+  </table>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> reclaim storage, finalize compliance deletions, routine maintenance of churny tables.</li>
+    <li><strong>Edge case:</strong> VACUUM shrinks the time-travel window; <strong>LITE mode</strong> (Public Preview, DBR 16.4 LTS+) is faster but needs a prior successful VACUUM within log retention. Always <code>DRY RUN</code> first.</li>
+    <li><strong>Limitation:</strong> only removes files <strong>past retention</strong> — it won't instantly free space from a 5-minute-old delete; lowering retention to force it trades away time travel and risks concurrent readers.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Setting retention to 0 to "save space now" — breaks time travel &amp; can corrupt concurrent reads; blocked by default.</li>
+    <li>❌ Expecting time travel to reach old versions <strong>after</strong> VACUUM — it can't.</li>
+    <li>❌ Surprised storage didn't drop — only files <strong>older than retention</strong> are removed.</li>
+    <li>❌ Assuming <code>DELETE</code> alone satisfies GDPR — you must VACUUM to physically remove.</li>
+    <li>❌ Manually scheduling VACUUM on managed tables Predictive Optimization already handles.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/vacuum" target="_blank" rel="noopener">VACUUM</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-vacuum" target="_blank" rel="noopener">VACUUM (SQL ref)</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/history" target="_blank" rel="noopener">History &amp; time travel</a> ·
+  <a href="https://docs.databricks.com/aws/en/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization</a>
+  <p style="margin-top:10px">Topic 3.3 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — retention slider (scoped to #ret)
+const retr=document.getElementById('retr'), retval=document.getElementById('retval'),
+      tl=document.getElementById('tl'), retout=document.getElementById('retout');
+function renderTL(days){
+  retval.textContent=days;
+  tl.innerHTML='';
+  let purged=0;
+  for(let age=10; age>=0; age--){
+    const d=document.createElement('div');
+    const kept = age <= days;
+    d.className='day '+(kept?'kept':'purged');
+    d.textContent=age+'d';
+    tl.appendChild(d);
+    if(!kept) purged++;
+  }
+  retout.textContent = purged===0
+    ? 'Retention covers all shown versions — nothing purged (but storage not reclaimed).'
+    : purged+' version(s) older than '+days+'d would be purged → no longer time-travelable.';
+}
+retr.addEventListener('input',e=>renderTL(+e.target.value));
+renderTL(7);
+// Diagram 2 (#flow) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

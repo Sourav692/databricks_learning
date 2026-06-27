@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 660" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="arrow-gray" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#6B7280"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#2272B4"/>
+    </marker>
+    <marker id="arrow-red" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#FF3621"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0 0, 10 4, 0 8" fill="#00A972"/>
+    </marker>
+    <filter id="label-shadow" x="-10%" y="-20%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#1B3139" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1120" height="660" fill="#FAFAF9"/>
+  <text x="32" y="36" font-size="21" font-weight="700" fill="#1B3139">Networking &amp; Cloud Foundations</text>
+  <text x="32" y="58" font-size="12" fill="#6B7280">CIDR, VNets, subnets, NSGs, UDRs, NAT, DNS, and hub-and-spoke networking for Databricks.</text>
+
+  <!-- On-premises -->
+  <rect x="36" y="120" width="152" height="116" rx="12" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="112" y="144" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">On-premises</text>
+  <rect x="58" y="164" width="108" height="52" rx="9" fill="#FFFFFF" stroke="#2272B4" stroke-width="2"/>
+  <text x="112" y="185" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Analyst / BI</text>
+  <text x="112" y="201" text-anchor="middle" font-size="9.5" fill="#4A5860">VPN or ExpressRoute</text>
+
+  <!-- Hub VNet -->
+  <rect x="248" y="96" width="330" height="244" rx="14" fill="#FFFFFF" stroke="#1B3139" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="413" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#1B3139">Hub / Transit VNet</text>
+  <text x="413" y="137" text-anchor="middle" font-size="10" fill="#6B7280">10.0.0.0/16 | shared network services</text>
+
+  <rect x="270" y="156" width="134" height="50" rx="8" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="337" y="177" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1B3139">GatewaySubnet</text>
+  <text x="337" y="192" text-anchor="middle" font-size="9" fill="#4A5860">VPN / ExpressRoute</text>
+
+  <rect x="426" y="156" width="130" height="50" rx="8" fill="#FFF4F2" stroke="#FF3621" stroke-width="2"/>
+  <text x="491" y="177" text-anchor="middle" font-size="10.5" font-weight="700" fill="#FF3621">AzureFirewallSubnet</text>
+  <text x="491" y="192" text-anchor="middle" font-size="9" fill="#4A5860">egress controls</text>
+
+  <rect x="270" y="224" width="134" height="50" rx="8" fill="#FFFFFF" stroke="#2272B4" stroke-width="2"/>
+  <text x="337" y="245" text-anchor="middle" font-size="10.5" font-weight="700" fill="#2272B4">Front-end PE</text>
+  <text x="337" y="260" text-anchor="middle" font-size="9" fill="#4A5860">databricks_ui_api</text>
+
+  <rect x="426" y="224" width="130" height="50" rx="8" fill="#F4FBF8" stroke="#00A972" stroke-width="2"/>
+  <text x="491" y="245" text-anchor="middle" font-size="10.5" font-weight="700" fill="#00A972">DNS resolver</text>
+  <text x="491" y="260" text-anchor="middle" font-size="9" fill="#4A5860">private zones</text>
+
+  <rect x="270" y="292" width="286" height="34" rx="8" fill="#FFFFFF" stroke="#E5E7EB" stroke-width="1.2"/>
+  <text x="413" y="313" text-anchor="middle" font-size="10" font-weight="700" fill="#1B3139">NSG = whether | UDR = where | NAT = way out</text>
+
+  <!-- Databricks spoke -->
+  <rect x="650" y="96" width="430" height="244" rx="14" fill="#FFFFFF" stroke="#2272B4" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="865" y="120" text-anchor="middle" font-size="12" font-weight="700" fill="#2272B4">Spoke: Databricks workspace VNet</text>
+  <text x="865" y="137" text-anchor="middle" font-size="10" fill="#6B7280">10.1.0.0/16 | CIDR is immutable after deployment</text>
+
+  <rect x="674" y="156" width="176" height="86" rx="9" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="762" y="180" text-anchor="middle" font-size="11" font-weight="700" fill="#1B3139">Host subnet</text>
+  <text x="762" y="197" text-anchor="middle" font-size="9" fill="#4A5860">/26+ delegated subnet</text>
+  <text x="762" y="211" text-anchor="middle" font-size="9" fill="#4A5860">1 host IP per node</text>
+  <text x="762" y="225" text-anchor="middle" font-size="9" fill="#4A5860">no public IP with SCC</text>
+
+  <rect x="878" y="156" width="176" height="86" rx="9" fill="#F2F8FE" stroke="#2272B4" stroke-width="2"/>
+  <text x="966" y="180" text-anchor="middle" font-size="11" font-weight="700" fill="#2272B4">Container subnet</text>
+  <text x="966" y="197" text-anchor="middle" font-size="9" fill="#4A5860">/26+ delegated subnet</text>
+  <text x="966" y="211" text-anchor="middle" font-size="9" fill="#4A5860">1 container IP per node</text>
+  <text x="966" y="225" text-anchor="middle" font-size="9" fill="#4A5860">2 IPs/node drives capacity</text>
+
+  <rect x="674" y="264" width="380" height="52" rx="9" fill="#FFFFFF" stroke="#FF3621" stroke-width="1.4"/>
+  <text x="864" y="285" text-anchor="middle" font-size="10" font-weight="700" fill="#FF3621">NAT gateway gives stable egress IP</text>
+  <text x="864" y="301" text-anchor="middle" font-size="9" fill="#4A5860">Back-end Private Endpoint keeps SCC relay and REST private</text>
+
+  <!-- DNS and storage row -->
+  <rect x="36" y="390" width="500" height="126" rx="14" fill="#FFFFFF" stroke="#00A972" stroke-width="1.5"/>
+  <text x="286" y="414" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">DNS resolution: same name, private answer</text>
+  <text x="62" y="444" font-size="10" fill="#1B3139" font-family="monospace">adb-...azuredatabricks.net</text>
+  <text x="82" y="464" font-size="10" fill="#6B7280" font-family="monospace">public DNS -> CNAME</text>
+  <text x="62" y="484" font-size="10" fill="#1B3139" font-family="monospace">adb-...privatelink.azuredatabricks.net</text>
+  <text x="82" y="504" font-size="10" fill="#6B7280" font-family="monospace">Private DNS Zone -> A record -> 10.x private IP</text>
+
+  <rect x="650" y="390" width="430" height="126" rx="14" fill="#F4FBF8" stroke="#00A972" stroke-width="1.5"/>
+  <text x="865" y="414" text-anchor="middle" font-size="12" font-weight="700" fill="#00A972">Your storage (ADLS Gen2)</text>
+  <rect x="674" y="434" width="190" height="58" rx="9" fill="#FFFFFF" stroke="#00A972" stroke-width="2"/>
+  <text x="769" y="456" text-anchor="middle" font-size="11" font-weight="700" fill="#00A972">ADLS Gen2</text>
+  <text x="769" y="472" text-anchor="middle" font-size="9" fill="#4A5860">dfs.core.windows.net</text>
+  <text x="769" y="486" text-anchor="middle" font-size="9" fill="#4A5860">Service EP or Private EP</text>
+  <rect x="888" y="434" width="166" height="58" rx="9" fill="#FFFFFF" stroke="#6B7280" stroke-width="1.5"/>
+  <text x="971" y="456" text-anchor="middle" font-size="10.5" font-weight="700" fill="#1B3139">Private DNS zone</text>
+  <text x="971" y="472" text-anchor="middle" font-size="9" fill="#4A5860">privatelink.dfs.core</text>
+  <text x="971" y="486" text-anchor="middle" font-size="9" fill="#4A5860">resolves to private IP</text>
+
+  <!-- Routed paths -->
+  <path d="M188 184 C 216 184, 232 181, 270 181" fill="none" stroke="#6B7280" stroke-width="2.2" marker-end="url(#arrow-gray)"/>
+  <path d="M578 220 C 606 220, 620 220, 650 220" fill="none" stroke="#2272B4" stroke-width="2.4" marker-end="url(#arrow-blue)"/>
+  <path d="M964 264 C 964 360, 870 386, 784 434" fill="none" stroke="#00A972" stroke-width="2.2" marker-end="url(#arrow-green)"/>
+  <path d="M966 264 C 1070 330, 1090 70, 492 156" fill="none" stroke="#FF3621" stroke-width="2.4" marker-end="url(#arrow-red)"/>
+  <path d="M491 274 C 456 334, 384 364, 286 390" fill="none" stroke="#00A972" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-green)"/>
+
+  <!-- Callouts -->
+  <rect x="176" y="72" width="176" height="42" rx="8" fill="#FFFFFF" stroke="#E5E7EB" filter="url(#label-shadow)"/>
+  <circle cx="196" cy="93" r="11" fill="#6B7280"/>
+  <text x="196" y="97" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">1</text>
+  <text x="214" y="89" font-size="11" font-weight="700" fill="#1B3139">Private ingress</text>
+  <text x="214" y="104" font-size="10" fill="#6B7280">VPN or ExpressRoute to hub</text>
+
+  <rect x="590" y="70" width="206" height="42" rx="8" fill="#FFFFFF" stroke="#DDEAF7" filter="url(#label-shadow)"/>
+  <circle cx="610" cy="91" r="11" fill="#2272B4"/>
+  <text x="610" y="95" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">2</text>
+  <text x="628" y="87" font-size="11" font-weight="700" fill="#2272B4">Hub to spoke</text>
+  <text x="628" y="102" font-size="10" fill="#2272B4">VNet peering, non-transitive</text>
+
+  <rect x="832" y="344" width="220" height="42" rx="8" fill="#FFFFFF" stroke="#D9F3EA" filter="url(#label-shadow)"/>
+  <circle cx="852" cy="365" r="11" fill="#00A972"/>
+  <text x="852" y="369" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">3</text>
+  <text x="870" y="361" font-size="11" font-weight="700" fill="#00A972">Compute to storage</text>
+  <text x="870" y="376" font-size="10" fill="#00A972">Service Endpoint or Private Endpoint</text>
+
+  <rect x="780" y="532" width="306" height="44" rx="8" fill="#FFFFFF" stroke="#FFE2DD" filter="url(#label-shadow)"/>
+  <circle cx="800" cy="554" r="11" fill="#FF3621"/>
+  <text x="800" y="558" text-anchor="middle" font-size="10" font-weight="700" fill="#FFFFFF">4</text>
+  <text x="818" y="550" font-size="11" font-weight="700" fill="#FF3621">Outbound-only compute to control</text>
+  <text x="818" y="565" font-size="10" fill="#FF3621">SCC relay over 443; use firewall/NAT/back-end PE</text>
+
+  <rect x="32" y="548" width="520" height="64" rx="10" fill="#FFFFFF" stroke="#E5E7EB"/>
+  <text x="48" y="572" font-size="11" font-weight="700" fill="#1B3139">Foundation rule</text>
+  <text x="48" y="590" font-size="10" fill="#6B7280">Size CIDR once for peak because the workspace CIDR is immutable. Subnets are where controls attach.</text>
+  <text x="48" y="606" font-size="10" fill="#6B7280">NSG decides whether traffic is allowed; UDR decides where it goes; NAT gives stable egress; DNS resolves private names.</text>
+</svg>

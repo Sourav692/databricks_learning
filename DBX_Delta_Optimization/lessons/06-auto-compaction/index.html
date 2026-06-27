@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto compaction · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+
+  /* ---------- lesson-06 specific: timeline contrast (reuses palette) ---------- */
+  .tline{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0 6px}
+  .tcol{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px;box-shadow:var(--shadow)}
+  .tcol h4{font-family:"Spline Sans",sans-serif;font-size:.95rem;margin:0 0 4px;font-weight:700}
+  .tcol .when{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:#7a868f;margin-bottom:10px}
+  .phase{border:1px solid var(--line);border-radius:9px;padding:9px 11px;margin:7px 0;background:var(--paper);font-size:.86rem;opacity:.4;transition:.35s}
+  .phase.on{opacity:1;border-color:var(--frost-2);background:linear-gradient(180deg,#fff,#eef7fa)}
+  .phase.commit{border-left:4px solid var(--amber)}
+  .phase .pl{font-family:"Spline Sans Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--frost);display:block;margin-bottom:2px}
+  .minigrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin-top:8px}
+  .mf{aspect-ratio:1;border-radius:4px;background:var(--paper-2);border:1px solid var(--line);transition:.35s}
+  .mf.small{background:linear-gradient(135deg,#f0d9b6,#e6c187);border-color:#d8ab63}
+  .mf.big{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f}
+  .mf.gone{opacity:0;transform:scale(.4)}
+  @media(max-width:560px){ .tline{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 06</p>
+    <h1>Auto<br><span class="drip">compaction.</span></h1>
+    <p class="lede">Delta cleaning up after itself: right after a write commits, the same job merges the small files it just produced into fewer, right-sized ones — synchronously, on the write cluster, no schedule required.</p>
+    <div class="meta">
+      <span class="pill">Runs <b>post-commit</b></span>
+      <span class="pill">On the <b>write cluster</b></span>
+      <span class="pill">Recommended <b>auto</b></span>
+      <span class="pill">Always on for <b>MERGE/UPDATE/DELETE</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Auto compaction</strong> is Delta tidying up immediately after a write. The moment a write <strong>commits</strong>, the same job — on the same cluster — checks whether a partition (or the table) now holds too many small files, and if so <strong>merges those small files into fewer, right-sized ones</strong> before the job ends. It runs <strong>synchronously on the write cluster, post-commit</strong>, and only ever touches files that <strong>haven't been compacted before</strong>, so it never re-chews work it already did.</p>
+    <p>The contrast with the previous lesson is the whole point. <strong>Optimized writes</strong> (Lesson 05) acts <em>before</em> the commit — it shuffles data so the write <em>emits</em> fewer, larger files. <strong>Auto compaction</strong> acts <em>after</em> the commit — it merges the small files that <em>still landed</em> on disk. They're complementary, and together they make up the "auto optimize" umbrella (Lesson 07).</p>
+    <p><span class="chip analogy">Analogy</span><br>Auto compaction is the <strong>busboy clearing and consolidating tables right after each seating</strong> — the meal (write) finishes, then in the same shift the small plates get stacked into a few trays so the next service starts clean. (Optimized writes is the host <em>seating fewer, fuller tables to begin with</em>.)</p>
+    <p><span class="chip usecase">Real-world use case</span><br>A streaming / <code>MERGE</code> pipeline micro-batching into a <code>bronze</code> table every minute. Each batch commits a few tiny files; left alone they pile up into thousands. With <code>delta.autoOptimize.autoCompact = auto</code>, each write's tail merges the new small files into ~128 MB+ chunks — so the table stays query-fast <strong>without a separate nightly OPTIMIZE job</strong> carrying all the load.</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Streaming and <code>MERGE</code> create small files continuously.</strong> Every micro-batch or merge commit adds a few files. Auto compaction is the automatic, per-write cleanup that keeps the count under control <em>between</em> (or instead of) manual <code>OPTIMIZE</code> runs.</li>
+      <li><strong>It runs where the data already is.</strong> Because it executes on the <strong>write cluster right after the commit</strong>, the data is hot and the cluster is already up — no separate job, no separate cluster spin-up.</li>
+      <li><strong>It's safe by construction.</strong> It only compacts files <strong>not previously compacted</strong>, so re-running pipelines doesn't re-compact the same data; and it commits as a normal Delta transaction, so readers and streams see consistent snapshots throughout.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      <strong>Optimized writes sizes files as you write (pre-commit); auto compaction merges the small files after you write (post-commit).</strong> Turn on both for high-churn tables — and for <code>MERGE</code>/<code>UPDATE</code>/<code>DELETE</code> they're already on and can't be disabled.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: write → commit → auto-compaction timeline ============ -->
+  <section>
+    <h2>See it work — write &rarr; commit &rarr; auto-compaction timeline</h2>
+    <p>Step through a write on both sides at once. <strong>Optimized writes</strong> (left) shuffles <em>before</em> the commit so fewer, larger files are written. <strong>Auto compaction</strong> (right) lets the small files commit, then merges them <em>after</em> the commit — synchronously on the same cluster. Click a step, or use Next.</p>
+
+    <div class="lab" id="lab-timeline">
+      <div class="lab-head">
+        <span class="lab-title">Pre-commit vs post-commit timeline</span>
+      </div>
+      <p class="lab-sub">Same incoming data, two file-hygiene strategies — note <em>when</em> each one acts relative to the commit (amber bar).</p>
+
+      <div class="controls">
+        <div class="seg" id="tl-stepSeg" role="group" aria-label="Timeline step">
+          <button data-step="0" aria-pressed="true">1 · Incoming</button>
+          <button data-step="1" aria-pressed="false">2 · Write files</button>
+          <button data-step="2" aria-pressed="false">3 · Commit</button>
+          <button data-step="3" aria-pressed="false">4 · After commit</button>
+        </div>
+        <div class="seg"><button id="tl-next">Next &rarr;</button></div>
+      </div>
+
+      <div class="tline">
+        <div class="tcol" id="tl-ow">
+          <h4>Optimized writes</h4>
+          <div class="when">acts PRE-commit (Lesson 05)</div>
+          <div class="phase" data-p="0"><span class="pl">incoming</span>data arrives</div>
+          <div class="phase" data-p="1"><span class="pl">shuffle &rarr; write</span>shuffles first, so it WRITES fewer, larger files
+            <div class="minigrid" id="tl-ow-grid"></div>
+          </div>
+          <div class="phase commit" data-p="2"><span class="pl">commit</span>txn log entry — already few/large files</div>
+          <div class="phase" data-p="3"><span class="pl">done</span>nothing more to do</div>
+        </div>
+        <div class="tcol" id="tl-ac">
+          <h4>Auto compaction</h4>
+          <div class="when">acts POST-commit (this lesson)</div>
+          <div class="phase" data-p="0"><span class="pl">incoming</span>data arrives</div>
+          <div class="phase" data-p="1"><span class="pl">write</span>writes many SMALL files (no pre-shuffle)
+            <div class="minigrid" id="tl-ac-grid"></div>
+          </div>
+          <div class="phase commit" data-p="2"><span class="pl">commit</span>txn log entry — small files are now live</div>
+          <div class="phase" data-p="3"><span class="pl">synchronous compaction</span>SAME cluster merges small files &rarr; few, large</div>
+        </div>
+      </div>
+
+      <div class="verdict" id="tl-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of the concept. Real behavior depends on data volume, partition layout, and the configured target size; both features can be on together.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: minNumFiles threshold simulator ============ -->
+  <section>
+    <h2>See it work — the <code>minNumFiles</code> threshold</h2>
+    <p>Auto compaction doesn't fire on every tiny write — it waits until at least <code>minNumFiles</code> small files have accumulated in a partition. Click <strong>Append a batch</strong> to add small files; when the count crosses the threshold, the post-commit compaction pass fires and merges them into one right-sized file.</p>
+
+    <div class="lab" id="lab-threshold">
+      <div class="lab-head">
+        <span class="lab-title"><code>minNumFiles</code> trigger simulator</span>
+      </div>
+      <p class="lab-sub">A single partition. Each batch appends 2 small files. Compaction fires once the small-file count reaches the threshold.</p>
+
+      <div class="filterbar">
+        <label for="th-min">minNumFiles threshold:</label>
+        <div class="seg" id="th-minSeg" role="group" aria-label="minNumFiles threshold">
+          <button data-min="4" aria-pressed="false">4</button>
+          <button data-min="8" aria-pressed="true">8</button>
+          <button data-min="12" aria-pressed="false">12</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="seg">
+          <button id="th-append">+ Append a batch</button>
+          <button id="th-reset">Reset</button>
+        </div>
+      </div>
+      <div class="qstr" id="th-qstr"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="th-gridLabel">Files in the partition</div>
+        <div class="grid" id="th-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw" style="background:linear-gradient(135deg,#f0d9b6,#e6c187)"></i> small file (uncompacted)</span>
+        <span><i class="sw" style="background:linear-gradient(135deg,var(--frost-2),var(--frost))"></i> compacted file (right-sized)</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="th-small">0</div><div class="lbl">small files now</div></div>
+        <div class="stat"><div class="big" id="th-batches">0</div><div class="lbl">batches appended</div></div>
+        <div class="stat win"><div class="big" id="th-fires">0</div><div class="lbl">compactions fired</div></div>
+      </div>
+      <div class="verdict" id="th-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration. Real triggering also weighs file sizes and the target size; <code>minNumFiles</code> is the minimum small-file count that makes a compaction pass worthwhile.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic by sub-topic</h2>
+
+    <h3>1 · What it does, and exactly when it runs</h3>
+    <p>Auto compaction combines small files <strong>within partitions</strong> <em>after a write succeeds</em>. It runs <strong>synchronously on the write cluster, post-commit</strong>: the write transaction commits first, then the same job performs a compaction pass and commits that as a second transaction before finishing. The trade-off is that it adds time to the <strong>tail of the write job</strong> — for latency-critical micro-batches that's a real cost; for most pipelines the steady file hygiene is worth it.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Turn on auto compaction at the TABLE level (applies to all writers of this table).</span>
+<span class="c">-- 'auto' autotunes the target file size (recommended).</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.autoCompact'</span> = <span class="s">'auto'</span>);</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># Auto compaction is a TABLE PROPERTY, so any job that writes this table</span>
+<span class="c"># runs the post-write compaction pass.</span>
+spark.sql(<span class="s">"""
+  ALTER TABLE main.delta_opt_demo.events
+  SET TBLPROPERTIES ('delta.autoOptimize.autoCompact' = 'auto')
+"""</span>)</pre>
+
+    <h3>2 · "Only compacts files not previously compacted"</h3>
+    <p>Each pass considers <strong>only files that haven't already been compacted by auto compaction</strong>. Once a set of small files is merged into a right-sized file, that output won't be re-merged on the next write. This makes auto compaction <strong>incremental and self-limiting</strong> — leaving it on permanently doesn't cause the cluster to keep rewriting the same data; it targets only the <em>new</em> small files. It's a <em>local</em> cleanup, not a global re-layout (that's <code>OPTIMIZE</code> / liquid clustering).</p>
+
+    <h3>3 · The values: <code>auto</code>, <code>true</code>, <code>legacy</code>, <code>false</code></h3>
+    <ul>
+      <li><code>auto</code> — <strong>recommended</strong>. On, <strong>and autotunes the target file size</strong>.</li>
+      <li><code>true</code> — on, with a <strong>fixed 128 MB target</strong>, no dynamic sizing.</li>
+      <li><code>legacy</code> — an <strong>alias for <code>true</code></strong> (same fixed 128 MB behavior).</li>
+      <li><code>false</code> — <strong>off</strong>.</li>
+    </ul>
+    <p><code>auto</code> lets Delta grow the target as the table grows instead of pinning every table to 128 MB; <code>true</code>/<code>legacy</code> give the older fixed behavior. Prefer <code>auto</code> for new work.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- recommended: on + autotuned target</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.autoCompact'</span> = <span class="s">'auto'</span>);
+
+<span class="c">-- 'true' = on, FIXED 128 MB target · 'legacy' = alias for 'true' · 'false' = off</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">SET TBLPROPERTIES</span> (<span class="s">'delta.autoOptimize.autoCompact'</span> = <span class="s">'false'</span>);  <span class="c">-- opt this table OUT</span></pre>
+
+    <h3>4 · Table property vs session config</h3>
+    <p>Two control surfaces: the <strong>table property</strong> <code>delta.autoOptimize.autoCompact</code> travels with the table (every writer gets the same behavior); the <strong>session config</strong> <code>spark.databricks.delta.autoCompact.enabled</code> is set on the cluster/session and affects writes from that session. Make the <strong>table property the source of truth</strong> for production tables; use the session config deliberately. Mixing both is the classic "why is compaction running?" trap.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- SESSION-level switch (affects writes from THIS session/cluster).</span>
+<span class="c">-- Same value vocabulary: auto / true / legacy / false.</span>
+<span class="k">SET</span> spark.databricks.delta.autoCompact.enabled = auto;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># Session/cluster scope (not per-table).</span>
+spark.conf.set(<span class="s">"spark.databricks.delta.autoCompact.enabled"</span>, <span class="s">"auto"</span>)</pre>
+
+    <h3>5 · Tuning knobs: <code>maxFileSize</code> and <code>minNumFiles</code></h3>
+    <p><code>spark.databricks.delta.autoCompact.maxFileSize</code> is the <strong>target/cap for the compacted output size</strong>; <code>spark.databricks.delta.autoCompact.minNumFiles</code> is the <strong>minimum number of small files</strong> in a partition (or the table) needed to trigger a pass. <code>minNumFiles</code> too <strong>low</strong> → compaction fires constantly (latency on nearly every write); too <strong>high</strong> → small files linger. Tune to your commit cadence (see the threshold simulator above).</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Don't compact until at least this many small files exist (avoid firing on tiny writes).</span>
+<span class="k">SET</span> spark.databricks.delta.autoCompact.minNumFiles = <span class="s">50</span>;
+
+<span class="c">-- Steer the target size of the compacted output files (here ~128 MB in bytes).</span>
+<span class="k">SET</span> spark.databricks.delta.autoCompact.maxFileSize = <span class="s">134217728</span>;</pre>
+
+    <h3>6 · Always on for <code>MERGE</code> / <code>UPDATE</code> / <code>DELETE</code></h3>
+    <p>Auto compaction <strong>and</strong> optimized writes are <strong>always on for <code>MERGE</code>, <code>UPDATE</code>, and <code>DELETE</code></strong> — and this <strong>cannot be disabled</strong>. Those operations rewrite affected files and are prime small-file producers, so the file-hygiene features are forced on as a guardrail. You can't opt a <code>MERGE</code>-heavy job out of the post-write compaction cost, even for ultra-low latency.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Auto compaction + optimized writes are ALWAYS ON for MERGE/UPDATE/DELETE</span>
+<span class="c">-- (can't be disabled) — the small files this MERGE creates get swept up.</span>
+<span class="k">MERGE INTO</span> main.delta_opt_demo.events <span class="k">AS</span> t
+<span class="k">USING</span> staged_updates <span class="k">AS</span> s
+  <span class="k">ON</span> t.event_id = s.event_id
+<span class="k">WHEN MATCHED THEN UPDATE SET</span> *
+<span class="k">WHEN NOT MATCHED THEN INSERT</span> *;</pre>
+
+    <h3>7 · Background auto compaction for UC managed tables</h3>
+    <p><span class="chip analogy">Managed = self-tidying</span> <span class="chip usecase">No PO required</span></p>
+    <p>For <strong>Unity Catalog managed tables</strong>, a <strong>background auto compaction</strong> mode is available that <strong>does not require predictive optimization</strong> to run. It gives managed tables ongoing file hygiene even where predictive optimization isn't enabled, compacting in the background rather than only on the synchronous write path. It's distinct from both the write-cluster (synchronous) compaction and from predictive optimization.</p>
+
+    <h3>8 · Auto compaction and predictive optimization are INDEPENDENT</h3>
+    <p><strong>Auto compaction</strong> runs <strong>synchronously on the write cluster</strong>; <strong>predictive optimization</strong> (Lesson 09) runs <strong>asynchronously on serverless</strong> compute. They're <strong>independent</strong> — use either alone or both together. Choose based on where you want the cost to land: on your write cluster (auto compaction, immediate and local) or on serverless, off the write path (predictive optimization).</p>
+
+    <h3>9 · It does NOT replace <code>OPTIMIZE</code> on big tables</h3>
+    <p>Auto compaction (like optimized writes) <strong>reduces</strong> the small-file problem but does <strong>not replace</strong> a periodic <code>OPTIMIZE</code>. For tables <strong>&gt; 1 TB</strong> you still schedule <code>OPTIMIZE</code> (or let predictive optimization run it) to further consolidate, and use <strong>liquid clustering</strong> for query-key skipping. Treat auto compaction as "keeps the table from degrading between <code>OPTIMIZE</code> runs," not "I never need <code>OPTIMIZE</code>." (Lessons 04 / 07 / 09.)</p>
+
+    <h3>10 · Migrating off the legacy config</h3>
+    <p>To move from the older fixed (<code>legacy</code>/<code>true</code>) behavior to the modern default, <strong>remove the session config</strong> and <strong>unset the table property</strong> so the table falls back to the platform default. Do it deliberately — unsetting changes behavior for all writers — and re-verify with <code>SHOW TBLPROPERTIES</code>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- (1) clear the session config, then (2) unset the table property.</span>
+<span class="k">SET</span> spark.databricks.delta.autoCompact.enabled = false;  <span class="c">-- or remove from cluster config</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">UNSET TBLPROPERTIES</span> (delta.autoOptimize.autoCompact);
+
+<span class="c">-- Confirm the property is gone:</span>
+<span class="k">SHOW TBLPROPERTIES</span> main.delta_opt_demo.events;</pre>
+  </section>
+
+  <section>
+    <h2>Optimized writes vs auto compaction</h2>
+    <table class="tbl">
+      <thead><tr><th>&nbsp;</th><th>Optimized writes (Lesson 05)</th><th>Auto compaction (this lesson)</th></tr></thead>
+      <tbody>
+        <tr><td><strong>When it acts</strong></td><td><strong>Before</strong> the commit (write-time)</td><td><strong>After</strong> the commit (post-write)</td></tr>
+        <tr><td><strong>How</strong></td><td>Shuffles so the write <em>emits</em> fewer, larger files</td><td>Merges small files <em>that landed</em>, within partitions</td></tr>
+        <tr><td><strong>Where it runs</strong></td><td>On the write path, during the write</td><td><strong>Synchronously on the write cluster, post-commit</strong></td></tr>
+        <tr><td><strong>Property</strong></td><td class="mono">delta.autoOptimize.optimizeWrite</td><td class="mono">delta.autoOptimize.autoCompact</td></tr>
+        <tr><td><strong>Session config</strong></td><td class="mono">spark.databricks.delta.optimizeWrite.enabled</td><td class="mono">spark.databricks.delta.autoCompact.enabled</td></tr>
+        <tr><td><strong>Target size</strong></td><td>128 MB when enabled</td><td><code>auto</code> = autotuned · <code>true</code>/<code>legacy</code> = 128 MB</td></tr>
+        <tr><td><strong>Always on for MERGE/UPDATE/DELETE?</strong></td><td><strong>Yes</strong> (can't disable)</td><td><strong>Yes</strong> (can't disable)</td></tr>
+        <tr><td><strong>Replaces <code>OPTIMIZE</code>?</strong></td><td>No</td><td>No — still <code>OPTIMIZE</code> on &gt; 1 TB tables</td></tr>
+      </tbody>
+    </table>
+    <p>Both are the two halves of "auto optimize" (Lesson 07): optimized writes reduces how many small files <em>appear</em>; auto compaction merges the ones that <em>still do</em>.</p>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses</h3>
+    <ul>
+      <li><strong>Streaming / micro-batch ingestion</strong> and <strong><code>MERGE</code>-heavy</strong> pipelines that commit small files often — set <code>delta.autoOptimize.autoCompact = auto</code>.</li>
+      <li><strong>Pair with optimized writes</strong> on high-churn tables to attack small files from both sides (pre-write sizing + post-write cleanup).</li>
+      <li><strong>UC managed tables</strong> can also lean on <strong>background auto compaction</strong> for ongoing hygiene without predictive optimization.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>Latency-critical micro-batches</strong> — auto compaction is <em>synchronous</em>, so it lengthens the write job's tail; move maintenance off the write path (predictive optimization) and raise <code>minNumFiles</code> if you need minimal batch latency.</li>
+      <li><strong><code>minNumFiles</code> too low</strong> → fires on nearly every write; <strong>too high</strong> → small files linger. Tune to commit cadence.</li>
+      <li><strong><code>MERGE</code>/<code>UPDATE</code>/<code>DELETE</code></strong> → always on, can't be disabled.</li>
+      <li><strong>Big tables (&gt; 1 TB)</strong> → still run <code>OPTIMIZE</code>; use liquid clustering for skipping.</li>
+      <li><strong>Mixed table property + session config</strong> → confusing behavior; make the table property authoritative.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>It's a <strong>local, per-write</strong> sweep — no global re-layout, no clustering by query keys; does <strong>not replace <code>OPTIMIZE</code></strong>.</li>
+      <li>Only compacts <strong>files not previously compacted</strong> — won't re-balance already-compacted regions.</li>
+      <li>Runs <strong>synchronously on the write cluster</strong> by default (extra write-tail latency); background/async behavior is a separate capability (managed-table background compaction / predictive optimization).</li>
+      <li><code>legacy</code> is just an <strong>alias for <code>true</code></strong> (fixed 128 MB, no dynamic sizing) — not a different mode.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Optimized writes &ne; auto compaction.</strong> Pre-commit sizing vs post-commit merging. Use both for high-churn tables.</li>
+      <li><strong>It's synchronous</strong> — on the write cluster, post-commit; budget for the write-tail latency on tight micro-batch SLAs.</li>
+      <li><strong>Prefer <code>auto</code></strong> — on + autotuned size; <code>true</code>/<code>legacy</code> pin 128 MB; <code>false</code> is off.</li>
+      <li><strong><code>MERGE</code>/<code>UPDATE</code>/<code>DELETE</code> always compact</strong> — can't be disabled for those.</li>
+      <li><strong>Tune <code>minNumFiles</code></strong> to your cadence — too low = constant rewrites, too high = lingering small files.</li>
+      <li><strong>Doesn't replace <code>OPTIMIZE</code></strong> — schedule it on &gt; 1 TB tables (or use predictive optimization); cluster for skipping.</li>
+      <li><strong>Migrating off legacy?</strong> Remove the session config <em>and</em> <code>UNSET</code> the table property, then verify.</li>
+      <li><strong>Independent of predictive optimization</strong> — write-cluster (synchronous) vs serverless (asynchronous); use either or both.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Configure Delta to control data file size (auto compaction, values, knobs, MERGE rule, migration)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE — optimize data file layout (auto compaction doesn't replace OPTIMIZE)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization (async, serverless — independent of auto compaction)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ---------- Interactive 1: write -> commit -> auto-compaction timeline ---------- */
+(function(){
+  const root = document.getElementById('lab-timeline');
+  if(!root) return;
+  const owGrid = root.querySelector('#tl-ow-grid');
+  const acGrid = root.querySelector('#tl-ac-grid');
+  let step = 0;
+
+  // Optimized writes: writes 3 large files. Auto compaction: writes 6 small, then merges to 2.
+  function buildGrid(el, cells){
+    el.innerHTML='';
+    cells.forEach(cls=>{
+      const d=document.createElement('div');
+      d.className='mf '+cls;
+      el.appendChild(d);
+    });
+  }
+
+  function render(){
+    // Toggle phase highlighting on both columns up to the current step.
+    root.querySelectorAll('.phase').forEach(ph=>{
+      ph.classList.toggle('on', Number(ph.dataset.p) <= step);
+    });
+
+    // Optimized-writes column: at "write" step it already emits few/large files.
+    if(step >= 1){ buildGrid(owGrid, ['big','big','big']); }
+    else { buildGrid(owGrid, []); }
+
+    // Auto-compaction column: write -> 6 small files; after-commit -> merged to 2 big.
+    if(step === 1 || step === 2){ buildGrid(acGrid, ['small','small','small','small','small','small']); }
+    else if(step >= 3){ buildGrid(acGrid, ['big','big']); }
+    else { buildGrid(acGrid, []); }
+
+    const vd = root.querySelector('#tl-verdict');
+    const msgs = [
+      "<b>Step 1 — Incoming.</b> The same data is about to be written two ways.",
+      "<b>Step 2 — Write files.</b> Optimized writes <em>shuffles first</em>, so it writes <b>3 large</b> files. Auto compaction writes whatever the job produces — here <b>6 small</b> files (no pre-shuffle).",
+      "<b>Step 3 — Commit.</b> Both transactions commit (amber bar). Optimized writes already has few/large files; auto compaction's <b>small files are now live on disk</b>.",
+      "<b>Step 4 — After commit.</b> This is the difference: auto compaction now runs <b>synchronously on the same cluster</b>, merging the 6 small files into <b>2 right-sized</b> ones — <em>after</em> the commit. Optimized writes had nothing left to do."
+    ];
+    vd.innerHTML = msgs[step];
+  }
+
+  root.querySelectorAll('#tl-stepSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      step = Number(btn.dataset.step);
+      root.querySelectorAll('#tl-stepSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      render();
+    });
+  });
+  root.querySelector('#tl-next').addEventListener('click',()=>{
+    step = (step + 1) % 4;
+    root.querySelectorAll('#tl-stepSeg button').forEach(b=>b.setAttribute('aria-pressed', Number(b.dataset.step)===step));
+    render();
+  });
+  render();
+})();
+
+/* ---------- Interactive 2: minNumFiles threshold simulator ---------- */
+(function(){
+  const root = document.getElementById('lab-threshold');
+  if(!root) return;
+  const grid = root.querySelector('#th-grid');
+  const BATCH = 2;            // each append adds 2 small files
+  let minNumFiles = 8;       // trigger threshold
+  let small = 0;             // current uncompacted small files
+  let compacted = 0;         // count of right-sized output files
+  let batches = 0;
+  let fires = 0;
+
+  function render(justFired){
+    grid.innerHTML='';
+    // Render compacted (big, teal) files first, then current small (amber) files.
+    for(let i=0;i<compacted;i++){
+      const d=document.createElement('div');
+      d.className='file hit';
+      const v=document.createElement('span'); v.className='v'; v.textContent='128MB';
+      d.appendChild(v); grid.appendChild(d);
+    }
+    for(let i=0;i<small;i++){
+      const d=document.createElement('div');
+      d.className='file';
+      d.style.background='linear-gradient(135deg,#f0d9b6,#e6c187)';
+      d.style.borderColor='#d8ab63';
+      grid.appendChild(d);
+    }
+    root.querySelector('#th-small').textContent = small;
+    root.querySelector('#th-batches').textContent = batches;
+    root.querySelector('#th-fires').textContent = fires;
+    root.querySelector('#th-qstr').textContent =
+      "spark.databricks.delta.autoCompact.minNumFiles = " + minNumFiles;
+    root.querySelector('#th-gridLabel').textContent =
+      "Files in the partition — small files trigger compaction at " + minNumFiles;
+
+    const vd = root.querySelector('#th-verdict');
+    if(batches===0){
+      vd.innerHTML = "Append batches to accumulate small files. Auto compaction stays quiet until the small-file count reaches <b>minNumFiles = "+minNumFiles+"</b>.";
+    } else if(justFired){
+      vd.innerHTML = "Small-file count hit the threshold (<b>"+minNumFiles+"</b>), so <b>post-commit compaction fired</b> — those small files merged into one right-sized file. The counter resets and accumulation starts again.";
+    } else {
+      const need = minNumFiles - small;
+      vd.innerHTML = "<b>"+small+"</b> small file(s) so far — <b>"+need+"</b> more (about "+Math.ceil(need/BATCH)+" batch(es)) until compaction fires at minNumFiles = "+minNumFiles+".";
+    }
+  }
+
+  function append(){
+    batches++;
+    small += BATCH;
+    let justFired=false;
+    if(small >= minNumFiles){
+      // Compaction fires post-commit: merge all current small files into ONE right-sized file.
+      compacted += 1;
+      small = 0;
+      fires++;
+      justFired=true;
+    }
+    render(justFired);
+  }
+
+  function reset(){
+    small=0; compacted=0; batches=0; fires=0; render(false);
+  }
+
+  root.querySelector('#th-append').addEventListener('click', append);
+  root.querySelector('#th-reset').addEventListener('click', reset);
+  root.querySelectorAll('#th-minSeg button').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      minNumFiles = Number(btn.dataset.min);
+      root.querySelectorAll('#th-minSeg button').forEach(b=>b.setAttribute('aria-pressed', b===btn));
+      reset();
+    });
+  });
+  render(false);
+})();
+</script>
+</body>
+</html>

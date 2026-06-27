@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Latest Exam Updates · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:14px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.78rem;line-height:1.55;margin:.5em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.94rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  table{border-collapse:collapse;width:100%;font-size:.84rem;margin:.5em 0}
+  th,td{border:1px solid var(--line);padding:7px 9px;text-align:left}
+  th{background:var(--paper-2);font-family:"Spline Sans Mono",monospace;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em}
+  td .new{color:#1f6b3a;font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: rename flashcards */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .fc{border:1px solid var(--line);border-radius:10px;background:#fff;padding:14px;cursor:pointer;min-height:74px;display:flex;flex-direction:column;justify-content:center;transition:.18s;text-align:center}
+  .fc:hover{border-color:var(--brand-2)}
+  .fc .old{font-family:"Spline Sans Mono",monospace;font-size:.84rem;color:#9a2b1a}
+  .fc .new{font-family:"Spline Sans Mono",monospace;font-size:.84rem;color:#1f6b3a;display:none}
+  .fc.flip .old{display:none}.fc.flip .new{display:block}
+  .fc .tag{font-size:.64rem;color:#8a939c;font-family:"Spline Sans Mono",monospace;margin-top:4px}
+  /* diagram 2: emphasis tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}.tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.cards{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 12.3</p>
+  <h1>Latest Exam <em>Updates</em></h1>
+  <p class="lede">What the recent exam guide emphasizes — Lakeflow naming, data-level security (row filters/column masks/ABAC), Liquid Clustering, and PySpark ETL — so old study material doesn't trip you up.</p>
+  <div class="pills"><span class="pill">Lakeflow rename</span><span class="pill">data-level security</span><span class="pill">Liquid Clustering</span><span class="pill">PySpark ETL</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">The current guide leans into <strong>Lakeflow naming</strong> (DLT→SDP, Workflows→Jobs, Repos→Git folders), <strong>data-level security</strong> (row filters, column masks, ABAC), <strong>Liquid Clustering</strong>, and <strong>PySpark/Spark-SQL ETL</strong>. Recognize old <em>and</em> new terms; answer with the current ones.</div>
+  <div class="card analogy" style="margin-top:10px">🆕 <strong>Analogy:</strong> the <strong>"what's new in this version" release notes</strong> — if you studied last year's manual, these are the renamed buttons and new features, so you don't miss questions on terminology you already know.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: rename flashcards -->
+<section id="rename">
+  <h2>Rename flashcards — click to flip old → current</h2>
+  <p class="hint">▸ know both: old names still appear in docs &amp; dumps</p>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section>
+  <h2>What changed — with current code</h2>
+
+  <h3>1 · Lakeflow naming — the rebrand the exam expects</h3>
+  <p class="mech"><b>Mechanism:</b> tools unified under <strong>Lakeflow</strong> (Connect · SDP · Designer · Jobs); the pipeline API moved to <code>pyspark.pipelines</code> (as <code>dp</code>). <b>Trade-off:</b> old names persist in docs — recognize both, answer current.</p>
+  <table>
+    <tr><th>Old name</th><th>Current name</th></tr>
+    <tr><td>Delta Live Tables (DLT)</td><td class="new">Lakeflow Spark Declarative Pipelines (SDP)</td></tr>
+    <tr><td>Workflows / Jobs</td><td class="new">Lakeflow Jobs</td></tr>
+    <tr><td>(managed connectors)</td><td class="new">Lakeflow Connect</td></tr>
+    <tr><td>Repos</td><td class="new">Git folders</td></tr>
+    <tr><td><code>apply_changes()</code> / APPLY CHANGES INTO</td><td class="new"><code>create_auto_cdc_flow()</code> / AUTO CDC</td></tr>
+  </table>
+  <pre class="code"><span class="c"># Current SDP Python — NOT legacy "import dlt / @dlt.table / dlt.apply_changes":</span>
+<span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+
+<span class="f">@dp.table</span>()                                   <span class="c"># was @dlt.table</span>
+<span class="k">def</span> <span class="f">orders_clean</span>():
+    <span class="k">return</span> spark.readStream.table(<span class="s">"bronze.orders"</span>)
+
+dp.<span class="f">create_auto_cdc_flow</span>(                       <span class="c"># was dlt.apply_changes</span>
+    target=<span class="s">"silver.customers"</span>, source=<span class="s">"cdc_feed"</span>,
+    keys=[<span class="s">"id"</span>], sequence_by=<span class="s">"ts"</span>, stored_as_scd_type=<span class="s">2</span>)</pre>
+
+  <h3>2 · Data-level security — row filters &amp; column masks</h3>
+  <p class="mech"><b>Mechanism:</b> a SQL <strong>UDF</strong> attached as a <strong>row filter</strong> (limits rows) or <strong>column mask</strong> (transforms a column) — Stage 8.3. <b>Why:</b> Governance is <strong>15%</strong> and expanded. <b>Trade-off:</b> runs per query — keep UDF logic cheap.</p>
+  <pre class="code"><span class="c">-- Row filter: a UDF returning BOOLEAN, attached to the table.</span>
+<span class="k">CREATE FUNCTION</span> sec.region_filter(region STRING)
+  <span class="k">RETURN</span> <span class="f">is_account_group_member</span>(<span class="s">'admins'</span>) <span class="k">OR</span> region = <span class="f">current_user</span>();
+<span class="k">ALTER TABLE</span> prod.sales.orders <span class="k">SET ROW FILTER</span> sec.region_filter <span class="k">ON</span> (region);
+
+<span class="c">-- Column mask: a UDF returning the (possibly masked) value.</span>
+<span class="k">CREATE FUNCTION</span> sec.mask_email(e STRING)
+  <span class="k">RETURN</span> <span class="k">CASE WHEN</span> <span class="f">is_account_group_member</span>(<span class="s">'pii_readers'</span>) <span class="k">THEN</span> e <span class="k">ELSE</span> <span class="s">'***'</span> <span class="k">END</span>;
+<span class="k">ALTER TABLE</span> prod.sales.customers <span class="k">ALTER COLUMN</span> email <span class="k">SET MASK</span> sec.mask_email;</pre>
+
+  <h3>3 · ABAC — attribute-based access with governed tags</h3>
+  <p class="mech"><b>Mechanism:</b> a policy applies masks/filters <strong>by tag</strong> (e.g. all <code>pii</code>-tagged columns) instead of one-by-one — Stage 8.4. <b>Trade-off:</b> <span style="color:#9a6b1a">⚠️ verify — ABAC GRANT/CREATE POLICY has been Beta; confirm GA against docs.</span></p>
+  <pre class="code"><span class="c">-- ABAC: one policy masks every column carrying the 'pii' tag value 'email'.</span>
+<span class="k">CREATE POLICY</span> mask_pii_email
+  <span class="k">ON SCHEMA</span> prod.sales
+  <span class="k">COLUMN MASK</span> sec.mask_email
+  <span class="k">TO</span> <span class="s">`analysts`</span>
+  <span class="k">FOR TABLES</span>
+  <span class="k">MATCH COLUMNS</span> <span class="f">hasTagValue</span>(<span class="s">'pii'</span>, <span class="s">'email'</span>) <span class="k">AS</span> c
+  <span class="k">ON COLUMN</span> c;   <span class="c">-- ⚠️ verify exact syntax/GA against current docs</span></pre>
+
+  <h3>4 · Liquid Clustering — added to the syllabus</h3>
+  <p class="mech"><b>Mechanism:</b> <code>CLUSTER BY</code> replaces hive partitioning + ZORDER, and is changeable later — Stage 3. <b>Why:</b> now the recommended layout; appears <em>instead of</em> partitioning/ZORDER. <b>Trade-off:</b> still compact via OPTIMIZE / Predictive Optimization.</p>
+  <pre class="code"><span class="c">-- Liquid Clustering — the modern layout (not PARTITIONED BY / ZORDER):</span>
+<span class="k">ALTER TABLE</span> prod.silver.events <span class="k">CLUSTER BY</span> (event_date, region);
+<span class="k">OPTIMIZE</span> prod.silver.events;        <span class="c">-- compaction; clustering applied here</span></pre>
+
+  <h3>5 · PySpark / Spark-SQL ETL — still core</h3>
+  <p class="mech"><b>Mechanism:</b> read → transform → write to Delta with the 3-level UC namespace. <b>Why:</b> the Transformation domain (22%) assumes DataFrame fluency. <b>Trade-off:</b> Spark <em>core internals</em> are out of this plan's scope — review separately if rusty.</p>
+  <pre class="code"><span class="c"># Bread-and-butter ETL the exam assumes you can write:</span>
+df = spark.read.table(<span class="s">"main.bronze.orders"</span>).filter(<span class="s">"amount &gt; 0"</span>)
+(df.groupBy(<span class="s">"region"</span>).sum(<span class="s">"amount"</span>)
+   .write.mode(<span class="s">"overwrite"</span>).saveAsTable(<span class="s">"main.silver.revenue_by_region"</span>))</pre>
+</section>
+
+<!-- diagram 2: emphasis areas -->
+<section id="emph">
+  <h2>What's emphasized — click each</h2>
+  <div class="tabs">
+    <button class="tab on" data-t="name">Lakeflow naming</button>
+    <button class="tab" data-t="sec">Data-level security</button>
+    <button class="tab" data-t="opt">Optimization</button>
+  </div>
+  <div class="panel on" data-p="name"><div class="card"><strong>Lakeflow naming</strong> — Connect (ingest) · Spark Declarative Pipelines / SDP (transform, was DLT) · Designer (no-code) · Jobs (orchestrate, was Workflows). <em>Learned in Stages 4–7.</em></div></div>
+  <div class="panel" data-p="sec"><div class="card"><strong>Data-level security</strong> — dynamic views, row filters &amp; column masks (8.3), and <strong>ABAC</strong> governed tags &amp; policies (8.4). The 15% Governance domain. <em>(ABAC GRANT policies have been Beta — verify.)</em></div></div>
+  <div class="panel" data-p="opt"><div class="card"><strong>Optimization</strong> — OPTIMIZE, ZORDER, <strong>Liquid Clustering</strong>, VACUUM, <strong>Predictive Optimization</strong> (Stage 3) + the <strong>query profile</strong> (10.2). The 10% Optimization domain.</div></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Exam questions &amp; interviewers use <strong>current names</strong>; old dumps use old ones — a right concept with a stale name can still cost the question.</li>
+    <li>Data-level security (15%) and optimization (10%) are heavily weighted and recently expanded — exactly Stages 3 &amp; 8.</li>
+  </ul>
+  <div class="card usecase">🔄 <strong>Real-world use case:</strong> a question says "APPLY CHANGES INTO for SCD2" — you recognize it as <strong>AUTO CDC</strong> (<code>create_auto_cdc_flow</code>) in Lakeflow SDP (Stage 5.4) and answer correctly despite the mixed old/new wording.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> a final naming &amp; recent-emphasis pass; sanity-checking old notes use current terms.</li>
+    <li><strong>Edge cases:</strong> <strong>DLT</strong> still appears in docs/UI/questions — know it = Lakeflow SDP; ABAC GRANT/CREATE POLICY has been <strong>Beta</strong> (⚠️ verify GA).</li>
+    <li><strong>Limitation:</strong> emphasis/weights shift between versions — this reflects the current guide; re-verify on the official exam guide near your date.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Answering with <strong>old names</strong> (DLT/Workflows/Repos/<code>apply_changes</code>).</li>
+    <li>❌ Under-studying <strong>governance (15%)</strong> and <strong>optimization (10%)</strong>.</li>
+    <li>❌ Treating <strong>Liquid Clustering</strong> as optional — it's the recommended layout.</li>
+    <li>❌ Assuming every new feature is GA (ABAC policies have been Beta — verify).</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://www.databricks.com/learn/certification/data-engineer-associate" target="_blank" rel="noopener">Exam guide</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/concepts/where-is-dlt" target="_blank" rel="noopener">What happened to DLT?</a> ·
+  <a href="https://docs.databricks.com/aws/en/ldp/developer/python-ref" target="_blank" rel="noopener">SDP Python ref</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-engineering/" target="_blank" rel="noopener">Lakeflow DE docs</a>
+  <p style="margin-top:10px">Topic 12.3 · grounded against official Databricks docs (June 2026). Verify current emphasis &amp; ABAC GA near your exam date.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — rename flashcards (scoped to #rename)
+const RENAMES=[
+  {old:'Delta Live Tables (DLT)', neu:'Lakeflow Spark Declarative Pipelines (SDP)', tag:'transform'},
+  {old:'Workflows / Jobs', neu:'Lakeflow Jobs', tag:'orchestrate'},
+  {old:'(managed connectors)', neu:'Lakeflow Connect', tag:'ingest'},
+  {old:'(new visual / NL tool)', neu:'Lakeflow Designer', tag:'no-code'},
+  {old:'Repos', neu:'Git folders', tag:'source control'},
+  {old:'apply_changes() / APPLY CHANGES INTO', neu:'create_auto_cdc_flow() / AUTO CDC', tag:'CDC / SCD'}
+];
+const cards=document.getElementById('cards');
+RENAMES.forEach(r=>{
+  const el=document.createElement('div'); el.className='fc';
+  el.innerHTML='<div class="old">❓ '+r.old+'</div><div class="new">✅ '+r.neu+'</div><div class="tag">'+r.tag+' · click to flip</div>';
+  el.addEventListener('click',()=>el.classList.toggle('flip'));
+  cards.appendChild(el);
+});
+// Diagram 2 — emphasis tabs (scoped to #emph)
+document.querySelectorAll('#emph .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#emph .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#emph .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+</script>
+</body>
+</html>

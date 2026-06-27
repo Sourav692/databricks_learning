@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The 4 Pillars of Data Governance | Unity Catalog</title>
+<style>
+  :root{
+    --orange:#FF3621;--orange-soft:#FFE9E5;--ink:#1B1B1F;--muted:#5B6068;
+    --line:#E4E7EC;--bg:#F7F8FA;--card:#FFFFFF;--blue:#1B6FB3;--green:#1A7F4B;
+    --purple:#6B4FBB;--red:#C2371F;--amber:#E0A100;
+    --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.06);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--ink);background:var(--bg);line-height:1.6}
+  .wrap{max-width:1000px;margin:0 auto;padding:0 20px 80px}
+  header.hero{background:linear-gradient(135deg,#FF3621 0%,#FF6A4D 100%);color:#fff;padding:44px 20px 38px}
+  header.hero .inner{max-width:1000px;margin:0 auto}
+  .crumb{font-size:13px;letter-spacing:.04em;text-transform:uppercase;opacity:.9;margin-bottom:10px}
+  header.hero h1{margin:0 0 10px;font-size:33px;line-height:1.2}
+  header.hero p{margin:0;font-size:17px;max-width:720px;opacity:.96}
+
+  /* sticky pillar nav */
+  .pillarnav{position:sticky;top:0;z-index:20;background:rgba(247,248,250,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .pillarnav .inner{max-width:1000px;margin:0 auto;display:flex;gap:6px;padding:10px 20px;overflow-x:auto}
+  .pillarnav button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 16px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;display:flex;gap:7px;align-items:center;transition:.15s}
+  .pillarnav button:hover{border-color:var(--orange);color:var(--orange)}
+  .pillarnav button.on{background:var(--orange);border-color:var(--orange);color:#fff}
+  .pillarnav .num{display:inline-flex;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.08);align-items:center;justify-content:center;font-size:12px}
+  .pillarnav button.on .num{background:rgba(255,255,255,.3)}
+
+  section.pillar{display:none;animation:fade .25s}
+  section.pillar.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  h2{font-size:24px;margin:30px 0 6px}
+  .sub{color:var(--muted);margin:0 0 14px;font-size:15px}
+  h3{font-size:18px;margin:22px 0 8px}
+  p{margin:10px 0}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:20px;margin:14px 0}
+  .lead{font-size:16.5px}
+  .muted{color:var(--muted)}
+  code{background:#F0F1F3;padding:2px 6px;border-radius:5px;font-family:"SF Mono",Menlo,Consolas,monospace;font-size:13px}
+  pre{background:#1E1E24;color:#EDEDF2;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.5}
+  pre .k{color:#FF8A6E}.pre .s{color:#9DE08B}
+  ul.clean{margin:10px 0;padding-left:20px}ul.clean li{margin:6px 0}
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}
+  th{background:#FAFBFC;font-weight:600}
+  .note{border-left:4px solid var(--orange);background:#FFF7F5;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+  .warn{border-left:4px solid var(--red);background:#FDF1EF;padding:12px 16px;border-radius:0 8px 8px 0;margin:12px 0}
+  .gotcha{border-left:4px solid var(--amber);background:#FFFBEE;padding:12px 16px;border-radius:0 8px 8px 0;margin:10px 0}
+  .tag{display:inline-block;background:var(--orange-soft);color:var(--orange);font-weight:600;font-size:12px;padding:2px 9px;border-radius:6px}
+
+  /* ---- explorer (pillar 1) ---- */
+  .explorer{display:grid;grid-template-columns:290px 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);background:#fff}
+  @media(max-width:720px){.explorer{grid-template-columns:1fr}}
+  .tree{background:#FBFBFC;border-right:1px solid var(--line);padding:12px 8px;font-size:14px}
+  .tree .node{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:7px;cursor:pointer;user-select:none}
+  .tree .node:hover{background:#F0F1F3}
+  .tree .node.active{background:var(--orange-soft);color:var(--orange);font-weight:600}
+  .tree .ico{width:16px;text-align:center;font-size:13px}
+  .tree .children{margin-left:14px;border-left:1px dashed var(--line);padding-left:6px;display:none}
+  .tree .children.open{display:block}
+  .tree .twist{transition:transform .15s;display:inline-block;color:var(--muted);font-size:11px;width:10px}
+  .tree .twist.open{transform:rotate(90deg)}
+  .detail{padding:16px 18px;min-height:300px}
+  .detail .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:12px;flex-wrap:wrap}
+  .detail .tab{padding:7px 12px;cursor:pointer;font-size:13px;border-radius:7px 7px 0 0;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+  .detail .tab.active{color:var(--orange);border-bottom-color:var(--orange);font-weight:600}
+  .detail .panel{display:none}.detail .panel.active{display:block}
+  .kv{display:grid;grid-template-columns:150px 1fr;gap:6px 12px;font-size:14px}
+  .kv div:nth-child(odd){color:var(--muted)}
+  .placeholder{color:var(--muted);font-size:14px;padding:36px 10px;text-align:center}
+  .mini-table th,.mini-table td{padding:6px 9px;font-size:13px}
+
+  /* ---- lineage ---- */
+  .lineage{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:22px;overflow-x:auto}
+  .flow{display:flex;align-items:center;min-width:740px}
+  .lcol{display:flex;flex-direction:column;gap:12px;align-items:center;flex:1}
+  .lcol .col-label{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .lnode{border:2px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;cursor:pointer;background:#fff;text-align:center;min-width:120px;transition:.15s}
+  .lnode .nt{font-size:11px;color:var(--muted);display:block;margin-bottom:2px}
+  .lnode:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .lnode.center{border-color:var(--orange);background:var(--orange-soft);font-weight:700;color:var(--orange)}
+  .lnode.up{border-color:var(--blue)}.lnode.down{border-color:var(--green)}
+  .lnode.sel{outline:3px solid rgba(255,54,33,.25)}
+  .arrow{flex:0 0 38px;text-align:center;color:var(--muted);font-size:22px}
+  .lineage-info{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px;font-size:14px;min-height:40px}
+  .lineage-info b{color:var(--orange)}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
+  .legend span{display:inline-flex;align-items:center;gap:5px}
+  .dot{width:11px;height:11px;border-radius:3px;display:inline-block}
+  .btn-reset{font-size:12px;color:var(--muted);cursor:pointer;border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 10px;float:right}
+
+  /* ---- quality profile picker ---- */
+  .pick3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+  @media(max-width:680px){.pick3{grid-template-columns:1fr}}
+  .pcard{border:1px solid var(--line);border-radius:12px;background:#fff;padding:16px;cursor:pointer;box-shadow:var(--shadow);transition:.15s;text-align:center}
+  .pcard:hover{transform:translateY(-3px);border-color:var(--orange)}
+  .pcard.active{border-color:var(--orange);background:var(--orange-soft)}
+  .pcard .pico{font-size:26px}
+  .pcard .pn{font-weight:700;margin-top:6px}
+  .pcard .pp{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .pout{border:1px solid var(--line);border-left:4px solid var(--orange);background:#FFF7F5;border-radius:10px;padding:14px 16px;min-height:64px}
+  .layers{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+  .layer{flex:1;min-width:200px;border:1px solid var(--line);border-radius:10px;padding:14px;background:#fff;box-shadow:var(--shadow)}
+  .layer h4{margin:0 0 4px;font-size:15px}
+  .layer .when{font-size:12px;color:var(--muted)}
+
+  /* ---- delta sharing flow ---- */
+  .share-stage{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:20px;overflow-x:auto}
+  .meta-row{display:flex;align-items:center;gap:0;min-width:720px}
+  .meta-box{flex:1;border:2px dashed var(--line);border-radius:12px;padding:14px;text-align:center;background:#FBFBFC}
+  .meta-box .mlab{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+  .meta-box .ws{margin-top:8px;border:1px solid var(--line);border-radius:8px;padding:8px;background:#fff;font-size:13px}
+  .bridge{flex:0 0 150px;text-align:center;position:relative}
+  .bridge .line{height:3px;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:2px;margin:0 6px}
+  .bridge .lab{font-size:12px;color:var(--orange);font-weight:700;margin-bottom:6px}
+  .steps{counter-reset:s;margin:14px 0;padding:0;list-style:none}
+  .steps li{position:relative;padding:12px 14px 12px 48px;border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fff;cursor:pointer;box-shadow:var(--shadow);transition:.15s}
+  .steps li:hover{border-color:var(--orange)}
+  .steps li.active{border-color:var(--orange);background:var(--orange-soft)}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:12px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700}
+  .steps li .det{display:none;margin-top:8px;font-size:13.5px;color:var(--ink)}
+  .steps li.active .det{display:block}
+  .steps li b{display:block}
+
+  /* ---- access control demo ---- */
+  .role-switch{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#fff;box-shadow:var(--shadow);margin:6px 0 12px}
+  .role-switch button{border:0;background:#fff;padding:9px 20px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted)}
+  .role-switch button.on{background:var(--orange);color:#fff}
+  .ac-table td.masked{color:var(--muted);font-style:italic;background:#FBF3F1}
+  .ac-table td.region-eu{}
+  .ac-note{font-size:13px;color:var(--muted);margin-top:8px}
+  .pii{background:var(--orange-soft);color:var(--orange);font-size:11px;padding:1px 6px;border-radius:5px;font-weight:600}
+
+  footer{margin-top:36px;font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:18px}
+  footer a{color:var(--orange)}
+  a{color:var(--orange)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="inner">
+    <div class="crumb">Data Governance · Unity Catalog</div>
+    <h1>The Pillars of Data Governance</h1>
+    <p>Governance isn't one thing — it's a bundle of capabilities. Explore four key pillars, each with a hands-on, clickable demo. Use the tabs below to switch between them.</p>
+  </div>
+</header>
+
+<nav class="pillarnav">
+  <div class="inner" id="nav">
+    <button data-p="p1" class="on"><span class="num">1</span>🧭 Discoverability</button>
+    <button data-p="p2"><span class="num">2</span>✔️ Data Quality</button>
+    <button data-p="p3"><span class="num">3</span>🤝 Collaboration</button>
+    <button data-p="p4"><span class="num">4</span>🔐 Access Control</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ============ PILLAR 1 ============ -->
+  <section class="pillar active" id="p1">
+    <h2>1 · Data Discoverability</h2>
+    <p class="sub">How easily can people <em>find</em> and <em>understand</em> the data they need?</p>
+
+    <div class="card lead"><strong>In one sentence:</strong> discoverability is locating the right data and understanding it — the rows, the metadata (owner, type, tags), recent updates, its meaning, and where it comes from / flows to. If people can't find or trust data, they re-build it or misuse it.</div>
+
+    <h3>What "data" means here</h3>
+    <table>
+      <tr><th>Type</th><th>Question it answers</th></tr>
+      <tr><td>Actual data</td><td>"Show me sample rows."</td></tr>
+      <tr><td>Metadata</td><td>"Who owns it? What format? When created?"</td></tr>
+      <tr><td>Updates / freshness</td><td>"What changed recently? Still maintained?"</td></tr>
+      <tr><td>Upstream / downstream</td><td>"Where from? Who depends on it?"</td></tr>
+      <tr><td>Meaning</td><td>"What is this column / table?"</td></tr>
+    </table>
+
+    <h3>Try it: Catalog Explorer</h3>
+    <p class="muted">Click to expand <code>catalog → schema → table</code>, then open <code>silver.products</code> to step through its tabs.</p>
+    <div class="explorer">
+      <div class="tree" id="tree"></div>
+      <div class="detail" id="detail"><div class="placeholder">← Select a catalog, schema, or table.</div></div>
+    </div>
+
+    <h3>Lineage: upstream &amp; downstream</h3>
+    <p><strong>Upstream</strong> = where data comes from. <strong>Downstream</strong> = what consumes it. Unity Catalog captures this automatically at runtime, down to the column level.</p>
+    <div class="lineage">
+      <span class="btn-reset" onclick="resetLineage()">Reset</span>
+      <div class="flow">
+        <div class="lcol"><div class="col-label">Upstream</div>
+          <div class="lnode up" data-info="up"><span class="nt">Volume</span>raw_products</div>
+          <div class="lnode up" data-info="up2"><span class="nt">Notebook</span>build_silver_products</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lcol"><div class="col-label">This object</div>
+          <div class="lnode center" data-info="center"><span class="nt">Delta table</span>silver.products</div>
+        </div>
+        <div class="arrow">→</div>
+        <div class="lcol"><div class="col-label">Downstream</div>
+          <div class="lnode down" data-info="d1"><span class="nt">Notebook</span>build_gold_sales</div>
+          <div class="lnode down" data-info="d2"><span class="nt">SQL query</span>top_products_q</div>
+          <div class="lnode down" data-info="d3"><span class="nt">Dashboard</span>Sales Overview</div>
+        </div>
+      </div>
+      <div class="lineage-info" id="linfo">Click any node to see what it means for <b>silver.products</b>.</div>
+      <div class="legend">
+        <span><span class="dot" style="background:var(--blue)"></span> Upstream</span>
+        <span><span class="dot" style="background:var(--orange)"></span> Selected</span>
+        <span><span class="dot" style="background:var(--green)"></span> Downstream</span>
+      </div>
+    </div>
+    <div class="gotcha"><strong>Gotcha:</strong> "all account users" with <code>BROWSE</code> means all users in your <em>metastore/account</em> — not the whole internet. And empty descriptions make data technically discoverable but practically useless — accept/edit AI comments.</div>
+  </section>
+
+  <!-- ============ PILLAR 2 ============ -->
+  <section class="pillar" id="p2">
+    <h2>2 · Data Quality</h2>
+    <p class="sub">Is the data correct, complete, and fresh?</p>
+
+    <div class="card lead"><strong>In one sentence:</strong> bad data quietly produces wrong dashboards and wrong decisions, so catching nulls, zeros, duplicates, and out-of-range values is the engineer's job.</div>
+
+    <h3>Three layers of quality in Databricks</h3>
+    <div class="layers">
+      <div class="layer"><h4>① Constraints</h4><div class="when">In the table · write time</div><p style="font-size:14px"><code>NOT NULL</code> / <code>CHECK</code> on a Delta table reject or flag bad rows as they're written.</p></div>
+      <div class="layer"><h4>② Expectations</h4><div class="when">In pipelines · flow time</div><p style="font-size:14px"><code>EXPECT</code> rules in Lakeflow Declarative Pipelines (formerly DLT) warn, drop, or fail bad rows.</p></div>
+      <div class="layer"><h4>③ Lakehouse Monitoring</h4><div class="when">In Unity Catalog · after the fact</div><p style="font-size:14px">Continuously profiles a table and alerts when quality metrics drift over time.</p></div>
+    </div>
+    <div class="note">Your DLT expectations and table constraints still apply — <strong>Lakehouse Monitoring is the Unity Catalog addition</strong> for ongoing observability.</div>
+
+    <h3>Try it: pick a monitor profile type</h3>
+    <p class="muted">On any table's <strong>Quality</strong> tab → <strong>Get started</strong>, you choose a profile type. Click one:</p>
+    <div class="pick3" id="pick3">
+      <div class="pcard active" data-i="0"><div class="pico">📈</div><div class="pn">Time series</div><div class="pp">metrics over time windows</div></div>
+      <div class="pcard" data-i="1"><div class="pico">📷</div><div class="pn">Snapshot</div><div class="pp">metrics over full table</div></div>
+      <div class="pcard" data-i="2"><div class="pico">🤖</div><div class="pn">Inference</div><div class="pp">model performance & drift</div></div>
+    </div>
+    <div class="pout" id="pout"></div>
+    <p class="muted" style="margin-top:10px">Then set a <strong>refresh schedule</strong> (e.g. daily) under advanced options. The monitor builds metric tables + a dashboard and can email alerts on breaches.</p>
+
+    <div class="gotcha"><strong>Gotcha:</strong> a monitor is <em>observability</em> — it tells you quality slipped; it doesn't prevent the bad write. Use constraints/expectations to block bad data, monitoring to detect drift.</div>
+  </section>
+
+  <!-- ============ PILLAR 3 ============ -->
+  <section class="pillar" id="p3">
+    <h2>3 · Data Collaboration (Delta Sharing)</h2>
+    <p class="sub">How do you share data across different metastores — even different orgs or platforms?</p>
+
+    <div class="card lead"><strong>The problem:</strong> normal grants only reach workspaces on the <em>same metastore</em>. When the other side is on a <strong>different metastore</strong>, you need <strong>Delta Sharing</strong> — an open protocol for secure cross-boundary sharing.</div>
+
+    <h3>Two flavors</h3>
+    <ul class="clean">
+      <li><strong>Open Delta Sharing</strong> — share with any recipient, including non-Databricks tools and other clouds.</li>
+      <li><strong>Databricks-to-Databricks (D2D)</strong> — secure sharing between two Databricks metastores (our focus).</li>
+    </ul>
+
+    <h3>Try it: the D2D sharing flow</h3>
+    <div class="share-stage">
+      <div class="meta-row">
+        <div class="meta-box"><div class="mlab">Metastore A · Provider</div><div class="ws">Workspace A<br><span class="muted">catalog: main.silver.products</span></div></div>
+        <div class="bridge"><div class="lab">SHARE</div><div class="line"></div><div class="muted" style="font-size:11px;margin-top:6px">Delta Sharing protocol</div></div>
+        <div class="meta-box"><div class="mlab">Metastore B · Recipient</div><div class="ws">Workspace B<br><span class="muted">reads a shared catalog</span></div></div>
+      </div>
+    </div>
+    <ol class="steps" id="steps">
+      <li data-active><b>Recipient sends their sharing identifier</b><div class="det">A string in the format <code>&lt;cloud&gt;:&lt;region&gt;:&lt;uuid&gt;</code> (e.g. <code>aws:us-west-2:19a84bee-...</code>) that uniquely names their metastore. They find it via Catalog Explorer or <code>SELECT CURRENT_METASTORE()</code>.</div></li>
+      <li><b>Provider creates a recipient</b><div class="det">Using that identifier: <code>CREATE RECIPIENT acme USING ID 'aws:us-west-2:19a84bee-...';</code></div></li>
+      <li><b>Provider creates a share &amp; adds data</b><div class="det"><code>CREATE SHARE sales_share;</code> then <code>ALTER SHARE sales_share ADD TABLE main.silver.products;</code> A share is a read-only collection of tables/views/volumes/notebooks.</div></li>
+      <li><b>Provider grants the recipient access</b><div class="det"><code>GRANT SELECT ON SHARE sales_share TO RECIPIENT acme;</code></div></li>
+      <li><b>Recipient queries the shared catalog</b><div class="det">On their side the share appears as a read-only <strong>catalog created from the share</strong>, which they query like any other catalog.</div></li>
+    </ol>
+
+    <div class="warn"><strong>⚠️ Correction to the lecture:</strong> Delta Sharing does <em>not</em> create a "foreign catalog." In current Databricks terminology:<br>
+      • <strong>Delta Sharing</strong> → recipient creates a regular <strong>catalog from the share</strong> (a "shared catalog").<br>
+      • <strong>Foreign catalog</strong> → a <strong>Lakehouse Federation</strong> concept only — a catalog that queries an <em>external database</em> (MySQL, Postgres, Snowflake…) live, without moving data.<br>
+      Both let you query data you didn't create, but they're different mechanisms.</div>
+
+    <div class="gotcha"><strong>Gotcha:</strong> external sharing must be enabled at the metastore level (off on free/trial workspaces). Shares are <strong>read-only</strong> — recipients can't modify your data.</div>
+  </section>
+
+  <!-- ============ PILLAR 4 ============ -->
+  <section class="pillar" id="p4">
+    <h2>4 · Data Access Control</h2>
+    <p class="sub">The most used pillar: who can see and do what — and hiding what they shouldn't see.</p>
+
+    <div class="card lead"><strong>In one sentence:</strong> admins may see everything, but a business analyst should see only what their job needs — with sensitive PII (email, phone, bank/card number, salary) hidden.</div>
+
+    <h3>Two levels of control</h3>
+    <table>
+      <tr><th>Level</th><th>Controls</th><th>How</th></tr>
+      <tr><td><strong>Object-level (coarse)</strong></td><td>Whole catalog / schema / table / view</td><td><code>GRANT SELECT ON TABLE … TO `analysts`;</code></td></tr>
+      <tr><td><strong>Fine-grained</strong></td><td>Specific rows and columns</td><td>Row filters &amp; column masks (SQL UDFs)</td></tr>
+    </table>
+
+    <h3>Try it: see the same table as different roles</h3>
+    <p class="muted">A <strong>row filter</strong> limits which rows you see; a <strong>column mask</strong> hides sensitive values. Toggle the role:</p>
+    <div class="role-switch" id="roleswitch">
+      <button data-role="admin" class="on">👑 Admin</button>
+      <button data-role="analyst">🧑‍💼 EU Analyst</button>
+    </div>
+    <table class="ac-table" id="actable">
+      <thead><tr><th>customer_id</th><th>name</th><th>region</th><th>email <span class="pii">PII</span></th><th>salary <span class="pii">PII</span></th></tr></thead>
+      <tbody id="acbody"></tbody>
+    </table>
+    <div class="ac-note" id="acnote"></div>
+
+    <h3>How it's implemented</h3>
+    <pre><span class="k">-- Column mask: only admins see the real email</span>
+CREATE FUNCTION mask_email(email STRING)
+RETURN CASE WHEN is_account_group_member('admins') THEN email
+            ELSE '***@masked.com' END;
+ALTER TABLE main.silver.customers ALTER COLUMN email SET MASK mask_email;
+
+<span class="k">-- Row filter: non-admins only see their own region</span>
+CREATE FUNCTION region_filter(region STRING)
+RETURN is_account_group_member('admins') OR region = current_user_region();
+ALTER TABLE main.silver.customers SET ROW FILTER region_filter ON (region);</pre>
+    <p class="muted">At scale, apply these centrally with <strong>ABAC policies</strong> (tag a column <code>pii</code> once; a policy masks it everywhere) instead of table-by-table.</p>
+
+    <div class="gotcha"><strong>Gotcha:</strong> grant access by <strong>groups</strong>, not individuals (update the group when people join/leave). And test as the <em>restricted</em> user — as owner/admin you bypass the masks you're trying to verify.</div>
+  </section>
+
+  <footer>
+    <strong>Official sources</strong><br>
+    <a href="https://docs.databricks.com/aws/en/discover/" target="_blank">Discover data</a> ·
+    <a href="https://docs.databricks.com/aws/en/catalog-explorer/" target="_blank">Catalog Explorer</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/data-lineage" target="_blank">Data lineage</a> ·
+    <a href="https://docs.databricks.com/aws/en/lakehouse-monitoring/" target="_blank">Lakehouse Monitoring</a> ·
+    <a href="https://docs.databricks.com/aws/en/delta-sharing" target="_blank">Delta Sharing</a> ·
+    <a href="https://docs.databricks.com/aws/en/delta-sharing/create-recipient" target="_blank">Create recipients</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/" target="_blank">Row filters &amp; column masks</a><br><br>
+    <span class="muted">Learning aid for the Databricks Data Engineering series · 4 pillars of governance with Unity Catalog.</span>
+  </footer>
+</div>
+
+<script>
+/* ============ pillar nav ============ */
+document.querySelectorAll('#nav button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#nav button').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on');
+    document.querySelectorAll('section.pillar').forEach(s=>s.classList.remove('active'));
+    document.getElementById(b.dataset.p).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+
+/* ============ pillar 1: catalog explorer ============ */
+const model={name:"main",type:"catalog",ico:"📚",
+  meta:{Owner:"sourav.banerjee",Metastore:"prod-metastore",Created:"2025-08-12","Default storage":"managed",Privilege:"All account users: BROWSE"},
+  desc:"Top-level container grouping schemas. First level of catalog.schema.table.",
+  children:[
+    {name:"bronze",type:"schema",ico:"🗂️",desc:"Raw ingested data.",meta:{Owner:"data_eng",Tables:"6"},children:[{name:"raw_events",type:"table",ico:"▦"}]},
+    {name:"silver",type:"schema",ico:"🗂️",desc:"Cleaned, conformed tables.",meta:{Owner:"data_eng",Tables:"12"},children:[
+      {name:"products",type:"table",ico:"▦"},{name:"customers",type:"table",ico:"▦"},{name:"orders",type:"table",ico:"▦"}]},
+    {name:"gold",type:"schema",ico:"🗂️",desc:"Business aggregates for analysts & BI.",meta:{Owner:"analytics",Tables:"4"},children:[{name:"sales_summary",type:"table",ico:"▦"}]}
+  ]};
+const tableDetail={products:{
+  overview:`<p><span class="tag">AI-generated · Accepted</span></p><p><strong>silver.products</strong> has one row per product — id, name, category, price — conformed from the raw products volume. Used as a dimension for sales reporting.</p>`,
+  columns:`<table class="mini-table"><tr><th>Column</th><th>Type</th><th>Comment</th></tr><tr><td>product_id</td><td>STRING</td><td>Primary key</td></tr><tr><td>name</td><td>STRING</td><td>Display name</td></tr><tr><td>category</td><td>STRING</td><td>Category</td></tr><tr><td>price</td><td>DECIMAL(10,2)</td><td>List price (USD)</td></tr></table>`,
+  sample:`<table class="mini-table"><tr><th>product_id</th><th>name</th><th>category</th><th>price</th></tr><tr><td>P-1001</td><td>Aero Mug</td><td>Kitchen</td><td>14.00</td></tr><tr><td>P-1002</td><td>Trail Bottle</td><td>Outdoor</td><td>22.50</td></tr><tr><td>P-1003</td><td>Desk Lamp</td><td>Home</td><td>39.99</td></tr></table><p class="muted">Sample preview — permission-checked.</p>`,
+  details:`<div class="kv"><div>Type</div><div>Managed table</div><div>Format</div><div>Delta</div><div>Storage</div><div>Default (managed)</div><div>Created</div><div>2025-09-03</div><div>Popularity</div><div>High</div></div>`,
+  permissions:`<div class="kv"><div>data_eng</div><div>ALL PRIVILEGES (owner)</div><div>analytics_group</div><div>SELECT</div><div>All account users</div><div>BROWSE</div></div>`,
+  lineage:`<p><strong>Upstream:</strong> volume <code>raw_products</code> → notebook <code>build_silver_products</code>.</p><p><strong>Downstream:</strong> <code>build_gold_sales</code>, <code>top_products_q</code>, <code>Sales Overview</code>.</p><p class="muted">See the interactive graph below.</p>`
+}};
+function genericDetail(n){let r=Object.entries(n.meta||{}).map(([k,v])=>`<div>${k}</div><div>${v}</div>`).join("");return `<h3 style="margin-top:0">${n.ico} ${n.name} <span class="muted" style="font-weight:400;font-size:13px">· ${n.type}</span></h3><p>${n.desc||""}</p>${r?`<div class="kv">${r}</div>`:""}`;}
+const treeEl=document.getElementById('tree'),detailEl=document.getElementById('detail');
+function makeNode(node){
+  const wrap=document.createElement('div'),row=document.createElement('div');
+  row.className='node';const hasKids=node.children&&node.children.length;
+  row.innerHTML=`<span class="twist">${hasKids?'▶':''}</span><span class="ico">${node.ico}</span><span>${node.name}</span>`;
+  wrap.appendChild(row);let kids;
+  if(hasKids){kids=document.createElement('div');kids.className='children';node.children.forEach(c=>kids.appendChild(makeNode(c)));wrap.appendChild(kids);}
+  row.addEventListener('click',e=>{e.stopPropagation();
+    document.querySelectorAll('#tree .node').forEach(n=>n.classList.remove('active'));row.classList.add('active');
+    if(hasKids){row.querySelector('.twist').classList.toggle('open');kids.classList.toggle('open');}
+    showDetail(node);});
+  return wrap;
+}
+treeEl.appendChild(makeNode(model));
+function showDetail(node){
+  if(node.type==='table'&&tableDetail[node.name]){
+    const d=tableDetail[node.name];
+    detailEl.innerHTML=`<h3 style="margin-top:0">▦ ${node.name} <span class="muted" style="font-weight:400;font-size:13px">· table · Delta</span></h3>
+      <div class="tabs"><div class="tab active" data-p="overview">Overview</div><div class="tab" data-p="columns">Columns</div><div class="tab" data-p="sample">Sample Data</div><div class="tab" data-p="details">Details</div><div class="tab" data-p="permissions">Permissions</div><div class="tab" data-p="lineage">Lineage</div></div>
+      <div class="panel active" id="p-overview">${d.overview}</div><div class="panel" id="p-columns">${d.columns}</div><div class="panel" id="p-sample">${d.sample}</div><div class="panel" id="p-details">${d.details}</div><div class="panel" id="p-permissions">${d.permissions}</div><div class="panel" id="p-lineage">${d.lineage}</div>`;
+    detailEl.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+      detailEl.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+      detailEl.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+      t.classList.add('active');detailEl.querySelector('#p-'+t.dataset.p).classList.add('active');}));
+  } else if(node.type==='table'){
+    detailEl.innerHTML=`<h3 style="margin-top:0">▦ ${node.name}</h3><p class="muted">A Delta table. Open <code>silver.products</code> for the fully worked example.</p>`;
+  } else detailEl.innerHTML=genericDetail(node);
+}
+
+/* ---- lineage ---- */
+const linfo=document.getElementById('linfo');
+const lineageText={
+  up:"<b>Upstream — Volume raw_products.</b> The raw files this table is built from.",
+  up2:"<b>Upstream — Notebook build_silver_products.</b> The job that cleans the raw volume and writes silver.products.",
+  center:"<b>silver.products.</b> Everything left feeds it; everything right depends on it.",
+  d1:"<b>Downstream — Notebook build_gold_sales.</b> Reads products to build a gold aggregate.",
+  d2:"<b>Downstream — SQL query top_products_q.</b> Could break if columns are renamed/dropped.",
+  d3:"<b>Downstream — Dashboard Sales Overview.</b> A bad change here is visible to executives."
+};
+document.querySelectorAll('.lnode').forEach(n=>n.addEventListener('click',()=>{
+  document.querySelectorAll('.lnode').forEach(x=>x.classList.remove('sel'));n.classList.add('sel');
+  linfo.innerHTML=lineageText[n.dataset.info];}));
+function resetLineage(){document.querySelectorAll('.lnode').forEach(x=>x.classList.remove('sel'));linfo.innerHTML="Click any node to see what it means for <b>silver.products</b>.";}
+
+/* ============ pillar 2: profile picker ============ */
+const profiles=[
+  {n:"Time series",d:"Quality metrics are aggregated over <b>time windows</b> (hour / day / week), so you can see trends and detect drift. Best when the table has a timestamp column."},
+  {n:"Snapshot",d:"Metrics are recalculated over the <b>entire table</b> at every refresh. Best when you want the current full-table picture rather than a trend."},
+  {n:"Inference",d:"Adds <b>model performance &amp; drift</b> metrics on top of data quality. Attach it to an inference table holding a model's inputs and predictions to monitor an ML model in production."}
+];
+const pout=document.getElementById('pout');
+function showProfile(i){pout.innerHTML=`<strong>${profiles[i].n} profile</strong><br>${profiles[i].d}`;}
+document.querySelectorAll('#pick3 .pcard').forEach(c=>c.addEventListener('click',()=>{
+  document.querySelectorAll('#pick3 .pcard').forEach(x=>x.classList.remove('active'));
+  c.classList.add('active');showProfile(+c.dataset.i);}));
+showProfile(0);
+
+/* ============ pillar 3: steps ============ */
+document.querySelectorAll('#steps li').forEach(li=>li.addEventListener('click',()=>{
+  const wasActive=li.classList.contains('active');
+  document.querySelectorAll('#steps li').forEach(x=>x.classList.remove('active'));
+  if(!wasActive)li.classList.add('active');
+}));
+document.querySelector('#steps li').classList.add('active');
+
+/* ============ pillar 4: access control demo ============ */
+const customers=[
+  {id:"C-01",name:"Mei Tan",region:"APAC",email:"mei@acme.com",salary:"$92,000"},
+  {id:"C-02",name:"Luca Rossi",region:"EU",email:"luca@acme.com",salary:"$88,000"},
+  {id:"C-03",name:"Ana Silva",region:"EU",email:"ana@acme.com",salary:"$95,000"},
+  {id:"C-04",name:"John Reed",region:"US",email:"john@acme.com",salary:"$101,000"}
+];
+const acbody=document.getElementById('acbody'),acnote=document.getElementById('acnote');
+function renderAC(role){
+  const isAdmin=role==='admin';
+  const rows=customers.filter(c=>isAdmin||c.region==='EU');
+  acbody.innerHTML=rows.map(c=>{
+    const email=isAdmin?c.email:`<span>***@masked.com</span>`;
+    const salary=isAdmin?c.salary:`<span>•••••</span>`;
+    return `<tr><td>${c.id}</td><td>${c.name}</td><td>${c.region}</td>
+      <td class="${isAdmin?'':'masked'}">${email}</td>
+      <td class="${isAdmin?'':'masked'}">${salary}</td></tr>`;
+  }).join('');
+  acnote.innerHTML=isAdmin
+    ? "👑 <b>Admin</b>: row filter returns ALL regions; column masks are bypassed — full email &amp; salary visible."
+    : "🧑‍💼 <b>EU Analyst</b>: row filter shows only <b>EU</b> rows; column masks hide email &amp; salary.";
+}
+document.querySelectorAll('#roleswitch button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#roleswitch button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');renderAC(b.dataset.role);}));
+renderAC('admin');
+</script>
+</body>
+</html>

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Loader — Idempotency &amp; Schema Evolution</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2a323c; --red:#ff3621; --orange:#ff7a45; --amber:#ffb454; --green:#3fb950;
+    --blue:#58a6ff; --purple:#bc8cff; --shadow:0 6px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0; background:linear-gradient(180deg,#0b0f14,#0d1117 280px); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.6}
+  .wrap{max-width:1040px; margin:0 auto; padding:0 20px 80px}
+  header.hero{padding:54px 20px 26px; text-align:center;
+    background:radial-gradient(1200px 320px at 50% -40%, rgba(255,54,33,.22), transparent 70%)}
+  .hero .kicker{color:var(--orange); font-weight:700; letter-spacing:.14em; font-size:.78rem; text-transform:uppercase}
+  .hero h1{font-size:2.4rem; margin:.25em 0 .15em; line-height:1.1}
+  .hero p{color:var(--muted); max-width:700px; margin:0 auto; font-size:1.05rem}
+  h2{font-size:1.5rem; margin:2.3em 0 .5em; padding-bottom:.3em; border-bottom:1px solid var(--line)}
+  h3{font-size:1.12rem; margin:1.4em 0 .4em; color:#fff}
+  p{margin:.6em 0}
+  .lead{color:var(--muted)}
+  code{background:#0a0e13; border:1px solid var(--line); padding:.12em .42em; border-radius:6px;
+    font-family:"SF Mono",Menlo,Consolas,monospace; font-size:.85em; color:var(--amber)}
+  a{color:var(--blue)}
+  table{width:100%; border-collapse:collapse; margin:1em 0; font-size:.93rem; background:var(--panel); border-radius:10px; overflow:hidden}
+  th,td{padding:11px 14px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top}
+  th{background:var(--panel2); color:#fff; font-weight:600}
+  tr:last-child td{border-bottom:none}
+  .note{background:rgba(255,180,84,.08); border-left:3px solid var(--amber); padding:12px 16px; border-radius:0 10px 10px 0; margin:1em 0; color:#f0e6d2}
+  .ok-col{color:var(--green)} .pur{color:var(--purple)} .amb{color:var(--amber)}
+
+  /* ---- simulator ---- */
+  .sim{background:var(--panel); border:1px solid var(--line); border-radius:18px; padding:22px; box-shadow:var(--shadow); margin-top:18px}
+  .toggle{display:flex; gap:10px; background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:6px; margin-bottom:6px}
+  .toggle button{flex:1; cursor:pointer; border:none; background:transparent; color:var(--muted);
+    padding:13px 12px; border-radius:10px; font-size:.95rem; font-weight:600; transition:.2s; text-align:center}
+  .toggle button b{display:block; font-size:1.02rem}
+  .toggle button small{font-weight:400; font-size:.76rem}
+  .toggle button.active{background:linear-gradient(180deg,rgba(255,54,33,.18),rgba(255,54,33,.05)); color:#fff; box-shadow:0 0 0 1px rgba(255,54,33,.4) inset}
+  #modeRescue.active b{color:var(--purple)} #modeAdd.active b{color:var(--amber)}
+
+  .stage{display:grid; grid-template-columns:1.05fr .9fr 1.25fr; gap:14px; margin:16px 0; align-items:stretch}
+  @media(max-width:880px){.stage{grid-template-columns:1fr}}
+  .box{background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:14px; min-height:160px}
+  .box h4{margin:0 0 10px; font-size:.92rem; display:flex; align-items:center; gap:8px}
+  .box h4 .dot{width:9px; height:9px; border-radius:50%}
+  .dot-src{background:var(--blue)} .dot-al{background:var(--red)} .dot-dst{background:var(--green)}
+  .file{display:flex; gap:8px; align-items:center; background:#0a0e13; border:1px solid var(--line); border-radius:9px;
+    padding:8px 10px; margin:7px 0; font-size:.84rem; transition:.3s}
+  .file.skip{opacity:.45; text-decoration:line-through; color:var(--muted)}
+  .file.evolved{border-color:var(--orange); box-shadow:0 0 12px rgba(255,122,69,.3)}
+  .tag{margin-left:auto; font-size:.66rem; padding:.1em .5em; border-radius:999px; border:1px solid var(--line); color:var(--muted)}
+  .tag.proc{color:var(--green); border-color:rgba(63,185,80,.4)}
+  .tag.nw{color:var(--orange); border-color:rgba(255,122,69,.5)}
+
+  .al-engine{display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; height:100%; text-align:center}
+  .al-core{font-size:1.4rem; font-weight:800; color:var(--red)}
+  .al-mode{font-size:.78rem; color:var(--muted)}
+  .al-flag{margin-top:8px; font-size:.74rem; padding:5px 10px; border-radius:8px; border:1px dashed var(--line); color:var(--amber)}
+
+  /* destination table */
+  .dtable{width:100%; border-collapse:collapse; font-size:.74rem; font-family:"SF Mono",Menlo,monospace; margin-top:2px}
+  .dtable th,.dtable td{border:1px solid var(--line); padding:4px 6px; text-align:left}
+  .dtable th{background:#11161d; color:#cdd6e0}
+  .dtable td.null{color:#5a6675; font-style:italic}
+  .col-new{color:var(--amber); position:relative}
+  .col-rescue{color:var(--purple)}
+  .rescue-cell{color:var(--purple); font-size:.72rem; word-break:break-all}
+  .badge{display:inline-block; font-size:.64rem; padding:.05em .45em; border-radius:5px; margin-left:5px; vertical-align:middle}
+  .badge.added{background:rgba(255,180,84,.18); color:var(--amber); border:1px solid rgba(255,180,84,.4)}
+  .badge.str{background:rgba(188,140,255,.16); color:var(--purple); border:1px solid rgba(188,140,255,.4)}
+
+  .panelnote{margin-top:14px; border-radius:12px; padding:14px 16px; font-size:.92rem; border:1px solid var(--line); background:var(--panel2)}
+  .panelnote.rescue{border-color:rgba(188,140,255,.4); background:rgba(188,140,255,.07)}
+  .panelnote.add{border-color:rgba(255,180,84,.4); background:rgba(255,180,84,.07)}
+  .panelnote .t{font-weight:700; margin-bottom:4px; display:flex; gap:8px; align-items:center}
+  .codeblk{background:#0a0e13; border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-top:10px;
+    font-family:"SF Mono",Menlo,monospace; font-size:.78rem; color:#cdd6e0; overflow-x:auto; white-space:pre}
+  .codeblk .k{color:var(--purple)} .codeblk .s{color:var(--green)} .codeblk .c{color:#5a6675}
+
+  .footer{margin-top:46px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:.86rem}
+  .src-list{list-style:none; padding:0} .src-list li{margin:6px 0}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="kicker">Databricks Data Engineering</div>
+  <h1>Idempotency &amp; Schema Evolution</h1>
+  <p>Exactly-once ingestion, and what happens when a file shows up with new columns — compare <b>rescue</b> vs <b>addNewColumns</b> side by side.</p>
+</header>
+
+<div class="wrap">
+
+  <h2>1. Idempotency — "exactly once"</h2>
+  <p>Every file is processed <strong>once and only once</strong>. As files are discovered, Auto Loader records each one in <strong>RocksDB</strong>, a key-value store inside the <strong>checkpoint location</strong>. Each run consults it, skips processed files, and reads only what's new — which is why row counts grow incrementally (2 → 4 → 5) instead of reprocessing everything.</p>
+  <div class="note"><strong>Gotcha:</strong> this memory lives in the checkpoint. <b>Delete the checkpoint and Auto Loader forgets what it processed</b> — it re-reads from the beginning. (That's exactly what "drop the folder / use destination_two" did in the demo: a deliberate reset.)</div>
+
+  <h2>2. Schema Evolution — the fork in the road</h2>
+  <p class="lead">The trigger is always the same: a new file contains a column not in Auto Loader's cached schema. What happens next is decided entirely by <code>cloudFiles.schemaEvolutionMode</code>. Toggle the two modes below and drop the evolved file.</p>
+
+  <div class="sim">
+    <div class="toggle">
+      <button id="modeRescue" class="active" onclick="setMode('rescue')">
+        <b>rescue</b><small>capture extras in _rescued_data</small>
+      </button>
+      <button id="modeAdd" onclick="setMode('add')">
+        <b>addNewColumns</b><small>add real columns to the table</small>
+      </button>
+    </div>
+
+    <div class="stage">
+      <div class="box">
+        <h4><span class="dot dot-src"></span>Source files</h4>
+        <div class="file skip"><span>📄</span> file_1.json <span class="tag proc">processed</span></div>
+        <div class="file skip"><span>📄</span> file_2.json <span class="tag proc">processed</span></div>
+        <div class="file evolved"><span>📄</span> file_3.json <span class="tag nw" id="srcTag">+ discount, payment_method</span></div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:8px">file_3 adds 2 columns the schema hasn't seen.</div>
+      </div>
+
+      <div class="box">
+        <h4><span class="dot dot-al"></span>Auto Loader</h4>
+        <div class="al-engine">
+          <div class="al-core">cloudFiles</div>
+          <div class="al-mode">schemaEvolutionMode =<br><b id="modeLabel" style="color:var(--purple)">rescue</b></div>
+          <div class="al-flag" id="mergeFlag" style="display:none">+ .option("mergeSchema","true")</div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h4><span class="dot dot-dst"></span>Destination (Delta)</h4>
+        <div id="destWrap"></div>
+      </div>
+    </div>
+
+    <div class="panelnote" id="explain"></div>
+  </div>
+
+  <h2>3. Side-by-side</h2>
+  <table>
+    <tr><th></th><th class="pur">rescue</th><th class="amb">addNewColumns</th></tr>
+    <tr><td>Stream stops on new column?</td><td>No — keeps running</td><td>Yes → <code>UnknownFieldException</code>, restart to continue</td></tr>
+    <tr><td>Where do new columns go?</td><td><code>_rescued_data</code> (STRING / JSON)</td><td>New real columns in the table</td></tr>
+    <tr><td>Need <code>mergeSchema</code> on the sink?</td><td>No</td><td><strong>Yes</strong></td></tr>
+    <tr><td>Schema location updated?</td><td>No (schema not evolved)</td><td>Yes (column appended before the error)</td></tr>
+    <tr><td>Access the new fields</td><td><code>from_json</code> on demand</td><td>Direct columns immediately</td></tr>
+    <tr><td>Best when…</td><td>You want a stable table &amp; to inspect surprises selectively</td><td>You trust new columns and want them flowed through automatically</td></tr>
+  </table>
+
+  <h2>4. Why only <code>addNewColumns</code> needs <code>mergeSchema</code></h2>
+  <p><code>addNewColumns</code> literally changes the destination Delta table's <em>column set</em>, so the sink must be allowed to evolve → <code>.option("mergeSchema","true")</code>. <code>rescue</code> never changes the table's columns (everything lands in the pre-existing <code>_rescued_data</code> string), so there is nothing to merge.</p>
+
+  <h2>5. Reading back <code>_rescued_data</code></h2>
+  <p>It is a <strong>STRING column holding a JSON blob</strong> (the rescued fields + the source file path) — it only <em>looks</em> like a struct. Parse it with <code>from_json</code> and a schema you define, then pull out the fields you need:</p>
+  <div class="codeblk"><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> from_json, col
+<span class="k">from</span> pyspark.sql.types <span class="k">import</span> StructType, StructField, DoubleType, StringType
+
+rescued_schema = StructType([
+    StructField(<span class="s">"discount"</span>,       DoubleType(), <span class="k">True</span>),
+    StructField(<span class="s">"payment_method"</span>, StringType(), <span class="k">True</span>),
+])
+
+df_out = (df
+    .withColumn(<span class="s">"r"</span>, from_json(col(<span class="s">"_rescued_data"</span>), rescued_schema))
+    .withColumn(<span class="s">"discount"</span>,       col(<span class="s">"r.discount"</span>))
+    .withColumn(<span class="s">"payment_method"</span>, col(<span class="s">"r.payment_method"</span>))
+    .drop(<span class="s">"r"</span>))</div>
+  <p class="lead">You only do this <em>when</em> you actually need those columns — the appeal of <code>rescue</code> is that nothing unexpected pollutes your table.</p>
+
+  <div class="note"><strong>Three corrections from the walk-through:</strong> the exception is <code>UnknownFieldException</code> (not "unknown file exception"); <code>_rescued_data</code> is a <b>STRING of JSON</b>, not a struct (hence <code>from_json</code>); and the "can be called only on streaming DataFrame" break in the rescue demo was a notebook-state slip — pure <code>rescue</code> mode does not stop the stream.</div>
+
+  <div class="footer">
+    <strong>Sources (official Databricks documentation):</strong>
+    <ul class="src-list">
+      <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/schema" target="_blank" rel="noopener">Configure schema inference and evolution in Auto Loader</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/ingestion/cloud-object-storage/auto-loader/patterns" target="_blank" rel="noopener">Common data loading patterns (Auto Loader)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/data-engineering/schema-evolution" target="_blank" rel="noopener">Schema evolution in Databricks</a></li>
+    </ul>
+    Verified May 2026 · open in any browser.
+  </div>
+</div>
+
+<script>
+  var mode = 'rescue';
+
+  function destTableRescue(){
+    return ''
+      + '<div style="font-size:.74rem;color:var(--muted);margin-bottom:6px">Columns unchanged · extras land in <span class="col-rescue">_rescued_data</span></div>'
+      + '<table class="dtable">'
+      + '<tr><th>order_id</th><th>amount</th><th>customer</th><th class="col-rescue">_rescued_data<span class="badge str">STRING</span></th></tr>'
+      + '<tr><td>1</td><td>120.5</td><td>Asha</td><td class="null">null</td></tr>'
+      + '<tr><td>2</td><td>75.0</td><td>Ben</td><td class="null">null</td></tr>'
+      + '<tr><td>5</td><td>15.25</td><td>Eve</td><td class="rescue-cell">{"discount":5,"payment_method":"card","_file_path":".../file_3.json"}</td></tr>'
+      + '</table>';
+  }
+  function destTableAdd(){
+    return ''
+      + '<div style="font-size:.74rem;color:var(--muted);margin-bottom:6px">Two <span class="col-new">real columns</span> added · old rows = null</div>'
+      + '<table class="dtable">'
+      + '<tr><th>order_id</th><th>amount</th><th>customer</th><th class="col-new">discount<span class="badge added">new</span></th><th class="col-new">payment_method<span class="badge added">new</span></th></tr>'
+      + '<tr><td>1</td><td>120.5</td><td>Asha</td><td class="null">null</td><td class="null">null</td></tr>'
+      + '<tr><td>2</td><td>75.0</td><td>Ben</td><td class="null">null</td><td class="null">null</td></tr>'
+      + '<tr><td>5</td><td>15.25</td><td>Eve</td><td>5.0</td><td>card</td></tr>'
+      + '</table>';
+  }
+
+  function render(){
+    var label = document.getElementById('modeLabel');
+    var merge = document.getElementById('mergeFlag');
+    var dest  = document.getElementById('destWrap');
+    var ex    = document.getElementById('explain');
+    document.getElementById('modeRescue').classList.toggle('active', mode==='rescue');
+    document.getElementById('modeAdd').classList.toggle('active', mode==='add');
+
+    if(mode==='rescue'){
+      label.textContent='rescue'; label.style.color='var(--purple)';
+      merge.style.display='none';
+      dest.innerHTML = destTableRescue();
+      ex.className='panelnote rescue';
+      ex.innerHTML = '<div class="t">🛟 rescue — stream never stops</div>'
+        + 'file_3 is processed without error. The unknown columns (<code>discount</code>, <code>payment_method</code>) are folded into the existing <code>_rescued_data</code> string as JSON. '
+        + 'The table’s column set is unchanged, so <b>no <code>mergeSchema</code> is needed</b>. Pull the fields out later with <code>from_json</code> only if you need them.';
+    } else {
+      label.textContent='addNewColumns'; label.style.color='var(--amber)';
+      merge.style.display='inline-block';
+      dest.innerHTML = destTableAdd();
+      ex.className='panelnote add';
+      ex.innerHTML = '<div class="t">➕ addNewColumns — table evolves (after a restart)</div>'
+        + 'On file_3, Auto Loader appends the new columns to the schema location, then stops with <code>UnknownFieldException</code>. '
+        + 'You <b>restart</b>; it reloads the schema and writes <code>discount</code> &amp; <code>payment_method</code> as <b>real columns</b> (null for the older rows). '
+        + 'Because the destination column set changes, you must set <b><code>.option("mergeSchema","true")</code></b> on the write.';
+    }
+  }
+  function setMode(m){ mode=m; render(); }
+  render();
+</script>
+</body>
+</html>

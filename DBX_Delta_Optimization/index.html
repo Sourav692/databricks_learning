@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Delta Optimization — Lesson Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;--paper:#f4efe6;--paper-2:#ebe3d5;
+    --frost:#1f6f8b;--frost-2:#3fa9c9;--ice:#9fe3f0;--amber:#e07a2f;
+    --line:#d6cbb6;--shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);--radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  header{padding:72px 0 30px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.4rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.16rem;max-width:64ch;color:#33414b}
+  .stat-row{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .stat{background:var(--paper-2);border:1px solid var(--line);border-radius:12px;padding:10px 16px}
+  .stat b{font-family:"Fraunces",serif;font-size:1.5rem;display:block;color:var(--frost);line-height:1}
+  .stat span{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:#7a868f}
+
+  .band{margin:42px 0 8px}
+  .band h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;border-bottom:1px solid var(--line);padding-bottom:8px}
+  .band p{font-size:.95rem;color:#56636d;margin:8px 0 2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin:16px 0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:20px 22px;display:flex;flex-direction:column;box-shadow:var(--shadow);transition:transform .15s,box-shadow .15s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 12px 30px -14px rgba(20,40,50,.5)}
+  .card-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  .tnum{background:var(--frost);color:#eafaff;width:34px;height:34px;border-radius:9px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-weight:600;font-size:.9rem}
+  .card-head h3{font-family:"Spline Sans",sans-serif;font-size:1.05rem;color:var(--ink);flex:1;line-height:1.25;margin:0;font-weight:700}
+  .subs{list-style:none;margin:0 0 14px;padding:0}
+  .subs li{font-size:.86rem;color:#4a5860;padding:3px 0 3px 16px;position:relative}
+  .subs li::before{content:"";position:absolute;left:2px;top:11px;width:5px;height:5px;border-radius:50%;background:var(--amber)}
+  .card-foot{margin-top:auto;border-top:1px solid var(--line);padding-top:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .open{background:var(--frost);color:#fff;text-decoration:none;font-size:.84rem;font-weight:600;padding:8px 15px;border-radius:8px}
+  .open:hover{background:#185a73}
+  .aux{font-family:"Spline Sans Mono",monospace;font-size:.72rem}
+  .aux a{color:var(--frost);text-decoration:none;margin-left:12px;border-bottom:1px solid rgba(31,111,139,.3)}
+  .aux a:hover{border-color:var(--frost)}
+
+  /* decision ladder */
+  .ladder{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:18px 0}
+  .ladder h3{font-family:"Fraunces",serif;font-size:1.25rem;margin:0 0 4px}
+  .ladder .sub{color:#56636d;font-size:.92rem;margin:0 0 16px}
+  .rungs{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+  .rung{flex:1 1 150px;min-width:140px;border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);cursor:pointer;transition:.18s;position:relative}
+  .rung:hover{border-color:var(--frost-2);transform:translateY(-2px)}
+  .rung.active{background:linear-gradient(180deg,#fff,#eef7f9);border-color:var(--frost)}
+  .rung .rn{font-family:"Spline Sans Mono",monospace;font-size:.66rem;color:var(--frost);letter-spacing:.08em}
+  .rung .rt{font-weight:700;font-size:.92rem;margin:3px 0 0}
+  .rung .arrow{color:var(--line);align-self:center;font-size:1.2rem;display:flex;align-items:center;padding:0 2px}
+  .ladder-detail{margin-top:16px;font-size:.95rem;background:var(--paper);border:1px dashed var(--line);border-radius:10px;padding:14px 16px;min-height:1px}
+  .ladder-detail b{color:var(--frost)}
+
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:24px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+
+  footer{margin-top:46px;padding:26px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  @media(max-width:560px){header{padding:48px 0 20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Field Engineering enablement · Delta Optimization track</div>
+    <h1>Delta Lake<br><span class="drip">Optimization.</span></h1>
+    <p class="lede">Nine connected lessons on how Databricks physically stores, skips, compacts, and maintains your Delta data — told as one story: a write makes files, layout decides what queries can skip, maintenance keeps files right-sized, and the platform can do all of it for you. Every lesson is a self-contained interactive page with a runnable notebook and a markdown companion.</p>
+    <div class="stat-row">
+      <div class="stat"><b>11</b><span>topics</span></div>
+      <div class="stat"><b>11</b><span>notebooks</span></div>
+      <div class="stat"><b>22+</b><span>interactive diagrams</span></div>
+      <div class="stat"><b>Jun 2026</b><span>doc-verified</span></div>
+    </div>
+  </header>
+
+  <!-- ============ DECISION LADDER ============ -->
+  <div class="band"><h2>The whole track in one picture</h2>
+    <p>Click each rung to see what it does and what replaced it. The track teaches every tool — so you can maintain legacy tables <em>and</em> design modern ones.</p></div>
+  <div class="ladder" id="ladder">
+    <h3>The Delta layout &amp; maintenance ladder</h3>
+    <p class="sub">From the raw problem to the fully-managed answer.</p>
+    <div class="rungs" id="rungs"></div>
+    <div class="ladder-detail" id="ladderDetail">Select a rung above.</div>
+  </div>
+
+  <div class="callout">
+    <span class="lbl">The one-line modern default</span>
+    For a <b>new</b> table: use a Unity Catalog <b>managed</b> table with <b>liquid clustering</b> on your top filter/join columns and turn on <b>predictive optimization</b> — then let the platform handle layout and maintenance. Reach for partitioning, Z-order, or manual OPTIMIZE only for legacy/external tables or special very-large-table cases.
+  </div>
+
+  <!-- ============ LESSON CARDS ============ -->
+  <div class="band"><h2>1 · The baseline</h2>
+    <p>Why naive writes create thousands of tiny files — the problem everything else solves.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">01</div><h3>Traditional writes &amp; the small-file problem</h3></div>
+      <ul class="subs"><li>One file per write task; per-file overhead</li><li>coalesce vs repartition; AQE</li><li>Parquet files + the <code>_delta_log</code> commit</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/01-traditional-writes/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/01-traditional-writes/lesson.md">md</a><a href="lessons/01-traditional-writes/01-traditional-writes-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <div class="band"><h2>2 · Classic layout — and why queries can skip</h2>
+    <p>The original layout tool, the statistics that make layout matter, and the Z-order curve.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">02</div><h3>Partitioning (and when NOT to)</h3></div>
+      <ul class="subs"><li>Don't partition tables &lt; 1 TB; ≥ 1 GB per partition</li><li>Partition explosion on high-cardinality keys</li><li>Ingestion-time clustering; convert to liquid</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/02-partitioning/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/02-partitioning/lesson.md">md</a><a href="lessons/02-partitioning/02-partitioning-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">03</div><h3>Data skipping &amp; Z-ordering</h3></div>
+      <ul class="subs"><li>Per-file min/max/null/count stats; first 32 cols</li><li><code>dataSkippingStatsColumns</code>, <code>ANALYZE … COMPUTE DELTA STATISTICS</code></li><li><code>ZORDER BY</code> and the Z-order curve</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/03-data-skipping-and-zorder/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/03-data-skipping-and-zorder/lesson.md">md</a><a href="lessons/03-data-skipping-and-zorder/03-data-skipping-zorder-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <div class="band"><h2>3 · Compaction &amp; automatic file sizing</h2>
+    <p>The manual fix, then the two ways Databricks gets file sizes right for you, plus the umbrella.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">04</div><h3>OPTIMIZE / compaction (bin-packing)</h3></div>
+      <ul class="subs"><li>Bin-packing many small files into right-sized ones</li><li>Idempotent; <code>WHERE</code>; <code>OPTIMIZE FULL</code> (16.0+)</li><li>Integrates with Z-order &amp; liquid clustering</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/04-optimize-compaction/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/04-optimize-compaction/lesson.md">md</a><a href="lessons/04-optimize-compaction/04-optimize-compaction-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">05</div><h3>Optimized writes</h3></div>
+      <ul class="subs"><li>Shuffle before write → fewer, larger files (128 MB)</li><li><code>delta.autoOptimize.optimizeWrite</code></li><li>Always on for MERGE / UPDATE / DELETE</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/05-optimized-writes/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/05-optimized-writes/lesson.md">md</a><a href="lessons/05-optimized-writes/05-optimized-writes-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">06</div><h3>Auto compaction</h3></div>
+      <ul class="subs"><li>Post-write, synchronous on the write cluster</li><li><code>delta.autoOptimize.autoCompact</code> = auto/true/false</li><li>Background auto compaction for UC managed tables</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/06-auto-compaction/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/06-auto-compaction/lesson.md">md</a><a href="lessons/06-auto-compaction/06-auto-compaction-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">07</div><h3>Auto optimize &amp; file-size autotuning</h3></div>
+      <ul class="subs"><li>optimizeWrite + autoCompact together</li><li><code>delta.targetFileSize</code>; autotune 256 MB → 1 GB</li><li>Not a replacement for OPTIMIZE on big tables</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/07-auto-optimize/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/07-auto-optimize/lesson.md">md</a><a href="lessons/07-auto-optimize/07-auto-optimize-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <div class="band"><h2>4 · The modern layout</h2>
+    <p>The layout technique that replaces partitioning + Z-order for new tables.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">08</div><h3>Liquid clustering</h3></div>
+      <ul class="subs"><li><code>CLUSTER BY</code> / <code>CLUSTER BY AUTO</code>; GA on DBR 15.4 LTS+</li><li>Change keys anytime — no rewrite of existing data</li><li><code>OPTIMIZE</code> incremental · <code>OPTIMIZE FULL</code> recluster</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/08-liquid-clustering/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/08-liquid-clustering/lesson.md">md</a><a href="lessons/08-liquid-clustering/08-liquid-clustering-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <div class="band"><h2>5 · Modifications, lifecycle &amp; automation</h2>
+    <p>How edits avoid rewriting files, how to manage the file history they leave behind, and how to hand it all to the platform.</p></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">09</div><h3>Deletion vectors (merge-on-read)</h3></div>
+      <ul class="subs"><li>DELETE/UPDATE/MERGE without rewriting whole files</li><li><code>delta.enableDeletionVectors</code>; soft-deletes</li><li><code>REORG … APPLY (PURGE)</code> to apply physically</li></ul>
+      <div class="card-foot"><a class="open" href="lessons/09-deletion-vectors/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/09-deletion-vectors/lesson.md">md</a><a href="lessons/09-deletion-vectors/09-deletion-vectors-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">10</div><h3>VACUUM, time travel &amp; retention</h3></div>
+      <ul class="subs"><li><code>VERSION AS OF</code> / <code>TIMESTAMP AS OF</code> · <code>RESTORE</code></li><li><code>VACUUM</code> reclaims unreferenced files (7-day default)</li><li>Two dials: <code>logRetentionDuration</code> + <code>deletedFileRetentionDuration</code></li></ul>
+      <div class="card-foot"><a class="open" href="lessons/10-vacuum-time-travel/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/10-vacuum-time-travel/lesson.md">md</a><a href="lessons/10-vacuum-time-travel/10-vacuum-time-travel-demo.py">notebook</a></span></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="tnum">11</div><h3>Predictive optimization</h3></div>
+      <ul class="subs"><li>Auto OPTIMIZE / VACUUM / ANALYZE on UC managed tables</li><li>On by default for newer accounts; serverless billing</li><li><code>ALTER CATALOG/SCHEMA … ENABLE PREDICTIVE OPTIMIZATION</code></li></ul>
+      <div class="card-foot"><a class="open" href="lessons/11-predictive-optimization/index.html">Open lesson →</a>
+        <span class="aux"><a href="lessons/11-predictive-optimization/lesson.md">md</a><a href="lessons/11-predictive-optimization/11-predictive-optimization-demo.py">notebook</a></span></div>
+    </div>
+  </div>
+
+  <div class="band"><h2>Plan &amp; reference</h2></div>
+  <div class="grid">
+    <div class="card">
+      <div class="card-head"><div class="tnum">↳</div><h3>Learning plan</h3></div>
+      <ul class="subs"><li>Suggested order, timings, and self-check questions</li><li>The decision framework for new vs legacy tables</li></ul>
+      <div class="card-foot"><a class="open" href="learning plan/learning-plan.html">Open plan →</a>
+        <span class="aux"><a href="learning plan/learning-plan.md">md</a></span></div>
+    </div>
+  </div>
+
+  <footer>
+    <p><strong>Built from the official Azure Databricks documentation</strong> (verified June 2026). Naming reflects the 2025 Lakeflow rebrand. Primary sources:
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">liquid clustering</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">data skipping</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">OPTIMIZE</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">control file size</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">partitioning</a>,
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">predictive optimization</a>.
+    </p>
+    <p style="margin-top:10px">Part of the FDE interview-prep learning library, alongside the DBX Data Engineering and DBX Networking &amp; Security tracks.</p>
+  </footer>
+</div>
+
+<script>
+(function(){
+  const RUNGS = [
+    {n:"01",t:"Traditional write",d:"A plain write makes <b>one file per task</b> — many small files with high read overhead. This is the problem the rest of the track solves."},
+    {n:"02",t:"Partitioning",d:"The classic layout: split files into folders by a column. Great for low-cardinality keys on <b>very large</b> tables; a small-file disaster if you over-partition. Replaced by liquid clustering for new tables."},
+    {n:"03",t:"Data skipping",d:"Delta keeps <b>min/max stats per file</b> so queries skip files that can't match. Z-order colocates related rows to make skipping work on high-cardinality columns."},
+    {n:"04",t:"OPTIMIZE",d:"The manual fix: <b>bin-pack</b> many small files into fewer right-sized ones. Idempotent. Run it on a schedule — or let predictive optimization run it for you."},
+    {n:"05",t:"Optimized writes",d:"Get file sizes right <b>as you write</b> by shuffling first. On automatically for MERGE / UPDATE / DELETE."},
+    {n:"06",t:"Auto compaction",d:"Compact small files <b>right after</b> a write, on the same cluster. Pairs with optimized writes to keep churny tables tidy."},
+    {n:"07",t:"Auto optimize",d:"The umbrella for optimizeWrite + autoCompact, plus <b>file-size autotuning</b> (256 MB → 1 GB by table size). Reduces — but doesn't replace — OPTIMIZE."},
+    {n:"08",t:"Liquid clustering",d:"The modern layout: <code>CLUSTER BY</code> your query keys and <b>change them later with no rewrite</b>. Replaces partitioning <em>and</em> Z-order. GA on DBR 15.4 LTS+."},
+    {n:"09",t:"Deletion vectors",d:"<b>Merge-on-read</b> modifications: DELETE / UPDATE / MERGE mark rows as deleted instead of rewriting whole Parquet files — cheap edits, applied physically later by OPTIMIZE or <code>REORG … PURGE</code>."},
+    {n:"10",t:"VACUUM & time travel",d:"Every operation leaves old files behind. <b>Time travel</b> queries them (<code>VERSION AS OF</code>); <b>VACUUM</b> reclaims them (7-day default); two retention dials set the window. The lifecycle layer."},
+    {n:"11",t:"Predictive optimization",d:"The platform runs <b>OPTIMIZE / VACUUM / ANALYZE</b> for you on UC managed tables — serverless, cost-aware, no schedules to babysit. The end state."}
+  ];
+  const rungsEl = document.getElementById('rungs');
+  const detail = document.getElementById('ladderDetail');
+  RUNGS.forEach((r,i)=>{
+    const div=document.createElement('div'); div.className='rung'; div.dataset.i=i;
+    div.innerHTML='<div class="rn">'+r.n+'</div><div class="rt">'+r.t+'</div>';
+    rungsEl.appendChild(div);
+    if(i<RUNGS.length-1){ const a=document.createElement('div'); a.className='arrow'; a.textContent='→'; rungsEl.appendChild(a); }
+  });
+  function select(i){
+    document.querySelectorAll('#rungs .rung').forEach(el=>el.classList.toggle('active', +el.dataset.i===i));
+    detail.innerHTML='<b>'+RUNGS[i].n+' · '+RUNGS[i].t+'</b> — '+RUNGS[i].d;
+  }
+  rungsEl.addEventListener('click',e=>{ const r=e.target.closest('.rung'); if(r) select(+r.dataset.i); });
+  select(0);
+})();
+</script>
+</body>
+</html>

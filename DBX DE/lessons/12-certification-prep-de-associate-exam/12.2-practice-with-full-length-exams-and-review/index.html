@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Exams & Review · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:14px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.78rem;line-height:1.55;margin:.5em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  pre.code .ok{color:#7ee787}
+  pre.code .no{color:#ff7b72}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1rem;margin:1.1em 0 .2em;color:#23303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.94rem;color:#3a4654;margin:.3em 0}
+  .mech b{color:#23303c}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: score-by-domain → what to study */
+  .scores{display:flex;flex-direction:column;gap:7px}
+  .sc{border:1px solid var(--line);border-radius:8px;background:#fff;padding:9px 11px}
+  .sc .top{display:flex;justify-content:space-between;font-size:.88rem}
+  .bar{height:12px;background:var(--paper-2);border-radius:999px;overflow:hidden;margin-top:5px}
+  .bar>span{display:block;height:100%;border-radius:999px;transition:.3s}
+  .verdict{margin-top:6px;font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer;margin-top:8px}
+  .btn:hover{background:var(--brand);color:#fff}
+  /* diagram 2: study loop */
+  .loop{display:flex;gap:0;flex-wrap:wrap;align-items:stretch}
+  .ls{flex:1;min-width:90px;border:1px solid var(--line);border-radius:10px;padding:10px;background:#fff;cursor:pointer;text-align:center;transition:.18s}
+  .ls:hover{transform:translateY(-2px)}.ls.on{border-color:var(--teal);background:#eef7f8}
+  .ls .c{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.74rem}
+  .conn{display:flex;align-items:center;color:var(--brand);padding:0 3px}
+  .lsd{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:11px;min-height:46px}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+  @media(max-width:620px){.conn{transform:rotate(90deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 12.2</p>
+  <h1>Practice Exams &amp; <em>Review Weak Areas</em></h1>
+  <p class="lede">Take full, timed practice exams; score by domain; review only the weak domains by expected-gain; re-test until consistently passing. Then book.</p>
+  <div class="pills"><span class="pill">official practice exam</span><span class="pill">45 Q · 90 min timed</span><span class="pill">study to weak domains</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">Take <strong>full-length, timed</strong> practice exams, score by the 7 domains, then <strong>review your weak domains</strong> ranked by <strong>gap × weight</strong> (redo those lessons/notebooks), and re-test until you're consistently ~80%+ everywhere.</div>
+  <div class="card analogy" style="margin-top:10px">✈️ <strong>Analogy:</strong> a <strong>flight simulator before the real flight</strong> — rehearse the exact conditions (timing, phrasing, pressure), see where you crash, and fix <em>those</em> maneuvers, not the ones you already nail.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: score-by-domain -->
+<section id="score">
+  <h2>Score by domain → know what to study</h2>
+  <p class="hint">▸ click "simulate a practice run" — green = solid, red = review</p>
+  <div class="scores" id="scores"></div>
+  <button class="btn" onclick="simRun()">🎲 Simulate a practice run</button>
+  <div class="verdict" id="verdict"></div>
+</section>
+
+<section>
+  <h2>How it works — deep dive</h2>
+
+  <h3>1 · Where to get legitimate practice</h3>
+  <p class="mech"><b>Mechanism:</b> the <strong>official Databricks practice exam</strong> + <strong>Academy</strong> track the current 7-domain blueprint and naming. <b>Trade-off:</b> third-party "dumps" are often stale/wrong and risk the exam agreement — verify everything against docs.</p>
+  <pre class="code"><span class="ok">✅ Official practice exam (Databricks certification page)</span>
+<span class="ok">✅ Databricks Academy / self-paced DE learning path</span>
+<span class="ok">✅ The official exam guide (domain list + weights)</span>
+<span class="no">⚠️ Third-party "dumps": verify every claim against docs — often stale or wrong.</span></pre>
+
+  <h3>2 · Simulate real conditions (timed, full length)</h3>
+  <p class="mech"><b>Mechanism:</b> sit a full <strong>45-question set in one 90-minute block</strong>, no notes, no pausing. <b>Trade-off:</b> untimed practice inflates your score and hides the real failure mode — running out of time.</p>
+  <pre class="code"><span class="c">Mock-exam rules:  45 questions · 90:00 timer · no notes · no pausing</span>
+<span class="c">Pacing target:    ~2 min/question; flag hard ones, answer all (no blank — no penalty)</span></pre>
+
+  <h3>3 · The weak-area review loop</h3>
+  <p class="mech"><b>Mechanism:</b> score by domain, map gaps to Stages 1–11, drill the worst <strong>score-vs-weight</strong> payoff first, re-test. <b>Trade-off:</b> re-studying comfortable strong domains feels good but barely moves the score.</p>
+  <pre class="code"><span class="c">1. Baseline   → full timed exam BEFORE heavy study</span>
+<span class="c">2. Score      → per-domain %, mapped to the 7 domains (12.1) + your stages</span>
+<span class="c">3. Prioritize → fix lowest score × highest weight first (biggest point gain)</span>
+<span class="c">4. Drill      → redo that stage's lesson + consolidated notebook</span>
+<span class="c">5. Re-test    → another full exam; confirm gain, check no regression</span></pre>
+
+  <h3>4 · Worked example — diagnosing a weak domain</h3>
+  <p class="mech"><b>Mechanism:</b> turn a score into an action by ranking <strong>gap × weight</strong> (expected score gain). <b>Trade-off:</b> sequence by expected gain, not by anxiety.</p>
+  <pre class="code"><span class="c"># Scores: Govern 45, Optim 60, Jobs 76, CI/CD 72, Transform 82, Ingest 88, Platform 90</span>
+Governance:   (100-45) × 0.15 = <span class="ok">8.25</span>   <span class="c">← study FIRST  (Stage 8/9)</span>
+Optimization: (100-60) × 0.10 = 4.00   <span class="c">← then this    (Stage 3/7/10)</span>
+Jobs:         (100-76) × 0.16 = 3.84   <span class="c">← then this    (Stage 7)</span>
+CI/CD:        (100-72) × 0.10 = 2.80   <span class="c">← then this    (Stage 11)</span></pre>
+
+  <h3>5 · Rehearse the question style (samples + rationale)</h3>
+  <p class="mech"><b>Mechanism:</b> items are short scenarios with code/config; pick the option that's <strong>correct AND current</strong>. <b>Trade-off:</b> internalize <em>why</em> the right option wins — don't memorize snippets.</p>
+  <pre class="code"><span class="c">-- Q: "Insert new rows AND update changed rows in one statement." → MERGE.</span>
+<span class="k">MERGE INTO</span> main.silver.customers t <span class="k">USING</span> updates s <span class="k">ON</span> t.id = s.id
+<span class="k">WHEN MATCHED THEN UPDATE SET</span> * <span class="k">WHEN NOT MATCHED THEN INSERT</span> *;
+<span class="c">-- Why: MERGE = upsert. INSERT OVERWRITE replaces; INSERT INTO only appends.</span></pre>
+  <pre class="code"><span class="c"># Q: "Ingest only new files as they land, tracking schema." → Auto Loader.</span>
+spark.readStream.format(<span class="s">"cloudFiles"</span>) \
+  .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"csv"</span>) \
+  .option(<span class="s">"cloudFiles.schemaLocation"</span>, <span class="s">"/Volumes/main/raw/_schema"</span>) \
+  .load(<span class="s">"/Volumes/main/raw/in"</span>)
+<span class="c"># Why: cloudFiles = Auto Loader (incremental + schema). spark.read reprocesses all;</span>
+<span class="c">#      COPY INTO is SQL-batch, not a stream.</span></pre>
+  <pre class="code"><span class="c"># Q: "Run a job every day at 02:00." → 6-field Quartz, not 5-field Unix.</span>
+quartz_cron_expression: <span class="ok">"0 0 2 * * ?"</span>    <span class="c"># ✅ sec min hour day month dow</span>
+<span class="no">"0 2 * * *"</span>                              <span class="c"># ❌ 5-field Unix cron — wrong format</span></pre>
+</section>
+
+<!-- diagram 2: study loop -->
+<section id="loopd">
+  <h2>The loop — click each step</h2>
+  <div class="loop">
+    <div class="ls on" data-s="base"><div class="c">1 · baseline</div></div>
+    <div class="conn">▸</div>
+    <div class="ls" data-s="score"><div class="c">2 · score by domain</div></div>
+    <div class="conn">▸</div>
+    <div class="ls" data-s="review"><div class="c">3 · review weak</div></div>
+    <div class="conn">▸</div>
+    <div class="ls" data-s="retest"><div class="c">4 · re-test</div></div>
+    <div class="conn">▸</div>
+    <div class="ls" data-s="book"><div class="c">5 · book</div></div>
+  </div>
+  <div class="lsd" id="lsd"></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Reading ≠ recalling under time pressure — practice exams turn passive knowledge into <strong>test-ready recall</strong> and surface blind spots.</li>
+    <li><strong>45 Q / 90 min ≈ 2 min each</strong> — timed practice trains pacing so you don't fail knowable questions by running out of time.</li>
+  </ul>
+  <div class="card usecase">🎯 <strong>Real-world use case:</strong> score 60% — Governance 40%, Ingestion 85%. Spend the next sessions on <strong>Stage 8 (governance)</strong> and re-test, rather than re-reading Delta basics you've mastered.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> finding blind spots, building pacing/stamina, an objective "am I ready to book?" signal.</li>
+    <li><strong>Edge cases:</strong> don't <strong>memorize</strong> answers (the real exam rewords); one high score isn't enough — look for <strong>consistency across domains</strong> + margin.</li>
+    <li><strong>Limitation:</strong> third-party "dumps" may be outdated/inaccurate (wrong Lakeflow naming, retired features) — prefer the <strong>official practice exam</strong> + current guide; verify against docs.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Memorizing practice questions instead of understanding the concept.</li>
+    <li>❌ Practicing untimed, then running out of time on the real exam.</li>
+    <li>❌ Re-studying strong domains because they feel comfortable.</li>
+    <li>❌ Trusting out-of-date dumps — names/features change (DLT → Lakeflow SDP).</li>
+    <li>❌ Booking off <strong>one</strong> good score instead of consistent ~80%+ with margin.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://www.databricks.com/learn/certification/data-engineer-associate" target="_blank" rel="noopener">Certification &amp; practice exam</a> ·
+  <a href="https://www.databricks.com/learn/training/home" target="_blank" rel="noopener">Databricks Academy</a>
+  <p style="margin-top:10px">Topic 12.2 · grounded against the official certification page (June 2026). Passing score not officially published — aim well above ~70%. Prefer official practice materials over third-party dumps.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — score-by-domain (scoped to #score)
+const DOMS=['Transformation','Ingestion','Jobs','Governance','CI/CD','Optimization','Platform'];
+const scoresEl=document.getElementById('scores'), verdict=document.getElementById('verdict');
+function renderScores(vals){
+  scoresEl.innerHTML='';
+  let weak=[];
+  DOMS.forEach((d,i)=>{
+    const v=vals[i];
+    const col = v>=80?'#1f6b3a':(v>=70?'#c79a3a':'#9a2b1a');
+    if(v<70) weak.push(d);
+    const el=document.createElement('div'); el.className='sc';
+    el.innerHTML='<div class="top"><span>'+d+'</span><span class="mono">'+v+'%</span></div>'+
+      '<div class="bar"><span style="width:'+v+'%;background:'+col+'"></span></div>';
+    scoresEl.appendChild(el);
+  });
+  verdict.innerHTML = weak.length
+    ? '🔴 Review next: <b>'+weak.join(', ')+'</b> — redo those stages &amp; notebooks, then re-test.'
+    : '✅ Consistently strong across domains — you\'re ready to book.';
+}
+function simRun(){
+  // vary the spread each click without Math.random()
+  simRun.c=(simRun.c||0)+1;
+  const seed=simRun.c;
+  const out=DOMS.map((d,i)=> 50 + ((i*13 + seed*29) % 50));
+  renderScores(out);
+}
+renderScores([82, 88, 76, 45, 72, 60, 90]);
+// Diagram 2 — study loop (scoped to #loopd)
+const LS={
+  base:'<b>Baseline</b> — take a full, timed practice exam <i>before</i> heavy studying to find weak domains.',
+  score:'<b>Score by domain</b> — map wrong answers to the 7 exam domains (12.1) and your Stages 1–11.',
+  review:'<b>Review weak</b> — study the weak domains ranked by gap × weight; redo their lessons + consolidated notebooks.',
+  retest:'<b>Re-test</b> — another full timed exam; confirm the weak domain improved and nothing regressed.',
+  book:'<b>Book</b> — when consistently ~80%+ across all domains with a safety margin, schedule the exam.'
+};
+const lsd=document.getElementById('lsd');
+function setLs(k){ document.querySelectorAll('#loopd .ls').forEach(s=>s.classList.toggle('on',s.dataset.s===k)); lsd.innerHTML=LS[k]; }
+document.querySelectorAll('#loopd .ls').forEach(s=>s.addEventListener('click',()=>setLs(s.dataset.s)));
+setLs('base');
+</script>
+</body>
+</html>

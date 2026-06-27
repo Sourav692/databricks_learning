@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 7 — Security, Authorization &amp; Governance · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"\2713";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"\2715";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 7</div>
+  <h1>Security, Authorization &amp; Governance</h1>
+  <div class="subtitle">The authorization half of the track — for the FDE/RSA who has to explain
+    <strong>who can read which row, who Databricks proves it is to your storage, and who can launch
+    the compute that touches the data</strong>. These controls ride on top of the network you already
+    secured: a Private Endpoint stops the path; a missing <code>GRANT</code> stops the query.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">7.1 UC Hierarchy &amp; Grants</span>
+    <span class="badge">7.2 ABAC / Filters / Masks</span>
+    <span class="badge">7.3 Storage Credentials</span>
+    <span class="badge">7.4 Policies &amp; Access Modes</span>
+    <span class="badge">Architect altitude</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t71">7.1 · Hierarchy &amp; Grants</button>
+  <button data-tab="t72">7.2 · ABAC / Filters / Masks</button>
+  <button data-tab="t73">7.3 · Storage Credentials</button>
+  <button data-tab="t74">7.4 · Policies &amp; Access Modes</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Five locks on one door</h2>
+  <p>Stages 2–6 secured the <strong>network path</strong> to your data. Stage 7 is the
+    <strong>authorization layer on top of all three connectivity paths</strong>: Unity Catalog
+    decides who can read which row, the access connector decides who Databricks proves it is to ADLS,
+    and cluster policies / access modes / ACLs decide who can launch the compute that touches it.</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>Governance is a secured building, and the network is the wall around it.</strong>
+      <strong>7.1 grants</strong> = the keys (floor + room + cabinet, all at once). <strong>7.2 FGAC</strong> =
+      frosted glass + the bouncer inside the room (same key, but what you see is decided by who you are;
+      <strong>ABAC</strong> installs that glass by a label). <strong>7.3 access connector</strong> = a
+      contractor's badge issued by Azure — no house key handed over, revoke anytime. <strong>7.4</strong> =
+      three locks on the compute door (vending machine + kind-of-room + badge reader).
+      <em>The network decides which packets reach storage; UC decides which row you read; the connector
+      decides who Databricks proves it is; policies/modes/ACLs decide who launches the compute — a
+      regulated customer needs all of them.</em></p>
+  </div>
+
+  <h3>The four subtopics — what each one decides</h3>
+  <table>
+    <thead><tr><th>Subtopic</th><th>Decides</th><th>Primary surface</th><th>Analogy</th></tr></thead>
+    <tbody>
+      <tr><td><strong>7.1 Grants</strong></td><td>Who can do what to which object</td><td>SQL <code>GRANT</code>, Catalog Explorer</td><td>Keys for every door</td></tr>
+      <tr><td><strong>7.2 FGAC / ABAC</strong></td><td>Which rows / column values come back</td><td>Views · UDFs · <code>CREATE POLICY</code></td><td>Frosted glass by a label</td></tr>
+      <tr><td><strong>7.3 Storage credential</strong></td><td>How a query reaches ADLS (identity half of Path ③)</td><td>Access connector + UC securables</td><td>Contractor's badge</td></tr>
+      <tr><td><strong>7.4 Policy / mode / ACL</strong></td><td>Who launches compute, what it can be, who touches objects</td><td>Policy JSON · access mode · ACLs</td><td>Three locks in series</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Azure Databricks Stage 7 governance: account-level Entra ID + Unity Catalog metastore
+      + FGAC/ABAC + cluster policy authorize and govern compute in your subscription, which authenticates as the access
+      connector's managed identity to reach ADLS Gen2; the three USE/SELECT gates and workspace binding shown alongside." />
+    <figcaption class="caption">The same map as the interactive diagrams — grants + FGAC authorize the query,
+      the access connector is the keyless identity to ADLS, and policy/mode/ACL govern the compute. Binding
+      supersedes grants.</figcaption>
+  </figure>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Governance is layered on top of the network you already secured. Unity Catalog is the single
+      account-level authorization layer; row filters, column masks and ABAC redact at query time so
+      there's nothing to bypass; the access connector reaches storage with <strong>no key to rotate</strong>;
+      and cluster policies cap cost and force UC compliance. Binding pins a data domain to an environment so
+      dev can't touch prod even by accident."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive lives in the owning module)</h4>
+    <dl>
+      <dt>Principal</dt><dd>A user, group, or service principal a grant/ACL targets. → Stage 4 (Identity)</dd>
+      <dt>Managed identity</dt><dd>An Entra ID identity Azure manages for a resource — no secret you store. → Stage 4/6</dd>
+      <dt>RBAC</dt><dd>Azure's role-at-a-scope model (e.g. Storage Blob Data Contributor) — the Azure-side gate. → Azure foundations</dd>
+      <dt>UDF</dt><dd>A SQL function UC uses as the FGAC rule engine: row filter returns BOOLEAN, mask returns the column's type. → 7.2</dd>
+      <dt>Governed tag</dt><dd>Account-level tag with a value list; ABAC keys off these (plain tags can't). → 7.2</dd>
+      <dt>DBU / access mode</dt><dd>Unit of processing/hr (the <code>dbus_per_hour</code> cap) · compute security mode (Standard/Dedicated). → 7.4</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 7.1 -->
+<section class="panel" id="t71">
+  <h2>7.1 · Unity Catalog hierarchy &amp; grants</h2>
+  <p>Unity Catalog is the single, <strong>account-level</strong> authorization layer — one place to say
+    "who can do what to which object," enforced everywhere. Switch the diagram between the
+    <strong>securable hierarchy</strong>, the <strong>three gates</strong> a read needs, and
+    <strong>workspace-catalog binding</strong>; click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d71','hierarchy',this)">Securable hierarchy</button>
+    <button onclick="switchView('d71','gates',this)">The three gates</button>
+    <button onclick="switchView('d71','binding',this)">Workspace-catalog binding</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d71" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d71" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d71" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d71" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d71info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The two-rule mental model (recite this in an interview)</h4>
+    <p><strong>1. Usage privileges are gates, not access</strong> — to read a table you need
+      <code>USE CATALOG</code> <em>and</em> <code>USE SCHEMA</code> <em>and</em> <code>SELECT</code>,
+      all at once. <strong>2. The usage gate is the owner's control boundary</strong> — only a catalog
+      owner can grant <code>USE CATALOG</code>, so a table owner who grants <code>SELECT</code> still
+      can't give access unless the catalog owner lets them in.</p>
+  </div>
+
+  <h3>Grant scope vs blast radius (inheritance)</h3>
+  <table>
+    <thead><tr><th>Grant at</th><th>Applies to</th><th>Use when</th><th>Risk</th></tr></thead>
+    <tbody>
+      <tr><td>Table / view</td><td>that object only</td><td>surgical, sensitive data</td><td>many grants to maintain</td></tr>
+      <tr><td><strong>Schema</strong></td><td>all current + future objects in it</td><td>a team owns a project schema</td><td>future objects auto-exposed</td></tr>
+      <tr><td><strong>Catalog</strong></td><td>all schemas + objects</td><td>whole-domain access</td><td><strong>very broad</strong> — use sparingly</td></tr>
+      <tr><td>Metastore</td><td>metastore <em>operations</em> only (no inheritance)</td><td>platform admins</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the GRANT model</h3>
+  <p class="caption">SQL is the primary surface. A reader needs all three grants together.</p>
+  <pre><code>GRANT USE CATALOG ON CATALOG prod             TO `data-analysts`;  -- gate: enter floor
+GRANT USE SCHEMA  ON SCHEMA  prod.sales       TO `data-analysts`;  -- gate: enter room
+GRANT SELECT      ON TABLE   prod.sales.orders TO `data-analysts`; -- the actual read
+GRANT SELECT ON SCHEMA prod.sales TO `data-analysts`;  -- inherits to ALL current+future tables
+GRANT BROWSE ON CATALOG prod TO `account users`;       -- discovery without data access</code></pre>
+  <p class="caption">Binding (no clean SQL): <code>databricks catalogs update prod_catalog --isolation-mode ISOLATED</code>
+    then <code>workspace-bindings update-bindings</code>. Catalog Explorer: object → Permissions → Grant;
+    catalog → Workspaces tab → Assign.</p>
+
+  <div class="callout warn">
+    <h4>Footguns</h4>
+    <p>The <code>main</code> catalog gives <strong>all users</strong> <code>USE CATALOG</code> by default —
+      never park regulated data there. Terraform uses <strong>underscores</strong> (<code>USE_CATALOG</code>)
+      where SQL uses spaces, and <code>databricks_grants</code> is authoritative (revokes anything not listed).</p>
+  </div>
+</section>
+
+<!-- 7.2 -->
+<section class="panel" id="t72">
+  <h2>7.2 · ABAC, row filters &amp; column masks</h2>
+  <p>Once a user has <code>SELECT</code> they see every row and column — often too much. Fine-grained
+    access control (FGAC) narrows what <code>SELECT</code> returns at query time. Switch the diagram between
+    the <strong>query-time enforcement path</strong> and the <strong>three mechanisms</strong>; click a box
+    for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d72','flow',this)">Query-time enforcement</button>
+    <button onclick="switchView('d72','mechanisms',this)">Three mechanisms</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d72" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d72" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d72" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d72" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d72info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The single insight</h4>
+    <p>The filter/mask is just <strong>a UDF with an identity check inside</strong>
+      (<code>is_account_group_member()</code>). Dynamic views, table-level bindings, and ABAC policies are
+      the <em>same idea attached in three places</em> — the view, the table, or the governed tag. Identity
+      functions run as the <strong>INVOKER</strong>, which is what makes per-user logic work.</p>
+  </div>
+
+  <h3>Which mechanism?</h3>
+  <table>
+    <thead><tr><th></th><th>Dynamic views</th><th>Table-level filter/mask</th><th>ABAC policies</th></tr></thead>
+    <tbody>
+      <tr><td>Scales to many tables</td><td>No</td><td>No</td><td><strong>Yes — one policy, by tag</strong></td></tr>
+      <tr><td>Separation of duties</td><td>Weak</td><td>Weak</td><td><strong>Strong</strong></td></tr>
+      <tr><td>Reshapes / joins data</td><td><strong>Yes</strong></td><td>No</td><td>No</td></tr>
+      <tr><td>Users query</td><td>The view</td><td>The base table</td><td>The base table</td></tr>
+      <tr><td>GA on Azure</td><td>Long-standing</td><td>DBR ≥ 12.2 LTS</td><td><strong>GA</strong> (row filters/column masks; verify date &amp; region — GRANT policies Beta)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — one snippet per mechanism</h3>
+  <pre><code>-- A) Dynamic view: only `auditors` see real emails (grant SELECT on the VIEW).
+CREATE VIEW prod.customers.sales_redacted AS
+SELECT user_id,
+  CASE WHEN is_account_group_member('auditors') THEN email ELSE 'REDACTED' END AS email
+FROM prod.customers.sales_raw;
+
+-- B) Table-level row filter (RETURNS BOOLEAN; identity runs as INVOKER) + bind.
+CREATE FUNCTION prod.customers.us_filter(region STRING)
+  RETURN IF(is_account_group_member('admin'), true, region = 'US');
+ALTER TABLE prod.customers.sales SET ROW FILTER prod.customers.us_filter ON (region);
+
+-- C) ABAC: governed tag → one policy auto-covers every tagged column in the schema.
+CREATE GOVERNED TAG pii VALUES ('ssn','ccn','dob');
+ALTER TABLE prod.customers.accounts ALTER COLUMN ssn SET TAGS ('pii' = 'ssn');
+CREATE POLICY mask_ssn ON SCHEMA prod.customers
+  COLUMN MASK prod.governance.ssn_last TO us_analysts EXCEPT admins
+  FOR TABLES MATCH COLUMNS has_tag_value('pii','ssn') AS ssn ON COLUMN ssn USING COLUMNS (4);</code></pre>
+  <p class="caption">Governed tags: Account Console → Catalog/Settings → Governed tags. Policies: workspace →
+    Catalog → scope → Policies tab → New policy. <code>CREATE GOVERNED TAG</code> SQL needs DBR 18.1+.</p>
+
+  <div class="callout warn">
+    <h4>It fails secure, not loud</h4>
+    <p>Below the compute floor (ABAC needs serverless or DBR ≥ 16.4; table-level DBR ≥ 12.2 LTS, dedicated
+      15.4) queries return <strong>no data</strong> rather than leak. And <code>is_member()</code>
+      (workspace-local) silently never matches account groups — use <code>is_account_group_member()</code>;
+      enable <code>spark.sql.ansi.enabled</code> so a type mismatch errors instead of going silently NULL.</p>
+  </div>
+</section>
+
+<!-- 7.3 -->
+<section class="panel" id="t73">
+  <h2>7.3 · Storage credentials, external locations &amp; the access connector</h2>
+  <p>The keyless bridge from a governed query to ADLS Gen2 — entirely <strong>Path ③ (compute → storage)</strong>,
+    the identity-and-authorization half. Switch the diagram between the <strong>credential chain</strong> and
+    <strong>physical isolation</strong>; click a box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d73','chain',this)">The credential chain</button>
+    <button onclick="switchView('d73','isolation',this)">Physical isolation</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d73" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d73" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d73" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d73" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d73info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The one-line chain</h4>
+    <p><strong>External location</strong> (path + grants) → <strong>storage credential</strong> (which
+      identity) → <strong>access connector</strong> (the managed identity) → <strong>RBAC on ADLS Gen2</strong>
+      — and there is <em>no key to copy or rotate anywhere on that chain</em>. Databricks authenticates as the
+      managed identity, gets a short-lived OAuth token, and presents it to ADLS.</p>
+  </div>
+
+  <h3>How to authenticate UC to ADLS</h3>
+  <table>
+    <thead><tr><th>Mechanism</th><th>Secret to rotate?</th><th>Behind storage firewall?</th><th>Audited per-user?</th><th>Verdict</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Access connector + managed identity</strong></td><td><strong>No</strong></td><td><strong>Yes</strong> (trusted Resource instance)</td><td><strong>Yes</strong></td><td><strong>Recommended</strong></td></tr>
+      <tr><td>Service principal + client secret</td><td>Yes</td><td><strong>No</strong></td><td>Yes</td><td>Legacy; avoid</td></tr>
+      <tr><td>Storage account key / SAS</td><td>Yes</td><td>n/a</td><td><strong>No — bypasses UC</strong></td><td>Never for governed data</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the two UC securables</h3>
+  <pre><code>CREATE STORAGE CREDENTIAL `finance_mi`
+  WITH AZURE_MANAGED_IDENTITY
+    ACCESS_CONNECTOR_ID = '/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Databricks/accessConnectors/<name>';
+
+CREATE EXTERNAL LOCATION IF NOT EXISTS `finance_lake`
+  URL 'abfss://finance@mystorageacct.dfs.core.windows.net/'
+  WITH (STORAGE CREDENTIAL `finance_mi`);
+
+GRANT READ FILES, WRITE FILES ON EXTERNAL LOCATION `finance_lake` TO `finance-engineers`;</code></pre>
+  <p class="caption">Order: (1) access connector → (2) RBAC on ADLS (<code>Storage Blob Data Contributor</code> to
+    the <em>connector's</em> identity) → (3) storage credential → (4) external location → (5) grants.</p>
+
+  <div class="callout tip">
+    <h4>Triage rule — split identity from network first</h4>
+    <p><strong>Catalog Explorer → external location → Test connection.</strong> Fails on
+      <em>authorization</em> → it's the RBAC/identity half (wrong identity, scope, or HNS off). Fails on
+      <em>reachability/timeout</em> → it's the network half (firewall / private endpoint / DNS). Don't chase
+      RBAC for what is actually a firewall block.</p>
+  </div>
+</section>
+
+<!-- 7.4 -->
+<section class="panel" id="t74">
+  <h2>7.4 · Cluster policies &amp; access modes</h2>
+  <p>Three locks on the compute door — what compute <em>can be</em> (policy), <em>who shares it and whether UC
+    trusts it</em> (access mode), and <em>who can touch the object</em> (ACL). Switch the diagram between the
+    <strong>three locks</strong> and the <strong>access-mode comparison</strong>; click a box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d74','locks',this)">Three locks in series</button>
+    <button onclick="switchView('d74','modes',this)">Standard vs Dedicated</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d74" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d74" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d74" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d74" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d74info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>Keep the three separate</h4>
+    <p><strong>Policy</strong> decides what compute <em>can be</em> (node type, max workers,
+      <code>dbus_per_hour</code> cap, forced <code>data_security_mode</code>). <strong>Access mode</strong>
+      decides <em>who shares it and whether UC trusts it</em> (Standard / Dedicated only). <strong>ACL</strong>
+      decides <em>who can touch the object</em> (attach/run/manage). They compose; none replaces another.</p>
+  </div>
+
+  <h3>Standard vs Dedicated access mode</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Standard (<code>USER_ISOLATION</code>)</th><th>Dedicated (<code>SINGLE_USER</code>)</th></tr></thead>
+    <tbody>
+      <tr><td>Shared by</td><td>Many users, isolated</td><td>One user or one group</td></tr>
+      <tr><td>Unity Catalog</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Languages</td><td>Python, SQL, Scala</td><td>+ <strong>R</strong></td></tr>
+      <tr><td>ML / GPU / RDD / Spark-submit</td><td>❌</td><td>✅</td></tr>
+      <tr><td>Best for</td><td>Default, BI, collaborative</td><td>ML, R, single-team, unsupported-feature workloads</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the cost + UC-compliance enforcer</h3>
+  <pre><code>{
+  "cluster_type":       { "type": "fixed", "value": "all-purpose" },
+  "data_security_mode": { "type": "fixed", "value": "USER_ISOLATION", "hidden": true }, // = Standard
+  "dbus_per_hour":      { "type": "range", "maxValue": 50 },          // THE cost cap
+  "autotermination_minutes": { "type": "fixed", "value": 30, "hidden": true },
+  "node_type_id":       { "type": "allowlist",
+                          "values": ["Standard_DS3_v2","Standard_DS4_v2"],
+                          "defaultValue": "Standard_DS3_v2" }
+}</code></pre>
+  <p class="caption">UI: Compute → Policies → Create policy → set Max DBUs/hr + Definitions JSON → grant
+    <strong>CAN USE</strong> to groups. Access mode: Create compute → Advanced → Access mode. Premium plan required.</p>
+
+  <div class="callout warn">
+    <h4>Drift &amp; privilege footguns</h4>
+    <p>Editing a policy <strong>doesn't restart running clusters</strong> — they drift "out of compliance"
+      until you Enforce. <strong>Run Now executes as the job <em>owner</em>, not the clicker</strong>. Secret
+      ACLs are CLI/API-only and <strong>READ reveals every secret in the scope</strong>.</p>
+  </div>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Always the baseline</h3>
+      <ul>
+        <li>Unity Catalog for governance — no cheaper "skip governance" option, no direct networking cost</li>
+        <li>Grant to <strong>account groups</strong> at the narrowest level (least privilege)</li>
+        <li>Access connector + managed identity for storage (keyless, firewall-traversing)</li>
+        <li>Cluster policies with a <code>dbus_per_hour</code> cap + forced UC access mode for any &gt;1-team customer</li>
+        <li>Premium plan (policies, fine-grained ACLs, Private Link are Premium)</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Step up when mandated</h3>
+      <ul>
+        <li>Workspace-catalog / external-location <strong>binding (ISOLATED)</strong> for provable dev↔prod isolation</li>
+        <li><strong>ABAC + governed tags</strong> for many tables + central governance (confirm serverless or DBR ≥ 16.4)</li>
+        <li>Separate accounts/connectors per sensitivity tier for a hard blast-radius boundary</li>
+        <li>Dedicated access mode only for ML / GPU / R</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Park regulated data in the <code>main</code> catalog (all users get <code>USE CATALOG</code>)</li>
+        <li>Use <code>is_member()</code> (workspace-local) for UC data — use <code>is_account_group_member()</code></li>
+        <li>Drive ABAC with ungoverned tags, or drop a UDF before unbinding it</li>
+        <li>Grant RBAC to the workspace managed-RG identity instead of the access connector's</li>
+        <li>Use a service principal for new/firewalled storage, or leave the Unrestricted policy broadly granted</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't confuse…</h3>
+      <ul>
+        <li>Binding with grants — binding <em>overrides</em> grants; both must be satisfied</li>
+        <li><code>MANAGE</code> with data access — it manages grants, it doesn't read data</li>
+        <li>The three compute controls — policy / access mode / ACL compose, none replaces another</li>
+        <li>Identity failures with network failures — Test connection splits them</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>UC + access connector + a cost-capped policy is the non-negotiable baseline; binding and ABAC
+      are the step-ups a regulator forces.</strong> Governance carries no direct Azure networking cost — the
+      only spend is the FGAC compute floor (may push you to serverless) and the Premium plan.</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Governance is layered on top of the network you already secured. Unity Catalog says who
+      can do what; row filters, masks and ABAC decide which rows and column values come back, server-side at
+      query time; the access connector reaches storage with no key to rotate; and cluster policies cap cost
+      and force UC compliance. Binding pins a data domain to an environment so dev can't touch prod."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"If we lock the network with Private Link, why do we need UC grants?"</td><td>The network gates the path to ADLS; UC gates who reads which row. A regulated customer needs both.</td></tr>
+      <tr><td>"Can we mask PII for everyone except a clearance group, provably?"</td><td>Yes — a column mask or an ABAC <code>COLUMN MASK</code> policy keyed on a <code>pii</code> governed tag; the <code>EXCEPT</code> group is the clearance list; evidence in <code>system.access.audit</code>.</td></tr>
+      <tr><td>"We have 10,000 tables — hand-bind a mask on each?"</td><td>No — tag once (often via Data Classification <code>class.*</code> tags), one ABAC policy at catalog/schema scope, new tables auto-covered.</td></tr>
+      <tr><td>"Where is the storage key, and who rotates it?"</td><td>There is none — the access connector's managed identity gets short-lived tokens; nothing to store, leak, or rotate.</td></tr>
+      <tr><td>"Can ADLS stay at 'no public access' and still let Databricks in?"</td><td>Yes — the managed identity is allowlisted as a trusted Resource instance (a service principal can't be).</td></tr>
+      <tr><td>"How do we stop a six-figure GPU cluster / guarantee UC on every cluster?"</td><td>Fix <code>node_type_id</code>/<code>dbus_per_hour</code> and <code>data_security_mode</code> in a cluster policy; grant CAN USE narrowly.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>"Granted SELECT, still can't read"</h4><p>Usually a missing usage gate, an unbound catalog, or a view-owner who can't read the base table.<span class="fix">First check: do they hold USE CATALOG + USE SCHEMA (SHOW GRANTS as owner)?</span></p></div>
+    <div class="scenario"><h4>FGAC returns no data after enabling</h4><p>Below the compute floor it fails secure, not loud.<span class="fix">First check: ABAC needs serverless or DBR ≥ 16.4; table-level needs 12.2 LTS.</span></p></div>
+    <div class="scenario"><h4>Mask never applies / filter returns everything</h4><p>Wrong identity function or ANSI off.<span class="fix">First check: <code>is_account_group_member()</code> (not <code>is_member()</code>) + <code>spark.sql.ansi.enabled</code>.</span></p></div>
+    <div class="scenario"><h4>Storage read fails 403</h4><p>RBAC on the wrong identity, HNS off, or firewall block.<span class="fix">First check: Test connection — splits identity (RBAC on the connector, HNS) from network (Resource instance / firewall / DNS).</span></p></div>
+    <div class="scenario"><h4>Dev workspace can reach prod storage</h4><p>The credential / external location is unbound (metastore-wide).<span class="fix">First check: Workspaces binding tab on the credential / external location.</span></p></div>
+    <div class="scenario"><h4>Policy edited but clusters over budget</h4><p>Policy edits don't auto-restart running compute.<span class="fix">First check: the Compliance column → Enforce on next restart.</span></p></div>
+  </div>
+
+  <h3>Three questions to ask before designing governance</h3>
+  <ol>
+    <li>Is there a regulatory mandate to prove <em>environment isolation</em> (dev can't touch prod), or is least-privilege grants enough?</li>
+    <li>How many tables need FGAC, and is there a central governance team — i.e. ABAC, or per-table views/masks?</li>
+    <li>Are they on Premium, on a UC-compliant access mode, and above the ABAC compute floor (serverless / DBR ≥ 16.4)?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks docs — UC 2026-06-23/24, FGAC/ABAC 2026-06-26, storage/connector June 2026, compute/policy 2026-06-11–16)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/data-governance/unity-catalog/access-control/privileges-reference" target="_blank">Unity Catalog privileges reference (7.1)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/data-governance/unity-catalog/access-control/workspace-catalog-binding" target="_blank">Workspace-catalog binding (7.1)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/data-governance/unity-catalog/abac/" target="_blank">Attribute-based access control / ABAC (7.2)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/connect/unity-catalog/cloud-storage/azure-managed-identities" target="_blank">Azure managed identities for UC storage (7.3)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/admin/clusters/policy-definition" target="_blank">Compute policy reference (7.4)</a> · <a href="https://learn.microsoft.com/azure/databricks/compute/configure#access-modes" target="_blank">Access modes (7.4)</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive: ABAC is GA for row filters/column masks (the April 2026 release notes claim GA 28 Apr 2026 / governed tags GA 2 Apr 2026, but the canonical ABAC feature page shows no GA date — reconfirm date &amp; region; GRANT policies are Beta), compute floors (ABAC DBR ≥ 16.4 / serverless), ABAC quotas, <code>data_security_mode</code> values, Standard-mode limitation list, RBAC role names, Premium-tier requirements — reconfirm before quoting a customer.</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 7.1 hierarchy & grants ----
+  d71:{ info:'d71info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      hierarchy:{ nodes:[
+        {id:'ms',x:40,y:150,w:200,h:64,color:'#FF3621',label:'Metastore',sub:'one per Azure region',
+          info:'<strong>Unity Catalog metastore</strong>Top-level container, account-level and regional (one per region). Holds catalogs, plus non-namespaced securables (storage credentials, external locations). Metastore-level privileges do NOT inherit downward.'},
+        {id:'cat',x:300,y:60,w:180,h:60,color:'#2272B4',label:'Catalog: prod',sub:'a data domain',
+          info:'<strong>Catalog (the data domain)</strong>First level of the catalog.schema.object namespace, and a container object — grants inherit to all schemas/tables inside it, current and future. main gives all users USE CATALOG by default — never park regulated data there.'},
+        {id:'sch',x:300,y:150,w:180,h:60,color:'#2272B4',label:'Schema: sales',sub:'a project grouping',
+          info:'<strong>Schema (the grouping)</strong>Second namespace level, also a container. A grant on the schema cascades to every table/view in it. Every catalog has a built-in information_schema.'},
+        {id:'tbl',x:300,y:240,w:180,h:56,color:'#6B7280',label:'Table / view / volume',sub:'the leaves',
+          info:'<strong>Tables / views / volumes / functions / models</strong>The actual assets. A view resolves with the view-owner\'s privileges, so a viewer needs SELECT on the view but not the base tables — the classic way to expose masked/filtered data.'},
+        {id:'el',x:560,y:150,w:300,h:64,color:'#00A972',label:'External location / storage credential',sub:'under metastore, NOT in namespace',
+          info:'<strong>Non-data securables</strong>Storage credentials, external locations, connections, shares, recipients live directly under the metastore — not as catalog.schema.x. They govern HOW UC reaches storage (7.3). Securable, but not namespaced.'}
+      ], arrows:[
+        {from:'ms',to:'cat',cls:'',label:'contains'},
+        {from:'cat',to:'sch',cls:''},
+        {from:'sch',to:'tbl',cls:''},
+        {from:'ms',to:'el',cls:'cold',label:'directly under'}
+      ]},
+      gates:{ nodes:[
+        {id:'user',x:40,y:150,w:150,h:60,color:'#2272B4',label:'Analyst (principal)',sub:'account group',
+          info:'<strong>Principal (account group)</strong>Always grant to account groups, not individual users — the biggest maintainability win. Synced from Entra ID via SSO + SCIM, made usable in workspaces via identity federation (Stage 4).'},
+        {id:'g1',x:260,y:40,w:200,h:54,color:'#6B7280',label:'USE CATALOG',sub:'floor key (gate)',
+          info:'<strong>USE CATALOG (gate, not access)</strong>Lets the principal enter the catalog — grants traversal, never data. Only a catalog owner (or MANAGE) can grant it, which is why the usage gate is the owner\'s control boundary.'},
+        {id:'g2',x:260,y:150,w:200,h:54,color:'#6B7280',label:'USE SCHEMA',sub:'room key (gate)',
+          info:'<strong>USE SCHEMA (gate, not access)</strong>Lets the principal enter the schema. Still no data by itself — needed together with USE CATALOG and SELECT.'},
+        {id:'g3',x:260,y:260,w:200,h:54,color:'#FF3621',label:'SELECT',sub:'cabinet key',
+          info:'<strong>SELECT (the actual read)</strong>The data privilege. On its own it is useless — the user also needs the two usage gates. This three-grants-together rule is the #1 "why can\'t they read it" cause.'},
+        {id:'tbl',x:560,y:150,w:200,h:64,color:'#00A972',label:'prod.sales.orders',sub:'the read succeeds',
+          info:'<strong>The read succeeds</strong>Only when USE CATALOG + USE SCHEMA + SELECT all resolve for this principal (directly or via inheritance) AND the catalog is bound to this workspace.'}
+      ], arrows:[
+        {from:'user',to:'g1',cls:''},
+        {from:'user',to:'g2',cls:''},
+        {from:'user',to:'g3',cls:'hot'},
+        {from:'g1',to:'tbl',cls:''},
+        {from:'g2',to:'tbl',cls:''},
+        {from:'g3',to:'tbl',cls:'hot',label:'all three → read'}
+      ]},
+      binding:{ nodes:[
+        {id:'prod',x:40,y:60,w:180,h:60,color:'#2272B4',label:'Prod workspace',sub:'bound',
+          info:'<strong>Prod workspace (bound)</strong>The catalog is set to ISOLATED and bound to this workspace, so privileged users here can reach prod data. Read-only binding is an option per workspace.'},
+        {id:'dev',x:40,y:240,w:180,h:60,color:'#6B7280',label:'Dev workspace',sub:'NOT bound',
+          info:'<strong>Dev workspace (not bound)</strong>Even a user with an explicit SELECT grant is DENIED here, because binding supersedes grants. This is environment isolation — the master switch that keeps dev from touching prod.'},
+        {id:'cat',x:320,y:150,w:240,h:70,color:'#FF3621',label:'prod_catalog (ISOLATED)',sub:'binding supersedes grants',
+          info:'<strong>prod_catalog (ISOLATED)</strong>Default is open to every workspace; switching to ISOLATED + binding overrides that. Binding supersedes grants — denied from an unbound workspace even with SELECT. Also bindable: external locations, storage credentials.'},
+        {id:'data',x:640,y:150,w:200,h:64,color:'#00A972',label:'Governed prod data',sub:'reachable only from prod',
+          info:'<strong>Governed prod data</strong>Physically reachable only from the bound (prod) workspaces. Pair with storage-credential binding (7.3) for isolation at the credential layer too.'}
+      ], arrows:[
+        {from:'prod',to:'cat',cls:'hot',label:'bound → allowed'},
+        {from:'dev',to:'cat',cls:'muted',label:'DENIED even with SELECT'},
+        {from:'cat',to:'data',cls:''}
+      ]}
+    }},
+
+  // ---- 7.2 ABAC / filters / masks ----
+  d72:{ info:'d72info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      flow:{ nodes:[
+        {id:'q',x:40,y:150,w:160,h:60,color:'#2272B4',label:'SELECT * FROM table',sub:'invoker query',
+          info:'<strong>The query (the invoker)</strong>The analyst runs an ordinary SELECT. They never receive raw bytes — FGAC is computed server-side, per invoker, before results return, so there is nothing to intercept.'},
+        {id:'grant',x:250,y:40,w:170,h:60,color:'#6B7280',label:'Layer 0: GRANT',sub:'SELECT check (7.1)',
+          info:'<strong>Layer 0 — object GRANT (7.1)</strong>The all-or-nothing "can this principal read this table at all" check runs FIRST. Fail → permission denied; pass → FGAC resolution begins.'},
+        {id:'rf',x:250,y:150,w:170,h:54,color:'#FF3621',label:'Row filter UDF',sub:'RETURNS BOOLEAN',
+          info:'<strong>Row filter UDF</strong>Injected into the query plan; returns BOOLEAN per row, FALSE rows dropped. One row filter per table. Identity functions inside run as the INVOKER.'},
+        {id:'cm',x:250,y:250,w:170,h:54,color:'#FF3621',label:'Column mask UDF',sub:'returns column type',
+          info:'<strong>Column mask UDF</strong>Transforms the value (e.g. last 4 of an SSN), returns the column\'s type. One mask per column; can take other columns via USING COLUMNS.'},
+        {id:'id',x:470,y:40,w:200,h:60,color:'#2272B4',label:'Identity fns as INVOKER',sub:'is_account_group_member()',
+          info:'<strong>Identity functions (as INVOKER)</strong>is_account_group_member(), session_user() evaluate as the person running the query — that is what makes per-user logic work. Use the ACCOUNT-group function, not workspace-local is_member().'},
+        {id:'tag',x:470,y:160,w:200,h:54,color:'#00A972',label:'Governed tag → ABAC policy',sub:'pii=ssn auto-attaches',
+          info:'<strong>Governed tag → ABAC policy</strong>A policy at catalog/schema scope matches tables/columns by governed tag and supplies the same row-filter/mask UDFs automatically — including to tables tagged later. The scalable answer.'},
+        {id:'out',x:700,y:150,w:160,h:64,color:'#00A972',label:'Filtered + masked result',sub:'authorized rows only',
+          info:'<strong>Result set</strong>Only authorized rows, sensitive columns masked. Below the compute floor (ABAC DBR ≥ 16.4 / serverless) it returns NO data rather than leak — it fails secure.'}
+      ], arrows:[
+        {from:'q',to:'grant',cls:''},
+        {from:'grant',to:'rf',cls:'hot',label:'authorized'},
+        {from:'rf',to:'cm',cls:'hot'},
+        {from:'id',to:'rf',cls:'cold'},
+        {from:'id',to:'cm',cls:'cold'},
+        {from:'tag',to:'cm',cls:'cold',label:'supplies UDF'},
+        {from:'cm',to:'out',cls:'hot'}
+      ]},
+      mechanisms:{ nodes:[
+        {id:'view',x:40,y:60,w:230,h:70,color:'#2272B4',label:'Dynamic view',sub:'WHERE / CASE on identity',
+          info:'<strong>Dynamic view</strong>A VIEW whose SQL embeds who is asking. The ONLY mechanism that reshapes/joins data. Grant SELECT on the view, never the base table. Weak separation of duties; doesn\'t scale to many tables.'},
+        {id:'tbl',x:40,y:150,w:230,h:70,color:'#FF3621',label:'Table-level filter / mask',sub:'ALTER TABLE SET ROW FILTER',
+          info:'<strong>Table-level row filter / column mask</strong>A UDF bound directly to the table, so any query (not just a view) is protected. Owner manages it. One-off, table-specific logic; doesn\'t scale. DROP the binding BEFORE the UDF.'},
+        {id:'abac',x:40,y:250,w:230,h:70,color:'#00A972',label:'ABAC policy',sub:'governed tag → one policy',
+          info:'<strong>ABAC policy (the scalable answer)</strong>Tag once, write one policy at catalog/schema scope, every matching object covered — now and future. Strong separation of duties: steward tags, governance writes the policy, the table owner can\'t strip it. GA for row filters/column masks (verify current GA date &amp; region; GRANT policies Beta).'},
+        {id:'tag',x:340,y:150,w:200,h:64,color:'#6B7280',label:'Governed tag pii=ssn',sub:'account-level attribute',
+          info:'<strong>Governed tag</strong>An account-level tag with a controlled value list and ASSIGN permissions. ABAC requires GOVERNED tags — a plain ungoverned tag won\'t drive a policy. Limits: ≤1,000 tags/account, ≤50 values/tag.'},
+        {id:'tables',x:620,y:150,w:230,h:64,color:'#00A972',label:'Every matching table',sub:'auto-covered by tag',
+          info:'<strong>Every matching table/column</strong>The ABAC policy auto-applies wherever the tag matches, across the scope, including objects tagged later — no per-table sprawl.'}
+      ], arrows:[
+        {from:'abac',to:'tag',cls:'cold',label:'keys off'},
+        {from:'tag',to:'tables',cls:'cold',label:'auto-applies'},
+        {from:'view',to:'tables',cls:'muted'},
+        {from:'tbl',to:'tables',cls:'muted'}
+      ]}
+    }},
+
+  // ---- 7.3 storage credentials ----
+  d73:{ info:'d73info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      chain:{ nodes:[
+        {id:'q',x:30,y:150,w:150,h:60,color:'#2272B4',label:'Governed query',sub:'GRANT enforced',
+          info:'<strong>Governed query / job</strong>The compute resource running a query that needs ADLS data. The UC GRANT on the external location is enforced here before any token is minted.'},
+        {id:'el',x:220,y:60,w:200,h:64,color:'#2272B4',label:'External location',sub:'abfss path + GRANTs',
+          info:'<strong>External location (UC securable #2)</strong>Binds an abfss:// path to a storage credential. The object you actually GRANT READ/WRITE FILES on. Paths can\'t overlap, so a given path resolves to exactly one location. Bindable to specific workspaces.'},
+        {id:'sc',x:220,y:160,w:200,h:64,color:'#2272B4',label:'Storage credential',sub:'wraps connector ID',
+          info:'<strong>Storage credential (UC securable #1)</strong>Records the access connector\'s resource ID. UC\'s record of "an auth mechanism I may use." Lives at the metastore level; keep the set of people who can CREATE STORAGE CREDENTIAL small. No secret stored.'},
+        {id:'ac',x:470,y:160,w:200,h:64,color:'#00A972',label:'Access connector',sub:'= managed identity',
+          info:'<strong>Access Connector (the managed identity)</strong>Microsoft.Databricks/accessConnectors holding an Entra ID managed identity — no secret to store or rotate. System- or user-assigned. The one identity that can be allowlisted on a storage firewall (a service principal can\'t).'},
+        {id:'adls',x:710,y:150,w:170,h:74,color:'#00A972',label:'ADLS Gen2 (HNS)',sub:'RBAC checked',
+          info:'<strong>ADLS Gen2 (HNS required)</strong>Checks the short-lived OAuth token\'s identity against its RBAC role assignments (Storage Blob Data Contributor on the CONNECTOR\'s identity). HNS is mandatory — plain Blob/OneLake unsupported.'}
+      ], arrows:[
+        {from:'q',to:'el',cls:'',label:'GRANT'},
+        {from:'el',to:'sc',cls:''},
+        {from:'sc',to:'ac',cls:'cold',label:'names'},
+        {from:'ac',to:'adls',cls:'hot',label:'③ short-lived token'}
+      ]},
+      isolation:{ nodes:[
+        {id:'fin',x:40,y:60,w:180,h:60,color:'#2272B4',label:'finance catalog',sub:'own external location',
+          info:'<strong>finance catalog</strong>Pointed at its own external location over its own container, set as its managed storage location (CREATE MANAGED LOCATION). Its managed tables physically land in the finance container.'},
+        {id:'hr',x:40,y:240,w:180,h:60,color:'#2272B4',label:'hr catalog',sub:'own external location',
+          info:'<strong>hr catalog</strong>Separate external location over a separate container — different storage, different RBAC. Physical separation keeps teams out of each other\'s bytes, not just their tables.'},
+        {id:'finc',x:300,y:60,w:200,h:60,color:'#00A972',label:'finance container',sub:'separate RBAC',
+          info:'<strong>finance container</strong>Its own RBAC scope. For a hard blast-radius boundary, escalate to a separate storage account (and even a separate access connector) per sensitivity tier.'},
+        {id:'hrc',x:300,y:240,w:200,h:60,color:'#00A972',label:'hr container',sub:'separate RBAC',
+          info:'<strong>hr container</strong>Separate bytes, separate firewall/RBAC. Pointing every catalog at one container and calling it "isolated" is logical-only — physical isolation needs separate paths/containers (or accounts).'},
+        {id:'bind',x:560,y:150,w:300,h:70,color:'#FFC107',label:'Workspace binding (credential layer)',sub:'dev cannot mint a prod token',
+          info:'<strong>Workspace binding at the credential layer</strong>By default any privileged user on any attached workspace can use a credential/external location. Bind them to specific workspaces so a dev workspace physically cannot mint a token to prod storage — even with the UC privilege.'}
+      ], arrows:[
+        {from:'fin',to:'finc',cls:'',label:'managed loc'},
+        {from:'hr',to:'hrc',cls:''},
+        {from:'finc',to:'bind',cls:'cold'},
+        {from:'hrc',to:'bind',cls:'cold'}
+      ]}
+    }},
+
+  // ---- 7.4 policies & access modes ----
+  d74:{ info:'d74info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      locks:{ nodes:[
+        {id:'admin',x:40,y:150,w:150,h:60,color:'#6B7280',label:'Workspace admin',sub:'writes JSON rules',
+          info:'<strong>Workspace admin</strong>Writes the policy definition (JSON: attribute → limitation) and grants CAN USE. Reserve the Unrestricted policy/entitlement for admins only.'},
+        {id:'pol',x:240,y:40,w:200,h:64,color:'#FF3621',label:'Cluster policy',sub:'lock 1: what it can be',
+          info:'<strong>Lock 1 — cluster policy</strong>The vending machine: fixed/range/allowlist rules cap node type, max workers, autotermination, runtime, and dbus_per_hour ($/hr cap). data_security_mode fixed = forces UC compliance. Requires Premium.'},
+        {id:'mode',x:240,y:150,w:200,h:64,color:'#FF3621',label:'Access mode',sub:'lock 2: who shares + UC',
+          info:'<strong>Lock 2 — access mode</strong>Standard (USER_ISOLATION, multi-user isolated) or Dedicated (SINGLE_USER, one user/group). Only these two are UC-compliant; legacy No Isolation Shared / Custom are not. The kind of room the compute is.'},
+        {id:'acl',x:240,y:260,w:200,h:54,color:'#FF3621',label:'Object ACL',sub:'lock 3: who touches it',
+          info:'<strong>Lock 3 — workspace-object ACL</strong>The badge reader: CAN ATTACH TO → CAN RESTART → CAN MANAGE on clusters; CAN MANAGE RUN → IS OWNER on jobs (Run Now runs as the OWNER); READ→WRITE→MANAGE on secret scopes (CLI/API only).'},
+        {id:'compute',x:490,y:150,w:170,h:64,color:'#2272B4',label:'Compute resource',sub:'inside the rails',
+          info:'<strong>Compute resource</strong>The cluster/SQL warehouse the user creates — only inside the rails the policy drew, in the access mode it fixes, touchable only per its ACLs. Editing the policy doesn\'t auto-restart it (drift → Enforce).'},
+        {id:'uc',x:700,y:150,w:170,h:64,color:'#00A972',label:'Unity Catalog data',sub:'Standard/Dedicated only',
+          info:'<strong>Unity Catalog governed data</strong>Reachable only from a UC-compliant access mode. A legacy NONE cluster can\'t reach UC data by design — fix data_security_mode in the policy to guarantee it.'}
+      ], arrows:[
+        {from:'admin',to:'pol',cls:''},
+        {from:'pol',to:'compute',cls:'hot',label:'CAN USE → create'},
+        {from:'mode',to:'compute',cls:'hot'},
+        {from:'acl',to:'compute',cls:''},
+        {from:'compute',to:'uc',cls:'cold',label:'Standard/Dedicated only'}
+      ]},
+      modes:{ nodes:[
+        {id:'std',x:60,y:60,w:240,h:80,color:'#00A972',label:'Standard (USER_ISOLATION)',sub:'multi-user, isolated',
+          info:'<strong>Standard access mode</strong>Multiple users, isolated from each other; runs commands as a low-privilege user that can\'t reach the instance metadata service / Azure WireServer — that isolation is WHY it\'s UC-compliant and multi-tenant-safe. Drops ML/GPU/R/RDD/Spark-submit. The default.'},
+        {id:'ded',x:60,y:220,w:240,h:80,color:'#2272B4',label:'Dedicated (SINGLE_USER)',sub:'one user or one group',
+          info:'<strong>Dedicated access mode</strong>One user or one group (single security principal, so no inter-user isolation needed) — lifts the limits: ML/GPU, R, RDD, Spark-submit. Dedicated-to-a-group has carve-outs (e.g. UC-volume log delivery).'},
+        {id:'uc',x:400,y:140,w:180,h:70,color:'#00A972',label:'Unity Catalog',sub:'both supported',
+          info:'<strong>Unity Catalog</strong>Both Standard and Dedicated are UC-compliant. Legacy No Isolation Shared / Custom are NOT — block them by fixing data_security_mode in a policy.'},
+        {id:'legacy',x:400,y:250,w:180,h:60,color:'#6B7280',label:'No Isolation Shared',sub:'legacy · NOT UC',
+          info:'<strong>Legacy modes (avoid)</strong>No Isolation Shared (NONE) and Custom are not UC-compliant and can leak secrets in driver logs. A policy fixing data_security_mode to USER_ISOLATION/SINGLE_USER blocks them.'},
+        {id:'work',x:640,y:140,w:200,h:70,color:'#2272B4',label:'Governed workload',sub:'BI / ML / collaborative',
+          info:'<strong>Governed workload</strong>Standard for collaborative/BI/multi-tenant; Dedicated when you need ML/GPU/R or a feature Standard lacks. Auto resolves to Standard unless ML runtime or DBR < 14.3 is chosen.'}
+      ], arrows:[
+        {from:'std',to:'uc',cls:'cold',label:'✓'},
+        {from:'ded',to:'uc',cls:'cold',label:'✓'},
+        {from:'legacy',to:'uc',cls:'muted',label:'✗ not UC'},
+        {from:'uc',to:'work',cls:''}
+      ]}
+    }}
+};
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d71','hierarchy');
+renderDiagram('d72','flow');
+renderDiagram('d73','chain');
+renderDiagram('d74','locks');
+</script>
+</body>
+</html>

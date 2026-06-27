@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MERGE, INSERT OVERWRITE & CTAS · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,5vw,3rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.9rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: pick-the-write tabs */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 13px;cursor:pointer;transition:.15s}
+  .tab:hover{border-color:var(--teal)}
+  .tab.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .panel{display:none}.panel.on{display:block;animation:fade .25s ease}
+  /* diagram 2: merge clauses */
+  .clauses{display:flex;flex-direction:column;gap:8px}
+  .cl{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .cl:hover{border-color:var(--brand-2)}.cl.open{border-color:var(--teal)}
+  .cl .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.84rem;display:flex;justify-content:space-between}
+  .cl .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}
+  .cl.open .d{display:block}
+  /* diagram 3: SCD2 step-through */
+  .scd-stage{border:1px solid var(--line);border-radius:12px;background:#fff;padding:14px 16px;box-shadow:var(--shadow);min-height:120px}
+  .scd-stage .step{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand)}
+  .scd-rows{margin-top:8px;font-family:"Spline Sans Mono",monospace;font-size:.78rem}
+  .scd-rows .row{padding:4px 8px;border-radius:6px;margin:3px 0;border:1px solid var(--line)}
+  .scd-rows .cur{background:#eafaf1;border-color:#8fd6ad}
+  .scd-rows .exp{background:#faf0ec;color:#8a6a5f;text-decoration:line-through}
+  .scd-rows .new{background:#eef6fb;border-color:#9cc8df}
+  .scd-ctrl{display:flex;gap:8px;margin-top:10px;align-items:center}
+  .scd-ctrl button{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px 14px;cursor:pointer;transition:.15s}
+  .scd-ctrl button:hover{border-color:var(--teal);color:var(--teal)}
+  .scd-dots{display:flex;gap:6px;margin-left:auto}
+  .scd-dots span{width:9px;height:9px;border-radius:999px;background:var(--line)}
+  .scd-dots span.on{background:var(--teal)}
+  @keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 2.2</p>
+  <h1>Writing to Delta: <em>MERGE</em>, OVERWRITE &amp; CTAS</h1>
+  <p class="lede">Four ways to write a Delta table — pick by how much you're changing: row-level (MERGE), full/partition reload (INSERT OVERWRITE), rebuild (CREATE OR REPLACE), or derive (CTAS). This deep dive walks each with the mechanism and the code.</p>
+  <div class="pills"><span class="pill">MERGE = upsert</span><span class="pill">CDC / SCD2</span><span class="pill">replaceWhere</span><span class="pill">Atomic writes</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>MERGE</strong> changes only matching rows (upsert); <strong>INSERT OVERWRITE</strong> swaps all/partition data; <strong>CREATE OR REPLACE</strong> rebuilds the table while keeping its name &amp; history; <strong>CTAS</strong> makes a new table from a query. Use the smallest tool that fits the change.</div>
+  <div class="card analogy" style="margin-top:10px">📇 <strong>Analogy (a contacts app):</strong> MERGE = <em>sync</em> (update changed, add new, remove gone); INSERT OVERWRITE = <em>wipe &amp; paste a fresh export</em>; CREATE OR REPLACE = <em>reset the whole app</em>; CTAS = <em>save a filtered copy as a new list</em>.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: pick-the-write -->
+<section id="pick">
+  <h2>Which write should I use?</h2>
+  <p class="hint">▸ click a statement</p>
+  <div class="tabs">
+    <button class="tab on" data-t="merge">MERGE</button>
+    <button class="tab" data-t="io">INSERT OVERWRITE</button>
+    <button class="tab" data-t="cor">CREATE OR REPLACE</button>
+    <button class="tab" data-t="ctas">CTAS</button>
+  </div>
+  <div class="panel on" data-p="merge"><div class="card"><strong>MERGE INTO</strong> — row-level upsert by a match key. Use for CDC, SCD, dedup, daily deltas. Cheapest when only some rows change.</div></div>
+  <div class="panel" data-p="io"><div class="card"><strong>INSERT OVERWRITE</strong> — atomically replace all rows or a partition. Use for full or partition reloads / backfills.</div></div>
+  <div class="panel" data-p="cor"><div class="card"><strong>CREATE OR REPLACE TABLE</strong> — rebuild definition + data, resetting schema cleanly while keeping the table name and history. Prefer over DROP+CREATE.</div></div>
+  <div class="panel" data-p="ctas"><div class="card"><strong>CTAS</strong> (<code>CREATE TABLE x AS SELECT …</code>) — create a brand-new table from a query. Great for derived silver/gold tables.</div></div>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li>Wrong choice = wasted compute: people full-overwrite when a targeted <strong>MERGE</strong> is cheaper and safer.</li>
+    <li><strong>MERGE</strong> powers <strong>CDC</strong> and <strong>slowly changing dimensions</strong> — guaranteed interview territory. Be able to write SCD1 <em>and</em> SCD2 from memory.</li>
+  </ul>
+  <div class="card usecase">🌙 <strong>Real-world use case:</strong> a nightly feed of changed customers → one <strong>MERGE</strong> updates existing, inserts new, and optionally expires departed customers — atomically, without rewriting the whole table.</div>
+</section>
+
+<!-- ===================== DEEP DIVE: MERGE ===================== -->
+<section id="clauses">
+  <h2>1 · MERGE — the one that matters</h2>
+  <p>Match a <strong>source</strong> (incoming changes) against the <strong>target</strong> (Delta table) on a key, then apply up to three clause types — all in <strong>one atomic commit</strong>.</p>
+  <pre class="code"><span class="k">MERGE INTO</span> customers t                       <span class="c">-- target (the Delta table)</span>
+<span class="k">USING</span> customer_updates s                     <span class="c">-- source (incoming changes)</span>
+<span class="k">ON</span> t.id = s.id                               <span class="c">-- the match key</span>
+<span class="k">WHEN MATCHED</span>        <span class="k">THEN UPDATE SET</span> *         <span class="c">-- in both → update existing</span>
+<span class="k">WHEN NOT MATCHED</span>    <span class="k">THEN INSERT</span> *             <span class="c">-- source only → add new</span>
+<span class="k">WHEN NOT MATCHED BY SOURCE THEN DELETE</span>;       <span class="c">-- target only → remove gone rows</span></pre>
+  <p class="hint" style="margin-top:14px">▸ click each clause</p>
+  <div class="clauses">
+    <div class="cl open" onclick="this.classList.toggle('open')"><div class="h"><span>WHEN MATCHED</span><span>▸</span></div><div class="d">Row exists in both source and target → <code>UPDATE</code> or <code>DELETE</code> (with optional conditions; multiple matched clauses allowed, first match wins). The "update existing" path.</div></div>
+    <div class="cl" onclick="this.classList.toggle('open')"><div class="h"><span>WHEN NOT MATCHED</span><span>▸</span></div><div class="d">Row is in the source only → <code>INSERT</code>. Unspecified columns get NULL. The "add new" path.</div></div>
+    <div class="cl" onclick="this.classList.toggle('open')"><div class="h"><span>WHEN NOT MATCHED BY SOURCE</span><span>▸</span></div><div class="d">Row is in the target only → <code>UPDATE</code>/<code>DELETE</code>. <strong>Cannot reference source columns</strong> (no source row exists). Requires DBR 12.2 LTS+. The "expire/remove gone rows" path.</div></div>
+  </div>
+
+  <h3>Conditional clauses — one MERGE, several actions</h3>
+  <pre class="code"><span class="k">MERGE INTO</span> customers t <span class="k">USING</span> customer_updates s <span class="k">ON</span> t.id = s.id
+<span class="k">WHEN MATCHED AND</span> s.op = <span class="s">'DELETE'</span>      <span class="k">THEN DELETE</span>
+<span class="k">WHEN MATCHED AND</span> s.op = <span class="s">'UPDATE'</span>      <span class="k">THEN UPDATE SET</span> name = s.name, tier = s.tier
+<span class="k">WHEN NOT MATCHED AND</span> s.op &lt;&gt; <span class="s">'DELETE'</span> <span class="k">THEN INSERT</span> (id, name, tier) <span class="k">VALUES</span> (s.id, s.name, s.tier);</pre>
+
+  <h3>⚠ Gotcha that fails the merge: multiple source matches</h3>
+  <p>If more than one source row matches the same target row, the merge <strong>errors out</strong>. Dedup the source to one row per key first — keep the latest by event time:</p>
+  <pre class="code"><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F, Window
+w = Window.partitionBy(<span class="s">"id"</span>).orderBy(F.col(<span class="s">"event_ts"</span>).desc())
+deduped = (raw_updates
+    .withColumn(<span class="s">"rn"</span>, F.row_number().over(w))
+    .filter(<span class="s">"rn = 1"</span>).drop(<span class="s">"rn"</span>))      <span class="c"># one row per key → safe to MERGE</span></pre>
+
+  <h3>Performance: always prune the target</h3>
+  <p>MERGE rewrites the <em>files</em> holding matched rows. A predicate on the target lets Delta file-skip so it touches a fraction of the table.</p>
+  <pre class="code"><span class="k">MERGE INTO</span> orders t <span class="k">USING</span> daily_changes s
+<span class="k">ON</span> t.id = s.id
+   <span class="k">AND</span> t.order_date &gt;= current_date() - <span class="k">INTERVAL</span> <span class="f">7</span> <span class="k">DAYS</span>   <span class="c">-- prunes old files</span>
+<span class="k">WHEN MATCHED THEN UPDATE SET</span> *
+<span class="k">WHEN NOT MATCHED THEN INSERT</span> *;</pre>
+  <p>Deletion vectors (merge-on-read, <code>delta.enableDeletionVectors</code>) cut cost further by marking rows deleted instead of rewriting whole files.</p>
+
+  <h3>Schema evolution inside MERGE + the PySpark API</h3>
+  <p>MERGE enforces schema by default; opt in to let new source columns flow in. The DeltaTable builder is the DataFrame-API equivalent.</p>
+  <pre class="code"><span class="k">SET</span> spark.databricks.delta.schema.autoMerge.enabled = <span class="k">true</span>;   <span class="c">-- session-wide</span></pre>
+  <pre class="code" style="margin-top:8px"><span class="k">from</span> delta.tables <span class="k">import</span> DeltaTable
+tgt = DeltaTable.forName(spark, <span class="s">"main.sales.customers"</span>)
+(tgt.alias(<span class="s">"t"</span>)
+   .merge(deduped.alias(<span class="s">"s"</span>), <span class="s">"t.id = s.id"</span>)
+   .whenMatchedUpdateAll()
+   .whenNotMatchedInsertAll()
+   .whenNotMatchedBySourceDelete()
+   .execute())</pre>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 3: SCD2 step-through -->
+<section id="scd">
+  <h2>Worked example — SCD Type 2 (keep history)</h2>
+  <p>SCD2 <strong>closes</strong> the old row and <strong>inserts</strong> a new current row, so you keep full history. Step through what one MERGE does when customer <code>C1</code> moves Silver → Gold:</p>
+  <p class="hint">▸ step through the SCD2 merge</p>
+  <div class="scd-stage">
+    <div class="step" id="scd-step">STEP 1 / 4</div>
+    <div id="scd-body" style="margin-top:6px"></div>
+    <div class="scd-rows" id="scd-rows"></div>
+  </div>
+  <div class="scd-ctrl">
+    <button id="scd-prev">◀ Prev</button>
+    <button id="scd-next">Next ▶</button>
+    <div class="scd-dots"><span class="on"></span><span></span><span></span><span></span></div>
+  </div>
+  <p class="codecap">The SCD2 merge (two-pass source)</p>
+  <pre class="code"><span class="k">MERGE INTO</span> dim_customer t
+<span class="k">USING</span> (
+  <span class="c">-- pass 1: changed row keyed normally → closes the old version</span>
+  <span class="k">SELECT</span> id <span class="k">AS</span> merge_key, * <span class="k">FROM</span> customer_updates
+  <span class="k">UNION ALL</span>
+  <span class="c">-- pass 2: same change, NULL key → can't match → forces an INSERT</span>
+  <span class="k">SELECT</span> <span class="k">NULL</span> <span class="k">AS</span> merge_key, u.* <span class="k">FROM</span> customer_updates u
+  <span class="k">JOIN</span> dim_customer d <span class="k">ON</span> u.id = d.id <span class="k">AND</span> d.is_current = <span class="k">true</span>
+  <span class="k">WHERE</span> u.tier &lt;&gt; d.tier
+) s
+<span class="k">ON</span> t.id = s.merge_key <span class="k">AND</span> t.is_current = <span class="k">true</span>
+<span class="k">WHEN MATCHED AND</span> t.tier &lt;&gt; s.tier <span class="k">THEN</span>
+  <span class="k">UPDATE SET</span> is_current = <span class="k">false</span>, end_date = current_date()   <span class="c">-- close old</span>
+<span class="k">WHEN NOT MATCHED THEN</span>
+  <span class="k">INSERT</span> (id, tier, is_current, start_date, end_date)
+  <span class="k">VALUES</span> (s.id, s.tier, <span class="k">true</span>, current_date(), <span class="k">NULL</span>);          <span class="c">-- open new</span></pre>
+</section>
+
+<!-- ===================== INSERT OVERWRITE ===================== -->
+<section id="overwrite">
+  <h2>2 · INSERT OVERWRITE — full &amp; partition reloads</h2>
+  <p>Atomically swap a table's (or a partition's) contents in one commit — readers never see an empty/partial table.</p>
+  <pre class="code"><span class="c">-- Full table reload (replace everything atomically)</span>
+<span class="k">INSERT OVERWRITE</span> main.sales.orders <span class="k">SELECT</span> * <span class="k">FROM</span> staging.orders_full;</pre>
+  <p class="codecap">Targeted overwrite with replaceWhere (only one day)</p>
+  <pre class="code">(corrected_day.write.format(<span class="s">"delta"</span>).mode(<span class="s">"overwrite"</span>)
+   .option(<span class="s">"replaceWhere"</span>, <span class="s">"order_date = '2024-01-07'"</span>)   <span class="c"># only this day is replaced</span>
+   .saveAsTable(<span class="s">"main.sales.orders"</span>))
+<span class="c"># Fails if any row's order_date != 2024-01-07 — the constraint check protects you.</span></pre>
+  <p class="codecap">Dynamic partition overwrite (only the partitions present in new data)</p>
+  <pre class="code">spark.conf.set(<span class="s">"spark.sql.sources.partitionOverwriteMode"</span>, <span class="s">"dynamic"</span>)
+(new_partitions.write.format(<span class="s">"delta"</span>).mode(<span class="s">"overwrite"</span>)
+   .saveAsTable(<span class="s">"main.sales.orders"</span>))   <span class="c"># untouched partitions stay as-is</span></pre>
+  <p>You can't combine <code>replaceWhere</code> and <code>partitionOverwriteMode=dynamic</code> in one write — pick one targeting strategy.</p>
+</section>
+
+<!-- ===================== CREATE OR REPLACE + CTAS ===================== -->
+<section id="cor-ctas">
+  <h2>3 · CREATE OR REPLACE TABLE — atomic rebuild</h2>
+  <p>Redefine + repopulate in one atomic commit, <strong>keeping the table name and history lineage</strong>. Prefer it over <code>DROP</code> + <code>CREATE</code>, which loses history and leaves a window where the table doesn't exist.</p>
+  <pre class="code"><span class="k">CREATE OR REPLACE TABLE</span> main.sales.dim_date <span class="k">AS</span>
+<span class="k">SELECT</span> d <span class="k">AS</span> date_key, year(d) <span class="k">AS</span> yr, month(d) <span class="k">AS</span> mo
+<span class="k">FROM</span> (<span class="k">SELECT</span> explode(sequence(DATE<span class="s">'2020-01-01'</span>, DATE<span class="s">'2030-12-31'</span>, <span class="k">INTERVAL</span> <span class="f">1</span> <span class="k">DAY</span>)) <span class="k">AS</span> d);</pre>
+
+  <h2 style="margin-top:1.4em">4 · CTAS — derive a new table from a query</h2>
+  <p><code>CREATE TABLE AS SELECT</code> builds a <strong>new</strong> table, inferring schema from the query — the default for silver/gold derived tables.</p>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.sales.gold_daily_revenue <span class="k">AS</span>
+<span class="k">SELECT</span> order_date, sum(amount) <span class="k">AS</span> revenue
+<span class="k">FROM</span> main.sales.orders <span class="k">GROUP BY</span> order_date;
+
+<span class="c">-- Want the structure but not the data? Copy the schema only:</span>
+<span class="k">CREATE TABLE</span> main.sales.orders_empty <span class="k">LIKE</span> main.sales.orders;</pre>
+</section>
+
+<section>
+  <h2>Pick the smallest tool that fits</h2>
+  <table>
+    <tr><th></th><th>Rows touched</th><th>Atomic</th><th>Keeps history</th><th>Typical use</th></tr>
+    <tr><td><strong>MERGE</strong></td><td>only matched files</td><td>✅</td><td>✅</td><td>CDC, SCD, upserts, dedup</td></tr>
+    <tr><td><strong>INSERT OVERWRITE</strong></td><td>all / a partition</td><td>✅</td><td>✅</td><td>full / partition reload</td></tr>
+    <tr><td><strong>CREATE OR REPLACE</strong></td><td>whole table</td><td>✅</td><td>✅ (vs DROP+CREATE)</td><td>schema reset / rebuild</td></tr>
+    <tr><td><strong>CTAS</strong></td><td>new table</td><td>✅</td><td>n/a (new)</td><td>derived silver/gold table</td></tr>
+  </table>
+  <div class="card" style="margin-top:12px"><strong>Decision rule:</strong> <em>some rows changed</em> → MERGE · <em>whole partition/table stale</em> → INSERT OVERWRITE · <em>schema/definition must change</em> → CREATE OR REPLACE · <em>building a new derived table</em> → CTAS.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> MERGE → CDC/upserts/SCD1+2/dedup; INSERT OVERWRITE → full/partition reloads &amp; backfills; CREATE OR REPLACE → clean rebuilds; CTAS → new derived tables.</li>
+    <li><strong>Edge cases:</strong> multiple source rows per key → MERGE fails (dedup first); <code>replaceWhere</code> data must satisfy the predicate or the write errors; dynamic partition overwrite is per-partition — a misplaced row can clobber a whole partition.</li>
+    <li><strong>Limitations:</strong> <code>WHEN NOT MATCHED BY SOURCE</code> can't reference source columns and needs DBR 12.2 LTS+. OVERWRITE / REPLACE rewrite far more than a targeted MERGE — don't use them for a few changed rows.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ INSERT OVERWRITE for a small daily delta — rewrites everything; use MERGE.</li>
+    <li>❌ Forgetting to dedup the source → "multiple matches" MERGE failure.</li>
+    <li>❌ DROP+CREATE instead of CREATE OR REPLACE — loses history/lineage.</li>
+    <li>❌ MERGE on a huge table with no predicate — always add a target-pruning predicate.</li>
+    <li>❌ Assuming schema evolution is on — MERGE enforces by default; opt in with <code>spark.databricks.delta.schema.autoMerge.enabled</code>.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/merge" target="_blank" rel="noopener">MERGE INTO</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/selective-overwrite" target="_blank" rel="noopener">Selective overwrite</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/update-schema" target="_blank" rel="noopener">Schema evolution for MERGE</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/sql-ref-syntax-ddl-create-table" target="_blank" rel="noopener">CREATE TABLE / CTAS</a>
+  <p style="margin-top:10px">Topic 2.2 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — pick-the-write tabs (scoped to #pick)
+document.querySelectorAll('#pick .tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    const k=t.dataset.t;
+    document.querySelectorAll('#pick .tab').forEach(x=>x.classList.toggle('on',x===t));
+    document.querySelectorAll('#pick .panel').forEach(p=>p.classList.toggle('on',p.dataset.p===k));
+  });
+});
+// Diagram 2 (#clauses) uses inline onclick toggles — scoped, no collisions.
+// Diagram 3 — SCD2 step-through (scoped to #scd)
+(function(){
+  const steps=[
+    ["STEP 1 / 4","<strong>Before.</strong> The dimension holds C1 as current (Silver).",
+      [["cur","C1 · Silver · is_current=true · start=2023-01-01 · end=NULL"]]],
+    ["STEP 2 / 4","<strong>Change arrives.</strong> Source says C1 is now Gold. The two-pass source emits one keyed row (to close) and one NULL-key row (to insert).",
+      [["cur","C1 · Silver · is_current=true · end=NULL"],["new","source: C1 → Gold"]]],
+    ["STEP 3 / 4","<strong>WHEN MATCHED.</strong> The keyed row matches the current C1 → close it: is_current=false, end_date=today.",
+      [["exp","C1 · Silver · is_current=false · end=2024-06-25"]]],
+    ["STEP 4 / 4","<strong>WHEN NOT MATCHED.</strong> The NULL-key row can't match → INSERT a new current C1 (Gold). History is preserved: one expired + one current row.",
+      [["exp","C1 · Silver · is_current=false · end=2024-06-25"],["cur","C1 · Gold · is_current=true · start=2024-06-25 · end=NULL"]]]
+  ];
+  let i=0;
+  const stepEl=document.getElementById('scd-step'),bodyEl=document.getElementById('scd-body'),
+        rowsEl=document.getElementById('scd-rows'),dots=document.querySelectorAll('#scd .scd-dots span');
+  function render(){
+    stepEl.textContent=steps[i][0];
+    bodyEl.innerHTML=steps[i][1];
+    rowsEl.innerHTML=steps[i][2].map(r=>`<div class="row ${r[0]}">${r[1]}</div>`).join('');
+    dots.forEach((d,j)=>d.classList.toggle('on',j===i));
+  }
+  document.getElementById('scd-next').addEventListener('click',()=>{i=(i+1)%steps.length;render();});
+  document.getElementById('scd-prev').addEventListener('click',()=>{i=(i-1+steps.length)%steps.length;render();});
+  render();
+})();
+</script>
+</body>
+</html>

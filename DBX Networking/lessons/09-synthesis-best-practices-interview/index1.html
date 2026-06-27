@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 9 - Synthesis & Interview Prep, Simple Mode</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.65;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:22px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--db-navy);font-weight:700;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 14px 22px;} li{margin-bottom:7px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:700;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .callout p{margin:0;font-size:14px;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0;}
+  .card{background:var(--db-light);border:1px solid var(--db-border);border-top:3px solid var(--db-blue);
+        border-radius:10px;padding:15px;}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--db-navy);}
+  .card p{font-size:13px;margin:0;color:#4A5860;}
+  .card.orange{border-top-color:var(--db-orange);}
+  .card.green{border-top-color:var(--db-green);}
+  .card.gray{border-top-color:var(--db-gray);}
+
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:390px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.blue{stroke:var(--db-blue);stroke-width:2.4;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:700;}
+  .alabel.cold{fill:var(--db-green);font-weight:700;}
+  .alabel.blue{fill:var(--db-blue);font-weight:700;}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+  .flow-box{background:#fff;border:1px solid var(--db-border);border-left:4px solid var(--db-orange);border-radius:8px;padding:16px 20px;margin-top:14px;}
+  .flow-box h4{margin-bottom:8px;color:var(--db-navy);font-size:15px;}
+  .flow-box ol{margin:0 0 8px 20px;}
+  .flow-box li{margin-bottom:5px;font-size:13.5px;}
+  .flow-box .flow-bottom{margin:0;font-size:13.5px;color:#2A3439;}
+
+  figure{margin:14px 0;}
+  figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks - Networking &amp; Security - Simple Mode</div>
+  <h1>Assembling &amp; Defending a Secure Design Without Memorizing It</h1>
+  <div class="subtitle">A plain-English version of Lesson 9, the capstone. The goal is to pick a reference
+    architecture, recite the day-one checklist, and walk a packet from a browser to a byte in ADLS - naming the
+    control at every hop and the trade-off you are making.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">Three doors</span>
+    <span class="badge">Customer talk-track</span>
+    <span class="badge">Walk the packet</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="arch">Reference Architectures</button>
+  <button data-tab="packet">Walk the Packet</button>
+  <button data-tab="checklist">Best-Practices Checklist</button>
+  <button data-tab="sccpl">SCC vs Private Link</button>
+  <button data-tab="ncc">Serverless / NCC</button>
+  <button data-tab="dep">Exfiltration / DEP</button>
+  <button data-tab="field">Field Notes</button>
+</nav>
+
+<section class="panel active" id="overview">
+  <h2>The One Mental Model</h2>
+  <p>Securing an Azure Databricks workspace is like fitting locks on a secure building with exactly
+    <strong>three doors</strong>. Name the lock on each door and you have drawn the whole architecture.</p>
+
+  <div class="cards">
+    <div class="card"><h3>Door &#9312; User -&gt; Workspace</h3><p>The front door. Front-end Private Link or IP access lists.</p></div>
+    <div class="card"><h3>Door &#9313; Compute -&gt; Control Plane</h3><p>The staff intercom, outbound-only. SCC, then back-end Private Link.</p></div>
+    <div class="card"><h3>Door &#9314; Compute -&gt; Storage</h3><p>The loading dock. Storage firewall + Service or Private Endpoints.</p></div>
+    <div class="card orange"><h3>Blueprint</h3><p>One lock per door, plus identity, governance, encryption.</p></div>
+    <div class="card orange"><h3>Checklist</h3><p>Per door: the free floor control + the paid mandated upgrade.</p></div>
+    <div class="card green"><h3>Interview answer</h3><p>Trace the packet, name the control, state the trade-off, know what breaks.</p></div>
+  </div>
+
+  <figure>
+    <img src="architecture.svg" alt="Synthesis reference architecture for Azure Databricks networking and security">
+    <figcaption class="caption">Use this map as a story: pick a floor plan, lock the three doors with the cheapest control that meets the mandate, then walk the packet.</figcaption>
+  </figure>
+
+  <div class="callout tip">
+    <h4>Interactive diagrams live in each tab</h4>
+    <p>Each tab below has its own clickable whiteboard: <strong>Three doors</strong> &rarr; <em>Reference Architectures</em>, <strong>Full-DEP packet walk</strong> &rarr; <em>Walk the Packet</em>, <strong>Serverless via NCC</strong> &rarr; <em>Serverless / NCC</em>. Open a tab, then click a box to see what it does in plain English.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>What matters for Databricks</h4>
+    <p>You never invent a new map. Every network question reduces to the same three doors. Pick the closest of four reference architectures, harden each door with the cheapest lock that meets the compliance language, and be ready to walk the packet.</p>
+  </div>
+</section>
+
+<section class="panel" id="arch">
+  <h2>The Four Reference Architectures</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>A <strong>reference architecture</strong> is a pre-drawn floor plan for a building - you don't sketch a new one for every customer, you grab the closest of four and tweak it. The <strong>baseline</strong> is "good locks on every door"; the <strong>hardened</strong> version adds a guard who inspects everyone leaving.</p>
+  </div>
+  <p>A <strong>reference architecture</strong> is a known-good blueprint. You don't design from scratch per customer - you pick the closest of four floor plans and adapt it.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see the only three doors that matter, and the lock on each.</p>
+  <div class="diagram-block" data-view="doors"></div>
+
+  <table>
+    <thead><tr><th>Blueprint</th><th>Floor-plan analogy</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Standard (recommended)</strong></td><td>Corporate HQ, guarded lobby</td><td>VNet injection + SCC + back-end Private Link; hub-and-spoke with a separate <strong>transit VNet</strong> for front-end / <code>browser_authentication</code>.</td></tr>
+      <tr><td><strong>Simplified</strong></td><td>Smaller building, fewer rooms</td><td>Same three controls, fewer VNets/subnets; front-end and back-end share <code>databricks_ui_api</code>; PEs can be shared.</td></tr>
+      <tr><td><strong>Full DEP / regulated</strong></td><td>Mantrap + guard inspecting exits</td><td>Standard <strong>plus</strong> Azure Firewall hub, storage firewall, Public Network Access Disabled, CMK, Compliance Security Profile.</td></tr>
+      <tr><td><strong>IP-exhaustion layout</strong></td><td>Enough parking before move-in</td><td>Size subnets for <strong>peak</strong>; CIDR is immutable after deploy, so the only failure mode is <em>too small</em>.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>The sizing rule worth memorizing</h4>
+    <p><strong>2 IPs per node</strong> (host + container), Azure <strong>reserves 5 IPs</strong> per subnet, so max nodes is roughly <code>2^(32-n) - 5</code> for a <code>/n</code> subnet. VNet <code>/16</code>-<code>/24</code>; subnets <code>/26</code> minimum. Leave headroom for the <code>/27</code> back-end PE subnet and <code>/28</code> storage-PE subnet.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Subnet size</th><th>Usable (after 5 reserved)</th><th>&#8776; Max cluster nodes</th></tr></thead>
+    <tbody>
+      <tr><td><code>/26</code></td><td>59</td><td>~59</td></tr>
+      <tr><td><code>/24</code></td><td>251</td><td>~251</td></tr>
+      <tr><td><code>/22</code></td><td>1,019</td><td>~1,019</td></tr>
+      <tr><td><code>/21</code></td><td>2,043</td><td>~2,043</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"We don't custom-build a design for every customer. We pick the closest of four proven references - Standard, Simplified, full-DEP, or the IP-sizing layout - and adapt it. That keeps the design reviewable and the security review predictable."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>Quote <strong>Simplified for a bank</strong> and you fail the audit. Quote <strong>full-DEP for a sandbox</strong> and you burn budget on a firewall nobody needs. <strong>Size for today, not peak</strong> and clusters fail to start - CIDR cannot be changed in place (rescue is a Public Preview migration, not Terraform).</p>
+  </div>
+</section>
+
+<section class="panel" id="packet">
+  <h2>Walk the Packet (the interview centerpiece)</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p><strong>Walking the packet</strong> means following one request like a parcel through a building - from the moment a user clicks, hop by hop, all the way to the byte of data and back. At each hop you point at the lock on that door and say what would go wrong if it weren't there.</p>
+  </div>
+  <p>The single most asked senior question: <em>"Walk me through how a query reaches our private storage without touching the internet."</em> They want a hop-by-hop trace, not a feature list. Trace the packet, name the control, say what breaks without it.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each hop to see the control and what breaks without it.</p>
+  <div class="diagram-block" data-view="dep"></div>
+
+  <table>
+    <thead><tr><th>Hop</th><th>Control</th><th>What breaks without it</th></tr></thead>
+    <tbody>
+      <tr><td>1. User -&gt; workspace URL</td><td>Front-end PL; IP access list or public access Disabled</td><td>URL resolves to a public IP - anyone reaches login</td></tr>
+      <tr><td>2. SSO callback</td><td><code>browser_authentication</code> PE (one per region/DNS zone)</td><td>SSO has no route - login fails region-wide</td></tr>
+      <tr><td>3. CP schedules cluster</td><td>SCC/NPIP; VNet injection</td><td>VMs get public IPs + open inbound ports</td></tr>
+      <tr><td>4. Cluster -&gt; control plane</td><td>Back-end PL; SCC reversed call; <code>NoAzureDatabricksRules</code></td><td>Outbound rides the public internet to the relay</td></tr>
+      <tr><td>5. Cluster -&gt; ADLS</td><td>Storage firewall; SE/PE; UC external location + access connector</td><td>Data path on public internet; storage open</td></tr>
+      <tr><td>6. Any other egress</td><td>UDR <code>0.0.0.0/0</code> -&gt; Azure Firewall application rules</td><td>A compromised notebook can exfiltrate anywhere</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Say this out loud</h4>
+    <p>"The user hits a private endpoint resolved by a private DNS zone, SSO returns through the web-auth endpoint, SCC gives the cluster no public IP and dials the control plane outbound over back-end Private Link, the cluster reaches Unity-Catalog-governed ADLS through a storage private endpoint, and any other egress is forced through an Azure Firewall that only allows Databricks' own FQDNs."</p>
+  </div>
+
+  <div class="callout tip">
+    <h4>Why this works</h4>
+    <p>The "what breaks" column is the whole point. Each missing control opens one specific hole. If you can name the hole, you understand the control.</p>
+  </div>
+</section>
+
+<section class="panel" id="checklist">
+  <h2>The Best-Practices Checklist</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>This is simply the <strong>do-this list</strong> for a brand-new workspace - the things you tick off on day one so nothing obvious is left open. Like a pilot's pre-flight checklist, each item is small, but skipping one can sink the whole flight.</p>
+  </div>
+  <p>The short list of settings a secure workspace should have on day one. Picture a pilot's <strong>pre-flight checklist</strong>: each item is small, but skip one and the whole flight is at risk.</p>
+
+  <p>The mental trick: <strong>MUST</strong> items are the airframe (fly without one and you crash). <strong>When-mandated</strong> items are bolt-ons you add only when the regulatory profile pays for the cost.</p>
+
+  <table>
+    <thead><tr><th>Door / theme</th><th>Floor control (free, always on)</th><th>Mandated upgrade (costs money)</th></tr></thead>
+    <tbody>
+      <tr><td>&#9312; User -&gt; workspace</td><td>IP access lists</td><td>Front-end PL + public access Disabled</td></tr>
+      <tr><td>&#9313; Compute -&gt; control plane</td><td>SCC + VNet injection</td><td>Back-end Private Link</td></tr>
+      <tr><td>&#9314; Compute -&gt; storage</td><td>Storage firewall + <strong>Service Endpoints</strong></td><td><strong>Private Endpoints</strong> (per-GB)</td></tr>
+      <tr><td>Egress</td><td>NAT Gateway (stable egress IP)</td><td>UDR <code>0.0.0.0/0</code> -&gt; Azure Firewall (DEP)</td></tr>
+      <tr><td>Encryption</td><td>TLS 1.2+ in transit</td><td>CMK (Key Vault)</td></tr>
+      <tr><td>Plan</td><td>Premium (the security floor)</td><td>CSP / ESM (regulated profiles)</td></tr>
+      <tr><td>Identity</td><td>SSO + SCIM + MFA + separate admins</td><td>-</td></tr>
+      <tr><td>Data</td><td>Unity Catalog for all governed data</td><td>-</td></tr>
+      <tr><td>Audit / IaC</td><td><code>system.access.audit</code> + Terraform</td><td>-</td></tr>
+      <tr><td>Serverless</td><td>Bind an NCC + egress policy (default-deny)</td><td>NCC private endpoints</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"When you ask 'is this workspace secure?', I walk the three doors. At each door I name the free floor control and the paid upgrade. We start with the free, backbone-private controls and only step up to Private Link or a firewall where your regulation actually requires no public-IP hop."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Boring-but-fatal omissions</h4>
+    <p>Public access left Enabled on a "fully private" design. IP access lists created but <code>enableIpAccessLists</code> never turned on. Storage firewall on without the SE/PE allow rule (locks the cluster out of its own data). Legacy "No Isolation Shared" access mode (users can read keys from driver logs).</p>
+  </div>
+</section>
+
+<section class="panel" id="sccpl">
+  <h2>SCC vs Private Link - Don't Conflate Them</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Think of your cluster as a worker in a building. <strong>SCC (No Public IP)</strong> hides the worker - no street address, no door anyone can knock on; the worker only ever calls out. <strong>Private Link</strong> goes one step further and hides the <em>phone line itself</em>, so the number they dial never travels over the public road. Two different problems - a fully private answer uses both.</p>
+  </div>
+  <p>The most common interview trap. They are different layers.</p>
+
+  <table>
+    <thead><tr><th>Layer</th><th>Question it answers</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><strong>SCC / NPIP</strong></td><td>Any public IP or inbound?</td><td>Cluster VMs get no public IP, no open inbound ports; the cluster dials <strong>out</strong> to the SCC relay on 443 and commands return down that reverse tunnel.</td></tr>
+      <tr><td><strong>Back-end Private Link</strong></td><td>Any public hop?</td><td>Removes the last public hop. Under plain SCC the CP&#8596;DP traffic still rides public IPs on the Microsoft backbone (TLS, but not private-IP). Back-end PL makes it private IP end to end.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>The one-liner</h4>
+    <p>SCC = "no public IP / no inbound." Private Link = "no public hop." Say both. SCC alone does <strong>not</strong> protect Door &#9312; (user) or Door &#9314; (storage), and it does not make CP&#8596;DP traffic private-IP - it just reverses the call direction.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"SCC means your cluster VMs have no public address and accept no inbound connections - they call out to us. Private Link is the next step: it takes that outbound call off the public backbone and onto a private IP path. They solve different problems, so for a fully-private answer you want both."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>Saying "SCC privatizes CP&#8596;DP" - it's still public IP on the backbone until back-end PL is on. Forgetting SCC does nothing for the user door or the storage door.</p>
+  </div>
+</section>
+
+<section class="panel" id="ncc">
+  <h2>Serverless Reaches Private ADLS via NCC</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Serverless compute is like temp workers Databricks sends from its own building - they show up at random addresses each day, so you can't put a fixed address on your guest list. An <strong>NCC</strong> is the one official, reserved entrance you set up for them, so they can reach your private data without you ever chasing changing addresses.</p>
+  </div>
+  <p>Serverless compute runs in <strong>Databricks' own account</strong> with <strong>dynamic IPs</strong>. You can't peer it or allowlist a static IP. The bridge is an <strong>NCC (Network Connectivity Configuration)</strong> - an account-level, regional object you create and attach to workspaces.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click the boxes to see how serverless reaches private storage without a static IP.</p>
+  <div class="diagram-block" data-view="serverless"></div>
+
+  <h3>How private ADLS works</h3>
+  <ul>
+    <li>Add a <strong>private endpoint rule</strong> on the NCC: sub-resource <code>dfs</code> for ADLS Gen2 data, <code>blob</code> for blob / Model Serving artifacts (you may need both).</li>
+    <li>Databricks raises the PE request; <strong>you approve it on the storage account</strong>; status goes PENDING -&gt; ESTABLISHED.</li>
+    <li>If you only need firewall allowlisting, the NCC exposes stable <strong>service-endpoint subnet IDs</strong>.</li>
+    <li>Quotas: <strong>10 NCCs/region, 100 PEs/region, 50 workspaces/NCC</strong>.</li>
+  </ul>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"Serverless has no static IP to allowlist, so the answer is never 'whitelist the IPs.' You create one NCC for the region, attach it to the workspace, add a private endpoint rule pointing at your storage, then approve that endpoint on your storage account. After that, serverless reaches your private data over a private path."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>What breaks</h4>
+    <p>"Just whitelist the serverless IPs" - they're dynamic; it's NCC. Serverless query hangs/denied -&gt; the NCC private endpoint rule is still PENDING (never Approved on the storage account), or the wrong <code>dfs</code> vs <code>blob</code> group ID.</p>
+  </div>
+</section>
+
+<section class="panel" id="dep">
+  <h2>Preventing Data Exfiltration (DEP)</h2>
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p><strong>Data exfiltration protection</strong> means forcing everything leaving the building out through <em>one inspected door</em> with a short guest list (an allowlist). So even if a notebook is hijacked, it can only "phone home" to the handful of approved destinations - it has no road to an attacker.</p>
+  </div>
+  <ul>
+    <li><strong>Egress</strong> = traffic leaving your network (the outbound direction).</li>
+    <li><strong>Allowlist</strong> = a "only these are permitted" list; everything else is blocked by default.</li>
+    <li><strong>FQDN</strong> = a full website name like <code>*.azuredatabricks.net</code> - you allow names, not IP addresses, because the IPs behind them keep changing.</li>
+  </ul>
+  <p>Defense in depth on the <strong>egress</strong> path: SCC + VNet injection + Private Link + an <strong>Azure Firewall hub</strong>. A <strong>UDR sends <code>0.0.0.0/0</code> to the firewall</strong>, whose <strong>FQDN allowlist</strong> permits only Databricks control-plane, metastore, artifact, log, and telemetry destinations plus sanctioned data sources. A compromised notebook has <strong>no route</strong> to an attacker.</p>
+
+  <div class="callout key">
+    <h4>Allowlist FQDNs, not IPs</h4>
+    <p>The IPs behind the Databricks names rotate across availability zones, so pin the names. And <strong>don't route the SCC relay / back-end-PL traffic through the firewall</strong> - once back-end PL is on, that traffic is already private on the backbone; an extra firewall hop adds latency and cost for no gain.</p>
+  </div>
+
+  <table>
+    <thead><tr><th>Purpose</th><th>Reach it via</th></tr></thead>
+    <tbody>
+      <tr><td>Control plane web app + REST + SCC relay</td><td><code>*.azuredatabricks.net</code> on 443 (firewall application rule)</td></tr>
+      <tr><td>Compute-plane (data-plane) traffic</td><td><code>adb-dp-&lt;id&gt;.&lt;n&gt;.azuredatabricks.net</code> on 443</td></tr>
+      <tr><td>Metastore / EventHub telemetry</td><td><code>AzureDatabricks</code> / <code>EventHub</code> service tags in NSG egress, not application rules</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer explanation</h4>
+    <p>"We force all cluster egress through an Azure Firewall that only allows Databricks' own FQDNs plus your sanctioned data sources. A compromised notebook simply has no route out. We pair that with a serverless egress policy on a default-deny basis."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Senior gotcha</h4>
+    <p>If you put an NSG <strong>network-policy</strong> on the private-endpoint subnet, it must allow <strong>inbound 443, 6666, 3306, 8443-8451</strong> or control traffic breaks. This PE-subnet inbound list is distinct from the auto-managed workspace-subnet NSG rules.</p>
+  </div>
+</section>
+
+<section class="panel" id="field">
+  <h2>Field Notes: Symptom to First Thought</h2>
+  <p>Don't start by memorizing FQDNs or quotas. Start by asking which door, and what breaks at which hop.</p>
+
+  <table>
+    <thead><tr><th>Symptom</th><th>First Thing To Think</th></tr></thead>
+    <tbody>
+      <tr><td>SSO down for every workspace in a region</td><td>Was the shared <code>browser_authentication</code> host workspace deleted? Does <code>*.pl-auth...</code> resolve to the PE IP?</td></tr>
+      <tr><td>"Private" workspace URL resolves to a public IP</td><td>Does custom DNS conditional-forward <code>*.privatelink.azuredatabricks.net</code> to Azure DNS?</td></tr>
+      <tr><td>"Cluster failed to start: insufficient IP addresses"</td><td>Container subnet at the <code>2^(32-n) - 5</code> ceiling? CIDR is immutable - confirm before promising a fix.</td></tr>
+      <tr><td>Cluster can't read its own ADLS after firewall on</td><td>Is the subnet (SE) or PE in the storage allow rules with <code>default_action = Deny</code>?</td></tr>
+      <tr><td>Serverless query to private storage hangs/denied</td><td>Is the NCC private endpoint rule still PENDING (not Approved)? Right <code>dfs</code> vs <code>blob</code>?</td></tr>
+      <tr><td>Library install fails after adding the firewall</td><td>Are the Databricks FQDNs allowlisted? Is SCC/back-end-PL wrongly routed through the firewall?</td></tr>
+      <tr><td>Partner sees our egress IP "change"</td><td>Is a NAT Gateway attached for a stable egress IP? Pin one, give the SOC that.</td></tr>
+      <tr><td>IP access list "isn't blocking anything"</td><td>Is <code>enableIpAccessLists</code> actually <code>true</code>? Private-endpoint traffic is never IP-filtered.</td></tr>
+      <tr><td>New workspace has no outbound internet (post 2026-03-31)</td><td>New Azure VNets default to no outbound - needs an explicit NAT Gateway or firewall/UDR.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The architect one-liner</div>
+    <div class="quote">"We pick the closest of four references - Standard, Simplified, full-DEP, or the IP-sizing layout - and adapt it. Every network question reduces to three paths: user-&gt;workspace, compute-&gt;control, compute-&gt;data. So I trace the packet on each, name the control, state the security-vs-cost-vs-complexity trade-off, default to the cheapest control that meets your compliance language, and only escalate to Private Link or a firewall where the regulation actually requires it."</div>
+  </div>
+
+  <h3>The seven questions</h3>
+  <ol>
+    <li>Which of the four reference architectures is closest to this customer?</li>
+    <li>What is the lock on each of the three doors - user, control plane, storage?</li>
+    <li>For each door, what is the free floor control and the paid mandated upgrade?</li>
+    <li>Can I walk the packet and name what breaks at each hop?</li>
+    <li>Is this the cheapest control that still meets the compliance language?</li>
+    <li>Did I size the subnets for peak (CIDR is immutable)?</li>
+    <li>Is anything I'm quoting still Public Preview rather than GA?</li>
+  </ol>
+</section>
+
+<footer>
+  Companion files: <code>lesson1.md</code> and <code>index1.html</code>. The detailed originals remain in <code>lesson.md</code> and <code>index.html</code>; the static topology is <code>architecture.svg</code>.
+</footer>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(item => item.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+const ARCH = {
+  doors: {
+    tip: '<strong>Three doors</strong>Click each box to see the only three paths that matter, and the lock on each.',
+    nodes: [
+      {id:'user',x:30,y:150,w:150,h:64,color:'#2272B4',label:'User / BI / REST',sub:'Door &#9312;',
+        info:'<strong>Door &#9312; User -&gt; Workspace</strong>The front door. Lock it with front-end Private Link (no public ingress) or IP access lists (corporate egress only). SCC does NOT protect this door.'},
+      {id:'cp',x:382,y:46,w:200,h:74,color:'#FF3621',label:'Control Plane',sub:'web app, SCC relay, UC',
+        info:'<strong>Databricks Control Plane</strong>The Databricks-managed side: web app, REST API, SCC relay, Unity Catalog. Users reach it through Door &#9312;; compute reaches it through Door &#9313;.'},
+      {id:'ws',x:352,y:170,w:262,h:160,color:'#2272B4',label:'Workspace VNet',sub:'VNet injection + SCC',
+        info:'<strong>Workspace VNet (spoke)</strong>Your own VNet (VNet injection). Holds the host + container subnets (both private under SCC), the back-end PE subnet, and storage PE subnet. Because compute lives here, your NSGs/UDRs/DNS matter.'},
+      {id:'host',x:372,y:232,w:108,h:54,color:'#6B7280',label:'Host subnet',sub:'host NIC/IP',
+        info:'<strong>Host subnet</strong>One of the two delegated Databricks subnets. A node consumes one host IP here. Size for peak: 2 IPs/node, 5 reserved/subnet.'},
+      {id:'cont',x:490,y:232,w:108,h:54,color:'#2272B4',label:'Container subnet',sub:'clusters, no public IP',
+        info:'<strong>Container subnet</strong>Where cluster VMs run with NO public IP (SCC). A node also consumes one container IP. CIDR is immutable after deploy - size for peak.'},
+      {id:'storage',x:712,y:150,w:178,h:64,color:'#00A972',label:'ADLS Gen2',sub:'Door &#9314;',
+        info:'<strong>Door &#9314; Compute -&gt; Storage</strong>The loading dock to your data. Lock it with a storage firewall (deny public) plus a Service Endpoint (free) or Private Endpoint (paid). Governed by Unity Catalog external locations + access connector - never workspace-storage root.'}
+    ],
+    arrows: [
+      {from:'user',to:'cp',cls:'blue',label:'&#9312; front-end PL / IP ACL',via:[{x:300,y:110}],labelX:300,labelY:96},
+      {from:'cont',to:'cp',cls:'hot',label:'&#9313; SCC + back-end PL',via:[{x:544,y:150}],labelX:560,labelY:138},
+      {from:'cont',to:'storage',cls:'cold',label:'&#9314; SE / PE',via:[{x:660,y:259},{x:660,y:182}],labelX:680,labelY:200}
+    ]
+  },
+  dep: {
+    tip: '<strong>Full-DEP packet walk</strong>Click each hop to see the control and what breaks without it.',
+    nodes: [
+      {id:'user',x:28,y:150,w:140,h:64,color:'#2272B4',label:'User / BI',sub:'hop 1-2',
+        info:'<strong>Hops 1-2: User -&gt; workspace + SSO</strong>The URL resolves via the private DNS zone to the front-end PE; the Entra ID SSO callback returns via the browser_authentication PE (one per region/DNS zone). Without it: URL goes public, or SSO fails region-wide.'},
+      {id:'fepe',x:228,y:46,w:158,h:64,color:'#FF3621',label:'Front-end PE',sub:'+ web-auth PE',
+        info:'<strong>Front-end + web-auth PE (transit VNet)</strong>The private endpoints in the hub that make Door &#9312; private. The browser_authentication PE is a single point of failure for SSO - isolate it in a delete-locked web-auth workspace.'},
+      {id:'cluster',x:228,y:240,w:158,h:64,color:'#2272B4',label:'Cluster (no public IP)',sub:'hop 3',
+        info:'<strong>Hop 3: CP schedules cluster</strong>VMs are placed in the container subnet with NO public IP (SCC/NPIP). Without it: VMs get public IPs and open inbound ports - attack surface.'},
+      {id:'cp',x:452,y:46,w:170,h:64,color:'#FF3621',label:'Control Plane',sub:'hop 4',
+        info:'<strong>Hop 4: Cluster -&gt; control plane</strong>The cluster dials outbound to the SCC relay over the back-end databricks_ui_api PE - backbone, not internet. NSG = NoAzureDatabricksRules. Without back-end PL: outbound rides the public internet to the relay.'},
+      {id:'fw',x:452,y:240,w:170,h:64,color:'#FF3621',label:'Azure Firewall',sub:'hop 6: allowed + logged?',
+        info:'<strong>Hop 6: Any other egress</strong>A UDR sends 0.0.0.0/0 to the firewall; application rules allowlist only Databricks FQDNs (never IPs - they rotate). Do NOT route the SCC/back-end-PL traffic through it. Without it: a compromised notebook can exfiltrate anywhere.'},
+      {id:'adls',x:700,y:150,w:190,h:64,color:'#00A972',label:'ADLS Gen2',sub:'hop 5 (firewall on)',
+        info:'<strong>Hop 5: Cluster -&gt; ADLS</strong>UC resolves the external location; the cluster reaches *.dfs.core.windows.net via a Service Endpoint or dfs/blob Private Endpoint; the storage firewall denies all else. Without it: data path on public internet, storage open to other networks.'}
+    ],
+    arrows: [
+      {from:'user',to:'fepe',cls:'blue',label:'1-2 front-end + SSO',via:[{x:198,y:78}],labelX:210,labelY:64},
+      {from:'fepe',to:'cp',cls:'',label:'to CP',labelX:420,labelY:66},
+      {from:'cluster',to:'cp',cls:'hot',label:'4 back-end PL',via:[{x:412,y:272},{x:412,y:78}],labelX:412,labelY:170},
+      {from:'cluster',to:'adls',cls:'cold',label:'5 SE / PE',via:[{x:660,y:272},{x:660,y:182}],labelX:672,labelY:210},
+      {from:'cluster',to:'fw',cls:'muted',label:'6 UDR 0.0.0.0/0',labelX:430,labelY:300}
+    ]
+  },
+  serverless: {
+    tip: '<strong>Serverless via NCC</strong>Click the boxes to see how serverless reaches private storage without a static IP.',
+    nodes: [
+      {id:'sls',x:30,y:150,w:168,h:66,color:'#2272B4',label:'Serverless plane',sub:'Databricks account, dynamic IPs',
+        info:'<strong>Serverless compute</strong>Runs in the Databricks account with dynamic IPs - you cannot peer it or allowlist a static IP. The answer is never "whitelist the serverless IPs." It is NCC.'},
+      {id:'ncc',x:262,y:144,w:176,h:78,color:'#FF3621',label:'NCC',sub:'account-level, regional',
+        info:'<strong>NCC (Network Connectivity Configuration)</strong>An account-level, regional object you create in the Account Console and attach to workspaces. It is the bridge into your network. Quotas: 10 NCCs/region, 100 PEs/region, 50 workspaces/NCC.'},
+      {id:'rule',x:500,y:46,w:182,h:64,color:'#FF3621',label:'PE rule (dfs / blob)',sub:'PENDING -&gt; ESTABLISHED',
+        info:'<strong>NCC private endpoint rule</strong>Add a rule with sub-resource dfs (ADLS Gen2 data) or blob (Model Serving artifacts) - you may need both. Databricks raises the request; you APPROVE it on the storage account; status goes PENDING -&gt; ESTABLISHED.'},
+      {id:'se',x:500,y:256,w:182,h:64,color:'#00A972',label:'SE subnet IDs',sub:'firewall allowlist only',
+        info:'<strong>Service-endpoint subnet IDs</strong>If you only need firewall allowlisting (not full private IP), the NCC exposes stable subnet IDs you add to the storage firewall - the free path.'},
+      {id:'adls',x:730,y:150,w:160,h:66,color:'#00A972',label:'Private ADLS',sub:'storage firewall on',
+        info:'<strong>Private ADLS Gen2</strong>The target with a storage firewall denying public. Serverless reaches it over the NCC PE (private IP) or via the allowlisted SE subnet IDs. If storage is PE-only, classic compute must also use PEs.'}
+    ],
+    arrows: [
+      {from:'sls',to:'ncc',cls:'blue',label:'attach',labelX:235,labelY:170},
+      {from:'ncc',to:'rule',cls:'hot',label:'private path',via:[{x:470,y:78}],labelX:470,labelY:64},
+      {from:'ncc',to:'se',cls:'cold',label:'firewall path',via:[{x:470,y:288}],labelX:470,labelY:308},
+      {from:'rule',to:'adls',cls:'hot',label:'dfs/blob PE',via:[{x:760,y:78},{x:810,y:140}],labelX:740,labelY:96},
+      {from:'se',to:'adls',cls:'cold',label:'allowlisted',via:[{x:760,y:288},{x:810,y:226}],labelX:744,labelY:300}
+    ]
+  }
+};
+
+const FLOWS = {
+  doors: '<h4>Real Databricks flow: a BI query through the three doors</h4>'
+    + '<ol>'
+    + '<li><strong>Door &#9312; (User &#8594; Workspace):</strong> An analyst in Power BI opens the workspace URL. The request hits the workspace through front-end Private Link (or is screened by an IP access list) and lands on the Databricks <em>Control Plane</em> web app - no anonymous public ingress.</li>'
+    + '<li><strong>Control Plane schedules work:</strong> The Control Plane authenticates the user and decides a cluster in your <em>Workspace VNet</em> must run the query.</li>'
+    + '<li><strong>Inside the Workspace VNet:</strong> VNet injection means the cluster node burns one IP in the <em>Host subnet</em> and one in the <em>Container subnet</em>; under SCC the container VM gets <strong>no public IP</strong>.</li>'
+    + '<li><strong>Door &#9313; (Compute &#8594; Control Plane):</strong> The cluster dials <em>outbound</em> to the SCC relay, and with back-end Private Link that call stays on private IPs - the &#9313; arrow on the diagram.</li>'
+    + '<li><strong>Door &#9314; (Compute &#8594; Storage):</strong> The cluster reads <em>ADLS Gen2</em> over a Service Endpoint or Private Endpoint (the &#9314; arrow), with the storage firewall denying everything else and Unity Catalog governing the external location.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Every box on this view belongs to exactly one of three doors - lock each door with the cheapest control that meets the mandate and you have drawn the whole design.</p>',
+  dep: '<h4>Real Databricks flow: walk the packet through the full-DEP design</h4>'
+    + '<ol>'
+    + '<li><strong>Hops 1-2 (User / BI &#8594; Front-end PE):</strong> The user opens the workspace URL; the private DNS zone resolves it to the <em>front-end PE</em>, and the Entra ID SSO callback returns through the <em>web-auth PE</em> in the transit VNet. Without these the URL goes public or SSO fails region-wide.</li>'
+    + '<li><strong>Hop 3 (Control Plane &#8594; Cluster):</strong> The Control Plane schedules a <em>Cluster (no public IP)</em> in the container subnet via SCC/NPIP - no public address, no open inbound ports.</li>'
+    + '<li><strong>Hop 4 (Cluster &#8594; Control Plane):</strong> The cluster dials outbound to the SCC relay over the back-end <code>databricks_ui_api</code> PE (the hot &#8220;4 back-end PL&#8221; arrow) - backbone, not internet.</li>'
+    + '<li><strong>Hop 5 (Cluster &#8594; ADLS Gen2):</strong> Unity Catalog resolves the external location and the cluster reaches <code>*.dfs.core.windows.net</code> over a Service/Private Endpoint (the cold &#8220;5 SE / PE&#8221; arrow); the storage firewall denies all else.</li>'
+    + '<li><strong>Hop 6 (Any other egress &#8594; Azure Firewall):</strong> A UDR forces <code>0.0.0.0/0</code> to the <em>Azure Firewall</em> (the muted &#8220;6 UDR&#8221; arrow), which allowlists only Databricks FQDNs - a compromised notebook has no route out. The SCC and back-end-PL traffic is deliberately <em>not</em> routed through the firewall.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Hops 1-6 map one-to-one to the &#8220;walk the packet&#8221; table - name the control at each hop and what breaks without it, and you have answered the senior interview question.</p>',
+  serverless: '<h4>Real Databricks flow: serverless reaches private ADLS via NCC</h4>'
+    + '<ol>'
+    + '<li><strong>Serverless plane (dynamic IPs):</strong> A serverless SQL warehouse runs in the <em>Databricks account</em> with IPs you cannot peer or allowlist - so the answer is never &#8220;whitelist the serverless IPs.&#8221;</li>'
+    + '<li><strong>Attach an NCC:</strong> You create one <em>NCC</em> (account-level, regional) in the Account Console and attach it to the workspace (the &#8220;attach&#8221; arrow) - it is the bridge into your network.</li>'
+    + '<li><strong>Private path - add a PE rule:</strong> On the NCC you add a <em>private endpoint rule</em> with sub-resource <code>dfs</code> (ADLS Gen2 data) or <code>blob</code> (artifacts). Databricks raises the request; <strong>you approve it on the storage account</strong> and status goes PENDING &#8594; ESTABLISHED.</li>'
+    + '<li><strong>Or the firewall path:</strong> If you only need allowlisting, the NCC exposes stable <em>SE subnet IDs</em> (the cold &#8220;firewall path&#8221; arrow) that you add to the storage firewall - the free option.</li>'
+    + '<li><strong>Reach Private ADLS:</strong> Serverless then reaches <em>Private ADLS</em> over the NCC private endpoint (<code>dfs/blob</code> PE) or via the allowlisted subnet IDs, with the storage firewall denying public.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> No static IP exists for serverless - one NCC per region, a PE rule you approve on the storage account (or stable SE subnet IDs), and the private path is live. A hung query usually means the PE rule is still PENDING or the wrong <code>dfs</code>/<code>blob</code> group ID.</p>'
+};
+
+function svgEl(name, attrs){
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const key in attrs) element.setAttribute(key, attrs[key]);
+  return element;
+}
+
+function edgePoint(rect, tx, ty){
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  const scale = 1 / Math.max(Math.abs(dx) / (rect.w / 2), Math.abs(dy) / (rect.h / 2));
+  return {x: cx + dx * scale, y: cy + dy * scale};
+}
+
+function markerDefs(suffix){
+  return ''
+    + '<marker id="ar-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>'
+    + '<marker id="arb-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#2272B4"/></marker>'
+    + '<marker id="aro-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>'
+    + '<marker id="arg-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>';
+}
+
+function buildDiagram(mount){
+  const viewKey = mount.getAttribute('data-view');
+  const view = ARCH[viewKey];
+  if (!view) return;
+  mount.innerHTML =
+    '<div class="diagram-canvas"><svg viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + markerDefs(viewKey)
+    + '</defs><g class="dg-content"></g></svg></div>'
+    + '<div class="info-box diag-info"><strong>Tip</strong>Click a box for a plain-English explanation of what it does.</div>'
+    + '<div class="flow-box diag-flow"></div>';
+  const svg = mount.querySelector('svg');
+  const group = svg.querySelector('.dg-content');
+  const info = mount.querySelector('.diag-info');
+  const flow = mount.querySelector('.diag-flow');
+  const byId = {};
+  view.nodes.forEach(node => { byId[node.id] = node; });
+
+  view.arrows.forEach(arrow => {
+    const from = byId[arrow.from];
+    const to = byId[arrow.to];
+    const route = arrow.via || [];
+    const firstTarget = route[0] || {x: to.x + to.w / 2, y: to.y + to.h / 2};
+    const lastSource = route[route.length - 1] || {x: from.x + from.w / 2, y: from.y + from.h / 2};
+    const start = edgePoint(from, firstTarget.x, firstTarget.y);
+    const end = edgePoint(to, lastSource.x, lastSource.y);
+    const points = [start, ...route, end];
+    const line = svgEl('polyline', {
+      points: points.map(point => point.x + ',' + point.y).join(' '),
+      class:'arrow ' + (arrow.cls || '')
+    });
+    const marker = arrow.cls === 'hot' ? 'aro-'+viewKey : arrow.cls === 'cold' ? 'arg-'+viewKey : arrow.cls === 'blue' ? 'arb-'+viewKey : arrow.cls === 'muted' ? null : 'ar-'+viewKey;
+    if (marker) line.setAttribute('marker-end', 'url(#' + marker + ')');
+    group.appendChild(line);
+    if (arrow.label) {
+      const labelX = arrow.labelX || (start.x + end.x) / 2;
+      const labelY = arrow.labelY || ((start.y + end.y) / 2 - 6);
+      const bgWidth = Math.max(54, arrow.label.length * 6.2 + 14);
+      const bg = svgEl('rect', {
+        x: labelX - bgWidth / 2,
+        y: labelY - 13,
+        width: bgWidth,
+        height: 18,
+        rx: 5,
+        fill: '#FFFFFF',
+        stroke: '#E5E7EB'
+      });
+      group.appendChild(bg);
+      const text = svgEl('text', {x:labelX, y:labelY, 'text-anchor':'middle', class:'alabel ' + (arrow.cls || '')});
+      text.textContent = arrow.label;
+      group.appendChild(text);
+    }
+  });
+
+  view.nodes.forEach(node => {
+    const item = svgEl('g', {class:'node'});
+    item.appendChild(svgEl('rect', {x:node.x, y:node.y, width:node.w, height:node.h, rx:8, class:'node-bg', fill:'#fff', stroke:node.color, 'stroke-width':2}));
+    const isContainer = node.w >= 240 && node.h >= 120;
+    const labelY = isContainer ? node.y + 26 : node.y + node.h / 2 - 4;
+    const subY = isContainer ? node.y + 44 : node.y + node.h / 2 + 14;
+    const label = svgEl('text', {x:node.x + node.w / 2, y:labelY, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:node.color});
+    label.textContent = node.label;
+    item.appendChild(label);
+    const sub = svgEl('text', {x:node.x + node.w / 2, y:subY, 'text-anchor':'middle', 'font-size':10.5, fill:'#6B7280'});
+    sub.innerHTML = node.sub;
+    item.appendChild(sub);
+    const show = () => { info.innerHTML = node.info; };
+    item.addEventListener('click', show);
+    item.addEventListener('mouseenter', show);
+    group.appendChild(item);
+  });
+
+  info.innerHTML = view.tip;
+  if (typeof FLOWS !== 'undefined' && FLOWS[viewKey]) flow.innerHTML = FLOWS[viewKey];
+}
+
+document.querySelectorAll('.diagram-block').forEach(buildDiagram);
+</script>
+</body>
+</html>

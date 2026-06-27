@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dynamic Data Masking (Column-Level Security) — Databricks Unity Catalog</title>
+<style>
+  :root{
+    --bg:#0e1117; --panel:#161b22; --panel2:#1c2330; --ink:#e6edf3; --muted:#9aa7b4;
+    --line:#2a3340; --accent:#ff5f46; --accent2:#00b4d8; --green:#3fb950; --red:#f85149;
+    --amber:#d29922; --code:#0b0f14; --chip:#21262d;
+    --mono:'SF Mono',ui-monospace,'Cascadia Code',Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;}
+  .wrap{max-width:980px;margin:0 auto;padding:40px 22px 80px;}
+  header.hero{border:1px solid var(--line);border-radius:16px;padding:30px 28px;
+    background:linear-gradient(135deg,#161b22 0%,#1a2230 60%,#201a1a 100%);}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);}
+  h1{font-size:30px;margin:.35em 0 .25em;line-height:1.2;}
+  .sub{color:var(--muted);font-size:16px;max-width:70ch;}
+  h2{font-size:22px;margin:42px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line);}
+  h3{font-size:17px;margin:26px 0 8px;color:#cdd6e0;}
+  p{color:#d6dee6;}
+  .lead{color:var(--muted);}
+  code.inline{font-family:var(--mono);background:var(--chip);padding:1px 6px;border-radius:5px;font-size:.88em;color:#ffd9d0;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px;margin:18px 0;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+  .mini{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .mini .num{font-family:var(--mono);font-size:12px;color:var(--accent2);}
+  .mini h4{margin:6px 0 6px;font-size:15px;}
+  .mini p{margin:0;font-size:13.5px;color:var(--muted);}
+
+  /* ---------- Interactive simulator ---------- */
+  .sim{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:24px;}
+  .simhead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:14px;}
+  .toggle-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+  .user-chip{display:flex;align-items:center;gap:10px;background:var(--chip);border:1px solid var(--line);
+    padding:8px 14px;border-radius:999px;font-size:14px;}
+  .switch{position:relative;width:54px;height:28px;border-radius:999px;background:#39414d;cursor:pointer;
+    transition:.25s;flex:none;border:1px solid var(--line);}
+  .switch.on{background:var(--green);}
+  .knob{position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:.25s;}
+  .switch.on .knob{left:28px;}
+  .statusline{font-family:var(--mono);font-size:13px;margin-top:6px;}
+  .statusline.member{color:var(--green);}
+  .statusline.nonmember{color:var(--amber);}
+
+  /* flow diagram */
+  .flow{display:flex;align-items:stretch;gap:0;margin:26px 0 8px;flex-wrap:wrap;}
+  .stage{flex:1;min-width:120px;background:var(--panel2);border:1px solid var(--line);border-radius:12px;
+    padding:14px 12px;text-align:center;position:relative;transition:.3s;opacity:.45;}
+  .stage.active{opacity:1;border-color:var(--accent2);box-shadow:0 0 0 2px rgba(0,180,216,.25);transform:translateY(-2px);}
+  .stage .ic{font-size:22px;}
+  .stage .t{font-size:12.5px;font-weight:600;margin-top:6px;}
+  .stage .d{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--mono);}
+  .arrow{align-self:center;color:var(--muted);font-size:20px;padding:0 4px;flex:none;}
+  .branch.allow.active{border-color:var(--green);box-shadow:0 0 0 2px rgba(63,185,80,.3);}
+  .branch.deny.active{border-color:var(--red);box-shadow:0 0 0 2px rgba(248,81,73,.3);}
+
+  /* result table */
+  table.res{width:100%;border-collapse:collapse;margin-top:18px;font-size:14px;}
+  table.res th,table.res td{border:1px solid var(--line);padding:9px 12px;text-align:left;}
+  table.res th{background:var(--panel2);font-weight:600;color:#cdd6e0;font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;}
+  td.masked{font-family:var(--mono);color:var(--amber);}
+  td.clear{font-family:var(--mono);color:var(--green);}
+  .cap{font-size:12px;color:var(--muted);margin-top:8px;font-style:italic;}
+
+  /* code blocks */
+  pre{background:var(--code);border:1px solid var(--line);border-radius:12px;padding:16px;overflow:auto;
+    font-family:var(--mono);font-size:13px;line-height:1.5;}
+  .k{color:#ff7b72;} .f{color:#d2a8ff;} .s{color:#a5d6ff;} .c{color:#8b949e;font-style:italic;} .n{color:#79c0ff;}
+
+  /* comparison table */
+  table.cmp{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;}
+  table.cmp th,table.cmp td{border:1px solid var(--line);padding:11px 13px;text-align:left;vertical-align:top;}
+  table.cmp th{background:var(--panel2);}
+  table.cmp tr td:first-child{font-weight:600;color:#cdd6e0;white-space:nowrap;}
+  .best{color:var(--green);font-weight:600;}
+
+  /* gotchas */
+  .gotcha{display:flex;gap:12px;padding:13px 0;border-bottom:1px solid var(--line);}
+  .gotcha:last-child{border-bottom:none;}
+  .gotcha .b{flex:none;font-size:18px;}
+  .gotcha .gx{font-size:14px;color:#d6dee6;}
+  .gotcha .gx b{color:#fff;}
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px;}
+  footer a{color:var(--accent2);text-decoration:none;}
+  .pill{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:999px;
+    background:var(--chip);border:1px solid var(--line);color:var(--muted);margin-left:8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="kicker">Databricks · Unity Catalog · Fine-Grained Access Control</div>
+    <h1>Dynamic Data Masking <span class="pill">Column-Level Security</span></h1>
+    <p class="sub">Hide sensitive column values from users who aren't authorized — at query time, based on who is asking — without ever copying or altering the underlying data.</p>
+  </header>
+
+  <h2>The core idea</h2>
+  <p>Dynamic data masking hides the <em>values</em> in a sensitive column from people who shouldn't see them, while still letting them query the table. The row stays; only the cell content changes (a real email becomes <code class="inline">***</code>).</p>
+  <p class="lead"><b>"Dynamic"</b> means masking happens at query time, decided by <b>who runs the query</b>. The data on disk is never changed. Two people can run the same <code class="inline">SELECT *</code> and get different results.</p>
+  <p>Think of it as <b>frosted glass</b> over a column: authorized viewers get a clear pane, everyone else sees the blur — but there's only ever one piece of glass (one table).</p>
+
+  <!-- ============ INTERACTIVE SIMULATOR ============ -->
+  <h2>Try it — interactive masking simulator</h2>
+  <div class="sim">
+    <div class="simhead">
+      <div>
+        <div style="font-size:15px;font-weight:600;">Querying <code class="inline">databricks_orange.silver.customers</code></div>
+        <div class="cap" style="margin-top:2px;">Flip the switch to change your group membership and watch the mask react.</div>
+      </div>
+      <div class="toggle-row">
+        <span class="user-chip">👤 you@acme.com</span>
+        <div style="text-align:right;">
+          <div style="font-size:12px;color:var(--muted);">In group <code class="inline">developers</code>?</div>
+          <div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;margin-top:4px;">
+            <span style="font-size:12px;color:var(--muted);">No</span>
+            <div id="sw" class="switch" onclick="toggleMember()"><div class="knob"></div></div>
+            <span style="font-size:12px;color:var(--muted);">Yes</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="statusline nonmember">● is_account_group_member('developers') → false</div>
+
+    <!-- flow -->
+    <div class="flow">
+      <div class="stage active"><div class="ic">📝</div><div class="t">Query</div><div class="d">SELECT email</div></div>
+      <div class="arrow">→</div>
+      <div class="stage active"><div class="ic">🛡️</div><div class="t">Column mask</div><div class="d">dynamic_mask()</div></div>
+      <div class="arrow">→</div>
+      <div class="stage active"><div class="ic">❓</div><div class="t">Group check</div><div class="d">is_account_group_member</div></div>
+      <div class="arrow">→</div>
+      <div id="branchAllow" class="stage branch allow"><div class="ic">✅</div><div class="t">Return real value</div><div class="d">p_email</div></div>
+      <div id="branchDeny" class="stage branch deny active"><div class="ic">🚫</div><div class="t">Return masked</div><div class="d">'***'</div></div>
+    </div>
+
+    <table class="res">
+      <thead><tr><th>name</th><th>email (masked column)</th></tr></thead>
+      <tbody id="resBody"></tbody>
+    </table>
+    <div class="cap" id="resCap">You are <b>not</b> in <code class="inline">developers</code>, so the mask returns <code class="inline">***</code> for every row.</div>
+  </div>
+
+  <h2>The three moving parts</h2>
+  <div class="grid3">
+    <div class="mini"><div class="num">01</div><h4>Groups</h4><p>Created under Settings → Identity and Access. Membership decides who sees real data (e.g. <code class="inline">developers</code>).</p></div>
+    <div class="mini"><div class="num">02</div><h4>Masking function</h4><p>A reusable SQL UDF: "if caller is in the group, return the value; else return a masked value."</p></div>
+    <div class="mini"><div class="num">03</div><h4>Mask attachment</h4><p>Bind the function to one column with <code class="inline">ALTER TABLE … SET MASK</code>.</p></div>
+  </div>
+  <p style="margin-top:16px;">The key building block is the built-in function <code class="inline">is_account_group_member('group')</code>, which returns <code class="inline">true</code>/<code class="inline">false</code> for the current user. <b>Note:</b> it is a built-in SQL function — used the same way inside dynamic views <em>or</em> column masks.</p>
+
+  <h2>The code — step by step</h2>
+
+  <h3>Step 1 · Create the masking function</h3>
+<pre><span class="c">-- Prereqs: Unity Catalog workspace; SQL warehouse OR standard (DBR 12.2 LTS+)</span>
+<span class="c">-- OR dedicated (DBR 15.4 LTS+); a group named 'developers'.</span>
+<span class="k">CREATE OR REPLACE FUNCTION</span> <span class="f">databricks_orange.silver.dynamic_mask</span>(p_email <span class="k">STRING</span>)
+<span class="k">RETURNS</span> <span class="k">STRING</span>
+<span class="k">RETURN</span>
+  <span class="k">CASE</span>
+    <span class="k">WHEN</span> is_account_group_member(<span class="s">'developers'</span>) <span class="k">THEN</span> p_email
+    <span class="k">ELSE</span> <span class="s">'***'</span>
+  <span class="k">END</span>;   <span class="c">-- CASE must be closed with END (easy to forget!)</span></pre>
+
+  <h3>Step 2 · Attach the mask to the column</h3>
+<pre><span class="k">ALTER TABLE</span> <span class="f">databricks_orange.silver.customers</span>
+  <span class="k">ALTER COLUMN</span> email
+  <span class="k">SET MASK</span> <span class="f">databricks_orange.silver.dynamic_mask</span>;</pre>
+
+  <h3>Step 3 · Query as normal — masking is automatic</h3>
+<pre><span class="k">SELECT</span> name, email <span class="k">FROM</span> <span class="f">databricks_orange.silver.customers</span>;
+<span class="c">-- Member of 'developers'       -> alice@acme.com</span>
+<span class="c">-- NOT a member of 'developers' -> ***</span></pre>
+
+  <h3>Remove the mask later</h3>
+<pre><span class="k">ALTER TABLE</span> <span class="f">databricks_orange.silver.customers</span>
+  <span class="k">ALTER COLUMN</span> email <span class="k">DROP MASK</span>;</pre>
+
+  <h2>Going deeper · conditional masking with <code class="inline">USING COLUMNS</code></h2>
+  <p>When the mask depends on <em>another</em> column, pass extra columns/literals with <code class="inline">USING COLUMNS</code>. The <b>first</b> parameter is always the masked column; everything else comes from <code class="inline">USING COLUMNS</code>.</p>
+<pre><span class="k">CREATE FUNCTION</span> <span class="f">databricks_orange.silver.mask_address_by_country</span>(
+  address <span class="k">STRING</span>, country <span class="k">STRING</span>, group_suffix <span class="k">STRING DEFAULT</span> <span class="s">'_address_viewers'</span>)
+<span class="k">RETURN</span> <span class="f">IF</span>(
+  is_account_group_member(country <span class="k">||</span> group_suffix),  <span class="c">-- e.g. 'US_address_viewers'</span>
+  address,
+  <span class="s">'REDACTED'</span>);
+
+<span class="k">ALTER TABLE</span> <span class="f">databricks_orange.silver.customers</span>
+  <span class="k">ALTER COLUMN</span> address
+  <span class="k">SET MASK</span> <span class="f">mask_address_by_country</span> <span class="k">USING COLUMNS</span> (country, <span class="s">'_address_viewers'</span>);</pre>
+
+  <h2>Three ways to do dynamic masking</h2>
+  <table class="cmp">
+    <thead><tr><th>Approach</th><th>How</th><th>When to use</th></tr></thead>
+    <tbody>
+      <tr><td>Dynamic views</td><td><code class="inline">CREATE VIEW</code> with <code class="inline">CASE WHEN is_account_group_member()…</code>; grant the view, not the table</td><td>Older but valid. Good when you also reshape/join data</td></tr>
+      <tr><td>Column masks <span class="best">(used here)</span></td><td><code class="inline">CREATE FUNCTION</code> + <code class="inline">ALTER TABLE … SET MASK</code></td><td><span class="best">Preferred today.</span> Policy lives on the table; users query the real table name</td></tr>
+      <tr><td>ABAC (tag-based)</td><td>Tag columns (e.g. <code class="inline">pii</code>), write one policy, apply across many tables</td><td>Newest, most scalable for large estates</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Common mistakes &amp; gotchas</h2>
+  <div class="card">
+    <div class="gotcha"><div class="b">⏳</div><div class="gx"><b>Group changes aren't instant.</b> Membership is cached — after adding yourself to a group, results may not change until a short refresh. Wait a minute and re-run.</div></div>
+    <div class="gotcha"><div class="b">🖥️</div><div class="gx"><b>Compute matters.</b> Masks enforce on a SQL warehouse, standard clusters (DBR 12.2 LTS+), or dedicated (DBR 15.4 LTS+). On dedicated DBR 15.3 or below you can't read masked tables. Filtering runs on serverless.</div></div>
+    <div class="gotcha"><div class="b">🔻</div><div class="gx"><b>Drop order is strict.</b> Always <code class="inline">ALTER TABLE … DROP MASK</code> <em>before</em> <code class="inline">DROP FUNCTION</code>, or the table becomes inaccessible.</div></div>
+    <div class="gotcha"><div class="b">♻️</div><div class="gx"><b><code class="inline">CREATE OR REPLACE TABLE</code> keeps the mask</b> if a same-named column exists — convenient, but it can persist silently and break queries if it references a removed column.</div></div>
+    <div class="gotcha"><div class="b">🧬</div><div class="gx"><b>First parameter type = column type.</b> Mismatches cause errors on <code class="inline">INSERT</code>/<code class="inline">MERGE</code>/<code class="inline">UPDATE</code>.</div></div>
+    <div class="gotcha"><div class="b">🐍</div><div class="gx"><b>Python logic needs a SQL wrapper.</b> You can't attach a Python UDF directly — wrap it in a SQL UDF, or you'll get <code class="inline">[ROUTINE_NOT_FOUND]</code>.</div></div>
+    <div class="gotcha"><div class="b">🔑</div><div class="gx"><b>Definer vs invoker.</b> Masks run with the definer's rights, but <code class="inline">is_account_group_member()</code> and <code class="inline">session_user()</code> evaluate as the invoker — which is exactly why per-user masking works.</div></div>
+  </div>
+
+  <footer>
+    <p>Grounded in official Databricks documentation (last verified May 2026):</p>
+    <p>
+      <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/" target="_blank">Row filters and column masks — overview</a> ·
+      <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/filters-and-masks/manually-apply" target="_blank">Manually apply row filters and column masks</a> ·
+      <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/abac/" target="_blank">Unity Catalog ABAC</a>
+    </p>
+  </footer>
+</div>
+
+<script>
+  var isMember = false;
+  var rows = [
+    {name:'Alice',  email:'alice@acme.com'},
+    {name:'Bob',    email:'bob@acme.com'},
+    {name:'Charlie',email:'charlie@acme.com'}
+  ];
+
+  function render(){
+    var sw = document.getElementById('sw');
+    var status = document.getElementById('status');
+    var allow = document.getElementById('branchAllow');
+    var deny = document.getElementById('branchDeny');
+    var body = document.getElementById('resBody');
+    var cap = document.getElementById('resCap');
+
+    sw.classList.toggle('on', isMember);
+
+    if(isMember){
+      status.className = 'statusline member';
+      status.textContent = "● is_account_group_member('developers') → true";
+      allow.classList.add('active'); deny.classList.remove('active');
+      cap.innerHTML = "You <b>are</b> in <code class=\"inline\">developers</code>, so the mask returns the real email for every row.";
+    } else {
+      status.className = 'statusline nonmember';
+      status.textContent = "● is_account_group_member('developers') → false";
+      deny.classList.add('active'); allow.classList.remove('active');
+      cap.innerHTML = "You are <b>not</b> in <code class=\"inline\">developers</code>, so the mask returns <code class=\"inline\">***</code> for every row.";
+    }
+
+    body.innerHTML = rows.map(function(r){
+      var cell = isMember
+        ? '<td class="clear">'+r.email+'</td>'
+        : '<td class="masked">***</td>';
+      return '<tr><td>'+r.name+'</td>'+cell+'</tr>';
+    }).join('');
+  }
+
+  function toggleMember(){ isMember = !isMember; render(); }
+  render();
+</script>
+</body>
+</html>

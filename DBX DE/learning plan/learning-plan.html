@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Data Engineering · Learning Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;
+    --paper:#f5f1ea;
+    --paper-2:#ece5d8;
+    --brand:#c2410c;       /* burnt orange */
+    --brand-2:#ea7c3c;
+    --teal:#16707f;
+    --teal-2:#2a98a8;
+    --line:#dccfb9;
+    --done:#16707f;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:1000px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal);text-decoration:none}
+
+  /* header */
+  header{padding:74px 0 30px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--brand);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.5rem,6.5vw,4.4rem);line-height:1.0;margin:0 0 16px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.18rem;max-width:62ch;color:#3a4654}
+  .meta{margin-top:24px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#48555f}
+  .pill b{color:var(--brand);font-weight:600}
+
+  /* progress bar */
+  .progress-wrap{margin:34px 0 8px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .progress-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+  .progress-top .t{font-weight:700;font-size:.95rem}
+  .progress-top .c{font-family:"Spline Sans Mono",monospace;font-size:.85rem;color:var(--teal)}
+  .bar{height:12px;background:var(--paper-2);border-radius:999px;overflow:hidden}
+  .bar > span{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--teal),var(--teal-2));border-radius:999px;transition:width .5s cubic-bezier(.2,.8,.2,1)}
+  .reset{margin-top:12px;font-size:.78rem;color:#7a868f;background:none;border:none;cursor:pointer;font-family:"Spline Sans Mono",monospace;padding:0}
+  .reset:hover{color:var(--brand)}
+
+  /* foundations note */
+  .found{margin:30px 0;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .found .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;box-shadow:var(--shadow)}
+  .found .card h4{margin:0 0 4px;font-size:1.02rem;font-family:"Fraunces",serif;font-weight:600}
+  .found .card p{margin:0;font-size:.9rem;color:#4a5660}
+  .found .card .ic{font-size:1.4rem;display:block;margin-bottom:6px}
+
+  section{padding:34px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.1em 0 .3em;letter-spacing:-.01em}
+  .sec-sub{color:#56636d;margin:0 0 22px}
+
+  /* roadmap */
+  .road{position:relative;margin-left:8px}
+  .road::before{content:"";position:absolute;left:23px;top:18px;bottom:18px;width:3px;background:repeating-linear-gradient(var(--line) 0 8px,transparent 8px 16px)}
+  .stage{position:relative;padding:0 0 16px 64px;margin-bottom:6px}
+  .node{position:absolute;left:0;top:2px;width:48px;height:48px;border-radius:14px;background:#fff;border:2px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:"Fraunces",serif;font-weight:900;font-size:1.2rem;color:var(--brand);box-shadow:var(--shadow);z-index:2;transition:.25s}
+  .stage.open .node{transform:rotate(-4deg) scale(1.05)}
+  .stage.done .node{background:var(--done);color:#fff;border-color:var(--done)}
+  .stage.done .node::after{content:"✓";font-size:1.3rem}
+  .stage.done .node .n{display:none}
+
+  .card2{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;transition:.2s}
+  .card2:hover{border-color:var(--brand-2)}
+  .card-head{display:flex;align-items:center;gap:12px;padding:16px 18px;cursor:pointer;user-select:none}
+  .card-head .titles{flex:1}
+  .stage-title{font-family:"Fraunces",serif;font-weight:600;font-size:1.18rem;line-height:1.2}
+  .stage-tag{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#8a939c;margin-top:2px}
+  .chk{width:26px;height:26px;border:2px solid var(--line);border-radius:8px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.18s;background:#fff}
+  .chk:hover{border-color:var(--teal)}
+  .chk.on{background:var(--done);border-color:var(--done)}
+  .chk.on::after{content:"✓";color:#fff;font-size:.95rem;font-weight:700}
+  .caret{color:#b6a98f;font-size:1.1rem;transition:transform .25s;margin-left:4px}
+  .stage.open .caret{transform:rotate(90deg)}
+
+  .card-body{max-height:0;overflow:hidden;transition:max-height .45s ease}
+  .stage.open .card-body{max-height:1600px}
+  .card-body .inner{padding:2px 18px 20px 18px;border-top:1px solid var(--paper-2)}
+  .card-body p{margin:.7em 0 .4em;color:#3f4b55;font-size:.96rem}
+  .card-body ul{margin:.3em 0;padding-left:1.1em}
+  .card-body li{margin:.3em 0;font-size:.94rem;color:#43505a}
+  .doc{display:inline-flex;align-items:center;gap:6px;margin-top:10px;margin-right:8px;font-family:"Spline Sans Mono",monospace;font-size:.78rem;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:6px 11px;color:var(--teal)}
+  .doc:hover{border-color:var(--teal);background:#fff}
+  .doc::before{content:"↗";font-size:.85rem}
+
+  footer{padding:40px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3)}
+  footer a:hover{border-color:var(--teal)}
+
+  @media(max-width:620px){
+    .found{grid-template-columns:1fr}
+    header{padding:48px 0 20px}
+    .stage{padding-left:58px}
+    .node{width:42px;height:42px;font-size:1.05rem}
+    .road::before{left:20px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Databricks · Data Intelligence Platform</p>
+    <h1>Data Engineering<br><em>Learning Plan.</em></h1>
+    <p class="lede">A 12-stage path through the Databricks <b>Lakeflow</b> platform — ingestion to production. Work top to bottom; each stage builds on the one before. Tick stages off as you go; your progress is saved in this browser.</p>
+    <div class="meta">
+      <span class="pill">12 stages</span>
+      <span class="pill">Built on <b>Delta Lake</b> + <b>Unity Catalog</b></span>
+      <span class="pill">2026 <b>Lakeflow</b> naming</span>
+      <span class="pill">Aligned to the <b>DE Associate</b> cert</span>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span class="t">Your progress</span>
+        <span class="c" id="pcount">0 / 12 stages</span>
+      </div>
+      <div class="bar"><span id="pbar"></span></div>
+      <button class="reset" id="resetBtn">↺ reset progress</button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section style="border-top:none;padding-top:8px">
+    <h2>The two foundations</h2>
+    <p class="sec-sub">Almost everything in Databricks data engineering rests on these. Learn the stages on top of them.</p>
+    <div class="found">
+      <div class="card">
+        <span class="ic">🪨</span>
+        <h4>Delta Lake</h4>
+        <p>The storage format that makes data reliable — like a spreadsheet that never corrupts, remembers its history, and supports updates &amp; deletes.</p>
+      </div>
+      <div class="card">
+        <span class="ic">🛡️</span>
+        <h4>Unity Catalog</h4>
+        <p>The governance layer that controls who can see and do what — across every table, file, and AI asset, using <code>catalog.schema.table</code>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Scope of this plan</h2>
+    <p class="sec-sub">This plan focuses on the <strong>Databricks data-engineering platform (Lakeflow + Delta + Unity Catalog)</strong>. Two things are intentionally left out so you can spend your time on platform skills:</p>
+    <div class="found">
+      <div class="card">
+        <span class="ic">🚫</span>
+        <h4>Workspace basics — skipped</h4>
+        <p>Signing up, the UI tour, clusters/compute setup, notebooks &amp; magic commands, Git Folders setup. Assumed as prerequisites.</p>
+      </div>
+      <div class="card">
+        <span class="ic">⚡</span>
+        <h4>Apache Spark core — skipped</h4>
+        <p>PySpark/Spark SQL programming, DataFrame transformations &amp; joins, UDFs, higher-order functions, and the Spark execution model. Learn these separately if needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>The roadmap</h2>
+    <p class="sec-sub">Click a stage to expand it. Tick the box when you've finished. Ask your tutor for a deep-dive notebook or lesson on any stage.</p>
+    <div class="road" id="road"></div>
+  </section>
+
+  <section>
+    <h2>A note on naming</h2>
+    <p class="sec-sub">In June 2025 Databricks grouped its data engineering tools under one umbrella called <strong>Lakeflow</strong>. Old names still appear in many docs — here's the translation:</p>
+    <div class="found" style="grid-template-columns:1fr">
+      <div class="card" style="display:flex;flex-direction:column;gap:8px">
+        <p style="margin:0;font-size:.92rem"><span class="mono" style="color:var(--brand)">Delta Live Tables (DLT)</span> &nbsp;→&nbsp; <strong>Lakeflow Spark Declarative Pipelines (SDP)</strong></p>
+        <p style="margin:0;font-size:.92rem"><span class="mono" style="color:var(--brand)">Workflows</span> &nbsp;→&nbsp; <strong>Lakeflow Jobs</strong></p>
+        <p style="margin:0;font-size:.92rem"><span class="mono" style="color:var(--brand)">(managed connectors)</span> &nbsp;→&nbsp; <strong>Lakeflow Connect</strong></p>
+        <p style="margin:0;font-size:.92rem"><span class="mono" style="color:var(--brand)">(new)</span> &nbsp;→&nbsp; <strong>Lakeflow Designer</strong> — visual, no-code / natural-language pipeline builder</p>
+        <p style="margin:8px 0 0;font-size:.85rem;color:#6a7780">Existing DLT pipelines keep working unchanged — it's mostly a rebrand plus new capabilities. Lakeflow (Connect · SDP · Designer · Jobs) is the umbrella for end-to-end data engineering.</p>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Start here in the docs:</strong> <a href="https://docs.databricks.com/aws/en/data-engineering" target="_blank" rel="noopener">Databricks Data Engineering</a></p>
+    <p style="margin-top:14px">Companion to your <code>00_Data_Engineering_Learning_Path</code> notebook. Path order &amp; subtopics verified against the official Databricks data-engineering docs (June 2026) and aligned to the Databricks Certified Data Engineer Associate bootcamp curricula. Naming reflects the 2026 Lakeflow lineup (Connect · SDP · Designer · Jobs). <em>Workspace basics and Apache Spark core programming are intentionally out of scope.</em></p>
+  </div>
+</footer>
+
+<script>
+const STAGES = [
+  {n:1, title:"Lakehouse & Medallion Foundations", tag:"Start here",
+   points:[
+     "What a Lakehouse is — one platform that unifies a data lake and a data warehouse, governed by Unity Catalog and stored as Delta.",
+     "Databricks architecture at a glance: control plane vs. compute, and where your data actually lives.",
+     "Medallion architecture: Bronze (raw) → Silver (cleaned/conformed) → Gold (business-ready) — the layering every pipeline follows."
+   ],
+   docs:[["Lakehouse","https://docs.databricks.com/aws/en/lakehouse/"],["Medallion","https://docs.databricks.com/aws/en/lakehouse/medallion"]]},
+  {n:2, title:"Delta Lake — the storage foundation", tag:"Core",
+   points:[
+     "Delta tables & the transaction log: ACID (all-or-nothing) writes, schema enforcement, version history.",
+     "MERGE (upserts), INSERT OVERWRITE, CREATE OR REPLACE and CTAS.",
+     "Table & column properties; managed vs. external tables.",
+     "Time travel — query or restore an earlier version of a table."
+   ],
+   docs:[["Delta Lake","https://docs.databricks.com/aws/en/delta/"]]},
+  {n:3, title:"Delta Lake Optimization & Performance", tag:"Tune",
+   points:[
+     "OPTIMIZE (compaction) and Z-ORDER to collocate related data.",
+     "Liquid Clustering — modern layout that replaces partitioning & Z-order; change keys later with no rewrite. Recommended for all new tables.",
+     "VACUUM to remove unused files; data versioning and time-travel UNDO.",
+     "Deep vs. shallow CLONE; Predictive Optimization — Databricks runs maintenance for you."
+   ],
+   docs:[["Liquid clustering","https://docs.databricks.com/aws/en/delta/clustering"],["Predictive optimization","https://docs.databricks.com/aws/en/optimizations/predictive-optimization"]]},
+  {n:4, title:"Ingestion — Auto Loader, COPY INTO & Lakeflow Connect", tag:"Load",
+   points:[
+     "Auto Loader (cloudFiles) — incrementally ingest new files as they land; schema inference & evolution, the rescued-data column, idempotency.",
+     "COPY INTO for simpler, idempotent batch loads.",
+     "Lakeflow Connect managed connectors (Salesforce, Workday, ServiceNow, SQL Server…) and standard connectors.",
+     "Database/CDC ingestion, REST API & JSON sources, and streaming ingestion from Kafka / Azure Event Hubs."
+   ],
+   docs:[["Ingestion","https://docs.databricks.com/aws/en/ingestion/"],["Lakeflow Connect","https://docs.databricks.com/aws/en/ingestion/lakeflow-connect/"]]},
+  {n:5, title:"Lakeflow Spark Declarative Pipelines (SDP)", tag:"Transform · was DLT",
+   points:[
+     "Declarative pipelines: describe the result; Databricks plans & runs the flows. (DLT is now Lakeflow Spark Declarative Pipelines / SDP.)",
+     "Streaming tables, materialized views, flows, and external sinks (Kafka, Event Hubs, UC tables).",
+     "Data-quality Expectations to validate, drop or quarantine bad rows.",
+     "AUTO CDC for Slowly Changing Dimensions (SCD Type 1 & 2); parametrized pipelines, pipeline modes, monitoring and multi-catalog publishing."
+   ],
+   docs:[["Declarative Pipelines (SDP)","https://docs.databricks.com/aws/en/ldp/"]]},
+  {n:6, title:"Lakeflow Designer — visual & no-code pipelines", tag:"No-code · NEW",
+   points:[
+     "Build transformation workflows on a drag-and-drop canvas — no code required.",
+     "Built-in operators for filtering, aggregating, joining and reshaping data.",
+     "Generate or update transformations with natural-language prompts (Genie Code); output is production-ready code governed by Unity Catalog."
+   ],
+   docs:[["Lakeflow Designer","https://docs.databricks.com/aws/en/designer/"]]},
+  {n:7, title:"Lakeflow Jobs — orchestration", tag:"Schedule · was Workflows",
+   points:[
+     "Jobs & tasks: run notebooks, SQL, pipelines and connectors together as one workflow.",
+     "Control flow — if/else branching and for-each looping; task values and dynamic value references.",
+     "Schedules, event triggers and CRON; retries, monitoring, notifications, and choosing compute."
+   ],
+   docs:[["Lakeflow Jobs","https://docs.databricks.com/aws/en/jobs/"]]},
+  {n:8, title:"Unity Catalog — Governance, Security & ABAC", tag:"Govern",
+   points:[
+     "The 3-level namespace catalog.schema.table; Volumes for files; discovery, lineage and audit logs.",
+     "Access control: GRANT/REVOKE, users & groups, workspace access control.",
+     "Data-level security: dynamic views, row filters & column masks, dynamic data masking.",
+     "Attribute-Based Access Control (ABAC): governed tags, policies, hierarchy and multi-domain access.",
+     "Unity Catalog Functions: governed scalar UDFs and table functions (UDTFs)."
+   ],
+   docs:[["Unity Catalog","https://docs.databricks.com/aws/en/data-governance/unity-catalog/"],["Row filters & column masks","https://docs.databricks.com/aws/en/tables/row-and-column-filters"]]},
+  {n:9, title:"Delta Sharing & Lakehouse Federation", tag:"Share & query",
+   points:[
+     "Delta Sharing — share live data securely with other Databricks accounts (D2D) or any client (open sharing), with no copies.",
+     "Lakehouse Federation — query external sources (SQL Server, Snowflake, Postgres…) in place via foreign catalogs & foreign tables, governed by Unity Catalog."
+   ],
+   docs:[["Delta Sharing","https://docs.databricks.com/aws/en/delta-sharing/"],["Lakehouse Federation","https://docs.databricks.com/aws/en/query-federation/"]]},
+  {n:10, title:"Databricks SQL — Warehouses, Genie & BI", tag:"Analytics",
+   points:[
+     "SQL Warehouses: create, size and manage compute for SQL workloads.",
+     "SQL editor, parameterized queries, CTEs and query snippets; query cache & query profile for performance.",
+     "SQL Alerts, scheduled queries and AI/BI Dashboards.",
+     "Databricks Genie — ask questions of your data in natural language."
+   ],
+   docs:[["Databricks SQL","https://docs.databricks.com/aws/en/sql/"],["Genie","https://docs.databricks.com/aws/en/genie/"]]},
+  {n:11, title:"Production Engineering — CI/CD with DABs", tag:"Ship it",
+   points:[
+     "Databricks Asset Bundles (DABs): deploy jobs & pipelines as code — init, validate, deploy (dev/prod), destroy.",
+     "Git integration with Databricks Repos / Git Folders for source control.",
+     "Databricks Connect for local-IDE development against a remote cluster."
+   ],
+   docs:[["Asset Bundles","https://docs.databricks.com/aws/en/dev-tools/bundles/"],["Databricks Connect","https://docs.databricks.com/aws/en/dev-tools/databricks-connect/"]]},
+  {n:12, title:"Certification Prep — DE Associate exam", tag:"Capstone",
+   points:[
+     "Map your skills to the Databricks Certified Data Engineer Associate exam domains.",
+     "Practice with full-length exams and review weak areas before you book.",
+     "Latest exam updates emphasize Lakeflow naming, data-level security (row filters, column masks, ABAC) and Delta/Spark optimization."
+   ],
+   docs:[["Certification","https://www.databricks.com/learn/certification/data-engineer-associate"]]}
+];
+
+const KEY="dbx_de_plan_progress_v2";
+let done = {};
+try{ done = JSON.parse(localStorage.getItem(KEY)) || {}; }catch(e){ done={}; }
+
+const road = document.getElementById('road');
+function save(){ try{ localStorage.setItem(KEY,JSON.stringify(done)); }catch(e){} }
+function clearSave(){ try{ localStorage.removeItem(KEY); }catch(e){} }
+
+
+STAGES.forEach((s,i)=>{
+  const stage=document.createElement('div');
+  stage.className='stage'+(done[s.n]?' done':'');
+  stage.dataset.n=s.n;
+
+  const node=document.createElement('div');
+  node.className='node';
+  node.innerHTML='<span class="n">'+s.n+'</span>';
+  stage.appendChild(node);
+
+  const card=document.createElement('div');
+  card.className='card2';
+
+  const head=document.createElement('div');
+  head.className='card-head';
+  head.innerHTML =
+    '<div class="chk'+(done[s.n]?' on':'')+'" role="checkbox" aria-checked="'+(!!done[s.n])+'" title="Mark complete"></div>'+
+    '<div class="titles"><div class="stage-title">'+s.title+'</div><div class="stage-tag">Stage '+s.n+' · '+s.tag+'</div></div>'+
+    '<div class="caret">▸</div>';
+  card.appendChild(head);
+
+  const body=document.createElement('div');
+  body.className='card-body';
+  const inner=document.createElement('div');
+  inner.className='inner';
+  let html='<ul>';
+  s.points.forEach(p=> html+='<li>'+p+'</li>');
+  html+='</ul>';
+  s.docs.forEach(d=> html+='<a class="doc" href="'+d[1]+'" target="_blank" rel="noopener">'+d[0]+'</a>');
+  inner.innerHTML=html;
+  body.appendChild(inner);
+  card.appendChild(body);
+
+  stage.appendChild(card);
+  road.appendChild(stage);
+
+  // expand/collapse on head (but not when clicking the checkbox or a link)
+  head.addEventListener('click',(e)=>{
+    if(e.target.closest('.chk')) return;
+    stage.classList.toggle('open');
+  });
+
+  // checkbox toggle
+  head.querySelector('.chk').addEventListener('click',(e)=>{
+    e.stopPropagation();
+    done[s.n]=!done[s.n];
+    save();
+    paint();
+  });
+});
+
+function paint(){
+  let count=0;
+  STAGES.forEach(s=>{
+    const stage=road.querySelector('.stage[data-n="'+s.n+'"]');
+    const chk=stage.querySelector('.chk');
+    if(done[s.n]){ stage.classList.add('done'); chk.classList.add('on'); chk.setAttribute('aria-checked','true'); count++; }
+    else { stage.classList.remove('done'); chk.classList.remove('on'); chk.setAttribute('aria-checked','false'); }
+  });
+  document.getElementById('pcount').textContent = count+' / '+STAGES.length+' stages';
+  document.getElementById('pbar').style.width = (count/STAGES.length*100)+'%';
+}
+
+document.getElementById('resetBtn').addEventListener('click',()=>{
+  done={}; clearSave(); paint();
+});
+
+// open the first not-done stage by default
+const firstOpen = STAGES.find(s=>!done[s.n]) || STAGES[0];
+road.querySelector('.stage[data-n="'+firstOpen.n+'"]').classList.add('open');
+
+paint();
+</script>
+</body>
+</html>

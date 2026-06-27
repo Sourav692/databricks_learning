@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 5 - Serverless Networking, Simple Mode</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.65;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:820px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:22px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:22px 0 10px;color:var(--db-navy);font-weight:700;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 14px 22px;} li{margin-bottom:7px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:700;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .callout p{margin:0;font-size:14px;}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin:16px 0;}
+  .card{background:var(--db-light);border:1px solid var(--db-border);border-top:3px solid var(--db-blue);
+        border-radius:10px;padding:15px;}
+  .card h3{margin:0 0 6px;font-size:15px;color:var(--db-navy);}
+  .card p{font-size:13px;margin:0;color:#4A5860;}
+  .card.orange{border-top-color:var(--db-orange);}
+  .card.green{border-top-color:var(--db-green);}
+  .card.gray{border-top-color:var(--db-gray);}
+
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:390px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.blue{stroke:var(--db-blue);stroke-width:2.4;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:700;}
+  .alabel.cold{fill:var(--db-green);font-weight:700;}
+  .alabel.blue{fill:var(--db-blue);font-weight:700;}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+  .flow-box{background:#fff;border:1px solid var(--db-border);border-left:4px solid var(--db-orange);border-radius:8px;padding:16px 20px;margin-top:14px;}
+  .flow-box h4{margin-bottom:8px;color:var(--db-navy);font-size:15px;}
+  .flow-box ol{margin:0 0 8px 20px;}
+  .flow-box li{margin-bottom:5px;font-size:13.5px;}
+  .flow-box .flow-bottom{margin:0;font-size:13.5px;color:#2A3439;}
+
+  figure{margin:14px 0;}
+  figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks - Networking &amp; Security - Simple Mode</div>
+  <h1>Serverless Networking: Securing a Compute Plane You Don't Own</h1>
+  <div class="subtitle">A plain-English version of Lesson 5. Serverless flips the model: the compute runs in
+    Databricks' account, so peering, NSGs, UDRs, and static-IP allowlists don't apply. The goal is to understand
+    what replaces them - NCC for the private path, network policies for deny-by-default egress, and a storage
+    firewall that trusts the service tag.</div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">Ride-share, not a car you own</span>
+    <span class="badge">Service identity, not IPs</span>
+    <span class="badge">Two locks: network + auth</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="why">Why It Differs</button>
+  <button data-tab="ncc">NCC</button>
+  <button data-tab="egress">Egress Control</button>
+  <button data-tab="storage">Storage Patterns</button>
+  <button data-tab="field">Field Notes</button>
+</nav>
+
+<section class="panel active" id="overview">
+  <h2>The One Mental Model</h2>
+  <p>Think of serverless compute like a <strong>ride-share</strong> instead of a car you own. A car shows up on
+    demand and leaves after - you never own the plate, so you can't pin a sticker on it. You secure it by trusting
+    the <strong>service</strong> and controlling <strong>where it's allowed to drive</strong>.</p>
+
+  <div class="cards">
+    <div class="card gray"><h3>Classic = your car</h3><p>VMs in your VNet. You know the plate (subnet / NAT IP) and allowlist it.</p></div>
+    <div class="card orange"><h3>Serverless = ride-share</h3><p>VMs in Databricks' account. No fixed IP, no subnet to peer to.</p></div>
+    <div class="card blue"><h3>NCC</h3><p>The loading dock + approved-courier list: how serverless reaches your resources privately.</p></div>
+    <div class="card orange"><h3>Network policy</h3><p>The exit turnstile: whether an outbound call is allowed at all (deny-by-default).</p></div>
+    <div class="card green"><h3>Service tag (NSP)</h3><p>The trusted backbone lane into your firewalled storage.</p></div>
+    <div class="card green"><h3>Managed identity</h3><p>The keycard: a 1-hour scoped token, separate from network reachability.</p></div>
+  </div>
+
+  <figure>
+    <img src="architecture.svg" alt="Serverless networking architecture for Azure Databricks">
+    <figcaption class="caption">Use this as a story: compute lives in Databricks' account, the control-plane hop is already private, and the only path you configure is outbound to your storage.</figcaption>
+  </figure>
+
+  <div class="callout tip">
+    <h4>Interactive diagrams live in each tab</h4>
+    <p>Each tab below has its own clickable whiteboard: <strong>Three paths</strong> &rarr; <em>Why It Differs</em>, <strong>NCC private path</strong> &rarr; <em>NCC</em>, <strong>Two locks</strong> &rarr; <em>Storage Patterns</em>. Open a tab, then click a box to see what it does in plain English.</p>
+  </div>
+
+  <div class="callout key">
+    <h4>What matters for Databricks</h4>
+    <p>Serverless compute runs in Databricks' account, not yours. So the classic toolkit (peering, NSG, UDR, static NAT IP) doesn't apply. You secure the one path you still own - compute to your storage - and the control-plane hop is already private (backbone + TLS).</p>
+  </div>
+</section>
+
+<section class="panel" id="why">
+  <h2>5.1 - Why Serverless Networking Is Different</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p><strong>Serverless</strong> just means <strong>Databricks runs the computers, not you</strong> - like taking a
+      ride-share instead of owning a car. Because the car isn't yours, you can't peer to "your network" (there isn't one)
+      and you can't allowlist its number plate (a fixed IP), because a different car shows up each time.</p>
+  </div>
+
+  <ul>
+    <li><strong>Serverless</strong> - Databricks owns and runs the compute VMs in <em>its</em> account; you just submit work.</li>
+    <li><strong>No VNet of yours</strong> - there's no network you injected, so nothing to VNet-peer or put an NSG in front of.</li>
+    <li><strong>Dynamic IPs</strong> - the outbound address changes every time compute scales, so a fixed-IP allowlist can't work.</li>
+  </ul>
+
+  <p>In classic, the cluster VMs live in <strong>your</strong> subscription, inside the VNet you injected. In
+    serverless, the VMs live in <strong>Databricks'</strong> account, in a region that matches your workspace.
+    You submit a query; compute spins up in seconds from a warm pool and tears down after. You never see a VM,
+    subnet, or IP.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see what travels on each path - only path 3 (compute to your storage) is yours to configure.</p>
+  <div class="diagram-block" data-view="paths"></div>
+
+  <h3>Why "no fixed IP" kills the classic toolkit</h3>
+  <p>Serverless is drawn from a shared, elastic pool; Databricks rotates outbound IPs as it scales. So:</p>
+  <ul>
+    <li>You <strong>cannot VNet-peer</strong> to it - nothing of yours to peer to.</li>
+    <li>You <strong>cannot whitelist a single static IP</strong> - it's one of a dynamic pool.</li>
+  </ul>
+  <p>The construct exists because the IP doesn't: you trust the <code>AzureDatabricksServerless</code> service tag
+    (auto-updating) or a private endpoint via NCC.</p>
+
+  <h3>The three paths - classic vs serverless</h3>
+  <table>
+    <thead><tr><th>Path</th><th>What it is</th><th>Serverless</th></tr></thead>
+    <tbody>
+      <tr><td><strong>(1) user -&gt; Databricks</strong></td><td>You log in to the control plane</td><td>Unchanged - IP ACL, Entra ID conditional access, front-end Private Link</td></tr>
+      <tr><td><strong>(2) compute &lt;-&gt; control</strong></td><td>Internal Databricks hop</td><td>Always backbone + TLS, never public, <strong>not configurable</strong></td></tr>
+      <tr><td><strong>(3) compute -&gt; your storage</strong></td><td>Reaching your data</td><td>The <strong>only</strong> path you configure - NCC + egress policy</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warn">
+    <h4>Don't hunt for a toggle</h4>
+    <p>The control-plane to serverless hop is not a setting. If asked "how do I encrypt/privatize that hop," the answer is "Databricks already does - backbone + TLS, by design."</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"Serverless removes the VNet, CIDR, and IP-allowlisting work entirely. There is no cluster IP to give you, because the compute is ours, not yours. You secure it by service identity and deny-by-default egress, not by chasing an IP."</p>
+  </div>
+</section>
+
+<section class="panel" id="ncc">
+  <h2>5.2 - Network Connectivity Configuration (NCC)</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Since serverless lives in a building you don't own, the <strong>NCC</strong> is how you tell that building
+      <em>which of your private resources it's allowed to reach, and over which private lane</em>. Think of it as
+      registering an approved-courier list at the front desk - you can't fit your own door, but you can say who gets in.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card blue"><h3>NCC</h3><p>An account-level networking config you create once and attach to workspaces in the same region.</p></div>
+    <div class="card green"><h3>Service tag</h3><p>A name (not an IP) your storage firewall can trust, so it lets serverless in over the backbone.</p></div>
+    <div class="card blue"><h3>Private endpoint rule</h3><p>A request to drop a private network door from serverless into your resource, which you then approve.</p></div>
+  </div>
+
+  <p>An <strong>NCC</strong> is an <strong>account-level, regional</strong> Databricks object you create in the
+    Account Console and attach to one or more workspaces. It is the single control point for how serverless compute
+    in that region reaches your private Azure resources.</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see how serverless reaches your firewalled storage privately.</p>
+  <div class="diagram-block" data-view="ncc"></div>
+
+  <h3>It does two jobs</h3>
+  <ul>
+    <li><strong>Service tag (backbone model):</strong> serverless egress is recognisable via the
+      <code>AzureDatabricksServerless</code> service tag you allowlist on a storage firewall, over the Azure backbone.</li>
+    <li><strong>Private endpoints:</strong> you add PE rules to the NCC; Databricks provisions Azure Private
+      Endpoints from its serverless network into your resource; you approve them on your side.</li>
+  </ul>
+
+  <table>
+    <thead><tr><th>Fact</th><th>What to remember</th></tr></thead>
+    <tbody>
+      <tr><td>Scope</td><td>Account admin creates it; scoped to one region; only same-region workspaces can attach</td></tr>
+      <tr><td>After attaching</td><td>Wait ~10 minutes, then <strong>restart running serverless resources</strong></td></tr>
+      <tr><td><code>group_id</code></td><td><code>dfs</code> = data path (and UC model logging); <code>blob</code> = blob access (model-serving artifacts); one per rule</td></tr>
+      <tr><td>PE approval</td><td>Starts <code>PENDING</code>; you approve on your resource -&gt; <code>ESTABLISHED</code>; <strong>expires after 14 days</strong> unapproved</td></tr>
+      <tr><td>Limits</td><td>10 NCCs/region, 100 PEs/region, 50 workspaces/NCC; NCC + workspace co-regional</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"Classic VNet injection is your house with your own locks. Serverless is a serviced office building you don't own - the NCC is the building's loading dock and approved-courier list. You can't fit your own door, but you register which couriers (private endpoints) and backbone lanes (service tag) may reach your stockroom."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Cost gotcha</h4>
+    <p>Private endpoint rules bill <strong>per hour per rule regardless of state</strong>, plus per-GB. The service tag over the backbone is free of data-processing charges. Don't default to PEs "to be safe" - reserve them for actual Private Link mandates.</p>
+  </div>
+</section>
+
+<section class="panel" id="egress">
+  <h2>5.3 - Serverless Egress Control (Network Policies)</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p><strong>Egress</strong> just means <strong>outbound traffic</strong> - serverless trying to call out to somewhere. A
+      <strong>network (egress) policy</strong> is the list of <em>which destinations are allowed</em>, like a building's
+      exit turnstile that only opens for names on an approved list. By default it's <strong>deny-by-default</strong>: nobody
+      leaves unless you've named where they can go.</p>
+  </div>
+
+  <p>Serverless runs in Databricks' account - you can't put an NSG or Azure Firewall in front of it. The
+    <strong>network policy</strong> is your egress firewall for that plane, and the primary data-exfiltration
+    control. It sets a network access mode for the workspaces it's attached to.</p>
+
+  <table>
+    <thead><tr><th>Mode</th><th>Behaviour</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Full access</strong></td><td>Unrestricted outbound internet (the open default)</td></tr>
+      <tr><td><strong>Restricted access</strong></td><td><strong>Deny-by-default</strong>: blocked unless the destination is a UC external location, or an FQDN / storage account you explicitly listed</td></tr>
+    </tbody>
+  </table>
+
+  <h3>In restricted mode, outbound is limited to</h3>
+  <ul>
+    <li>Unity Catalog external locations - allowed by default (UC region must equal the storage account region).</li>
+    <li>Explicitly enumerated FQDNs (max 100) and storage accounts.</li>
+    <li>Same-workspace workspace APIs - cross-workspace is denied.</li>
+    <li>Implicitly allowed: workspace storage, essential system tables, read-only sample datasets.</li>
+  </ul>
+
+  <div class="callout key">
+    <h4>The exfil-critical rule</h4>
+    <p>Direct cloud storage access from user code (UDFs, REPLs, notebook Python) is prohibited by default. Route reads through UC securables. Escape hatch: add the storage account's <strong>exact FQDN</strong> - never the base domain <code>*.dfs.core.windows.net</code> (that opens every storage account in the region).</p>
+  </div>
+
+  <div class="callout tip">
+    <h4>Dry-run first</h4>
+    <p>Stage a restricted policy and log violations without blocking. Violations land in <code>system.access.outbound_network</code> with <code>access_type = DRY_RUN_DENIAL</code>; real blocks show <code>DROP</code>.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"NCC is the private hallway to your storage. The restricted policy is the exit turnstile: by default nobody leaves, and only names on the approved list get through. NCC asks 'can I reach it privately?'; the policy asks 'am I allowed to reach it at all?' - both must say yes, even over a private endpoint."</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Operational notes</h4>
+    <p>After changing access/dry-run mode you must <strong>restart serverless compute</strong>. Account-level network-policy APIs need an account-admin <strong>OAuth</strong> token (PATs are rejected).</p>
+  </div>
+</section>
+
+<section class="panel" id="storage">
+  <h2>5.4 - Serverless Storage Access Patterns</h2>
+
+  <div class="callout tip">
+    <h4>Start here (plain English)</h4>
+    <p>Your data sits in <strong>firewalled storage</strong> (ADLS Gen2) that blocks strangers by default. The catch:
+      serverless has <strong>no fixed IP</strong>, so the usual "allowlist these addresses" trick won't work. Instead you
+      tell the storage firewall to trust serverless by <em>name</em> - either by trusting the <strong>service tag</strong>
+      (a backbone lane Azure keeps updated) or by giving serverless a <strong>private endpoint</strong> (its own private
+      door into your network).</p>
+  </div>
+
+  <ul>
+    <li><strong>Service tag on the storage firewall</strong> - trust the name <code>AzureDatabricksServerless.&lt;region&gt;</code> so traffic rides the Azure backbone; free, no fixed IP needed.</li>
+    <li><strong>Private endpoint</strong> - a dedicated private door (private IP) into your network; pricier, used when a regulator mandates Private Link.</li>
+    <li><strong>Why no IP allowlist</strong> - serverless egress IPs rotate from a shared pool, so there's no single static address to pin.</li>
+  </ul>
+
+  <p>When serverless reaches your <strong>ADLS Gen2</strong>, traffic crosses from Databricks' network into yours,
+    and your storage firewall has to be told to trust it. Three patterns, least to most locked-down:</p>
+
+  <h3>Interactive: click the boxes</h3>
+  <p>Click each box to see why access needs both network reachability and authorization.</p>
+  <div class="diagram-block" data-view="locks"></div>
+
+  <table>
+    <thead><tr><th></th><th>A. Public</th><th>B. Service tag (NSP)</th><th>C. Private endpoint (NCC)</th></tr></thead>
+    <tbody>
+      <tr><td>Storage firewall</td><td>Off</td><td>On (NSP, Transition)</td><td>On (PE-only optional)</td></tr>
+      <tr><td>What you allowlist</td><td>Nothing</td><td><code>AzureDatabricksServerless.&lt;region&gt;</code></td><td>A dedicated private endpoint</td></tr>
+      <tr><td>Path</td><td>Public IP</td><td><strong>Azure backbone</strong></td><td>Private IP (FQDN -&gt; PE)</td></tr>
+      <tr><td>Cost</td><td>Lowest</td><td>Low (no data-proc charge)</td><td>Highest (per-hour per-rule + per-GB)</td></tr>
+      <tr><td>When</td><td>Dev / PoC</td><td><strong>Default for prod</strong></td><td>Private-link mandate only</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Two locks - network vs auth</h3>
+  <p>Every access succeeds only if <strong>both</strong> pass:</p>
+  <ul>
+    <li><strong>Network reachability</strong> - the storage firewall trusts serverless (public / NSP service tag / private endpoint).</li>
+    <li><strong>Authorization</strong> - a <strong>managed identity</strong> (the <strong>Access Connector for Azure Databricks</strong>) registered in Unity Catalog, granted <code>Storage Blob Data Contributor</code>, with the call using a <strong>1-hour scoped credential</strong> vended per-workload.</li>
+  </ul>
+
+  <div class="callout key">
+    <h4>Why managed identity over a service principal</h4>
+    <p>No secrets to rotate, and - crucially - a managed identity can reach storage protected by network rules (trusted as a resource instance), which a service principal cannot.</p>
+  </div>
+
+  <div class="callout warn">
+    <h4>Stay in NSP Transition mode</h4>
+    <p>Transition evaluates NSP rules first, then falls back to the storage firewall on no-match. <strong>Enforced</strong> mode bypasses the storage firewall for every service, breaking anything not also onboarded to the NSP.</p>
+  </div>
+
+  <div class="callout mm">
+    <h4>Customer talk-track</h4>
+    <p>"Two doors, two keys. The network pattern only opens the front door (reachability). The managed identity plus the 1-hour scoped token is the keycard (authorization). Open the wrong lock and you still can't get in. Keep your ADLS firewall on, trust the service tag over the backbone, and add private endpoints only when a regulator mandates Private Link."</p>
+  </div>
+</section>
+
+<section class="panel" id="field">
+  <h2>Field Notes: How To Think During Troubleshooting</h2>
+  <p>Do not start by asking for the cluster IP. Start by asking which path you're on and which of the two locks is failing.</p>
+
+  <table>
+    <thead><tr><th>Symptom</th><th>First Thing To Think</th></tr></thead>
+    <tbody>
+      <tr><td>Classic reads firewalled ADLS, serverless can't</td><td>Check the <strong>network lock</strong>, not the grant - NSP trusting <code>AzureDatabricksServerless.&lt;region&gt;</code> or an <code>ESTABLISHED</code> PE?</td></tr>
+      <tr><td>NCC private endpoint never connects</td><td>Rule stuck <code>PENDING</code>? Nobody approved it on the storage side (expires after 14 days).</td></tr>
+      <tr><td>Rules applied but serverless still fails</td><td>Was serverless compute <strong>restarted</strong> after the attach/change (~10 min propagation)?</td></tr>
+      <tr><td>NCC missing from workspace dropdown</td><td>Is the <strong>NCC region == workspace region</strong>?</td></tr>
+      <tr><td>Jobs/notebooks fail outbound after enforcement</td><td>Query <code>system.access.outbound_network</code> for <code>DROP</code> - it names the exact FQDN/storage.</td></tr>
+      <tr><td>Model Serving won't deploy / log models</td><td>Check <code>ML Build</code> denials and the PE <code>group_id</code> - serving needs both <code>blob</code> and <code>dfs</code>.</td></tr>
+      <tr><td>UDF reading storage directly fails</td><td>Expected in restricted mode - move the read to a <strong>UC securable</strong>.</td></tr>
+      <tr><td>Azure bill creeping up</td><td>PEs bill <strong>per hour per rule regardless of state</strong> - delete unused rules.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="interview-card">
+    <div class="label">The architect one-liner</div>
+    <div class="quote">"Serverless compute is Databricks', not yours, so the classic toolkit (peering, NSG, UDR, static NAT IP) doesn't apply. You secure the one path you own - compute to your storage - with NCC for the private path, a restricted network policy for deny-by-default egress, and a storage firewall that trusts the AzureDatabricksServerless service tag. The control-plane hop is already backbone + TLS. Access needs both locks: network reachability and a UC-governed managed identity."</div>
+  </div>
+
+  <h3>The seven questions</h3>
+  <ol>
+    <li>Whose network is the compute in? (Serverless = Databricks', not yours.)</li>
+    <li>Which path am I configuring? (Only path 3, compute -&gt; storage.)</li>
+    <li>How does serverless reach my storage privately? (NCC: service tag or PE.)</li>
+    <li>Am I allowed to make this outbound call at all? (Network policy.)</li>
+    <li>Does the storage firewall trust serverless? (Network lock.)</li>
+    <li>Is the managed identity granted and UC-governed? (Auth lock.)</li>
+    <li>Did I restart serverless and keep everything co-regional?</li>
+  </ol>
+</section>
+
+<footer>
+  Companion files: <code>lesson1.md</code> and <code>index1.html</code>. Original detailed lesson remains in <code>lesson.md</code> and <code>index.html</code>.
+</footer>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(item => item.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab).classList.add('active');
+  });
+});
+
+const ARCH = {
+  paths: {
+    tip: '<strong>Three paths</strong>Click each box. Only path 3 (compute to your storage) is yours to configure.',
+    nodes: [
+      {id:'user',x:30,y:150,w:150,h:64,color:'#6B7280',label:'User / BI / REST',sub:'logs in',
+        info:'<strong>User / BI / REST</strong>Path 1, unchanged by serverless. You still reach the control plane (workspace URL, REST, BI). Secure it with IP access lists, Microsoft Entra ID conditional access, or front-end Private Link.'},
+      {id:'cp',x:262,y:54,w:260,h:96,color:'#2272B4',label:'Control plane',sub:'web app, UC, managers',
+        info:'<strong>Control plane</strong>Databricks-managed backend (web app, Unity Catalog, SQL/job/cluster managers). Same control plane whether you use classic or serverless. Lives in the Databricks account.'},
+      {id:'scp',x:262,y:200,w:260,h:96,color:'#FF3621',label:'Serverless compute plane',sub:'elastic VM pool, dynamic IPs',
+        info:'<strong>Serverless compute plane</strong>Where your code runs in serverless: VMs in Databricks account, drawn from a warm pool, with dynamic rotating IPs. No subnet to peer to, no static IP to allowlist.'},
+      {id:'adls',x:640,y:200,w:250,h:96,color:'#00A972',label:'Your ADLS Gen2 / SQL / KV',sub:'your subscription',
+        info:'<strong>Your storage</strong>ADLS Gen2, Azure SQL, or Key Vault in your subscription. Path 3 - the only path you configure for serverless, via service tag (backbone) or private endpoint (NCC).'}
+    ],
+    arrows: [
+      {from:'user',to:'cp',cls:'blue',label:'1: inbound (IP ACL, Entra CA)',via:[{x:220,y:102}],labelX:218,labelY:130},
+      {from:'cp',to:'scp',cls:'cold',label:'2: backbone + TLS (not configurable)',via:[{x:392,y:175}],labelX:392,labelY:178},
+      {from:'scp',to:'adls',cls:'hot',label:'3: service tag OR private endpoint',labelX:582,labelY:236}
+    ]
+  },
+  ncc: {
+    tip: '<strong>NCC private path</strong>Click the boxes to see how serverless reaches your firewalled storage.',
+    nodes: [
+      {id:'sc',x:30,y:120,w:180,h:120,color:'#FF3621',label:'Serverless workloads',sub:'SQL, jobs, model serving',
+        info:'<strong>Serverless workloads</strong>SQL warehouses, notebooks, jobs, Lakeflow pipelines, model serving, Apps - all with dynamic IPs. They reach your resources only through the NCC.'},
+      {id:'ncc',x:280,y:120,w:180,h:120,color:'#2272B4',label:'NCC',sub:'account-level, regional',
+        info:'<strong>NCC</strong>Account-level, regional object. Two jobs: (1) a stable service tag for backbone access, and (2) private endpoint rules. Created by an account admin; only same-region workspaces can attach.'},
+      {id:'nsp',x:540,y:46,w:170,h:64,color:'#00A972',label:'NSP + service tag',sub:'backbone lane',
+        info:'<strong>NSP + service tag</strong>The recommended default. You allowlist AzureDatabricksServerless.&lt;region&gt; on a Network Security Perimeter (Transition mode). Traffic rides the Azure backbone - no public internet, no data-processing charge.'},
+      {id:'pe',x:540,y:250,w:170,h:64,color:'#2272B4',label:'Private endpoint rule',sub:'PENDING -> ESTABLISHED',
+        info:'<strong>Private endpoint rule</strong>Point at a resource ID + group_id (dfs / blob). Databricks raises a PE; you approve it on your resource. Bills per hour per rule regardless of state. Expires after 14 days if unapproved.'},
+      {id:'adls',x:760,y:148,w:130,h:64,color:'#00A972',label:'ADLS Gen2',sub:'firewalled',
+        info:'<strong>ADLS Gen2 (firewalled)</strong>Your data lake. Reached over the backbone (service tag) or a dedicated private IP (PE). The right group_id matters: dfs for data, blob for model-serving artifacts.'}
+    ],
+    arrows: [
+      {from:'sc',to:'ncc',cls:'hot',label:'only via NCC',labelX:245,labelY:172},
+      {from:'ncc',to:'nsp',cls:'cold',label:'service tag',via:[{x:500,y:78}],labelX:500,labelY:64},
+      {from:'ncc',to:'pe',cls:'blue',label:'PE rule',via:[{x:500,y:282}],labelX:500,labelY:300},
+      {from:'nsp',to:'adls',cls:'cold',label:'backbone',via:[{x:730,y:78},{x:730,y:160}],labelX:744,labelY:120},
+      {from:'pe',to:'adls',cls:'blue',label:'private IP',via:[{x:730,y:282},{x:730,y:200}],labelX:744,labelY:240}
+    ]
+  },
+  locks: {
+    tip: '<strong>Two locks</strong>Click the boxes. Access needs BOTH network reachability and authorization.',
+    nodes: [
+      {id:'sc',x:34,y:148,w:160,h:66,color:'#FF3621',label:'Serverless workload',sub:'wants to read data',
+        info:'<strong>Serverless workload</strong>A serverless SQL warehouse, job, or notebook trying to read your firewalled ADLS. It must pass two independent checks before bytes flow.'},
+      {id:'net',x:262,y:46,w:200,h:64,color:'#00A972',label:'Lock 1: Network',sub:'firewall trusts serverless?',
+        info:'<strong>Lock 1 - Network reachability</strong>The storage firewall must trust serverless: public (dev only), NSP service tag (recommended), or an ESTABLISHED private endpoint. This is the #1 reason "classic works, serverless does not."'},
+      {id:'auth',x:262,y:250,w:200,h:64,color:'#2272B4',label:'Lock 2: Authorization',sub:'managed identity + UC grant',
+        info:'<strong>Lock 2 - Authorization</strong>A managed identity (Access Connector for ADB) registered in Unity Catalog, granted Storage Blob Data Contributor, governed by UC grants. The call uses a 1-hour scoped credential vended per-workload.'},
+      {id:'policy',x:520,y:148,w:170,h:66,color:'#FF3621',label:'Network policy',sub:'allowed + logged?',
+        info:'<strong>Network policy</strong>Even if both locks pass, a restricted egress policy decides whether the destination is allowed at all. PE traffic is still subject to it. NCC = can I reach it privately; policy = am I allowed to reach it.'},
+      {id:'adls',x:748,y:148,w:140,h:66,color:'#00A972',label:'ADLS Gen2',sub:'access granted',
+        info:'<strong>ADLS Gen2</strong>Access succeeds only when the network firewall trusts serverless, the managed identity is granted in UC, and the egress policy allows the destination. Miss any one and it fails.'}
+    ],
+    arrows: [
+      {from:'sc',to:'net',cls:'cold',label:'must pass',via:[{x:228,y:78}],labelX:228,labelY:108},
+      {from:'sc',to:'auth',cls:'blue',label:'must pass',via:[{x:228,y:282}],labelX:228,labelY:248},
+      {from:'net',to:'policy',cls:'hot',via:[{x:606,y:78}],labelX:606,labelY:64},
+      {from:'auth',to:'policy',cls:'hot',via:[{x:606,y:282}],labelX:606,labelY:300},
+      {from:'policy',to:'adls',cls:'cold',label:'both yes',labelX:719,labelY:134}
+    ]
+  }
+};
+
+const FLOWS = {
+  paths: '<h4>Real Databricks flow: a serverless SQL query reading your data</h4>'
+    + '<ol>'
+    + '<li><strong>You log in (Path 1).</strong> A user, BI tool, or REST call hits the <em>Control plane</em> over the inbound path - still guarded by IP access lists, Entra ID conditional access, or front-end Private Link. Serverless changes nothing here.</li>'
+    + '<li><strong>The query lands on serverless compute (Path 2).</strong> The control plane hands the work to the <em>Serverless compute plane</em> over the Azure backbone with TLS. This hop is internal to Databricks and is <em>not</em> a setting you can tune.</li>'
+    + '<li><strong>Compute spins up with no fixed IP.</strong> A VM is drawn from a warm pool in Databricks\' account; its outbound IP is dynamic and rotates - so there is nothing to VNet-peer or single-IP allowlist.</li>'
+    + '<li><strong>Compute reaches out to your storage (Path 3).</strong> The only path you configure: the workload egresses toward <em>Your ADLS Gen2 / SQL / KV</em>, identified by the <code>AzureDatabricksServerless.&lt;region&gt;</code> service tag over the backbone, or via a private endpoint provisioned through NCC.</li>'
+    + '<li><strong>Your storage firewall decides.</strong> Because there is no static IP, the firewall trusts the service tag (or the established private endpoint), not an address - and a UC-governed managed identity authorizes the call before bytes flow.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Paths 1 and 2 are handled for you (control-plane ACLs; backbone + TLS). Path 3 - serverless compute to your storage - is the only one you design, and you secure it by service identity, never by IP.</p>',
+
+  ncc: '<h4>Real Databricks flow: serverless model serving reaching firewalled ADLS via NCC</h4>'
+    + '<ol>'
+    + '<li><strong>The workload starts.</strong> A <em>Serverless workload</em> (SQL warehouse, job, Lakeflow pipeline, or model serving) on a dynamic IP needs to read your firewalled <em>ADLS Gen2</em>.</li>'
+    + '<li><strong>It can only leave through the NCC.</strong> An account admin created the <em>NCC</em> in the workspace\'s region and attached the workspace; all serverless egress to your private resources funnels through it.</li>'
+    + '<li><strong>Pick the lane - service tag (default).</strong> The NCC presents serverless via the <em>NSP + service tag</em> path: you allowlist <code>AzureDatabricksServerless.&lt;region&gt;</code> on a Network Security Perimeter in Transition mode, and traffic rides the Azure backbone - no public internet, no data-processing charge.</li>'
+    + '<li><strong>Or the private-endpoint lane (when mandated).</strong> Alternatively you add a <em>Private endpoint rule</em> (pointing at the resource ID + <code>group_id</code> = <code>dfs</code> for data or <code>blob</code> for serving artifacts). Databricks raises the PE in <code>PENDING</code>; you approve it on the resource to make it <code>ESTABLISHED</code> (it expires after 14 days if ignored, and bills per hour per rule).</li>'
+    + '<li><strong>Traffic reaches ADLS.</strong> Over the backbone (service tag) or a dedicated private IP (PE), the request lands at your firewalled storage. Remember the ~10-minute propagation and to <strong>restart serverless compute</strong> after attaching the NCC.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> The NCC is the one regional control point that turns dynamic-IP serverless into something your storage firewall can trust - default to the free service-tag/backbone lane, reserve private endpoints for actual Private Link mandates.</p>',
+
+  locks: '<h4>Real Databricks flow: why a serverless read passes only when both locks open</h4>'
+    + '<ol>'
+    + '<li><strong>The workload requests data.</strong> A <em>Serverless workload</em> tries to read your firewalled ADLS. It must clear two independent checks - not one.</li>'
+    + '<li><strong>Lock 1 - Network reachability.</strong> The storage firewall must trust serverless: public (dev only), the <code>AzureDatabricksServerless</code> service tag on an NSP (recommended), or an <code>ESTABLISHED</code> private endpoint. This is the #1 reason "classic works, serverless does not."</li>'
+    + '<li><strong>Lock 2 - Authorization.</strong> A <em>managed identity</em> (the Access Connector for Azure Databricks) registered in Unity Catalog, granted <code>Storage Blob Data Contributor</code>; the call uses a 1-hour scoped credential vended per workload. UC, not the network, decides who is allowed.</li>'
+    + '<li><strong>The network policy still gets a vote.</strong> Even with both locks open, the restricted <em>Network policy</em> checks the destination is on the allowlist (UC external location or an exact FQDN) - PE traffic is subject to it too. NCC asks "can I reach it privately?"; the policy asks "am I allowed to reach it at all?"</li>'
+    + '<li><strong>Bytes flow.</strong> Only when the firewall trusts serverless, the managed identity is UC-granted, and the egress policy allows the destination does <em>ADLS Gen2</em> return data. Miss any one and it fails.</li>'
+    + '</ol>'
+    + '<p class="flow-bottom"><strong>Bottom line:</strong> Network reachability and UC-governed authorization are separate locks (plus the egress policy gate) - troubleshoot by asking which one is shut, not by hunting for a cluster IP.</p>'
+};
+
+function svgEl(name, attrs){
+  const element = document.createElementNS('http://www.w3.org/2000/svg', name);
+  for (const key in attrs) element.setAttribute(key, attrs[key]);
+  return element;
+}
+
+function edgePoint(rect, tx, ty){
+  const cx = rect.x + rect.w / 2;
+  const cy = rect.y + rect.h / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  const scale = 1 / Math.max(Math.abs(dx) / (rect.w / 2), Math.abs(dy) / (rect.h / 2));
+  return {x: cx + dx * scale, y: cy + dy * scale};
+}
+
+function markerDefs(suffix){
+  return ''
+    + '<marker id="ar-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>'
+    + '<marker id="arb-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#2272B4"/></marker>'
+    + '<marker id="aro-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>'
+    + '<marker id="arg-'+suffix+'" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>';
+}
+
+function buildDiagram(mount){
+  const viewKey = mount.getAttribute('data-view');
+  const view = ARCH[viewKey];
+  if (!view) return;
+  mount.innerHTML =
+    '<div class="diagram-canvas"><svg viewBox="0 0 920 360" xmlns="http://www.w3.org/2000/svg"><defs>'
+    + markerDefs(viewKey)
+    + '</defs><g class="dg-content"></g></svg></div>'
+    + '<div class="info-box diag-info"><strong>Tip</strong>Click a box for a plain-English explanation of what it does.</div>'
+    + '<div class="flow-box diag-flow"></div>';
+  const svg = mount.querySelector('svg');
+  const group = svg.querySelector('.dg-content');
+  const info = mount.querySelector('.diag-info');
+  const flow = mount.querySelector('.diag-flow');
+  const byId = {};
+  view.nodes.forEach(node => { byId[node.id] = node; });
+
+  view.arrows.forEach(arrow => {
+    const from = byId[arrow.from];
+    const to = byId[arrow.to];
+    const route = arrow.via || [];
+    const firstTarget = route[0] || {x: to.x + to.w / 2, y: to.y + to.h / 2};
+    const lastSource = route[route.length - 1] || {x: from.x + from.w / 2, y: from.y + from.h / 2};
+    const start = edgePoint(from, firstTarget.x, firstTarget.y);
+    const end = edgePoint(to, lastSource.x, lastSource.y);
+    const points = [start, ...route, end];
+    const line = svgEl('polyline', {
+      points: points.map(point => point.x + ',' + point.y).join(' '),
+      class:'arrow ' + (arrow.cls || '')
+    });
+    const marker = arrow.cls === 'hot' ? 'aro-'+viewKey : arrow.cls === 'cold' ? 'arg-'+viewKey : arrow.cls === 'blue' ? 'arb-'+viewKey : arrow.cls === 'muted' ? null : 'ar-'+viewKey;
+    if (marker) line.setAttribute('marker-end', 'url(#' + marker + ')');
+    group.appendChild(line);
+    if (arrow.label) {
+      const labelX = arrow.labelX || (start.x + end.x) / 2;
+      const labelY = arrow.labelY || ((start.y + end.y) / 2 - 6);
+      const bgWidth = Math.max(54, arrow.label.length * 6.2 + 14);
+      const bg = svgEl('rect', {
+        x: labelX - bgWidth / 2,
+        y: labelY - 13,
+        width: bgWidth,
+        height: 18,
+        rx: 5,
+        fill: '#FFFFFF',
+        stroke: '#E5E7EB'
+      });
+      group.appendChild(bg);
+      const text = svgEl('text', {x:labelX, y:labelY, 'text-anchor':'middle', class:'alabel ' + (arrow.cls || '')});
+      text.textContent = arrow.label;
+      group.appendChild(text);
+    }
+  });
+
+  view.nodes.forEach(node => {
+    const item = svgEl('g', {class:'node'});
+    item.appendChild(svgEl('rect', {x:node.x, y:node.y, width:node.w, height:node.h, rx:8, class:'node-bg', fill:'#fff', stroke:node.color, 'stroke-width':2}));
+    const isContainer = node.w >= 240 && node.h >= 120;
+    const labelY = isContainer ? node.y + 26 : node.y + node.h / 2 - 4;
+    const subY = isContainer ? node.y + 44 : node.y + node.h / 2 + 14;
+    const label = svgEl('text', {x:node.x + node.w / 2, y:labelY, 'text-anchor':'middle', 'font-size':13, 'font-weight':700, fill:node.color});
+    label.textContent = node.label;
+    item.appendChild(label);
+    const sub = svgEl('text', {x:node.x + node.w / 2, y:subY, 'text-anchor':'middle', 'font-size':10.5, fill:'#6B7280'});
+    sub.textContent = node.sub;
+    item.appendChild(sub);
+    const show = () => { info.innerHTML = node.info; };
+    item.addEventListener('click', show);
+    item.addEventListener('mouseenter', show);
+    group.appendChild(item);
+  });
+
+  info.innerHTML = view.tip;
+  if (typeof FLOWS !== 'undefined' && FLOWS[viewKey]) flow.innerHTML = FLOWS[viewKey];
+}
+
+document.querySelectorAll('.diagram-block').forEach(buildDiagram);
+</script>
+</body>
+</html>

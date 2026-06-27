@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DE Associate Exam Domains · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  pre.code{background:#0d1117;color:#e6edf3;padding:14px 16px;border-radius:10px;overflow:auto;font-family:"Spline Sans Mono",monospace;font-size:.78rem;line-height:1.55;margin:.5em 0}
+  pre.code .c{color:#8b949e;font-style:italic}
+  pre.code .k{color:#ff7b72}
+  pre.code .s{color:#a5d6ff}
+  pre.code .f{color:#d2a8ff}
+  pre.code .y{color:#7ee787}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.8rem,4.6vw,2.9rem);line-height:1.04;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1rem;margin:1.1em 0 .2em;color:#23303c}
+  h3 .wt{font-family:"Spline Sans Mono",monospace;color:var(--brand);font-size:.85rem}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .mech{font-size:.94rem;color:#3a4654;margin:.3em 0}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: weighted domain bars */
+  .dom{display:flex;flex-direction:column;gap:7px}
+  .d{border:1px solid var(--line);border-radius:8px;background:#fff;padding:9px 11px;cursor:pointer;transition:.15s}
+  .d:hover{border-color:var(--brand-2)}.d.on{border-color:var(--teal);background:#eef7f8}
+  .d .top{display:flex;justify-content:space-between;font-size:.9rem}
+  .d .wt{font-family:"Spline Sans Mono",monospace;color:var(--brand);font-weight:600}
+  .bar{height:11px;background:var(--paper-2);border-radius:999px;overflow:hidden;margin-top:5px}
+  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-2));border-radius:999px}
+  .dmap{margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff;padding:11px;font-size:.92rem;min-height:46px}
+  /* diagram 2: study plan allocator */
+  .alloc{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .blk{flex:1;min-width:90px;border-radius:8px;padding:10px;color:#fff;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.74rem}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 12.1</p>
+  <h1>Map Skills to the <em>Exam Domains</em></h1>
+  <p class="lede">The DE Associate exam is 7 weighted domains. Study to the weights — map each domain to the stages you've already built, and rehearse the kind of code each domain tests.</p>
+  <div class="pills"><span class="pill">7 domains</span><span class="pill">45 Q · 90 min</span><span class="pill">$200 · 2 yrs</span><span class="pill">study to weights</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card">The exam scores <strong>7 weighted domains</strong>; <strong>Ingestion (21%) + Transformation (22%) + Jobs (16%) ≈ 59%</strong>. Map domains → your Stages 1–11 and allocate study time by weight. Verify current weights on the official guide.</div>
+  <div class="card analogy" style="margin-top:10px">📋 <strong>Analogy:</strong> the blueprint is a <strong>grading rubric leaked in advance</strong> — you know which sections carry the most points, so you study to the weights instead of cramming everything equally.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: weighted domains -->
+<section id="dom">
+  <h2>Domains by weight — click to see which stage covers it</h2>
+  <p class="hint">▸ bigger bar = more of your exam score</p>
+  <div class="dom" id="domlist"></div>
+  <div class="dmap" id="dmap"></div>
+</section>
+
+<section>
+  <h2>The 7 domains — weight, coverage &amp; an exam-style snippet</h2>
+
+  <h3>1 · Databricks Intelligence Platform <span class="wt">· 6% · Stage 1</span></h3>
+  <p class="mech">Lakehouse, workspace/architecture, medallion. Lowest weight — know the concepts.</p>
+  <pre class="code"><span class="c">-- Recognize the 3-level Unity Catalog namespace (a platform fundamental):</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.sales.orders;   <span class="c">-- catalog.schema.table</span></pre>
+
+  <h3>2 · Data Ingestion and Loading <span class="wt">· 21% · Stage 4</span></h3>
+  <p class="mech">Auto Loader (<code>cloudFiles</code>), <code>COPY INTO</code>, Lakeflow Connect, schema evolution.</p>
+  <pre class="code"><span class="c"># Auto Loader — incremental file ingestion (high-yield):</span>
+(spark.readStream.format(<span class="s">"cloudFiles"</span>)
+   .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>)
+   .option(<span class="s">"cloudFiles.schemaLocation"</span>, <span class="s">"/Volumes/main/raw/_schema"</span>)
+   .load(<span class="s">"/Volumes/main/raw/orders"</span>)
+   .writeStream.option(<span class="s">"checkpointLocation"</span>, <span class="s">"/Volumes/main/raw/_ckpt"</span>)
+   .toTable(<span class="s">"main.bronze.orders"</span>))</pre>
+
+  <h3>3 · Data Transformation and Modeling <span class="wt">· 22% · Stages 2, 5, 6</span></h3>
+  <p class="mech">Highest weight. Delta, <code>MERGE</code>, SDP, expectations, PySpark/Spark-SQL ETL.</p>
+  <pre class="code"><span class="c">-- MERGE (upsert) — a classic exam item:</span>
+<span class="k">MERGE INTO</span> main.silver.customers t
+<span class="k">USING</span> updates s <span class="k">ON</span> t.id = s.id
+<span class="k">WHEN MATCHED THEN UPDATE SET</span> *
+<span class="k">WHEN NOT MATCHED THEN INSERT</span> *;</pre>
+
+  <h3>4 · Working with Lakeflow Jobs <span class="wt">· 16% · Stage 7</span></h3>
+  <p class="mech">Tasks &amp; dependencies, scheduling with <strong>Quartz cron</strong>, retries, alerts.</p>
+  <pre class="code"><span class="c"># 6-field Quartz cron (NOT 5-field Unix) — frequently tested:</span>
+<span class="y">schedule</span>: { <span class="y">quartz_cron_expression</span>: <span class="s">"0 0 2 * * ?"</span>, <span class="y">timezone_id</span>: <span class="s">"UTC"</span> }  <span class="c"># 02:00 daily</span></pre>
+
+  <h3>5 · Implementing CI/CD <span class="wt">· 10% · Stage 11</span></h3>
+  <p class="mech">Databricks Asset Bundles, Git folders, dev/prod targets, deploy flow.</p>
+  <pre class="code"><span class="f">databricks</span> bundle validate          <span class="c"># check config (CI on PRs)</span>
+<span class="f">databricks</span> bundle deploy -t prod    <span class="c"># promote on merge</span></pre>
+
+  <h3>6 · Troubleshooting, Monitoring &amp; Optimization <span class="wt">· 10% · Stages 3, 7, 10</span></h3>
+  <p class="mech">OPTIMIZE/ZORDER/Liquid Clustering, VACUUM, query profile, run monitoring.</p>
+  <pre class="code"><span class="c">-- Liquid Clustering — added to the current syllabus (know it):</span>
+<span class="k">ALTER TABLE</span> main.silver.events <span class="k">CLUSTER BY</span> (event_date, region);
+<span class="k">OPTIMIZE</span> main.silver.events;</pre>
+
+  <h3>7 · Governance and Security <span class="wt">· 15% · Stages 8, 9</span></h3>
+  <p class="mech">Unity Catalog grants, row filters / column masks, ABAC, Delta Sharing.</p>
+  <pre class="code"><span class="c">-- A GRANT on the UC 3-level namespace (high-yield governance item):</span>
+<span class="k">GRANT SELECT</span> <span class="k">ON TABLE</span> main.sales.orders <span class="k">TO</span> <span class="s">`analysts`</span>;</pre>
+</section>
+
+<!-- diagram 2: study allocator -->
+<section id="plan">
+  <h2>Study allocation (by weight)</h2>
+  <p class="hint">▸ proportional time blocks — spend where the points are</p>
+  <div class="alloc" id="alloc"></div>
+  <p class="hint" style="margin-top:8px">Ingestion + Transformation + Jobs ≈ 59% → the bulk of your time.</p>
+</section>
+
+<section>
+  <h2>Logistics (verified — re-check before booking)</h2>
+  <ul>
+    <li><strong>45 scored questions · 90 minutes</strong> · multiple choice · proctored (online or test center).</li>
+    <li>Fee <strong>$200</strong> · no prerequisites (hands-on recommended) · valid <strong>2 years</strong>.</li>
+    <li>Passing grade <strong>≈ 70%</strong> (~32/45) — ⚠️ verify; the official page doesn't publish the exact cut score.</li>
+    <li>Languages: EN, JA, PT-BR, KO · no test aids · latest guide reflects Lakeflow naming + CI/CD + PySpark ETL + Liquid Clustering.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li><strong>Study to the weights</strong> — Transformation + Ingestion + Jobs ≈ 59%; don't over-invest in the 6% Platform domain.</li>
+    <li>Mapping domains → stages turns "study everything" into a targeted plan.</li>
+  </ul>
+  <div class="card usecase">🗓️ <strong>Real-world use case:</strong> two weeks out — most time on Stages 2/4/5 (Delta + ingestion + pipelines), a solid block on Stage 8 (governance, 15%), a quick review of Stage 1 (6%).</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> a weighted study plan, a coverage checklist, deciding what to review last.</li>
+    <li><strong>Edge cases:</strong> domain names/weights <strong>change between exam versions</strong> — re-check the official guide near your date; recent updates added <strong>Liquid Clustering</strong> + Lakeflow naming.</li>
+    <li><strong>Limitation:</strong> weights guide time, not depth (a 6% domain can still have a must-get question); the exam tests <strong>PySpark/Spark-SQL ETL</strong> (outside this plan) — review separately.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Studying every topic equally — weight time to Ingestion + Transformation + Jobs.</li>
+    <li>❌ Trusting old weightings — verify the current exam guide.</li>
+    <li>❌ Skipping PySpark/Spark-SQL ETL because this plan excludes Spark core — the exam tests it.</li>
+    <li>❌ Ignoring the 15% Governance domain.</li>
+    <li>❌ Writing 5-field Unix cron for Jobs — Databricks uses 6-field Quartz.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://www.databricks.com/learn/certification/data-engineer-associate" target="_blank" rel="noopener">DE Associate certification</a> ·
+  <a href="https://docs.databricks.com/aws/en/data-engineering/" target="_blank" rel="noopener">DE docs</a>
+  <p style="margin-top:10px">Topic 12.1 · grounded against the official certification page (June 2026). Verify exact weights near your exam date.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — weighted domains (scoped to #dom)
+const DOMS=[
+  {n:'Data Transformation & Modeling', w:22, t:'Stages 2 (Delta), 5 (SDP), 6 (Designer)'},
+  {n:'Data Ingestion & Loading', w:21, t:'Stage 4 (Auto Loader, COPY INTO, Lakeflow Connect)'},
+  {n:'Working with Lakeflow Jobs', w:16, t:'Stage 7 (Jobs, control flow, triggers)'},
+  {n:'Governance & Security', w:15, t:'Stages 8 (UC, RLS/CLS, ABAC), 9 (sharing/federation)'},
+  {n:'Implementing CI/CD', w:10, t:'Stage 11 (DABs, Git folders, Connect)'},
+  {n:'Troubleshooting, Monitoring & Optimization', w:10, t:'Stages 3 (Delta opt), 7 (monitoring), 10 (query profile)'},
+  {n:'Databricks Intelligence Platform', w:6, t:'Stage 1 (Lakehouse, architecture, medallion)'}
+];
+const domlist=document.getElementById('domlist'), dmap=document.getElementById('dmap');
+DOMS.forEach((d,i)=>{
+  const el=document.createElement('div');
+  el.className='d'+(i===0?' on':''); el.dataset.i=i;
+  el.innerHTML='<div class="top"><span>'+d.n+'</span><span class="wt">'+d.w+'%</span></div>'+
+    '<div class="bar"><span style="width:'+(d.w/22*100)+'%"></span></div>';
+  domlist.appendChild(el);
+});
+function setDom(i){ document.querySelectorAll('#dom .d').forEach(x=>x.classList.toggle('on',+x.dataset.i===i)); dmap.innerHTML='<b>'+DOMS[i].w+'% — '+DOMS[i].n+'</b><br>Covered by: '+DOMS[i].t; }
+document.querySelectorAll('#dom .d').forEach(x=>x.addEventListener('click',()=>setDom(+x.dataset.i)));
+setDom(0);
+// Diagram 2 — study allocator (scoped to #plan)
+const COLORS=['#16707f','#2a98a8','#c2410c','#ea7c3c','#6a7780','#9aa3ab','#b6a98f'];
+const alloc=document.getElementById('alloc');
+DOMS.forEach((d,i)=>{
+  const b=document.createElement('div');
+  b.className='blk'; b.style.background=COLORS[i]; b.style.flexGrow=d.w;
+  b.textContent=d.w+'%';
+  b.title=d.n;
+  alloc.appendChild(b);
+});
+</script>
+</body>
+</html>

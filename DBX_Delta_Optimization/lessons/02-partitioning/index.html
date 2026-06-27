@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Partitioning · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .file.tiny{background:linear-gradient(135deg,#f3d9b5,#e7a86a);border-color:#d8924a;color:#5c3a12}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .sw.scan{background:linear-gradient(135deg,var(--frost-2),var(--frost))}
+  .sw.skp{background:var(--paper-2);opacity:.5}
+  .sw.clu{background:linear-gradient(135deg,#bfeaf3,#8fd6e8)}
+  .sw.tin{background:linear-gradient(135deg,#f3d9b5,#e7a86a)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* range slider */
+  .slider{width:100%;margin:10px 0 4px;accent-color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+  /* pros/cons mini-cards for tabbed compare */
+  .pc{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+  .pc .card{border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:var(--paper)}
+  .pc .card h4{margin:.1em 0 .5em;font-family:"Spline Sans",sans-serif;font-size:.95rem}
+  .pc .card.pro h4{color:#2f7d4f}
+  .pc .card.con h4{color:#b5641f}
+  .pc ul{margin:.2em 0;padding-left:1.05em}
+  .pc li{font-size:.9rem}
+  @media(max-width:560px){.pc{grid-template-columns:1fr}}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../../index.html">&larr; Delta Optimization track</a></p>
+    <p class="eyebrow">Databricks · Delta Optimization · Lesson 02</p>
+    <h1>Partitioning<br>(and when <span class="drip">not</span> to).</h1>
+    <p class="lede">Splitting a table into folders by column value can make big queries fast — or shatter your table into millions of tiny files. The trick is knowing the few cases where it still wins, and reaching for liquid clustering everywhere else.</p>
+    <div class="meta">
+      <span class="pill">Status <b>Legacy layout</b></span>
+      <span class="pill">Don't partition <b>&lt; 1 TB</b></span>
+      <span class="pill">Min partition <b>≥ 1 GB</b></span>
+      <span class="pill">New tables <b>use clustering</b></span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section>
+    <h2>What it is</h2>
+    <p><strong>Partitioning</strong> physically splits a table's files into separate folders by the value of a column. Partition <code>PARTITIONED BY (event_date)</code> and every day gets its own directory. A query with <code>WHERE event_date = '2026-06-01'</code> can jump straight to that one folder and ignore the rest — this is <strong>partition pruning</strong> (skipping whole folders the query can't match).</p>
+    <p><span class="chip analogy">Analogy</span><br>Partitioning is like filing paper records in drawers labeled by year. A handful of year-drawers is tidy. A drawer per <em>customer ID</em> — millions of one-sheet drawers — is a nightmare to store and to search. Pick a label with few, stable values.</p>
+    <p><span class="chip usecase">Real-world use case</span><br>A 5 TB clickstream table almost always queried with <code>WHERE event_date BETWEEN …</code> is a textbook <em>good</em> partition (date has ~365 values/year). A table keyed on <code>customer_id</code> (50k+ values) is a textbook <em>bad</em> one — use liquid clustering there instead.</p>
+  </section>
+
+  <section>
+    <h2>Why it matters</h2>
+    <ul>
+      <li><strong>Right column → huge skipping win.</strong> Low-cardinality, frequently-filtered columns (date, region) let the engine prune entire folders, reading a tiny fraction of the table.</li>
+      <li><strong>Wrong column → permanent damage.</strong> A high-cardinality column (timestamp, <code>customer_id</code>) creates a <strong>partition explosion</strong>: thousands or millions of partitions, each holding almost nothing → millions of tiny files → slow listing, slow scans, metadata bloat.</li>
+      <li><strong>It's a one-time, hard-to-undo decision.</strong> Unlike liquid clustering (redefine keys anytime, no rewrite), changing a partition column requires a full table rewrite. A wrong guess is expensive.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one rule to remember</span>
+      Databricks recommends <strong>liquid clustering for ALL new tables</strong> instead of partitioning. If you still partition, do it only on <strong>very large (≥ 1 TB)</strong> tables, on <strong>low/known-cardinality</strong> columns, with each partition <strong>≥ 1 GB</strong>. Partitioning is <strong>not compatible</strong> with liquid clustering or <code>ZORDER</code> — never combine them.
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 1: cardinality simulator ============ -->
+  <section>
+    <h2>See it break: partition cardinality</h2>
+    <p>A 2 TB table split into partitions by one column. Drag the slider to raise the partition column's <strong>cardinality</strong> (distinct values) and watch the layout flip from a few healthy partitions to a <strong>partition explosion</strong> of tiny files.</p>
+
+    <div class="lab" id="lab-card">
+      <div class="lab-head">
+        <span class="lab-title">Partition-cardinality simulator</span>
+      </div>
+      <p class="lab-sub">2 TB table · healthy target is <strong>≥ 1 GB per partition</strong>.</p>
+
+      <div class="filterbar">
+        <label for="cardRange">Partition column:</label>
+        <select id="cardRange">
+          <option value="5">region (~5 values)</option>
+          <option value="48" selected>event_month (~48 values)</option>
+          <option value="365">event_date (~365 values)</option>
+          <option value="5000">event_hour, 5 yrs (~5,000 values)</option>
+          <option value="50000">customer_id (~50,000 values)</option>
+        </select>
+      </div>
+      <div class="qstr" id="card-qstr"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="card-label">Partition buckets (sample)</div>
+        <div class="grid" id="card-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="legend">
+        <span><i class="sw clu"></i> healthy partition (≥ 1 GB)</span>
+        <span><i class="sw tin"></i> tiny partition (&lt; 1 GB)</span>
+      </div>
+
+      <div class="readout">
+        <div class="stat"><div class="big" id="card-parts">—</div><div class="lbl">partitions</div></div>
+        <div class="stat"><div class="big" id="card-size">—</div><div class="lbl">avg data / partition</div></div>
+        <div class="stat win"><div class="big" id="card-files">—</div><div class="lbl">total files (~)</div></div>
+      </div>
+      <div class="verdict" id="card-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration: a fixed 2 TB table over a target ~256 MB file size. Real file counts depend on data skew, write patterns, and file-size autotuning.</p>
+  </section>
+
+  <!-- ============ INTERACTIVE 2: tabbed compare ============ -->
+  <section>
+    <h2>Compare three layouts</h2>
+    <p>The same large table, three ways. Switch tabs to see the pros, cons, and resulting on-disk layout for a <strong>good</strong> partition key, a <strong>bad</strong> one, and <strong>no partition</strong> (ingestion-time clustering).</p>
+
+    <div class="lab" id="lab-cmp">
+      <div class="controls">
+        <div class="seg" id="cmp-seg" role="group" aria-label="Layout choice">
+          <button data-cmp="good" aria-pressed="true">Good key (date/region)</button>
+          <button data-cmp="bad" aria-pressed="false">Bad key (customer_id/timestamp)</button>
+          <button data-cmp="none" aria-pressed="false">No partition (ingestion-time)</button>
+        </div>
+      </div>
+
+      <div class="qstr" id="cmp-syntax"></div>
+
+      <div class="gridwrap">
+        <div class="glabel" id="cmp-label">Resulting layout</div>
+        <div class="grid" id="cmp-grid" aria-live="polite"></div>
+      </div>
+
+      <div class="pc">
+        <div class="card pro"><h4>Pros</h4><ul id="cmp-pros"></ul></div>
+        <div class="card con"><h4>Cons</h4><ul id="cmp-cons"></ul></div>
+      </div>
+      <div class="verdict" id="cmp-verdict"></div>
+    </div>
+    <p style="font-size:.82rem;color:#7a868f">Simplified illustration of layout shape only; it does not run real queries.</p>
+  </section>
+
+  <section>
+    <h2>How it works — sub-topic deep dives</h2>
+
+    <h3><span class="num">01</span> Hive-style partitioning &amp; <code>PARTITIONED BY</code></h3>
+    <p>"Hive-style" partitioning writes data into nested directories named <code>col=value</code> (e.g. <code>.../event_date=2026-06-01/</code>), declared once at table creation. A predicate on the partition column lets the engine <strong>prune</strong> whole directories without listing their files. <strong>Trade-off:</strong> the layout is fixed at creation and the wrong column produces the small-file problem by design. Critically, Hive-style layout is <strong>not part of the Delta protocol</strong> — the <code>_delta_log</code> is the source of truth, so never depend on the directory structure.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Partition a large table by a LOW-cardinality, frequently-filtered column.</span>
+<span class="c">-- Delta is the default format, so no `USING DELTA`.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.events (
+  event_id    <span class="k">BIGINT</span>,
+  customer_id <span class="k">BIGINT</span>,
+  region      <span class="k">STRING</span>,
+  event_ts    <span class="k">TIMESTAMP</span>,
+  event_date  <span class="k">DATE</span>
+)
+<span class="k">PARTITIONED BY</span> (event_date);   <span class="c">-- one folder per day; few, stable values</span>
+
+<span class="c">-- Partition pruning: reads only the 2026-06-01 folder, skips all other days.</span>
+<span class="k">SELECT</span> count(*) <span class="k">FROM</span> main.delta_opt_demo.events
+<span class="k">WHERE</span> event_date = <span class="k">DATE</span><span class="s">'2026-06-01'</span>;</pre>
+    <pre><span class="tag">PySpark</span><span class="c"># partitionBy() at write time defines the partition columns.</span>
+(df.write
+   .partitionBy(<span class="s">"event_date"</span>)        <span class="c"># low-cardinality column</span>
+   .mode(<span class="s">"overwrite"</span>)
+   .saveAsTable(<span class="s">"main.delta_opt_demo.events"</span>))</pre>
+
+    <h3><span class="num">02</span> The modern recommendation: liquid clustering replaces partitioning for ALL new tables</h3>
+    <p>Liquid clustering (<code>CLUSTER BY</code>) colocates related rows using clustering keys <em>without</em> baking the layout into directories. It gives the skipping benefit of partitioning <strong>and</strong> the colocation benefit of Z-order, but you can <strong>redefine the keys anytime with no rewrite of existing data</strong>. <strong>Rule:</strong> it's not compatible with partitioning or <code>ZORDER</code> — use it <em>instead of</em> them.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- The modern default for a NEW table: liquid clustering, NOT partitioning.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.events (
+  event_id    <span class="k">BIGINT</span>,
+  customer_id <span class="k">BIGINT</span>,
+  region      <span class="k">STRING</span>,
+  event_date  <span class="k">DATE</span>
+)
+<span class="k">CLUSTER BY</span> (event_date, region);   <span class="c">-- redefine these keys later with NO rewrite</span>
+<span class="c">-- (Lesson 08. Never combine CLUSTER BY with PARTITIONED BY / ZORDER.)</span></pre>
+
+    <h3><span class="num">03</span> Don't partition tables &lt; 1 TB</h3>
+    <p>Below ~1 TB the whole table is small enough that file listing + data skipping already make scans fast; partitioning just fragments the data into small partitions/files for no benefit. Databricks says <strong>most tables under 1 TB need no partitions</strong> — partitioning a small table usually <em>hurts</em>.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- ANTI-PATTERN: partitioning a small (&lt; 1 TB) table fragments it.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.small_orders (order_id <span class="k">BIGINT</span>, order_date <span class="k">DATE</span>)
+<span class="k">PARTITIONED BY</span> (order_date);   <span class="c">-- bad: no benefit, creates tiny files</span>
+
+<span class="c">-- DO THIS: leave it unpartitioned. Ingestion-time clustering + data skipping</span>
+<span class="c">-- handle it; add liquid clustering later if filters demand it.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.small_orders (order_id <span class="k">BIGINT</span>, order_date <span class="k">DATE</span>);</pre>
+
+    <h3><span class="num">04</span> Minimum partition size ≥ 1 GB</h3>
+    <p>Aim for <strong>at least 1 GB of data per partition</strong>. Fewer, larger partitions consistently beat many small ones — each holds enough data to be read efficiently and produce right-sized files. A partition with only a few MB re-creates the small-file problem at the folder level.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Coarsen the grain so each partition stays ≥ 1 GB:</span>
+<span class="c">-- partition by MONTH instead of DAY if daily partitions are &lt; 1 GB.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.events_monthly (
+  event_id <span class="k">BIGINT</span>, region <span class="k">STRING</span>, event_month <span class="k">STRING</span>  <span class="c">-- 'YYYY-MM'</span>
+)
+<span class="k">PARTITIONED BY</span> (event_month);   <span class="c">-- ~30x fewer, ~30x larger partitions than daily</span></pre>
+
+    <h3><span class="num">05</span> Over-partitioning on high-cardinality columns → partition explosion</h3>
+    <p>Partitioning by a high-cardinality column (a <code>timestamp</code> to the second, or <code>customer_id</code>) creates <strong>one folder per distinct value</strong> — millions of folders, each with almost nothing → millions of tiny files. Partition only <strong>low/known-cardinality</strong> fields (date, region); for high-cardinality filter columns, use liquid clustering — it's built for them.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- ANTI-PATTERN: high-cardinality partition column = partition explosion.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.bad (event_ts <span class="k">TIMESTAMP</span>, customer_id <span class="k">BIGINT</span>, v <span class="k">DOUBLE</span>)
+<span class="k">PARTITIONED BY</span> (event_ts);    <span class="c">-- bad: millions of 1-row folders → tiny files</span>
+
+<span class="c">-- RIGHT: cluster on the high-cardinality column (no folder explosion).</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.good (event_ts <span class="k">TIMESTAMP</span>, customer_id <span class="k">BIGINT</span>, v <span class="k">DOUBLE</span>)
+<span class="k">CLUSTER BY</span> (customer_id);     <span class="c">-- liquid clustering handles high cardinality</span></pre>
+
+    <h3><span class="num">06</span> Partition columns must be top-level (no complex types / struct fields)</h3>
+    <p>A partition column must be a <strong>top-level</strong> column. You <strong>cannot</strong> partition by a complex type (Struct / Map / Array / Variant) or a field inside a struct (<code>struct_col.field</code>) — the <code>col=value</code> directory naming needs a single scalar value. <strong>Workaround:</strong> liquid clustering <em>does</em> support struct fields via dot notation.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- Cannot partition by a struct field or complex type:</span>
+<span class="c">--   PARTITIONED BY (payload.region)   -- not allowed</span>
+<span class="c">--   PARTITIONED BY (tags_array)       -- not allowed (complex type)</span>
+
+<span class="c">-- Liquid clustering supports struct fields via dot notation:</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events <span class="k">CLUSTER BY</span> (payload.region);</pre>
+
+    <h3><span class="num">07</span> Supported partition data types</h3>
+    <p>Supported types: <strong>Date, Timestamp, TimestampNTZ, Interval, String, Binary, Boolean, Integer / Long / Short / Byte, Float / Double / Decimal.</strong> Caution: <em>supported</em> ≠ <em>good choice</em> — <code>Timestamp</code> is supported but is almost always a partition-explosion trap. Cardinality, not type, decides whether a column is a good partition key.</p>
+
+    <h3><span class="num">08</span> Ingestion-time clustering (DBR 11.3 LTS+)</h3>
+    <p>On DBR 11.3 LTS+, <strong>unpartitioned</strong> Delta tables are automatically clustered by <strong>ingestion time</strong> — rows written together tend to land together on disk. This gives a <strong>date-partition-like benefit</strong> for time-range queries with <strong>zero tuning</strong>, which is why "just don't partition a &lt; 1 TB table" works in practice.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- No syntax needed: just DON'T partition; ingestion-time clustering works for you.</span>
+<span class="k">CREATE TABLE</span> main.delta_opt_demo.events (event_id <span class="k">BIGINT</span>, region <span class="k">STRING</span>, event_ts <span class="k">TIMESTAMP</span>);
+<span class="c">-- Recent data is colocated, so recency filters still skip well:</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> main.delta_opt_demo.events
+<span class="k">WHERE</span> event_ts &gt;= current_timestamp() - <span class="k">INTERVAL</span> <span class="s">1 DAY</span>;</pre>
+
+    <h3><span class="num">09</span> Z-order works only WITHIN a partition</h3>
+    <p><code>ZORDER BY</code> (Lesson 03) colocates related rows, but on a partitioned table it operates <strong>within each partition only</strong> — it <strong>cannot combine files across partition boundaries</strong>, and you <strong>cannot Z-order a partition column</strong>. Partition + Z-order is the <em>old</em> two-tool combo; liquid clustering replaces both with one mechanism and no boundaries to fight.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- On a partitioned table, Z-order reorganizes files WITHIN each partition only.</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events
+<span class="k">WHERE</span> event_date = <span class="k">DATE</span><span class="s">'2026-06-01'</span>   <span class="c">-- scope to one partition</span>
+<span class="k">ZORDER BY</span> (customer_id);              <span class="c">-- colocate within it (NOT a partition col)</span></pre>
+
+    <h3><span class="num">10</span> Converting partitioned → liquid clustering (DBR 18.1+)</h3>
+    <p>Convert a partitioned table to liquid clustering in place with <code>ALTER TABLE … REPLACE PARTITIONED BY WITH CLUSTER BY</code>. It's the migration path off a bad/legacy partition layout. Afterward, run <code>OPTIMIZE … FULL</code> to physically recluster existing data to the new keys.</p>
+    <pre><span class="tag">SQL</span><span class="c">-- DBR 18.1+: convert a partitioned table to liquid clustering in place.</span>
+<span class="k">ALTER TABLE</span> main.delta_opt_demo.events
+  <span class="k">REPLACE PARTITIONED BY WITH CLUSTER BY</span> (event_date, region);
+
+<span class="c">-- Recluster existing data to the new keys (can be slow on huge tables):</span>
+<span class="k">OPTIMIZE</span> main.delta_opt_demo.events <span class="k">FULL</span>;</pre>
+  </section>
+
+  <section>
+    <h2>Comparison — partition keys vs. the alternative</h2>
+    <table class="tbl">
+      <thead><tr><th>Approach</th><th>Cardinality fit</th><th>Change later?</th><th>Result</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">PARTITIONED BY (date)</td><td>Low / known</td><td>Full rewrite</td><td>Good pruning on date filters</td><td>OK on ≥ 1 TB</td></tr>
+        <tr><td class="mono">PARTITIONED BY (region)</td><td>Low / known</td><td>Full rewrite</td><td>Good pruning on region filters</td><td>OK on ≥ 1 TB</td></tr>
+        <tr><td class="mono">PARTITIONED BY (customer_id)</td><td>High</td><td>Full rewrite</td><td><strong>Partition explosion → tiny files</strong></td><td>Never</td></tr>
+        <tr><td class="mono">PARTITIONED BY (timestamp)</td><td>Very high</td><td>Full rewrite</td><td><strong>Partition explosion → tiny files</strong></td><td>Never</td></tr>
+        <tr><td>No partition (ingestion-time clustering)</td><td>n/a</td><td>n/a</td><td>Date-partition-like benefit, no tuning</td><td>Default &lt; 1 TB</td></tr>
+        <tr><td class="mono">CLUSTER BY (liquid)</td><td>Any (incl. high)</td><td><strong>Anytime, no rewrite</strong></td><td>Skipping + colocation, right-sized files</td><td><strong>Prefer for new tables</strong></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Uses, edge cases &amp; limitations</h2>
+    <h3>Uses (when partitioning still makes sense)</h3>
+    <ul>
+      <li>A <strong>very large (≥ 1 TB)</strong> table almost always filtered on a <strong>low/known-cardinality</strong> column (date, region), with each partition ≥ 1 GB.</li>
+      <li><strong>Legacy / external</strong> tables already partitioned, or non-Databricks consumers expecting Hive-style directory layout.</li>
+      <li>When your runtime doesn't (yet) support liquid clustering — but for new tables, prefer clustering.</li>
+    </ul>
+    <h3>Edge cases an interviewer probes</h3>
+    <ul>
+      <li><strong>High-cardinality partition key</strong> (<code>customer_id</code>, <code>timestamp</code>) → partition explosion → millions of tiny files.</li>
+      <li><strong>Tiny table partitioned</strong> (&lt; 1 TB) → small partitions, slower than an unpartitioned full scan.</li>
+      <li><strong>Partition under 1 GB</strong> → folder-level small-file problem; coarsen the grain (day → month).</li>
+      <li><strong>Z-order across partitions</strong> → impossible; Z-order is per-partition and can't target the partition column.</li>
+      <li><strong>Reasoning by directory listing</strong> → wrong; Hive layout isn't the Delta protocol, the <code>_delta_log</code> is.</li>
+      <li><strong>Struct-field / complex-type partitioning</strong> → not allowed; use liquid clustering's dot-notation keys.</li>
+    </ul>
+    <h3>Limitations</h3>
+    <ul>
+      <li>Partition column must be <strong>top-level</strong>; no complex types or struct fields.</li>
+      <li>The choice is <strong>fixed at creation</strong> — changing it needs a full rewrite (or <code>REPLACE PARTITIONED BY WITH CLUSTER BY</code> on DBR 18.1+).</li>
+      <li><strong>Not compatible</strong> with liquid clustering — pick one, never both.</li>
+      <li>Hive-style layout is <strong>not part of the Delta protocol</strong> — don't depend on directory structure.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>Common gotchas</h2>
+    <ul>
+      <li><strong>Don't partition tables &lt; 1 TB.</strong> Ingestion-time clustering + data skipping already make them fast.</li>
+      <li><strong>Never partition on a high-cardinality column</strong> (<code>customer_id</code>, <code>timestamp</code>) — partition explosion + tiny files. Use liquid clustering.</li>
+      <li><strong>Keep each partition ≥ 1 GB.</strong> If daily partitions are smaller, partition by month instead.</li>
+      <li><strong>You can't Z-order a partition column, and Z-order can't cross partitions</strong> — it works only within a partition.</li>
+      <li><strong>Partition columns are top-level only</strong> — no struct fields or complex types.</li>
+      <li><strong>The directory layout is not the source of truth.</strong> Use <code>DESCRIBE DETAIL</code> (<code>partitionColumns</code>, <code>numFiles</code>) — never a folder listing.</li>
+      <li><strong>For all new tables, prefer liquid clustering.</strong> Partitioning is the legacy layout.</li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation:</strong></p>
+    <div class="doclinks">
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">When to partition tables (recommendation, 1 TB threshold, ≥ 1 GB partitions, supported types, ingestion-time clustering)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Use liquid clustering for tables (the modern replacement; REPLACE PARTITIONED BY WITH CLUSTER BY)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">Data skipping for Delta Lake (per-file stats, ZORDER BY)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Optimize data file layout (OPTIMIZE, OPTIMIZE FULL)</a>
+      <a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Best practices: Delta Lake</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+<script>
+/* ===== Diagram 1: partition-cardinality simulator (scoped IIFE) ===== */
+(function(){
+  const root = document.getElementById('lab-card');
+  if(!root) return;
+  const TABLE_BYTES = 2 * 1024 * 1024 * 1024 * 1024;   // 2 TB
+  const GB = 1024 * 1024 * 1024;
+  const TARGET_FILE = 256 * 1024 * 1024;               // ~256 MB target file size
+  const N = 64;                                         // sample cells in the grid
+  const grid   = root.querySelector('#card-grid');
+  const sel    = root.querySelector('#cardRange');
+  const elParts= root.querySelector('#card-parts');
+  const elSize = root.querySelector('#card-size');
+  const elFiles= root.querySelector('#card-files');
+  const elVer  = root.querySelector('#card-verdict');
+  const elQ    = root.querySelector('#card-qstr');
+  const elLab  = root.querySelector('#card-label');
+
+  function fmtCount(n){
+    if(n >= 1e6) return (n/1e6).toFixed(1).replace(/\.0$/,'') + 'M';
+    if(n >= 1e3) return (n/1e3).toFixed(1).replace(/\.0$/,'') + 'k';
+    return String(n);
+  }
+  function fmtBytes(b){
+    if(b >= GB) return (b/GB).toFixed(b/GB<10?1:0) + ' GB';
+    if(b >= 1024*1024) return Math.round(b/(1024*1024)) + ' MB';
+    if(b >= 1024) return Math.round(b/1024) + ' KB';
+    return b + ' B';
+  }
+
+  function render(){
+    const card = parseInt(sel.value, 10);              // distinct values = partitions
+    const perPart = TABLE_BYTES / card;                // avg bytes per partition
+    const healthy = perPart >= GB;
+    // files per partition: at least 1; more if a partition exceeds the target file size
+    const filesPerPart = Math.max(1, Math.round(perPart / TARGET_FILE));
+    const totalFiles = card * filesPerPart;
+
+    // grid: each cell = a sampled partition, colored healthy vs tiny
+    grid.innerHTML = '';
+    const shown = Math.min(N, card);
+    for(let i=0;i<N;i++){
+      const cell = document.createElement('div');
+      cell.className = 'file ' + (i < shown ? (healthy ? 'clustered' : 'tiny') : 'skip');
+      const v = document.createElement('span');
+      v.className = 'v';
+      v.textContent = i < shown ? (healthy ? '≥1GB' : 'tiny') : '';
+      cell.appendChild(v);
+      grid.appendChild(cell);
+      cell.style.opacity = 0; cell.style.transform = 'scale(.7)';
+      setTimeout(()=>{ cell.style.opacity = i<shown?1:.18; cell.style.transform=''; }, i*6);
+    }
+
+    elParts.textContent = fmtCount(card);
+    elSize.textContent  = fmtBytes(perPart);
+    elFiles.textContent = fmtCount(totalFiles);
+    elQ.textContent     = 'PARTITIONED BY (' + sel.options[sel.selectedIndex].text.split(' ')[0] + ')';
+    elLab.textContent   = card > N
+      ? 'Partition buckets (showing ' + N + ' of ' + fmtCount(card) + ')'
+      : 'Partition buckets (' + card + ')';
+
+    if(healthy){
+      elVer.innerHTML = '<b>Healthy.</b> ' + fmtCount(card) + ' partitions averaging ' +
+        fmtBytes(perPart) + ' each — comfortably over the 1 GB floor. Good partition pruning, right-sized files.';
+    } else {
+      elVer.innerHTML = '<b>Partition explosion.</b> ' + fmtCount(card) + ' partitions average only ' +
+        fmtBytes(perPart) + ' each (well under 1 GB) → about ' + fmtCount(totalFiles) +
+        ' tiny files. Slow listing &amp; scans. Use <code>CLUSTER BY</code> on this column instead.';
+    }
+  }
+  sel.addEventListener('change', render);
+  render();
+})();
+
+/* ===== Diagram 2: tabbed layout compare (scoped IIFE) ===== */
+(function(){
+  const root = document.getElementById('lab-cmp');
+  if(!root) return;
+  const grid   = root.querySelector('#cmp-grid');
+  const elSyn  = root.querySelector('#cmp-syntax');
+  const elPros = root.querySelector('#cmp-pros');
+  const elCons = root.querySelector('#cmp-cons');
+  const elVer  = root.querySelector('#cmp-verdict');
+  const elLab  = root.querySelector('#cmp-label');
+  const N = 48;
+
+  const DATA = {
+    good: {
+      syntax: "PARTITIONED BY (event_date)   -- low cardinality, frequently filtered",
+      label: "Layout — a few healthy folders, each with right-sized files",
+      // small number of partitions, each healthy (clustered)
+      build: ()=> Array.from({length:N}, (_,i)=> 'clustered'),
+      pros: ["Prunes whole folders on date/region filters","Each partition stays ≥ 1 GB → right-sized files","Predictable, simple mental model on huge tables"],
+      cons: ["Fixed at creation; changing the column = full rewrite","Only pays off on very large (≥ 1 TB) tables","Z-order limited to within a partition"],
+      verdict: "<b>Good key.</b> Low-cardinality, often-filtered, ≥ 1 GB per partition. Acceptable on a ≥ 1 TB legacy table — but a new table should still prefer <code>CLUSTER BY</code>."
+    },
+    bad: {
+      syntax: "PARTITIONED BY (customer_id)  -- high cardinality → partition explosion",
+      label: "Layout — thousands of one-row folders = tiny files everywhere",
+      build: ()=> Array.from({length:N}, (_,i)=> 'tiny'),
+      pros: ["(Technically) one folder per customer","…that's about it"],
+      cons: ["Partition explosion: millions of folders","Millions of tiny files → slow listing &amp; scans","Transaction-log metadata bloat","Full rewrite to fix the wrong choice"],
+      verdict: "<b>Bad key.</b> High cardinality shatters the table into tiny partitions/files. Never partition on <code>customer_id</code> or <code>timestamp</code> — use <code>CLUSTER BY (customer_id)</code> instead."
+    },
+    none: {
+      syntax: "-- no PARTITIONED BY; ingestion-time clustering (DBR 11.3 LTS+) does the work",
+      label: "Layout — one flat table, recent data colocated by ingestion time",
+      // flat layout: recent (ingested-together) data colocated -> a contiguous block
+      build: ()=> Array.from({length:N}, (_,i)=> i < 12 ? 'clustered' : 'file'),
+      pros: ["Zero tuning; no upfront column guess","Date-partition-like benefit on recency filters","Right-sized files; add CLUSTER BY later if needed","Best default for tables &lt; 1 TB"],
+      cons: ["Colocation follows ingestion order, not an arbitrary key","Unrelated filters need explicit liquid clustering"],
+      verdict: "<b>No partition.</b> The right default for most tables. Ingestion-time clustering colocates recent data automatically; reach for liquid clustering when you filter on a specific non-time key."
+    }
+  };
+
+  function paint(kind){
+    const d = DATA[kind];
+    const classes = d.build();
+    grid.innerHTML = '';
+    classes.forEach((cls,i)=>{
+      const cell = document.createElement('div');
+      cell.className = 'file ' + cls;
+      const v = document.createElement('span'); v.className='v';
+      v.textContent = cls==='tiny' ? 'tiny' : (cls==='clustered' ? '' : '');
+      cell.appendChild(v);
+      grid.appendChild(cell);
+      cell.style.opacity=0; cell.style.transform='scale(.7)';
+      setTimeout(()=>{ cell.style.opacity=1; cell.style.transform=''; }, i*7);
+    });
+    elSyn.textContent = d.syntax;
+    elLab.textContent = d.label;
+    elPros.innerHTML = d.pros.map(p=>'<li>'+p+'</li>').join('');
+    elCons.innerHTML = d.cons.map(c=>'<li>'+c+'</li>').join('');
+    elVer.innerHTML  = d.verdict;
+  }
+
+  root.querySelectorAll('#cmp-seg button').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      root.querySelectorAll('#cmp-seg button').forEach(b=> b.setAttribute('aria-pressed', b===btn));
+      paint(btn.dataset.cmp);
+    });
+  });
+  paint('good');
+})();
+</script>
+</body>
+</html>

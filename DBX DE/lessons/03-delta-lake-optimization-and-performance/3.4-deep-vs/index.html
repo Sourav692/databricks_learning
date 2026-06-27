@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deep vs Shallow CLONE & Predictive Optimization · Databricks DE</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;600;900&family=Spline+Sans+Mono:wght@400;500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0d1320;--paper:#f5f1ea;--paper-2:#ece5d8;--brand:#c2410c;--brand-2:#ea7c3c;
+    --teal:#16707f;--teal-2:#2a98a8;--line:#dccfb9;--shadow:0 1px 0 rgba(0,0,0,.04),0 10px 30px -14px rgba(30,40,55,.4);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 90% -5%,rgba(234,124,60,.12),transparent 38%),radial-gradient(circle at 0% 8%,rgba(42,152,168,.10),transparent 34%);background-attachment:fixed;}
+  .wrap{max-width:880px;margin:0 auto;padding:0 22px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  a{color:var(--teal)}
+  header{padding:54px 0 18px}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brand);margin:0 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.7rem,4.6vw,2.8rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+  h1 em{font-style:italic;color:var(--teal)}
+  .lede{font-size:1.1rem;max-width:60ch;color:#3a4654;margin:0}
+  section{padding:26px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:.1em 0 .5em}
+  h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.12rem;margin:1.1em 0 .3em;color:#22303c}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;box-shadow:var(--shadow)}
+  .analogy{border-left:4px solid var(--brand-2);background:#fff8f2}
+  .usecase{border-left:4px solid var(--teal-2);background:#f1fafb}
+  .note{border-left:4px solid var(--teal);background:#eef7f8}
+  ul{margin:.4em 0;padding-left:1.15em}
+  li{margin:.34em 0}
+  /* code blocks */
+  .codecap{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--brand);margin:14px 0 4px;text-transform:uppercase;letter-spacing:.08em}
+  pre.code{background:#0d1320;color:#e8edf2;border-radius:12px;padding:15px 16px;overflow:auto;margin:0;
+    font-family:"Spline Sans Mono",monospace;font-size:.82rem;line-height:1.55;box-shadow:var(--shadow)}
+  pre.code .c{color:#7f93a3;font-style:italic}
+  pre.code .k{color:#ea7c3c}
+  pre.code .s{color:#86d9a6}
+  pre.code .f{color:#69c0d0}
+  table{border-collapse:collapse;width:100%;background:#fff;border-radius:12px;overflow:hidden;box-shadow:var(--shadow);font-size:.88rem}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--paper-2)}
+  td.win{color:var(--teal);font-weight:600}
+  .hint{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#8a939c;margin:0 0 10px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:#48555f}
+  /* diagram 1: clone toggle + vacuum sim */
+  .switch{display:flex;gap:8px;margin-bottom:12px}
+  .opt{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px;cursor:pointer;text-align:center;font-weight:600;transition:.15s}
+  .opt:hover{border-color:var(--teal)}.opt.on{background:var(--teal);color:#fff;border-color:var(--teal)}
+  .stage{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .ent{flex:1;min-width:150px;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fff;text-align:center}
+  .ent .t{font-weight:600}.ent .s{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:#8a939c;margin-top:4px}
+  .link{text-align:center;color:var(--brand);font-size:.8rem;font-family:"Spline Sans Mono",monospace}
+  .btn{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:8px;padding:8px 13px;cursor:pointer;margin-top:10px}
+  .btn:hover{background:var(--brand);color:#fff}
+  .res{font-family:"Spline Sans Mono",monospace;font-size:.78rem;margin-top:8px}
+  .broken{color:#9a2b1a}.fine{color:#1f6b3a}
+  /* diagram 2: PO toggle */
+  .po{display:flex;flex-direction:column;gap:8px}
+  .pb{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:#fff;cursor:pointer;transition:.18s}
+  .pb:hover{border-color:var(--brand-2)}.pb.open{border-color:var(--teal)}
+  .pb .h{font-weight:600;font-family:"Spline Sans Mono",monospace;font-size:.82rem;display:flex;justify-content:space-between}
+  .pb .d{display:none;margin-top:8px;color:#48555f;font-size:.92rem}.pb.open .d{display:block}
+  footer{padding:30px 0 60px;border-top:1px solid var(--line);color:#6a7780;font-size:.84rem}
+  footer a{border-bottom:1px solid rgba(22,112,127,.3);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <p class="eyebrow">Databricks DE · Topic 3.4</p>
+  <h1>Deep vs Shallow <em>CLONE</em> &amp; Predictive Optimization</h1>
+  <p class="lede">Deep clone = independent copy (data + metadata), incremental on re-run. Shallow clone = instant pointer to the source's files. Predictive Optimization auto-runs maintenance for you. This deep dive walks each with the code.</p>
+  <div class="pills"><span class="pill">DEEP CLONE</span><span class="pill">SHALLOW CLONE</span><span class="pill">incremental</span><span class="pill">Predictive Optimization</span></div>
+</header>
+
+<section style="border-top:none">
+  <h2>The one-liner</h2>
+  <div class="card"><strong>DEEP CLONE</strong> copies data + metadata → independent table (re-runs sync only the delta). <strong>SHALLOW CLONE</strong> copies only metadata and references the source's files → instant &amp; cheap but dependent. <strong>Predictive Optimization</strong> auto-runs OPTIMIZE/VACUUM/ANALYZE on UC managed tables.</div>
+  <div class="card analogy" style="margin-top:10px">📚 <strong>Analogy:</strong> deep clone = <em>photocopying a whole book</em> (your own copy); shallow clone = <em>sticky-notes referencing the original</em> (instant, but useless if the original is thrown out); PO = a <em>robot librarian</em> that reshelves &amp; declutters automatically.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 1: clone type + vacuum-on-source sim -->
+<section id="clone">
+  <h2>Clone types — and the VACUUM trap</h2>
+  <p class="hint">▸ pick a clone type, then run VACUUM on the source</p>
+  <div class="switch">
+    <div class="opt on" data-o="deep">DEEP CLONE</div>
+    <div class="opt" data-o="shallow">SHALLOW CLONE</div>
+  </div>
+  <div class="stage">
+    <div class="ent"><div class="t">Source table</div><div class="s" id="src">data files: present</div></div>
+    <div class="link" id="lnk">— copied —</div>
+    <div class="ent"><div class="t">Clone</div><div class="s" id="cln">owns its own data</div></div>
+  </div>
+  <button class="btn" onclick="vacuumSource()">Run VACUUM on source</button>
+  <div class="res" id="cres"></div>
+</section>
+
+<!-- DEEP DIVE: clone types -->
+<section id="types">
+  <h2>1 · The two clone types</h2>
+  <p>Both copy schema, partitioning, invariants, nullability, and <code>TBLPROPERTIES</code> (deep also copies stream/COPY INTO metadata). Neither copies history, description, or UC tags. CLONE defaults to deep.</p>
+  <p class="codecap">SQL — deep, shallow, versioned</p>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.dr.orders_backup <span class="k">DEEP CLONE</span> main.sales.orders;     <span class="c">-- independent copy</span>
+<span class="k">CREATE TABLE</span> main.dev.orders_dev <span class="k">SHALLOW CLONE</span> main.sales.orders;     <span class="c">-- instant, points at source</span>
+<span class="k">CREATE TABLE</span> main.dev.orders_v5 <span class="k">SHALLOW CLONE</span> main.sales.orders <span class="k">VERSION AS OF</span> <span class="f">5</span>;</pre>
+  <p class="codecap">PySpark — CLONE is SQL DDL, run via spark.sql</p>
+  <pre class="code">spark.sql(<span class="s">"CREATE OR REPLACE TABLE main.dr.orders_backup DEEP CLONE main.sales.orders"</span>)</pre>
+</section>
+
+<section id="incremental">
+  <h2>2 · Deep clone is INCREMENTAL (the backup superpower)</h2>
+  <p>Re-running a deep clone into an existing target commits <strong>only the new/changed data since the last clone</strong> — cost scales with the change, not table size. That's why it's the go-to for scheduled backups, DR, and cross-catalog/region migration.</p>
+  <pre class="code"><span class="c">-- Day 1: full copy. Day 2..N: same command re-syncs ONLY the delta since last run.</span>
+<span class="k">CREATE OR REPLACE TABLE</span> main.dr.orders_backup <span class="k">DEEP CLONE</span> main.sales.orders;</pre>
+</section>
+
+<section id="shallowtrap">
+  <h2>3 · Shallow clone &amp; the VACUUM trap</h2>
+  <p>Shallow clone borrows the source's data files, so it's instant — but two consequences interviewers probe:</p>
+  <ul>
+    <li><strong><code>VACUUM</code> on the source breaks the shallow clone</strong> → readers hit <code>FileNotFoundException</code>.</li>
+    <li>Readers need access to <strong>both</strong> the source's storage and the clone's directory.</li>
+  </ul>
+  <pre class="code"><span class="k">CREATE TABLE</span> main.dev.orders_dev <span class="k">SHALLOW CLONE</span> main.sales.orders;
+<span class="c">-- ...later, on the SOURCE:</span>
+<span class="k">VACUUM</span> main.sales.orders;     <span class="c">-- ⚠️ removes files orders_dev references → clone breaks</span></pre>
+  <div class="card note" style="margin-top:10px">💡 For a <strong>durable</strong> copy that survives source maintenance, use <strong>DEEP CLONE</strong>. Also note: streaming tables &amp; materialized views can't be a clone source or target.</div>
+</section>
+
+<!-- INTERACTIVE DIAGRAM 2: predictive optimization -->
+<section id="poq">
+  <h2>4 · Predictive Optimization — click each</h2>
+  <div class="po">
+    <div class="pb open" onclick="this.classList.toggle('open')"><div class="h"><span>What it does</span><span>▸</span></div><div class="d">Automatically runs maintenance — <code>OPTIMIZE</code> (incl. incremental clustering), <code>VACUUM</code>, and <code>ANALYZE</code> — on Unity Catalog <strong>managed</strong> tables based on usage. No manual scheduling.</div></div>
+    <div class="pb" onclick="this.classList.toggle('open')"><div class="h"><span>Why it matters</span><span>▸</span></div><div class="d">Removes the "did you schedule OPTIMIZE/VACUUM?" toil and avoids both under- and over-maintenance. Modern answer to "how do you keep tables fast?"</div></div>
+    <div class="pb" onclick="this.classList.toggle('open')"><div class="h"><span>Scope &amp; default</span><span>▸</span></div><div class="d">Applies to UC <strong>managed</strong> tables (external you maintain yourself). Enabled by default for accounts created on/after Nov 11, 2024; older accounts via gradual rollout.</div></div>
+  </div>
+  <p class="codecap" style="margin-top:12px">Enable at catalog or schema level (inherits down)</p>
+  <pre class="code"><span class="k">ALTER CATALOG</span> main <span class="k">ENABLE PREDICTIVE OPTIMIZATION</span>;
+<span class="k">ALTER SCHEMA</span>  main.sales <span class="k">ENABLE PREDICTIVE OPTIMIZATION</span>;   <span class="c">-- or DISABLE / INHERIT</span></pre>
+</section>
+
+<section>
+  <h2>Deep vs shallow — at a glance</h2>
+  <table>
+    <tr><th></th><th>Deep clone</th><th>Shallow clone</th></tr>
+    <tr><td>Copies data files</td><td class="win">Yes</td><td>No (points at source)</td></tr>
+    <tr><td>Speed / cost</td><td>Slower / more storage</td><td class="win">Instant / cheap</td></tr>
+    <tr><td>Independent of source</td><td class="win">Yes</td><td>No (VACUUM on source breaks it)</td></tr>
+    <tr><td>Incremental re-sync</td><td class="win">Yes</td><td>n/a</td></tr>
+    <tr><td>Good for</td><td>Backup, archive, DR, migration</td><td>Test/dev, sharing</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Why it matters</h2>
+  <ul>
+    <li><strong>Shallow clone = instant test/dev copy</strong> of a huge prod table without duplicating terabytes — a favorite trick &amp; interview answer.</li>
+    <li><strong>Deep clone is incremental</strong> → cheap, repeatable backups/DR.</li>
+    <li><strong>PO removes maintenance toil</strong> — the modern answer to "how do you keep tables performant?"</li>
+  </ul>
+  <div class="card usecase">🧪 <strong>Real-world use case:</strong> before a risky migration, <code>SHALLOW CLONE prod.orders</code> to a sandbox in seconds, experiment, then drop it — zero data copied. For DR, a nightly <code>DEEP CLONE</code> re-syncs only the day's changes.</div>
+</section>
+
+<section id="limits">
+  <h2>Uses, edge cases &amp; limitations</h2>
+  <ul>
+    <li><strong>Uses:</strong> shallow → cheap test/dev/sharing copies; deep → backups, archiving versions, ML reproducibility, DR, cross-region migration.</li>
+    <li><strong>Edge case:</strong> shallow clone depends on source files — <strong>VACUUM on the source breaks it</strong> (FileNotFoundException); readers need access to both source &amp; clone. Clones have independent history; deep re-runs are incremental.</li>
+    <li><strong>Limitation:</strong> can't clone streaming tables or materialized views; CLONE doesn't copy history/description/UC tags. PO applies to UC managed tables only.</li>
+  </ul>
+</section>
+
+<section id="gotchas">
+  <h2>Common gotchas</h2>
+  <ul>
+    <li>❌ Treating a <strong>shallow</strong> clone as a real backup — VACUUM on the source destroys it. Use <strong>deep</strong> clone for durable copies.</li>
+    <li>❌ Expecting CLONE to copy history/tags/description — it doesn't.</li>
+    <li>❌ Manually scheduling OPTIMIZE/VACUUM where <strong>PO</strong> already runs.</li>
+    <li>❌ Trying to clone a streaming table / materialized view — unsupported.</li>
+    <li>❌ Re-doing a full copy for backups — a repeat <strong>DEEP CLONE</strong> only syncs the delta.</li>
+  </ul>
+</section>
+
+<footer>
+  <strong>References:</strong>
+  <a href="https://docs.databricks.com/aws/en/delta/clone" target="_blank" rel="noopener">Clone a table</a> ·
+  <a href="https://docs.databricks.com/aws/en/sql/language-manual/delta-clone" target="_blank" rel="noopener">CREATE TABLE CLONE (SQL ref)</a> ·
+  <a href="https://docs.databricks.com/aws/en/optimizations/predictive-optimization" target="_blank" rel="noopener">Predictive optimization</a> ·
+  <a href="https://docs.databricks.com/aws/en/delta/vacuum" target="_blank" rel="noopener">VACUUM</a>
+  <p style="margin-top:10px">Topic 3.4 · grounded against official Databricks docs (June 2026). Scope excludes workspace basics &amp; Apache Spark core.</p>
+</footer>
+
+</div>
+<script>
+// Diagram 1 — clone type + vacuum sim (scoped to #clone)
+let cloneType='deep';
+const srcEl=document.getElementById('src'), clnEl=document.getElementById('cln'),
+      lnkEl=document.getElementById('lnk'), cres=document.getElementById('cres');
+function setClone(t){
+  cloneType=t;
+  document.querySelectorAll('#clone .opt').forEach(o=>o.classList.toggle('on',o.dataset.o===t));
+  srcEl.textContent='data files: present'; srcEl.className='s';
+  if(t==='deep'){ clnEl.textContent='owns its own data'; lnkEl.textContent='— full copy —'; }
+  else { clnEl.textContent='points at source files'; lnkEl.textContent='— pointer —'; }
+  cres.textContent='';
+}
+document.querySelectorAll('#clone .opt').forEach(o=>o.addEventListener('click',()=>setClone(o.dataset.o)));
+function vacuumSource(){
+  srcEl.textContent='data files: VACUUMed'; srcEl.className='s';
+  if(cloneType==='deep'){
+    cres.innerHTML='<span class="fine">✅ Deep clone still works — it has its own copy of the data.</span>';
+  } else {
+    clnEl.textContent='FileNotFoundException';
+    cres.innerHTML='<span class="broken">⚠️ Shallow clone BROKEN — it referenced the source files that VACUUM just removed.</span>';
+  }
+}
+setClone('deep');
+// Diagram 2 (#poq) uses inline onclick toggles — scoped, no collisions.
+</script>
+</body>
+</html>

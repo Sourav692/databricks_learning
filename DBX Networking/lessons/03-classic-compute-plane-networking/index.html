@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Topic 3 — Classic Compute Plane Networking · Azure Databricks (Architect View)</title>
+<style>
+  :root{
+    --db-orange:#FF3621; --db-navy:#1B3139; --db-dark:#0E1416; --db-gray:#6B7280;
+    --db-light:#F5F5F4; --db-border:#E5E7EB; --db-green:#00A972; --db-blue:#2272B4;
+    --db-yellow:#FFC107; --db-red:#DC2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","DM Sans",sans-serif;
+       background:#FAFAF9;color:var(--db-dark);line-height:1.6;padding:32px 16px;}
+  .container{max-width:1120px;margin:0 auto;}
+  header{background:linear-gradient(135deg,var(--db-navy) 0%,var(--db-dark) 100%);
+         color:#fff;padding:34px 40px;border-radius:12px;margin-bottom:22px;}
+  header .eyebrow{color:var(--db-orange);font-size:13px;font-weight:600;letter-spacing:1.5px;
+         text-transform:uppercase;margin-bottom:10px;}
+  header h1{font-size:32px;font-weight:700;margin-bottom:8px;}
+  header .subtitle{font-size:15px;opacity:.88;max-width:780px;}
+  .badges{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+  .badge{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+         padding:4px 12px;border-radius:20px;font-size:12px;}
+  .badge.azure{background:var(--db-blue);border-color:var(--db-blue);}
+
+  nav.tabs{display:flex;gap:4px;background:#fff;padding:6px;border-radius:10px;
+           margin-bottom:20px;border:1px solid var(--db-border);flex-wrap:wrap;}
+  nav.tabs button{background:transparent;border:none;padding:10px 15px;border-radius:6px;
+           cursor:pointer;font-size:14px;font-weight:500;color:var(--db-gray);
+           transition:all .15s;font-family:inherit;}
+  nav.tabs button:hover{background:var(--db-light);color:var(--db-dark);}
+  nav.tabs button.active{background:var(--db-navy);color:#fff;}
+
+  section.panel{background:#fff;border-radius:12px;padding:30px;border:1px solid var(--db-border);
+           margin-bottom:20px;display:none;}
+  section.panel.active{display:block;}
+  h2{font-size:21px;margin-bottom:14px;color:var(--db-navy);}
+  h3{font-size:16px;margin:20px 0 10px;color:var(--db-navy);font-weight:600;}
+  p{margin-bottom:12px;color:#2A3439;}
+  ul,ol{margin:0 0 12px 22px;} li{margin-bottom:6px;}
+  strong{color:var(--db-dark);}
+  code{background:#F1F0EF;padding:2px 6px;border-radius:4px;font-size:13px;
+       font-family:"Monaco","SFMono-Regular",monospace;}
+
+  .callout{padding:15px 20px;border-radius:8px;margin:16px 0;border-left:4px solid;}
+  .callout.key{background:#EFF6FF;border-color:var(--db-blue);}
+  .callout.tip{background:#ECFDF5;border-color:var(--db-green);}
+  .callout.warn{background:#FEF3C7;border-color:var(--db-yellow);}
+  .callout.mm{background:#FFF4F2;border-color:var(--db-orange);}
+  .callout h4{font-size:14px;margin-bottom:6px;}
+  .callout p{margin:0;font-size:14px;}
+
+  .diagram-controls{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  .diagram-controls button{padding:9px 15px;border:2px solid var(--db-border);background:#fff;
+           border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit;
+           transition:all .15s;}
+  .diagram-controls button.active{background:var(--db-orange);color:#fff;border-color:var(--db-orange);}
+  .diagram-canvas{background:#FBFAF8;border:1px solid var(--db-border);border-radius:10px;
+           padding:14px;min-height:300px;}
+  .diagram-canvas svg{width:100%;height:auto;max-height:380px;}
+  .node{cursor:pointer;}
+  .node:hover .node-bg{filter:brightness(1.05);stroke-width:3;}
+  .node-bg{transition:all .15s;}
+  .arrow{stroke:var(--db-gray);stroke-width:2;fill:none;}
+  .arrow.hot{stroke:var(--db-orange);stroke-width:2.6;}
+  .arrow.cold{stroke:var(--db-green);stroke-width:2;stroke-dasharray:5,3;}
+  .arrow.muted{stroke:#C9CED3;stroke-width:1.5;}
+  .alabel{font-size:10px;fill:var(--db-gray);font-family:inherit;}
+  .alabel.hot{fill:var(--db-orange);font-weight:600;}
+  .alabel.cold{fill:var(--db-green);}
+  .info-box{background:#fff;border:1px solid var(--db-border);border-radius:8px;padding:14px 16px;
+           margin-top:12px;font-size:13px;min-height:66px;}
+  .info-box strong{display:block;margin-bottom:4px;color:var(--db-orange);}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13.5px;}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--db-border);vertical-align:top;}
+  th{background:var(--db-light);font-weight:600;color:var(--db-navy);font-size:13px;}
+  tr:hover{background:#FBFAF8;}
+
+  pre{background:#0d1117;color:#e6edf3;padding:14px;border-radius:8px;overflow:auto;font-size:12.5px;
+      margin:6px 0 4px;}
+  pre code{background:none;color:inherit;padding:0;}
+  .caption{font-size:12px;color:#666;margin:4px 0 12px;}
+
+  .decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0;}
+  @media(max-width:720px){.decision-grid{grid-template-columns:1fr;}}
+  .decision{padding:16px 18px;border-radius:10px;border:1px solid;}
+  .decision.pick{background:#ECFDF5;border-color:#A7F3D0;}
+  .decision.skip{background:#FEF2F2;border-color:#FECACA;}
+  .decision h3{margin-top:0;} .decision.pick h3{color:var(--db-green);} .decision.skip h3{color:var(--db-red);}
+  .decision ul{list-style:none;margin-left:0;} .decision li{padding:5px 0 5px 22px;position:relative;font-size:13.5px;}
+  .decision.pick li::before{content:"\2713";position:absolute;left:0;color:var(--db-green);font-weight:700;}
+  .decision.skip li::before{content:"\2715";position:absolute;left:0;color:var(--db-red);font-weight:700;}
+
+  .scenarios{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin:16px 0;}
+  .scenario{background:var(--db-light);border-radius:8px;padding:15px;border-top:3px solid var(--db-orange);}
+  .scenario h4{font-size:14px;margin-bottom:6px;color:var(--db-navy);}
+  .scenario p{font-size:13px;margin:0;color:#4A5860;}
+  .scenario .fix{display:block;margin-top:6px;font-size:12.5px;color:var(--db-green);}
+
+  .interview-card{background:linear-gradient(135deg,#1B3139 0%,#0E1416 100%);color:#fff;
+           padding:22px 26px;border-radius:12px;margin:18px 0;border-left:4px solid var(--db-orange);}
+  .interview-card .label{font-size:11px;color:var(--db-orange);letter-spacing:1.5px;text-transform:uppercase;
+           font-weight:600;margin-bottom:8px;}
+  .interview-card .quote{font-size:16px;font-style:italic;line-height:1.5;}
+
+  .glossary dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 16px;font-size:13px;}
+  .glossary dt{font-weight:600;color:var(--db-navy);}
+  .glossary dd{color:#4A5860;}
+  @media(max-width:600px){.glossary dl{grid-template-columns:1fr;}}
+
+  figure{margin:14px 0;} figure img{width:100%;border:1px solid var(--db-border);border-radius:10px;background:#fff;}
+
+  footer{background:#fff;padding:20px 26px;border-radius:10px;border:1px solid var(--db-border);
+         font-size:13px;color:var(--db-gray);}
+  footer a{color:var(--db-blue);text-decoration:none;} footer a:hover{text-decoration:underline;}
+  footer ul{list-style:none;margin:8px 0 0 0;} footer li{padding:3px 0;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <div class="eyebrow">Azure Databricks · Networking &amp; Security · Stage 3</div>
+  <h1>Classic Compute Plane Networking</h1>
+  <div class="subtitle">The one compute model where Spark runs on VMs in <strong>your</strong> subscription —
+    so the customer's network team owns and hardens the pipes. Five decisions, mostly one-way doors:
+    <strong>who owns the VNet, how big the subnets are, SCC, egress, and the path to your storage.</strong></div>
+  <div class="badges">
+    <span class="badge azure">Azure-first</span>
+    <span class="badge">3.1 Managed vs Injection</span>
+    <span class="badge">3.2 Subnet Sizing</span>
+    <span class="badge">3.3 SCC / No Public IP</span>
+    <span class="badge">3.4 Egress</span>
+    <span class="badge">3.5 Compute → Storage</span>
+  </div>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="overview">Overview</button>
+  <button data-tab="t31">3.1 · Managed vs Injection</button>
+  <button data-tab="t32">3.2 · Subnet Sizing</button>
+  <button data-tab="t33">3.3 · SCC / No Public IP</button>
+  <button data-tab="t34">3.4 · Egress (NSG/UDR/NAT)</button>
+  <button data-tab="t35">3.5 · Compute → Storage</button>
+  <button data-tab="decision">Decision Guide</button>
+  <button data-tab="customer">Customer Q&amp;A</button>
+</nav>
+
+<!-- OVERVIEW -->
+<section class="panel active" id="overview">
+  <h2>Build the building behind doors ② and ③</h2>
+  <p>Stage 2 said there are only <strong>three doors</strong>: ① users in, ② compute ↔ control, ③ compute → your
+    data. Stage 3 is the <strong>construction project</strong> for the building behind doors ② and ③ — the
+    <strong>classic compute plane</strong>, where Databricks runs Spark on VMs <em>in your Azure subscription</em>.</p>
+
+  <div class="callout mm">
+    <h4>🧠 Mental model — hold this in your head</h4>
+    <p><strong>Classic compute is a building you lease land for and fit out yourself.</strong>
+      ① <em>Pick the lot</em> (managed VNet = locked apartment vs VNet injection = your plot — permanent).
+      ② <em>Pour the foundation</em> (two equal address streets, sized for peak — you can't re-pave).
+      ③ <em>Wire the intercom</em> (SCC: the building always dials <u>out</u>, so no inbound door).
+      ④ <em>Build the loading dock</em> (NSG = <em>if</em>, UDR = <em>which road</em>, NAT = <em>return address</em>).
+      ⑤ <em>Run a private corridor to the shop</em> (storage: public / Service Endpoint / Private Endpoint).
+      <strong>SCC keeps clusters private in both VNet models; injection is what lets you own every other hop —
+      and most of these are one-way doors.</strong></p>
+  </div>
+
+  <h3>Static topology (zoom-crisp, reusable in slides)</h3>
+  <figure>
+    <img src="architecture.svg" alt="Stage 3 classic compute plane: VNet-injected host and container subnets (no public IP)
+      delegated to Microsoft.Databricks/workspaces; container subnet dials outbound 443 to the SCC relay; egress chain of
+      NSG, UDR and NAT gateway; storage firewall on ADLS Gen2 reached via Service Endpoint (backbone) or Private Endpoint
+      (private IP); Service Endpoint Policy cannot attach to the delegated subnet." />
+    <figcaption class="caption">The same map as the interactive diagrams — injected VNet, the two delegated subnets,
+      SCC outbound to the relay, the NSG→UDR→NAT egress chain, and three storage routes to one ADLS account.</figcaption>
+  </figure>
+
+  <h3>Where each subtopic sits on the three-path scaffold</h3>
+  <table>
+    <thead><tr><th>Path</th><th>What travels</th><th>Stage-3 control</th></tr></thead>
+    <tbody>
+      <tr><td><strong>① User → Databricks</strong></td><td>Browser / BI / REST → workspace URL</td><td><em>Not in Stage 3</em> — IP ACL / front-end PL (Stage 4)</td></tr>
+      <tr><td><strong>② Compute ↔ Control</strong></td><td>Cluster phones home to be managed</td><td><strong>3.3 SCC</strong> (inbound) + <strong>3.4 egress</strong> (outbound); back-end PL later</td></tr>
+      <tr><td><strong>③ Compute → Storage</strong></td><td>Cluster reads/writes your ADLS</td><td><strong>3.5</strong> storage firewall + Service/Private Endpoint (via <strong>3.4</strong> plumbing)</td></tr>
+      <tr><td><strong>(All)</strong></td><td>—</td><td><strong>3.1 injection</strong> owns the pipes; <strong>3.2 sizing</strong> caps the node count</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout key">
+    <h4>The line a security team wants to hear</h4>
+    <p>"Clusters run in <strong>your</strong> VNet with <strong>no public IPs and no open inbound ports</strong>; they
+      dial <em>out</em> to the control plane. Egress leaves on a <strong>stable NAT IP</strong> you can allowlist, and
+      your data stays in <strong>your firewalled ADLS Gen2</strong> reached over the Microsoft backbone."</p>
+  </div>
+
+  <div class="glossary callout" style="border-color:var(--db-gray);background:#fff;">
+    <h4>Terms used here (full deep-dive in the tab noted)</h4>
+    <dl>
+      <dt>VNet injection</dt><dd>Deploying clusters into <em>your</em> VNet so you control subnets/NSG/routing. → 3.1</dd>
+      <dt>Subnet delegation</dt><dd>Handing a subnet to <code>Microsoft.Databricks/workspaces</code> to auto-manage it. → 3.1</dd>
+      <dt>SCC / No Public IP</dt><dd>Clusters dial outbound to the SCC relay; no public IP, no inbound port. → 3.3</dd>
+      <dt>NSG / UDR / NAT</dt><dd>Egress: <em>if</em> a packet leaves · <em>which</em> road · <em>what</em> public IP. → 3.4</dd>
+      <dt>Service / Private Endpoint</dt><dd>Backbone+VNet-rule (free) vs a private IP NIC in your VNet (paid). → 3.5</dd>
+    </dl>
+  </div>
+</section>
+
+<!-- 3.1 -->
+<section class="panel" id="t31">
+  <h2>3.1 · Default (managed) VNet vs VNet injection</h2>
+  <p>The first decision: let Databricks run a <strong>locked managed VNet</strong>, or <strong>inject</strong> the
+    workspace into a VNet you own. The choice is <strong>permanent</strong> and it gates every advanced control.
+    Switch the diagram and click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d31','managed',this)">Managed (locked) VNet</button>
+    <button onclick="switchView('d31','injection',this)">VNet injection (your VNet)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d31" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d31" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d31" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d31" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d31info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The choice is irreversible — and gates everything</h4>
+    <p>You can't convert a managed-VNet workspace to injection later (that's a rebuild + migration). NSG egress rules,
+      UDR→firewall, service/private endpoints, back-end Private Link, on-prem routing — <strong>all require
+      injection</strong>. <strong>SCC / No Public IP works in both</strong>; injection adds the customization.</p>
+  </div>
+
+  <h3>Managed VNet vs injection</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Managed VNet</th><th>VNet injection</th></tr></thead>
+    <tbody>
+      <tr><td>Who owns it</td><td>Databricks, locked, managed RG</td><td>You, your subscription</td></tr>
+      <tr><td>CIDR / NSG Deny / UDR</td><td>❌ none selectable</td><td>✅ you control</td></tr>
+      <tr><td>Service/Private Endpoint, back-end PL, on-prem</td><td>❌</td><td>✅</td></tr>
+      <tr><td>SCC / No Public IP</td><td>✅ default</td><td>✅ default, recommended</td></tr>
+      <tr><td>Convert later</td><td>❌ not convertible</td><td>n/a</td></tr>
+      <tr><td>Use for</td><td>POC / demo / training</td><td>Any production / regulated</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the delegation + the one flag that declares injection</h3>
+  <p class="caption">Terraform (azurerm) — the lines that teach the point. Full module is the Stage-3 hands-on artifact.</p>
+  <pre><code>resource "azurerm_subnet" "host" {           # both subnets PRIVATE under SCC
+  address_prefixes = ["10.179.0.0/18"]
+  delegation {                               # REQUIRED: lets Databricks manage the subnet
+    name = "databricks-del"
+    service_delegation { name = "Microsoft.Databricks/workspaces" }
+  }
+}
+resource "azurerm_databricks_workspace" "this" {
+  sku = "premium"
+  custom_parameters {
+    virtual_network_id = azurerm_virtual_network.adb.id   # &lt;-- THIS declares VNet injection
+    no_public_ip       = true                             # SCC in either model
+  }
+}</code></pre>
+  <p class="caption">Portal: Create → Azure Databricks → <em>Networking → Deploy in your own VNet = Yes</em> → pick the VNet +
+    host/container subnets. Verify: VNet → Subnets → both show an NSG + <em>Delegation = Microsoft.Databricks/workspaces</em>.</p>
+
+  <div class="callout warn">
+    <h4>Edge case — managed NSG rules &amp; the SEP cutoff</h4>
+    <p>Editing a Databricks-<strong>managed</strong> NSG rule is futile — the <strong>network intent policy</strong>
+      reconciles it back; add your <em>own</em> Deny rules instead. And <strong>Service Endpoint Policies</strong>:
+      workspaces created <strong>on/after 2025-07-14</strong> support them by default; older ones need account-team
+      enablement (injection + SCC + unlocked RG). Verify per workspace.</p>
+  </div>
+</section>
+
+<!-- 3.2 -->
+<section class="panel" id="t32">
+  <h2>3.2 · Subnets &amp; address-space sizing</h2>
+  <p>A VNet-injected workspace needs <strong>two equal subnets</strong> — host + container. Every node is a
+    <strong>duplex</strong> that burns one IP in <em>each</em>, and you can never re-pave the streets. Switch the
+    diagram between the node-IP view and the sizing-math view.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d32','node',this)">2 IPs per node</button>
+    <button onclick="switchView('d32','sizing',this)">VNet sizing + PL headroom</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d32" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d32" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d32" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d32" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d32info"><strong>Tip</strong>Click any box to see what it is and why it's there.</div>
+
+  <div class="callout warn">
+    <h4>Sizing is a one-way door</h4>
+    <p><em>"Subnet CIDR ranges cannot be changed after deployment."</em> A too-small subnet caps how many nodes the
+      workspace can <strong>ever</strong> run. The only fixes — the Public-Preview <em>Update workspace network
+      configuration</em> migration or an account-team CIDR increase — both involve <strong>downtime</strong>.</p>
+  </div>
+
+  <h3>The numbers</h3>
+  <table>
+    <thead><tr><th>Subnet</th><th>Usable (total − 5 reserved)</th><th>≈ Max nodes (all clusters)</th></tr></thead>
+    <tbody>
+      <tr><td><code>/26</code> (recommended floor)</td><td>59</td><td>~59</td></tr>
+      <tr><td><code>/24</code></td><td>251</td><td>~251</td></tr>
+      <tr><td><code>/22</code></td><td>1,019</td><td>~1,019</td></tr>
+      <tr><td><code>/20</code></td><td>4,091</td><td>~4,091</td></tr>
+    </tbody>
+  </table>
+  <p class="caption">VNet <code>/16</code>–<code>/24</code>; subnets up to <code>/26</code> (min <code>/28</code>). Azure
+    reserves 5 IPs/subnet. <strong>Max nodes ≈ 2^(32 − prefix) − 5</strong>, counted across all running clusters at once.</p>
+
+  <h3>Illustrative config — sizing + delegation (the permanent part)</h3>
+  <pre><code>resource "azurerm_virtual_network" "adb" {
+  address_space = ["10.179.0.0/16"]          # /16: room for big subnets + a future PL subnet
+}
+resource "azurerm_subnet" "host"      { address_prefixes = ["10.179.0.0/18"] }   # 16,379 usable
+resource "azurerm_subnet" "container" { address_prefixes = ["10.179.64.0/18"] }  # MUST equal host, no overlap
+# 10.179.128.0/18 left FREE -> headroom for a /27-/28 Private Link subnet (Stage 4).</code></pre>
+  <p class="caption">Portal: VNet → IP addresses (set space a couple of bits larger than the subnets) → + Add subnet twice
+    (equal, non-overlapping, leave a gap) → deploy the workspace into them.</p>
+
+  <div class="callout tip">
+    <h4>Decision rule</h4>
+    <p>Dev/small → <code>/26</code>; typical team → <code>/24</code>; large/concurrent → <code>/22</code>–<code>/20</code>.
+      <strong>When peak is unknown, size up</strong> — IPs are free; a resize is a downtime outage. Always leave the VNet a
+      couple of bits larger than the two subnets so a Private Link subnet fits later.</p>
+  </div>
+</section>
+
+<!-- 3.3 -->
+<section class="panel" id="t33">
+  <h2>3.3 · Secure Cluster Connectivity (SCC) / No Public IP</h2>
+  <p>SCC <strong>reverses the call direction</strong>: the cluster dials <em>out</em> to the SCC relay and the control
+    plane talks back <em>down that tunnel</em> — so no public IP on the VM, no inbound port. Step the diagram through the
+    SCC handshake and the egress; click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d33','scc',this)">SCC handshake (path ②)</button>
+    <button onclick="switchView('d33','legacy',this)">Legacy (SCC disabled)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d33" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d33" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d33" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d33" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d33info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout key">
+    <h4>The senior nuance — "No Public IP" ≠ no public addressing anywhere</h4>
+    <p>SCC removes the public IP <strong>from your VM</strong> and the <strong>inbound port</strong>. But the cluster's
+      <em>outbound</em> call still targets a <strong>public IP</strong> control-plane endpoint (that's why
+      <code>AzureDatabricks</code> is in your egress allowlist) — over the Microsoft backbone.
+      <strong>Back-end Private Link</strong> (Stage 4) makes that last outbound hop private.</p>
+  </div>
+
+  <h3>SCC disabled vs enabled vs + Private Link</h3>
+  <table>
+    <thead><tr><th>Aspect</th><th>Disabled (legacy)</th><th>Enabled (default)</th><th>+ back-end PL</th></tr></thead>
+    <tbody>
+      <tr><td>Cluster VM public IP</td><td>Yes</td><td><strong>No</strong></td><td>No</td></tr>
+      <tr><td>Open inbound ports</td><td>Yes</td><td><strong>No</strong></td><td>No</td></tr>
+      <tr><td>Call direction</td><td>CP inbound</td><td>Cluster outbound</td><td>Cluster → private relay</td></tr>
+      <tr><td>CP-side endpoint</td><td>Public IP</td><td><strong>Public IP</strong></td><td><strong>Private IP</strong></td></tr>
+      <tr><td>Needs <code>AzureDatabricks</code> egress tag</td><td>Yes</td><td>Yes</td><td><strong>No</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — the entire SCC switch</h3>
+  <pre><code>resource "azurerm_databricks_workspace" "this" {
+  sku = "premium"
+  custom_parameters {
+    no_public_ip       = true     # &lt;-- THIS is Secure Cluster Connectivity / No Public IP
+    virtual_network_id = var.vnet_id
+  }
+}
+# ARM: parameters.enableNoPublicIp.value = true  (defaults to true in API 2024-05-01+)</code></pre>
+  <p class="caption">Portal: Create → Networking → <em>Secure Cluster Connectivity (No Public IP) = Yes</em> (default).
+    Verify: Managed RG → cluster VM → Properties → Networking → <strong>Public IP is empty</strong>.</p>
+
+  <div class="callout warn">
+    <h4>Egress is now what you manage</h4>
+    <p>Because the cluster initiates everything outbound, attach an <strong>Azure NAT Gateway</strong> (Standard, static IP)
+      to <em>both</em> subnets for a stable allowlist-able egress IP. <strong>Don't use an egress load balancer</strong>
+      (SNAT exhaustion). After <strong>2026-03-31</strong> new Azure VNets have no implicit outbound — a NAT gateway is
+      effectively mandatory or clusters won't start.</p>
+  </div>
+</section>
+
+<!-- 3.4 -->
+<section class="panel" id="t34">
+  <h2>3.4 · Egress — NSG rules, UDRs, NAT gateway</h2>
+  <p>Once the VMs are private, three primitives control the <strong>outbound</strong> door: <strong>NSG = allowed?</strong>,
+    <strong>UDR = which path?</strong>, <strong>NAT = what public IP?</strong>. Switch the diagram between plain NAT egress
+    and the firewall-UDR (DEP) pattern; click any box for the "what + why."</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d34','nat',this)">NAT-gateway egress</button>
+    <button onclick="switchView('d34','firewall',this)">+ UDR → Azure Firewall (DEP)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d34" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d34" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d34" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d34" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d34info"><strong>Tip</strong>Click any component to see what it is and why it's there.</div>
+
+  <div class="callout warn">
+    <h4>Routing precedence — the allowlist gotcha</h4>
+    <p>A <code>0.0.0.0/0</code> UDR to a firewall/NVA <strong>overrides the NAT Gateway</strong> (order: UDR-to-NVA »
+      NAT » instance IP » LB rules » default route). So if you route everything to the firewall, the <strong>firewall's
+      IP</strong> is the egress source — allowlist <em>that</em>, not the NAT IP. Keep <code>AzureDatabricks/Storage/
+      EventHub</code> service-tag → Internet UDRs so the <strong>SCC relay skips the firewall hop</strong>.</p>
+  </div>
+
+  <h3>What a cluster must reach (service tags, not raw IPs)</h3>
+  <table>
+    <thead><tr><th>Service tag</th><th>Port(s)</th><th>For</th></tr></thead>
+    <tbody>
+      <tr><td><code>AzureDatabricks</code></td><td>443 · 3306 · 8443–8451</td><td>SCC relay + web app/REST; legacy metastore; internal CP calls + UC lineage/logging</td></tr>
+      <tr><td><code>Storage</code></td><td>443</td><td>Artifact + log Blob storage</td></tr>
+      <tr><td><code>EventHub</code></td><td>9093</td><td>Telemetry / logging</td></tr>
+      <tr><td>(NFS)</td><td>111 · 2049</td><td>Library installs if you tighten egress</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — NAT + firewall UDR (keep relay direct) + a neighbor deny</h3>
+  <pre><code>resource "azurerm_route" "to_firewall" {       # all other egress -> Azure Firewall
+  address_prefix = "0.0.0.0/0"                 # NOTE: this UDR OVERRIDES the NAT gateway
+  next_hop_type  = "VirtualAppliance"
+  next_hop_in_ip_address = "10.10.0.4"
+}
+resource "azurerm_route" "databricks_direct" { # keep SCC relay DIRECT (skip firewall hop)
+  address_prefix = "AzureDatabricks"           # service tag as route prefix (repeat: Storage, EventHub)
+  next_hop_type  = "Internet"
+}</code></pre>
+  <p class="caption">Portal: NAT gateway → attach to both subnets; Route tables → <code>0.0.0.0/0 → Virtual appliance</code>
+    (firewall IP) + <code>AzureDatabricks/Storage/EventHub → Internet</code> → associate to both subnets. Never delete the
+    managed NSG rules — add Deny rules on <em>neighbor</em> subnets instead.</p>
+
+  <div class="callout key">
+    <h4>NSGs are L4 only</h4>
+    <p>An NSG filters by IP/port/service-tag — <strong>not by FQDN</strong>. "Allow only pypi.org" needs <strong>Azure
+      Firewall application rules</strong>, not an NSG. NSG Deny rules cut lateral movement; the firewall does FQDN
+      allowlisting (the Data Exfiltration Protection pattern, Stage 4).</p>
+  </div>
+</section>
+
+<!-- 3.5 -->
+<section class="panel" id="t35">
+  <h2>3.5 · Compute → storage: public / service / private endpoints</h2>
+  <p>Your cluster reads ADLS Gen2. By default that's a <strong>public endpoint</strong>; a <strong>storage firewall</strong>
+    slams it shut and you re-open a controlled door via a <strong>Service Endpoint</strong> (free, backbone) or a
+    <strong>Private Endpoint</strong> (paid, private IP). Switch the diagram between the three routes; click any box.</p>
+
+  <div class="diagram-controls">
+    <button class="active" onclick="switchView('d35','se',this)">Service Endpoint (free)</button>
+    <button onclick="switchView('d35','pe',this)">Private Endpoint (paid)</button>
+    <button onclick="switchView('d35','pub',this)">Public endpoint (default)</button>
+  </div>
+  <div class="diagram-canvas">
+    <svg id="d35" viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="ar-d35" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#6B7280"/></marker>
+        <marker id="aro-d35" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#FF3621"/></marker>
+        <marker id="arg-d35" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="#00A972"/></marker>
+      </defs>
+      <g class="dg-content"></g>
+    </svg>
+  </div>
+  <div class="info-box" id="d35info"><strong>Tip</strong>Pick a route above, then click a box to see the "what + why."</div>
+
+  <div class="callout warn">
+    <h4>The footgun — Service Endpoint Policies can't attach to the Databricks subnet</h4>
+    <p>A SEP (allow-list of which storage accounts a subnet may reach) is unsupported on subnets <strong>delegated to a
+      managed service</strong> — and because a SEP <em>denies</em> anything unlisted, it would block the managed-service
+      infra storage and <strong>break the workspace</strong>. For exfiltration control use <strong>Azure Firewall + UDR
+      FQDN allowlist</strong> (3.4) or a <strong>Private Endpoint + Public access Disabled</strong>.</p>
+  </div>
+
+  <h3>Public vs Service vs Private Endpoint</h3>
+  <table>
+    <thead><tr><th>Dimension</th><th>Public</th><th>Service Endpoint</th><th>Private Endpoint</th></tr></thead>
+    <tbody>
+      <tr><td>Path</td><td>NAT → public IP</td><td><strong>Backbone</strong>, private src IP</td><td><strong>Private Link</strong>, private IP</td></tr>
+      <tr><td>New private IP / DNS change?</td><td>No / No</td><td>No / <strong>No</strong></td><td><strong>Yes / Yes</strong></td></tr>
+      <tr><td>Cost</td><td>Egress only</td><td><strong>Free</strong></td><td><strong>Hourly + per-GB</strong></td></tr>
+      <tr><td>Reaches on-prem?</td><td>Yes (public)</td><td><strong>No</strong></td><td><strong>Yes</strong></td></tr>
+      <tr><td>Public access can be Disabled?</td><td>No</td><td>No</td><td><strong>Yes</strong></td></tr>
+    </tbody>
+  </table>
+
+  <h3>Illustrative config — Service Endpoint path (free)</h3>
+  <pre><code>resource "azurerm_subnet" "container" {
+  service_endpoints = ["Microsoft.Storage"]            # &lt;-- the Service Endpoint switch
+  delegation { service_delegation { name = "Microsoft.Databricks/workspaces" } }  # still required
+}
+resource "azurerm_storage_account_network_rules" "lake" {
+  default_action             = "Deny"                   # &lt;-- closes the public door
+  virtual_network_subnet_ids = [azurerm_subnet.host.id, azurerm_subnet.container.id]  # the VNet rule
+}
+# DNS unchanged. For Private Endpoint: a /28 PE subnet + privatelink.dfs.core.windows.net + public access Disabled.</code></pre>
+  <p class="caption">Portal: Storage account → Networking → <em>Enabled from selected VNets/IPs</em> → add host + container
+    subnets (auto-creates the SE) → Save. Add the VNet rule <strong>before</strong> setting Deny — the source-IP switch
+    drops open connections.</p>
+</section>
+
+<!-- DECISION -->
+<section class="panel" id="decision">
+  <h2>Decision guide — what an architect recommends</h2>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>VNet injection + SCC + NAT (the baseline)</h3>
+      <ul>
+        <li>Any production or regulated workload</li>
+        <li>Security team must own/inspect the network path</li>
+        <li>Size subnets for <strong>peak</strong> nodes; leave VNet room for a PL subnet</li>
+        <li>NAT gateway (Static Standard IP) on both subnets for a stable egress IP</li>
+        <li>Free, backbone-private; the floor for everything else</li>
+      </ul>
+    </div>
+    <div class="decision pick">
+      <h3>Managed VNet</h3>
+      <ul>
+        <li>Throwaway POC / demo / training only</li>
+        <li>Zero network customization needed</li>
+        <li>Still no public IPs (SCC by default)</li>
+        <li>Accept that it's locked and not convertible</li>
+      </ul>
+    </div>
+  </div>
+  <div class="decision-grid">
+    <div class="decision pick">
+      <h3>Step up when mandated</h3>
+      <ul>
+        <li>"No CP traffic on a public IP" → <strong>back-end Private Link</strong></li>
+        <li>FQDN egress allowlisting / exfiltration → <strong>UDR → Azure Firewall</strong></li>
+        <li>"No public storage endpoint" / on-prem reach → <strong>Private Endpoint + Disabled</strong></li>
+        <li>Serverless in scope → <strong>NCC</strong> (not SE/PE/NSG — no customer VNet)</li>
+      </ul>
+    </div>
+    <div class="decision skip">
+      <h3>Don't…</h3>
+      <ul>
+        <li>Choose the managed VNet for anything that might go to prod (rebuild)</li>
+        <li>Under-size subnets (no in-place resize; downtime to fix)</li>
+        <li>Edit the managed NSG rules, or use an egress LB with SCC</li>
+        <li>Allowlist raw relay/storage IPs, or set storage Deny before the VNet rule</li>
+        <li>Attach a Service Endpoint Policy to a delegated Databricks subnet</li>
+      </ul>
+    </div>
+  </div>
+  <div class="callout tip">
+    <h4>Rule of thumb</h4>
+    <p><strong>Size for peak and inject on day one; start free, step up only when mandated.</strong> SCC + NAT-gateway egress
+      and storage-firewall + Service Endpoint cost nothing and are backbone-private. Add Private Link / Private Endpoints only
+      when a regulator demands no public-IP hop or on-prem reach. Premium tier is the non-negotiable baseline.</p>
+  </div>
+</section>
+
+<!-- CUSTOMER Q&A -->
+<section class="panel" id="customer">
+  <h2>Customer Q&amp;A — what the security team actually asks</h2>
+
+  <div class="interview-card">
+    <div class="label">The one-liner</div>
+    <div class="quote">"Clusters run in your VNet with no public IPs and no open inbound ports — they dial out to the control
+      plane. Egress leaves on a stable NAT IP you can allowlist, and your data stays in your firewalled ADLS Gen2 reached
+      over the Microsoft backbone. We inject and size on day one because most of these are one-way doors; we add Private
+      Link / Private Endpoints only when a regulator demands no public-IP hop."</div>
+  </div>
+
+  <h3>Common asks &amp; the answer</h3>
+  <table>
+    <thead><tr><th>Customer asks…</th><th>Architect answers…</th></tr></thead>
+    <tbody>
+      <tr><td>"Can we start managed and inject later?"</td><td>No — the choice is permanent and not convertible; a managed workspace becomes a rebuild + migration. We inject from day one for anything prod-bound.</td></tr>
+      <tr><td>"Do cluster VMs have public IPs / open inbound ports?"</td><td>No to both — SCC dials out to the relay; verify on the VM: Properties → Networking → Public IP is empty.</td></tr>
+      <tr><td>"Does management traffic hit the public internet?"</td><td>The inbound path is gone; the outbound relay call still targets a public CP endpoint over the backbone — <em>until</em> back-end Private Link.</td></tr>
+      <tr><td>"Can we get one stable egress IP for our allowlist?"</td><td>Yes — Azure NAT Gateway with a Static Standard IP on both subnets. (If you route 0.0.0.0/0 to a firewall, allowlist the firewall's IP instead.)</td></tr>
+      <tr><td>"How many nodes can this workspace ever run?"</td><td>Usable IPs in one subnet (<code>2^(32−prefix) − 5</code>), across all running clusters. Subnets can't be resized without downtime.</td></tr>
+      <tr><td>"Does cluster→storage cross the public internet?"</td><td>With a Service Endpoint, no — backbone with a private source IP. With a Private Endpoint, private end-to-end (and we can set Public access = Disabled).</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What breaks in the field — and the FIRST check</h3>
+  <div class="scenarios">
+    <div class="scenario"><h4>Clusters stuck "Pending" on a fresh VNet</h4><p>Post-2026-03-31 new VNets have no implicit outbound, so the cluster can't reach the relay.<span class="fix">First check: NAT gateway attached to BOTH subnets — not a CP outage.</span></p></div>
+    <div class="scenario"><h4>IaC deploy fails on the subnets</h4><p>A subnet isn't delegated to the workspace service.<span class="fix">First check: both subnets declare Microsoft.Databricks/workspaces delegation.</span></p></div>
+    <div class="scenario"><h4>Cluster won't start / autoscale stalls (no IPs)</h4><p>Subnet sized for today, not peak; 2 IPs/node + 5 reserved.<span class="fix">First check: free IPs on BOTH subnets vs peak nodes × 2.</span></p></div>
+    <div class="scenario"><h4>UC lineage/logging fails after hardening</h4><p>The managed 8443–8451 outbound rule was deleted or shadowed.<span class="fix">First check: that managed NSG rule + any higher-priority deny.</span></p></div>
+    <div class="scenario"><h4>Partner allowlist rejects despite a NAT</h4><p>A 0.0.0.0/0 → firewall UDR overrides the NAT.<span class="fix">First check: the route table — allowlist the firewall's IP.</span></p></div>
+    <div class="scenario"><h4>"PE created but reads still fail"</h4><p>The VNet isn't linked to privatelink.dfs.core.windows.net.<span class="fix">First check: nslookup the FQDN from a cluster — public IP = DNS.</span></p></div>
+  </div>
+
+  <h3>Three questions to ask before recommending an architecture</h3>
+  <ol>
+    <li>Is there a regulatory mandate for <em>no public-IP hop</em> (control plane and/or storage), or is backbone-private enough?</li>
+    <li>What's the <em>peak concurrent</em> node count — and is there headroom in the VNet for a Private Link subnet later?</li>
+    <li>Does anything <em>on-prem</em> need to reach the same storage (forces Private Endpoint), and are you on Premium?</li>
+  </ol>
+</section>
+
+<footer>
+  <strong>Sources (verified against current Azure Databricks + Azure docs — 2026-06-26)</strong>
+  <ul>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/vnet-inject" target="_blank">Deploy in your Azure VNet (VNet injection) — CIDR, subnets, delegation, NSG rules, ports</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/secure-cluster-connectivity" target="_blank">Secure cluster connectivity (No Public IP)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/udr" target="_blank">User-defined route settings — service tags, ports, Private Link variant</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/databricks/security/network/classic/service-endpoints" target="_blank">Service endpoint policies for storage (2025-07-14 cutoff)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/nat-gateway/nat-overview" target="_blank">Azure NAT Gateway — SNAT, routing precedence</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/storage/common/storage-network-security" target="_blank">Azure Storage firewall (VNet/IP rules, public-access settings)</a></li>
+    <li>· <a href="https://learn.microsoft.com/azure/private-link/private-endpoint-dns" target="_blank">Private endpoint DNS (privatelink.dfs / .blob)</a></li>
+  </ul>
+  <p style="margin-top:8px;">Time-sensitive (reconfirm before quoting): default-outbound retirement (2026-03-31),
+    Service Endpoint Policy support cutoff (2025-07-14) + account-team enablement for older workspaces, the <em>Update
+    workspace network configuration</em> Public-Preview status, <code>enableNoPublicIp</code> default, and ports
+    (443 relay, 3306 legacy metastore, 8443–8451, 9093).</p>
+</footer>
+
+</div>
+
+<script>
+// ---------- tab switching ----------
+const tabs = document.querySelectorAll('#tabs button');
+const panels = document.querySelectorAll('section.panel');
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.classList.remove('active'));
+  panels.forEach(p=>p.classList.remove('active'));
+  t.classList.add('active');
+  document.getElementById(t.dataset.tab).classList.add('active');
+}));
+
+// ---------- shared nodes ----------
+const CP = {id:'cp', x:640,y:36,w:230,h:84,color:'#FF3621',label:'Control plane',sub:'Databricks sub · metadata only',
+  info:'<strong>Control plane (Databricks subscription)</strong>Web app, REST, Unity Catalog, cluster/jobs manager and the SCC relay. Databricks runs it; you secure the paths to/from it. Holds metadata + orchestration only, never your table data.'};
+
+// ---------- diagram data ----------
+const DIAGRAMS = {
+  // ---- 3.1 managed vs injection ----
+  d31:{ info:'d31info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      managed:{ nodes:[
+        {id:'mrg',x:40,y:60,w:300,h:230,color:'#6B7280',label:'Managed resource group',sub:'Databricks-managed · DO NOT edit',
+          info:'<strong>Managed resource group (your sub, locked)</strong>Databricks creates and owns it for the workspace plumbing. In the managed-VNet model the whole network lives here — opaque to your security team, can\'t host your VMs, can\'t be peered/hardened.'},
+        {id:'mvnet',x:64,y:120,w:250,h:140,color:'#6B7280',label:'Managed VNet (locked)',sub:'CIDR/NSG/routes not yours',
+          info:'<strong>Managed VNet (locked)</strong>Auto-created with the same two delegated subnets, managed NSG, SCC, and an auto NAT gateway you can\'t modify. You can\'t set the CIDR, add Deny/UDR rules, attach service/private endpoints, or peer it. Use only for throwaway POC/demo/training.'},
+        CP,
+        {id:'adls',x:660,y:230,w:180,h:70,color:'#00A972',label:'ADLS Gen2',sub:'public endpoint only',
+          info:'<strong>ADLS Gen2 (public endpoint only)</strong>In the managed model you can\'t firewall the storage hop to your subnet (no service/private endpoint), so path ③ stays wide open. This is the single biggest reason to inject for anything real.'}
+      ], arrows:[
+        {from:'mvnet',to:'cp',cls:'hot',label:'② SCC outbound 443'},
+        {from:'mvnet',to:'adls',cls:'muted',label:'③ public only'}
+      ]},
+      injection:{ nodes:[
+        {id:'vnet',x:40,y:70,w:340,h:220,color:'#2272B4',label:'Customer VNet (yours)',sub:'CIDR + NSG + UDR + endpoints',
+          info:'<strong>Customer VNet (VNet injection)</strong>You pre-create the VNet + two subnets and deploy into it. Now YOU own the CIDR, NSG Deny rules, UDRs, service/private endpoints, back-end Private Link, and on-prem routing. The enterprise baseline. Permanent choice — can\'t convert from managed.'},
+        {id:'host',x:60,y:130,w:140,h:64,color:'#6B7280',label:'Host subnet',sub:'delegated',
+          info:'<strong>Host subnet (delegated)</strong>"public" in the Portal but PRIVATE under SCC. Delegated to Microsoft.Databricks/workspaces so the platform attaches managed NSG rules + the network intent policy. You add your own Deny rules — never edit the managed ones (they reconcile back).'},
+        {id:'cont',x:220,y:130,w:150,h:64,color:'#2272B4',label:'Container subnet',sub:'clusters · delegated',
+          info:'<strong>Container subnet (delegated)</strong>Where Spark runs. Also delegated; both subnets carry the managed rules. Cross-cluster / cross-workspace traffic is blocked by the managed network policy even in the same VNet.'},
+        CP,
+        {id:'adls',x:660,y:230,w:180,h:70,color:'#00A972',label:'ADLS Gen2',sub:'firewalled (SE/PE)',
+          info:'<strong>ADLS Gen2 (firewallable)</strong>With injection you can lock the storage firewall to your subnet (Service Endpoint) or a Private Endpoint — path ③ becomes controllable. None of this is possible in the managed VNet.'}
+      ], arrows:[
+        {from:'cont',to:'cp',cls:'hot',label:'② SCC outbound 443'},
+        {from:'cont',to:'adls',cls:'cold',label:'③ SE / PE'}
+      ]}
+    }},
+
+  // ---- 3.2 sizing ----
+  d32:{ info:'d32info', tip:'<strong>Tip</strong>Click any box to see what it is and why it\'s there.',
+    views:{
+      node:{ nodes:[
+        {id:'host',x:60,y:60,w:300,h:60,color:'#6B7280',label:'Host subnet 10.179.0.0/18',sub:'VM host IP per node',
+          info:'<strong>Host subnet ("public")</strong>The Azure VM host for each node gets ONE IP here. "Public" is a misnomer — under SCC it\'s private. Must equal the container subnet size; CIDR is immutable after deploy.'},
+        {id:'cont',x:60,y:160,w:300,h:60,color:'#2272B4',label:'Container subnet 10.179.64.0/18',sub:'DBR container IP per node',
+          info:'<strong>Container subnet ("private")</strong>The DBR runtime container for each node gets ONE IP here. So every node burns 2 IPs (one per subnet) — a 10-node cluster = 10 host + 10 container IPs.'},
+        {id:'node',x:480,y:110,w:200,h:80,color:'#FF3621',label:'One cluster node',sub:'= 2 IPs (host + container)',
+          info:'<strong>One cluster node = a duplex</strong>It needs a mailbox on BOTH streets at once. Usable IPs in ONE subnet = 2^(32−prefix) − 5 = the max nodes the workspace can EVER run, across all clusters. /26 → 59; /24 → 251; /22 → 1,019.'}
+      ], arrows:[
+        {from:'host',to:'node',cls:'',label:'host IP'},
+        {from:'cont',to:'node',cls:'',label:'container IP'}
+      ]},
+      sizing:{ nodes:[
+        {id:'vnet',x:40,y:50,w:820,h:260,color:'#2272B4',label:'VNet 10.179.0.0/16',sub:'65,536 addresses · /16–/24',
+          info:'<strong>VNet (/16–/24)</strong>Size it a couple of bits LARGER than the two subnets so a Private Link subnet fits later. Must be RFC 1918 space that doesn\'t overlap on-prem/peered ranges.'},
+        {id:'host',x:70,y:120,w:230,h:80,color:'#6B7280',label:'Host /18',sub:'16,379 usable',
+          info:'<strong>Host subnet /18</strong>Far above one workspace\'s peak — but the point is the two subnets are equal and the VNet has headroom left over, not raw size.'},
+        {id:'cont',x:330,y:120,w:230,h:80,color:'#2272B4',label:'Container /18',sub:'16,379 usable',
+          info:'<strong>Container subnet /18</strong>Equal to host, non-overlapping. Nodes consume both in lockstep, so the smaller subnet is the real ceiling — keep them equal.'},
+        {id:'pl',x:590,y:120,w:240,h:80,color:'#00A972',label:'FREE 10.179.128.0/18',sub:'headroom for a /27–/28 PL subnet',
+          info:'<strong>Reserved headroom (Stage 4)</strong>Leaving a gap inside the /16 is the whole point of the recommendation — back-end/front-end Private Link needs its OWN subnet. Maxing the VNet with the two subnets forces a re-home later.'}
+      ], arrows:[] }
+    }},
+
+  // ---- 3.3 SCC ----
+  d33:{ info:'d33info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      scc:{ nodes:[
+        {id:'cont',x:40,y:150,w:200,h:90,color:'#2272B4',label:'Cluster node',sub:'your VNet · NO public IP',
+          info:'<strong>Cluster node (No Public IP)</strong>Runs in your VNet with no public IP and no listening port. At create time it opens ONE outbound TCP 443 connection to the SCC relay and holds it open — it is the client, the connection goes out from inside your VNet.'},
+        {id:'relay',x:380,y:40,w:220,h:80,color:'#FF3621',label:'SCC relay',sub:'control plane · public IP (443)',
+          info:'<strong>SCC relay</strong>The control-plane endpoint the cluster dials out to (a different IP than the web app/REST). It tunnels management traffic BACK DOWN the connection the cluster opened. Still a PUBLIC IP until back-end Private Link — that\'s why AzureDatabricks is in your egress allowlist.'},
+        {id:'mgr',x:660,y:40,w:210,h:80,color:'#FF3621',label:'Cluster / Jobs manager',sub:'control plane',
+          info:'<strong>Cluster / Jobs manager</strong>When it needs to run a job, scale, or terminate, it does NOT open a new inbound connection — it pushes the command down the existing tunnel via the relay. Result: no inbound NSG rule, no public IP, no listening port.'},
+        {id:'nat',x:380,y:230,w:200,h:74,color:'#FFC107',label:'Azure NAT Gateway',sub:'stable egress IP',
+          info:'<strong>Azure NAT Gateway</strong>Because the cluster now initiates everything outbound, egress is what you manage. Attach a NAT (Static Standard IP) to BOTH subnets for a stable allowlist-able egress IP. After 2026-03-31 it\'s effectively mandatory (no implicit outbound). Don\'t use an egress LB (SNAT exhaustion).'},
+        {id:'ext',x:660,y:230,w:210,h:74,color:'#00A972',label:'Internet / Azure services',sub:'allowlist this IP',
+          info:'<strong>Egress destinations</strong>Partner APIs / SaaS that allowlist by source IP see the single stable NAT IP. The SCC relay, Storage and EventHub egress also leave this way (unless Private Link makes the relay private).'}
+      ], arrows:[
+        {from:'cont',to:'relay',cls:'hot',label:'① outbound 443 (cluster initiates)'},
+        {from:'mgr',to:'relay',cls:'',label:'③ command'},
+        {from:'relay',to:'cont',cls:'hot',label:'④ down the tunnel'},
+        {from:'cont',to:'nat',cls:'',label:'egress'},
+        {from:'nat',to:'ext',cls:'cold',label:'stable IP'}
+      ]},
+      legacy:{ nodes:[
+        {id:'cont',x:40,y:150,w:200,h:90,color:'#DC2626',label:'Cluster node',sub:'PUBLIC IP + inbound port',
+          info:'<strong>Cluster node (SCC DISABLED — legacy)</strong>Each VM gets a PUBLIC IP and an OPEN inbound port (22 + 5557 from the AzureDatabricks tag) so the control-plane NAT can initiate connections INTO your VNet. A permanent, scannable attack surface — the model you avoid.'},
+        {id:'cpnat',x:420,y:80,w:230,h:80,color:'#DC2626',label:'Control plane NAT',sub:'initiates INBOUND',
+          info:'<strong>Control plane NAT (inbound model)</strong>The control plane dials IN to each VM. That requires a routable public IP and an open port on every node — the inbound exposure SCC removes by reversing the call direction.'}
+      ], arrows:[
+        {from:'cpnat',to:'cont',cls:'hot',label:'INBOUND into your VNet (attack surface)'}
+      ]}
+    }},
+
+  // ---- 3.4 egress ----
+  d34:{ info:'d34info', tip:'<strong>Tip</strong>Click any component to see what it is and why it\'s there.',
+    views:{
+      nat:{ nodes:[
+        {id:'cont',x:40,y:150,w:180,h:80,color:'#2272B4',label:'Container subnet',sub:'cluster VMs · no public IP',
+          info:'<strong>Container subnet (clusters)</strong>Private VMs that must reach the control plane / SCC relay, metastore, artifact + log storage, telemetry, and any data sources. Get egress wrong and clusters won\'t start or libraries won\'t install.'},
+        {id:'nsg',x:270,y:50,w:200,h:70,color:'#6B7280',label:'Managed NSG',sub:'allowed? (L4)',
+          info:'<strong>NSG — "is this allowed?"</strong>Databricks auto-manages the outbound rules (443/3306/8443–8451 → AzureDatabricks, 443 → Storage, 9093 → EventHub) via delegation — do NOT edit them. NSGs filter by IP/port/service-tag at L4, NOT by FQDN. You add Deny rules on neighbor subnets.'},
+        {id:'udr',x:270,y:160,w:200,h:70,color:'#6B7280',label:'Route table (UDR)',sub:'which path?',
+          info:'<strong>UDR — "which path?"</strong>Overrides Azure\'s default 0.0.0.0/0 → Internet. Use it to send required service tags straight to Internet (bypass a forced-tunnel) and/or route everything else to a firewall.'},
+        {id:'nat',x:560,y:150,w:200,h:80,color:'#FFC107',label:'NAT Gateway',sub:'what public IP?',
+          info:'<strong>NAT Gateway — "what public IP?"</strong>Gives the subnet a single stable SNAT egress IP (1–16 IPs) with dynamic ports (no exhaustion). "Just works" once attached — no UDR needed. Effectively mandatory for new VNets after 2026-03-31. The IP to put on partner allowlists.'},
+        {id:'ext',x:560,y:40,w:200,h:70,color:'#00A972',label:'AzureDatabricks / Storage / EventHub',sub:'service tags',
+          info:'<strong>Required destinations</strong>Reached via service tags (Microsoft keeps the IP ranges current) — never raw IPs, which rotate. Region-paired secondary artifact storage (e.g. Japan East → Japan West) must include both regions.'}
+      ], arrows:[
+        {from:'cont',to:'nsg',cls:''},
+        {from:'cont',to:'udr',cls:''},
+        {from:'nsg',to:'ext',cls:'cold',label:'service tags 443/9093'},
+        {from:'cont',to:'nat',cls:'hot',label:'egress'},
+        {from:'nat',to:'ext',cls:'cold',label:'stable IP'}
+      ]},
+      firewall:{ nodes:[
+        {id:'cont',x:40,y:150,w:180,h:80,color:'#2272B4',label:'Container subnet',sub:'cluster VMs',
+          info:'<strong>Container subnet (clusters)</strong>Same VMs — but now a 0.0.0.0/0 UDR forces generic egress through a firewall for FQDN allowlisting (the Data Exfiltration Protection pattern, Stage 4).'},
+        {id:'udr',x:270,y:150,w:200,h:80,color:'#6B7280',label:'Route table (UDRs)',sub:'precedence matters',
+          info:'<strong>UDR precedence</strong>A 0.0.0.0/0 UDR to the firewall OVERRIDES the NAT Gateway. Keep AzureDatabricks/Storage/EventHub → Internet UDRs so the SCC relay skips the firewall hop (Databricks advises against routing the relay through the firewall).'},
+        {id:'fw',x:560,y:150,w:200,h:80,color:'#DC2626',label:'Azure Firewall (hub)',sub:'FQDN allowlist',
+          info:'<strong>Azure Firewall — FQDN filtering</strong>What NSGs can\'t do: application rules that allow only e.g. pypi.org. All OTHER internet egress is inspected/logged here. The firewall\'s IP becomes the egress source — allowlist THAT, not the NAT IP.'},
+        {id:'relay',x:560,y:40,w:200,h:70,color:'#FF3621',label:'SCC relay (direct)',sub:'service tag → Internet',
+          info:'<strong>SCC relay stays direct</strong>The service-tag → Internet UDR keeps AzureDatabricks off the firewall hop so the management tunnel stays stable. Only generic/data egress takes the firewall path.'},
+        {id:'ext',x:560,y:260,w:200,h:60,color:'#00A972',label:'Allowed internet (PyPI, partners)',sub:'via firewall',
+          info:'<strong>Allowed internet</strong>Only FQDNs the firewall permits (PyPI/CRAN/Maven, approved partners). Open ports 111 + 2049 too or NFS-based library installs fail.'}
+      ], arrows:[
+        {from:'cont',to:'udr',cls:'hot'},
+        {from:'udr',to:'relay',cls:'cold',label:'tag → Internet (bypass FW)'},
+        {from:'udr',to:'fw',cls:'hot',label:'0.0.0.0/0 (overrides NAT)'},
+        {from:'fw',to:'ext',cls:''}
+      ]}
+    }},
+
+  // ---- 3.5 compute -> storage ----
+  d35:{ info:'d35info', tip:'<strong>Tip</strong>Pick a route above, then click a box to see the "what + why".',
+    views:{
+      se:{ nodes:'BASE35', arrows:[
+        {from:'cont',to:'fw',cls:'cold',label:'backbone · private src IP (free)'},
+        {from:'fw',to:'adls',cls:'cold',label:'VNet rule = ALLOW'},
+        {from:'cont',to:'pe',cls:'muted'},
+        {from:'cont',to:'sep',cls:'muted'}
+      ]},
+      pe:{ nodes:'BASE35', arrows:[
+        {from:'cont',to:'pe',cls:'hot',label:'443 → PE NIC (private IP)'},
+        {from:'pe',to:'adls',cls:'hot',label:'Private Link · public access Disabled'},
+        {from:'cont',to:'fw',cls:'muted'},
+        {from:'cont',to:'sep',cls:'muted'}
+      ]},
+      pub:{ nodes:'BASE35', arrows:[
+        {from:'cont',to:'fw',cls:'hot',label:'NAT → public IP (identity only)'},
+        {from:'fw',to:'adls',cls:'',label:'firewall = Enabled from all'},
+        {from:'cont',to:'pe',cls:'muted'},
+        {from:'cont',to:'sep',cls:'muted'}
+      ]}
+    }}
+};
+
+// shared base node set for the 3.5 storage diagram
+const BASE35 = [
+  {id:'cont',x:40,y:150,w:180,h:80,color:'#2272B4',label:'Container subnet',sub:'clusters · delegated',
+    info:'<strong>Container subnet (clusters)</strong>Your cluster VMs (no public IP) make the compute → storage call (path ③) over outbound HTTPS 443. The route they take and how the storage firewall recognises them is what differs across the three options.'},
+  {id:'pe',x:300,y:40,w:200,h:70,color:'#00A972',label:'Private Endpoint NIC',sub:'PE subnet /28 (NOT delegated)',
+    info:'<strong>Private Endpoint NIC</strong>A real NIC with a private IP, in a DEDICATED /28 PE subnet (never the delegated host/container subnets). The storage FQDN must resolve to this private IP via privatelink.dfs.core.windows.net — DNS is the #1 PE failure. One PE per account per subresource (dfs / blob).'},
+  {id:'fw',x:300,y:150,w:200,h:80,color:'#FFC107',label:'Storage firewall',sub:'default DENY',
+    info:'<strong>Storage firewall</strong>Set "Enabled from selected VNets and IPs" (default-deny). A Service Endpoint adds a VNet rule ("allow this subnet") and the request arrives over the backbone with a private source IP — DNS stays public. With a Private Endpoint you can set Public access = Disabled entirely.'},
+  {id:'adls',x:620,y:150,w:200,h:80,color:'#00A972',label:'ADLS Gen2 account',sub:'your data · GPv2',
+    info:'<strong>ADLS Gen2 account</strong>Your governed data behind Unity Catalog external locations. Networking decides WHERE the packet may go; UC + an Access Connector managed identity decides WHO may read. Service Endpoint = free/same-region/no on-prem; Private Endpoint = paid/on-prem/per-account.'},
+  {id:'sep',x:300,y:262,w:300,h:64,color:'#DC2626',label:'Service Endpoint Policy — CANNOT attach',sub:'delegated subnet hosts a managed service',
+    info:'<strong>Service Endpoint Policy (the footgun)</strong>The natural tool to limit WHICH accounts a subnet may reach — but unsupported on subnets delegated to a managed service, and because it denies anything unlisted it would block the infra storage and break the workspace. Use Azure Firewall + UDR FQDN allowlist, or a Private Endpoint + Disabled.'}
+];
+
+// ---------- renderer ----------
+function edgePoint(r, tx, ty){
+  const cx=r.x+r.w/2, cy=r.y+r.h/2, dx=tx-cx, dy=ty-cy;
+  if(dx===0&&dy===0) return {x:cx,y:cy};
+  const sc = 1/Math.max(Math.abs(dx)/(r.w/2), Math.abs(dy)/(r.h/2));
+  return {x:cx+dx*sc, y:cy+dy*sc};
+}
+function svgEl(name,attrs){ const e=document.createElementNS('http://www.w3.org/2000/svg',name);
+  for(const k in attrs) e.setAttribute(k,attrs[k]); return e; }
+
+function renderDiagram(canvasId, viewKey){
+  const cfg=DIAGRAMS[canvasId];
+  const view=cfg.views[viewKey];
+  const nodes = view.nodes==='BASE35' ? BASE35 : view.nodes;
+  const svg=document.getElementById(canvasId);
+  const g=svg.querySelector('.dg-content');
+  g.innerHTML='';
+  const byId={}; nodes.forEach(n=>byId[n.id]=n);
+
+  // arrows first (under nodes)
+  view.arrows.forEach(a=>{
+    const A=byId[a.from], B=byId[a.to];
+    const ac={x:A.x+A.w/2,y:A.y+A.h/2}, bc={x:B.x+B.w/2,y:B.y+B.h/2};
+    const s=edgePoint(A,bc.x,bc.y), e=edgePoint(B,ac.x,ac.y);
+    const path=svgEl('line',{x1:s.x,y1:s.y,x2:e.x,y2:e.y,class:'arrow '+(a.cls||'')});
+    const mkColor = a.cls==='hot' ? 'aro' : a.cls==='cold' ? 'arg' : (a.cls&&a.cls.indexOf('muted')>=0) ? null : 'ar';
+    if(mkColor){ path.setAttribute('marker-end','url(#'+mkColor+'-'+canvasId+')'); }
+    g.appendChild(path);
+    if(a.label){
+      const mx=(s.x+e.x)/2, my=(s.y+e.y)/2-5;
+      const t=svgEl('text',{x:mx,y:my,'text-anchor':'middle',class:'alabel '+(a.cls||'')});
+      t.textContent=a.label; g.appendChild(t);
+    }
+  });
+
+  // nodes
+  nodes.forEach(n=>{
+    const grp=svgEl('g',{class:'node'});
+    grp.appendChild(svgEl('rect',{x:n.x,y:n.y,width:n.w,height:n.h,rx:8,class:'node-bg',fill:'#fff',stroke:n.color,'stroke-width':2}));
+    const lab=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2-(n.sub?4:-4),'text-anchor':'middle','font-size':13,'font-weight':600,fill:n.color});
+    lab.textContent=n.label; grp.appendChild(lab);
+    if(n.sub){ const sub=svgEl('text',{x:n.x+n.w/2,y:n.y+n.h/2+13,'text-anchor':'middle','font-size':10.5,fill:'#6B7280'});
+      sub.textContent=n.sub; grp.appendChild(sub); }
+    const show=()=>{ document.getElementById(cfg.info).innerHTML=n.info; };
+    grp.addEventListener('click',show); grp.addEventListener('mouseenter',show);
+    g.appendChild(grp);
+  });
+}
+function switchView(canvasId, viewKey, btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDiagram(canvasId, viewKey);
+  document.getElementById(DIAGRAMS[canvasId].info).innerHTML = DIAGRAMS[canvasId].tip;
+}
+
+// initial renders
+renderDiagram('d31','managed');
+renderDiagram('d32','node');
+renderDiagram('d33','scc');
+renderDiagram('d34','nat');
+renderDiagram('d35','se');
+</script>
+</body>
+</html>

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Workspace Access Control</title>
+<style>
+  :root{
+    --db-orange:#FF3621;
+    --db-orange-soft:#ffe9e5;
+    --ink:#1b1f23;
+    --muted:#5c6670;
+    --line:#e4e8ec;
+    --bg:#f6f8fa;
+    --card:#ffffff;
+    --blue:#1b6ec2;
+    --blue-soft:#e8f1fb;
+    --green:#1a7f4b;
+    --green-soft:#e6f5ec;
+    --amber:#b26a00;
+    --amber-soft:#fff3df;
+    --shadow:0 1px 3px rgba(0,0,0,.06),0 8px 24px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.6;
+  }
+  .wrap{max-width:960px;margin:0 auto;padding:0 20px 80px}
+  header.hero{
+    background:linear-gradient(135deg,#2b3137,#11151a);
+    color:#fff;padding:48px 20px 40px;text-align:center;margin-bottom:36px;
+  }
+  header.hero .kicker{
+    color:var(--db-orange);font-weight:700;letter-spacing:.12em;
+    text-transform:uppercase;font-size:.72rem;margin:0 0 10px;
+  }
+  header.hero h1{margin:0 0 10px;font-size:2rem;font-weight:800;letter-spacing:-.01em}
+  header.hero p{margin:0 auto;max-width:620px;color:#c8ced4;font-size:1.02rem}
+  h2{font-size:1.35rem;margin:42px 0 6px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+  h2 .dot{width:10px;height:10px;border-radius:3px;background:var(--db-orange);display:inline-block}
+  h3{font-size:1.05rem;margin:24px 0 6px}
+  p{margin:8px 0}
+  .lead{font-size:1.05rem;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px 24px;box-shadow:var(--shadow);margin:16px 0}
+  .analogy{background:var(--db-orange-soft);border:1px solid #ffd2c9;border-radius:14px;padding:16px 20px;margin:16px 0}
+  .analogy strong{color:var(--db-orange)}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:.94rem}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:#fafbfc;font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+  code{background:#f0f2f4;padding:1px 6px;border-radius:5px;font-size:.86em;font-family:"SFMono-Regular",Menlo,Consolas,monospace}
+  .muted{color:var(--muted)}
+  ul{margin:8px 0 8px 0;padding-left:20px}
+  li{margin:5px 0}
+
+  /* Interactive: two layers */
+  .layers{display:grid;gap:14px;margin-top:10px}
+  .layer{
+    border:2px solid var(--line);border-radius:14px;padding:18px 20px;cursor:pointer;
+    background:var(--card);transition:.18s;position:relative;
+  }
+  .layer:hover{border-color:#cfd6dd;transform:translateY(-1px)}
+  .layer.active{border-color:var(--db-orange);box-shadow:0 0 0 3px var(--db-orange-soft)}
+  .layer .lhead{display:flex;align-items:center;gap:12px;font-weight:700;font-size:1.05rem}
+  .layer .badge{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    padding:3px 9px;border-radius:999px}
+  .badge.l1{background:var(--blue-soft);color:var(--blue)}
+  .badge.l2{background:var(--green-soft);color:var(--green)}
+  .layer .sub{color:var(--muted);font-size:.92rem;margin-top:4px}
+  .layer .detail{max-height:0;overflow:hidden;transition:max-height .3s ease;opacity:.0}
+  .layer.active .detail{max-height:420px;opacity:1;margin-top:14px}
+  .layer .detail ul{margin-top:6px}
+  .keycard{font-size:1.5rem}
+  .arrow-between{text-align:center;color:var(--muted);font-size:1.4rem;line-height:1}
+  .hint{font-size:.82rem;color:var(--muted);font-style:italic;text-align:center;margin-top:4px}
+
+  /* Interactive: escalation stepper */
+  .stepper{margin-top:8px}
+  .steps{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .step-btn{
+    flex:1;min-width:150px;border:2px solid var(--line);background:var(--card);border-radius:12px;
+    padding:12px 14px;cursor:pointer;text-align:left;transition:.16s;font:inherit;
+  }
+  .step-btn .t{font-weight:700;font-size:.98rem}
+  .step-btn .s{font-size:.8rem;color:var(--muted);margin-top:2px}
+  .step-btn:hover{border-color:#cfd6dd}
+  .step-btn.active{border-color:var(--db-orange);background:var(--db-orange-soft)}
+  .stepnum{display:inline-block;width:20px;height:20px;border-radius:50%;background:#e4e8ec;color:#5c6670;
+    font-size:.72rem;font-weight:700;text-align:center;line-height:20px;margin-right:7px}
+  .step-btn.active .stepnum{background:var(--db-orange);color:#fff}
+
+  .can-panel{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .can-box{border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .can-box h4{margin:0 0 8px;font-size:.82rem;text-transform:uppercase;letter-spacing:.05em}
+  .can-box.yes h4{color:var(--green)}
+  .can-box.no h4{color:var(--db-orange)}
+  .can-box ul{list-style:none;padding:0;margin:0}
+  .can-box li{padding:4px 0;font-size:.92rem;display:flex;gap:8px;align-items:flex-start}
+  .can-box.yes li::before{content:"✓";color:var(--green);font-weight:800}
+  .can-box.no li::before{content:"✕";color:var(--db-orange);font-weight:800}
+  .privs{margin-top:14px;font-size:.86rem}
+  .pill{display:inline-block;background:#f0f2f4;border:1px solid var(--line);border-radius:999px;
+    padding:3px 10px;margin:3px 4px 0 0;font-family:"SFMono-Regular",Menlo,Consolas,monospace;font-size:.8rem}
+  .pill.on{background:var(--green-soft);border-color:#bfe6cd;color:var(--green)}
+  .pill.add{background:var(--amber-soft);border-color:#ffe0b0;color:var(--amber)}
+
+  .gotcha{background:#fff;border-left:4px solid var(--db-orange);border-radius:0 10px 10px 0;
+    padding:10px 16px;margin:10px 0;box-shadow:var(--shadow)}
+  .gotcha b{color:var(--db-orange)}
+  footer{text-align:center;color:var(--muted);font-size:.85rem;margin-top:50px}
+  footer a{color:var(--blue)}
+  @media(max-width:620px){.can-panel{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <p class="kicker">Databricks Data Engineering</p>
+  <h1>Workspace Access Control</h1>
+  <p>Onboarding a new teammate with the right amount of access — they can log in and run SQL, but can't see your notebooks or change any data.</p>
+</header>
+
+<div class="wrap">
+
+  <p class="lead">"Access control" in a Databricks workspace is really <strong>two separate layers</strong> stacked together. Getting onboarding right means understanding where one ends and the other begins.</p>
+
+  <div class="analogy">
+    <strong>Analogy:</strong> A <strong>workspace entitlement</strong> is the <em>building keycard</em> — it gets you through the front door and onto certain floors. <strong>Unity Catalog privileges</strong> are the <em>keys to individual rooms</em> — which filing cabinets you can open, and whether you may only read the files or also edit them. A keycard does <em>not</em> unlock every room.
+  </div>
+
+  <h2><span class="dot"></span>The two layers (click to explore)</h2>
+  <p class="muted">Click each layer to expand what it controls.</p>
+
+  <div class="layers">
+    <div class="layer" data-layer onclick="toggleLayer(this)">
+      <div class="lhead"><span class="keycard">🪪</span> Layer 1 — Workspace access <span class="badge l1">Entitlements</span></div>
+      <div class="sub">Can the person log in, and which <em>features/surfaces</em> can they use?</div>
+      <div class="detail">
+        <ul>
+          <li><b>Workspace access</b> → notebooks, jobs, models, pipelines (the feature, not specific files)</li>
+          <li><b>Databricks SQL access</b> → dashboards, queries, SQL warehouses</li>
+          <li><b>Admin</b> → full workspace administration (granted deliberately, never by default)</li>
+        </ul>
+        <p class="muted">The built-in <code>users</code> group grants Workspace access + Databricks SQL access automatically to every user you add.</p>
+      </div>
+    </div>
+
+    <div class="arrow-between">↓ then ↓</div>
+
+    <div class="layer" data-layer onclick="toggleLayer(this)">
+      <div class="lhead"><span class="keycard">🔑</span> Layer 2 — Data access <span class="badge l2">Unity Catalog privileges</span></div>
+      <div class="sub">Once in, what <em>data</em> can they see and act on?</div>
+      <div class="detail">
+        <ul>
+          <li><code>BROWSE</code> → discover objects + metadata only (no data)</li>
+          <li><code>USE CATALOG</code> / <code>USE SCHEMA</code> → "enter" a catalog / schema (required boundary)</li>
+          <li><code>SELECT</code> → read data &nbsp;•&nbsp; <code>MODIFY</code> → insert/update/delete</li>
+          <li><code>READ VOLUME</code> → read files &nbsp;•&nbsp; <code>EXECUTE</code> → run functions / load models</li>
+        </ul>
+        <p class="muted">Granted on the three-level namespace: <code>catalog.schema.table</code>.</p>
+      </div>
+    </div>
+  </div>
+  <p class="hint">Key rule: an entitlement is <b>not</b> a data permission. They are independent.</p>
+
+  <h2><span class="dot"></span>Why the new user sees no notebooks</h2>
+  <div class="card">
+    <p>When the new teammate logs in, the <b>Workspace</b> folder is empty. The entitlement is not the reason:</p>
+    <ul>
+      <li>The <b>Workspace access</b> entitlement only says "you're <em>allowed</em> to use the notebook feature." It grants access to <em>no specific notebook</em>.</li>
+      <li>Notebooks and folders carry their <b>own object-level permissions</b> and are private to their owner by default.</li>
+      <li>So the user can use notebooks <em>as a feature</em>, but the list is empty because <b>nothing was explicitly shared</b> with them — your code lives in your user folder, which they can't access.</li>
+    </ul>
+    <p style="margin-bottom:0"><b>Entitlement ≠ object permission.</b> That separation is what hides your workspace content with zero extra effort.</p>
+  </div>
+
+  <h2><span class="dot"></span>Adding a user (practical steps)</h2>
+  <div class="card">
+    <ol>
+      <li>Profile icon → <b>Settings</b></li>
+      <li>Open the <b>Identity and access</b> tab</li>
+      <li>Next to <b>Users</b>, click <b>Manage → Add user</b>, enter the email, confirm</li>
+    </ol>
+    <p class="muted" style="margin-bottom:0">The user gets an invite email (check spam) or can log in directly with the email + one-time code. They're auto-added to the <code>users</code> group.</p>
+  </div>
+
+  <h2><span class="dot"></span>Onboarding escalation: least privilege in action</h2>
+  <p class="muted">Click through the stages a new joiner typically moves through. The panels update to show what they can and can't do.</p>
+
+  <div class="stepper card">
+    <div class="steps">
+      <button class="step-btn active" onclick="setStep(0,this)"><div class="t"><span class="stepnum">1</span>BROWSE only</div><div class="s">Look, don't touch</div></button>
+      <button class="step-btn" onclick="setStep(1,this)"><div class="t"><span class="stepnum">2</span>Data Reader</div><div class="s">Read &amp; query</div></button>
+      <button class="step-btn" onclick="setStep(2,this)"><div class="t"><span class="stepnum">3</span>Data Editor</div><div class="s">Read &amp; write</div></button>
+    </div>
+
+    <div class="can-panel">
+      <div class="can-box yes"><h4>Can do</h4><ul id="canDo"></ul></div>
+      <div class="can-box no"><h4>Cannot do</h4><ul id="cantDo"></ul></div>
+    </div>
+
+    <div class="privs">
+      <b>Privileges granted:</b><br>
+      <div id="privPills"></div>
+    </div>
+    <p class="muted" id="stepNote" style="margin-bottom:0;margin-top:12px"></p>
+  </div>
+
+  <h3>How to grant / revoke</h3>
+  <p>In <b>Catalog Explorer → select the catalog → Permissions</b>: click <b>Grant</b>, pick the principal (user or group), choose a preset or individual privileges, and <b>Confirm</b>. To remove, select the grant and <b>Revoke</b>. Tip: Databricks recommends granting <code>BROWSE</code> to <b>All account users</b> so data is discoverable org-wide — revoke it and the catalog disappears from their view.</p>
+
+  <h2><span class="dot"></span>Use groups in real teams</h2>
+  <div class="card">
+    <p style="margin-top:0">Granting to one user is great for learning. In production, grant to a <b>group</b> instead:</p>
+    <ul>
+      <li>Create a group (e.g., <code>data_analysts</code>)</li>
+      <li>Grant privileges/entitlements to the group <b>once</b></li>
+      <li>Add each new hire to the group — they inherit everything; remove them to revoke</li>
+    </ul>
+    <p style="margin-bottom:0" class="muted">Far easier to audit and maintain than per-user grants.</p>
+  </div>
+
+  <h2><span class="dot"></span>Common mistakes &amp; gotchas</h2>
+  <div class="gotcha"><b>Confusing the two layers.</b> Workspace access does not expose your notebooks or grant table access.</div>
+  <div class="gotcha"><b>Forgetting USE CATALOG / USE SCHEMA.</b> <code>SELECT</code> alone fails without the <code>USE</code> privileges up the chain — which is exactly why presets exist.</div>
+  <div class="gotcha"><b>Over-granting on day one.</b> Don't hand <code>MODIFY</code>, DDL, or <code>ALL PRIVILEGES</code> to new joiners. Start at BROWSE → Data Reader.</div>
+  <div class="gotcha"><b>Granting to All account users by accident.</b> Great for BROWSE discovery, risky for anything more.</div>
+  <div class="gotcha"><b>Assuming admins are limited.</b> Workspace admin entitlements can't be removed — be deliberate about who gets Admin.</div>
+  <div class="gotcha"><b>Expecting instant changes.</b> Users often need to <b>refresh</b> Catalog Explorer for a grant/revoke to show.</div>
+
+  <footer>
+    Grounded in official Databricks documentation —
+    <a href="https://docs.databricks.com/aws/en/security/auth/entitlements" target="_blank">Entitlements</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/privileges" target="_blank">UC privileges reference</a> ·
+    <a href="https://docs.databricks.com/aws/en/data-governance/unity-catalog/manage-privileges/" target="_blank">Manage privileges</a>
+  </footer>
+</div>
+
+<script>
+  function toggleLayer(el){ el.classList.toggle('active'); }
+
+  var STEPS = [
+    {
+      can:["Discover catalogs, schemas, tables — see they exist","View metadata: names, descriptions, tags, column names","Request access to objects"],
+      cant:["Run any query or read actual data","See file contents in volumes","Modify or create anything"],
+      privs:[{t:"BROWSE",c:"on"}],
+      note:"Best first stage for a brand-new joiner. BROWSE shows metadata only and doesn't even require USE CATALOG / USE SCHEMA."
+    },
+    {
+      can:["Run SELECT queries and read table data","Read files in volumes (READ VOLUME)","Execute functions / load models (EXECUTE)","Still browse and discover objects"],
+      cant:["Insert, update, or delete data","Create or drop tables (no DDL)","Change permissions or ownership"],
+      privs:[{t:"USE CATALOG",c:"on"},{t:"USE SCHEMA",c:"on"},{t:"SELECT",c:"on"},{t:"READ VOLUME",c:"on"},{t:"EXECUTE",c:"on"}],
+      note:"Preset \"Data Reader\". Promote here once the person needs to actually query. Note: no MODIFY, no DDL, no permission edits."
+    },
+    {
+      can:["Everything a Data Reader can do","Insert, update, and delete data (MODIFY)","Write files to volumes"],
+      cant:["Create or drop catalogs/schemas as owner (DDL still limited)","Grant privileges to others / change ownership"],
+      privs:[{t:"USE CATALOG",c:"on"},{t:"USE SCHEMA",c:"on"},{t:"SELECT",c:"on"},{t:"READ VOLUME",c:"on"},{t:"EXECUTE",c:"on"},{t:"MODIFY",c:"add"},{t:"WRITE VOLUME",c:"add"}],
+      note:"Preset \"Data Editor\". Read + write. Reserve for trusted contributors who need to change data."
+    }
+  ];
+
+  function render(i){
+    var s = STEPS[i];
+    document.getElementById('canDo').innerHTML  = s.can.map(function(x){return '<li>'+x+'</li>'}).join('');
+    document.getElementById('cantDo').innerHTML = s.cant.map(function(x){return '<li>'+x+'</li>'}).join('');
+    document.getElementById('privPills').innerHTML = s.privs.map(function(p){return '<span class="pill '+p.c+'">'+p.t+'</span>'}).join('');
+    document.getElementById('stepNote').textContent = s.note;
+  }
+  function setStep(i,btn){
+    document.querySelectorAll('.step-btn').forEach(function(b){b.classList.remove('active')});
+    btn.classList.add('active');
+    render(i);
+  }
+  render(0);
+</script>
+</body>
+</html>
