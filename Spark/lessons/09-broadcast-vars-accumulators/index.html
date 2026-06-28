@@ -6,106 +6,202 @@
 <title>Broadcast variables &amp; accumulators · Databricks PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
+  /* breadcrumb back-link to track index */
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+
+  /* ---------- sections ---------- */
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem;margin-right:.5em}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  pre .c{color:#7c8aa0}      /* comment */
+  pre .k{color:#fbbf77;font-weight:500} /* keyword */
+  pre .s{color:#b7e88f}      /* string */
+  pre .f{color:#c4b5fd}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
+  .filterbar input[type=range]{accent-color:var(--flame);cursor:pointer}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--flame)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1px}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  /* clickable step / accordion (for lifecycle / plan-walkthrough diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  /* executor / task cluster diagram (broadcast panels) */
-  .cluster{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:18px 0 6px}
-  @media(max-width:560px){.cluster{grid-template-columns:1fr}}
-  .exec{border:1px solid var(--line);border-radius:11px;padding:12px 12px 14px;background:var(--paper)}
-  .exec .ex-name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a;margin-bottom:8px}
+
+  /* ---------- per-lesson: executor / task panels (broadcast Diagram 1) ---------- */
+  .execgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:18px 0 6px}
+  @media(max-width:560px){.execgrid{grid-template-columns:1fr}}
+  .exec{border:1px solid var(--line);border-radius:11px;padding:12px 12px 14px;background:rgba(255,255,255,.03)}
+  .exec .ex-name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
   .copies{display:flex;flex-wrap:wrap;gap:5px;min-height:30px}
-  .copy{font-family:"Spline Sans Mono",monospace;font-size:.58rem;border-radius:6px;padding:4px 6px;border:1px solid #b69aee;background:linear-gradient(135deg,#e6d8fb,#c9b1f3);color:#4c1d95;transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
-  .copy.task{border-color:#f3cfa6;background:linear-gradient(135deg,#fde7d6,#f9c79c);color:#9a3412}
+  .copy{font-family:"Spline Sans Mono",monospace;font-size:.58rem;border-radius:6px;padding:4px 6px;border:1px solid rgba(139,92,246,.55);background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(124,58,237,.28));color:#ddd0ff;transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
+  .copy.task{border-color:rgba(249,115,22,.55);background:linear-gradient(135deg,rgba(249,115,22,.3),rgba(249,115,22,.2));color:#fcd9b6}
   .tasks{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-  .tasktile{font-family:"Spline Sans Mono",monospace;font-size:.56rem;border-radius:6px;padding:4px 6px;border:1px dashed var(--line);background:#fff;color:#857890}
+  .tasktile{font-family:"Spline Sans Mono",monospace;font-size:.56rem;border-radius:6px;padding:4px 6px;border:1px dashed var(--line);background:rgba(255,255,255,.04);color:var(--faint)}
   /* accumulator panels */
   .accgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 4px}
   @media(max-width:560px){.accgrid{grid-template-columns:1fr}}
-  .accbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:var(--paper);text-align:center}
-  .accbox .pn{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:#73677a}
+  .accbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:rgba(255,255,255,.03);text-align:center}
+  .accbox .pn{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
   .accbox .pv{font-family:"Fraunces",serif;font-weight:900;font-size:1.7rem;color:var(--flame);line-height:1.2;margin-top:4px}
-  .accbox.driver{background:linear-gradient(180deg,#f3edff,#ece2ff);border-color:#d8c9f5}
-  .accbox.driver .pv{color:var(--violet)}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .accbox.driver{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border-color:rgba(139,92,246,.32)}
+  .accbox.driver .pv{color:var(--violet-2)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  /* static connector wire between driver + executors */
+  .netwrap{position:relative}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  /* stepper controls */
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  /* dummy code + data panes that highlight per step */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
 </style>
 </head>
@@ -167,7 +263,7 @@
           <button data-mode="closure" aria-pressed="false">Plain closure var</button>
         </div>
       </div>
-      <div class="cluster" id="bc-cluster"></div>
+      <div class="execgrid" id="bc-cluster"></div>
       <div class="readout">
         <div class="stat win"><div class="big" id="bc-copies">—</div><div class="lbl">copies shipped</div></div>
         <div class="stat"><div class="big" id="bc-bytes">—</div><div class="lbl">~bytes on the wire</div></div>
@@ -302,6 +398,48 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
       </div>
       <div class="verdict" id="ac-verdict">Press <b>Run an action</b> to fire the tasks.</div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration: "Re-run" models a recomputed stage / second action over an uncached DataFrame. Expected true count = 600.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>One animated walk-through, two parts. <strong>Part A</strong> ships a broadcast <em>variable</em> from the driver — <strong>once per executor</strong> (not once per task) — and every task on that executor reuses its local copy. <strong>Part B</strong> runs an accumulator: each executor's tasks <code>.add()</code> to a <strong>local</strong> counter, the partial deltas flow <em>back</em> to the driver, and only the driver reads <code>.value</code>. Use <strong>Prev / Play / Next</strong> to step through 1 driver + 3 executors.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head"><span class="lab-title">Driver + 3 executors — broadcast out, accumulate back</span></div>
+      <p class="lab-sub">Dummy data + dummy PySpark; chips and code lines highlight per step.</p>
+      <div class="controls">
+        <div class="seg" id="cl-part" role="group" aria-label="which part">
+          <button data-part="A" aria-pressed="true">Part A · broadcast variable</button>
+          <button data-part="B" aria-pressed="false">Part B · accumulator</button>
+        </div>
+      </div>
+      <div class="cluster netwrap" id="cl-stage">
+        <div class="nodes" id="cl-nodes"></div>
+        <div class="wire" id="cl-wire"></div>
+      </div>
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">dummy PySpark</div>
+          <div class="codepane" id="cl-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">dummy data · orders</div>
+          <div class="datapane" id="cl-data"></div>
+        </div>
+      </div>
+      <div class="stepper">
+        <button id="cl-prev">‹ Prev</button>
+        <button class="play" id="cl-play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
+        <span class="scount" id="cl-scount">step 1 / 1</span>
+      </div>
+      <div class="narr" id="cl-narr"><span class="stage">ready</span>Press <b>Play</b> to watch it run.</div>
+      <div class="callout" style="margin-top:18px">
+        <span class="lbl">What this is NOT</span>
+        A broadcast <strong>variable</strong> (Part A) is <em>not</em> a broadcast <strong>join</strong> — the variable is a value your code reads; the join is a planner strategy (Lesson 02). And accumulators (Part B) are <strong>exactly-once only inside actions</strong> — the deltas merging on the driver here run inside a <code>foreachPartition</code>; the same <code>.add()</code> inside a lazy <code>map</code> could be applied more than once on a recompute.
+      </div>
     </div>
   </section>
 
@@ -560,6 +698,226 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     else { ranOnce = false; blankWorkers(); verdict.innerHTML = 'Reset. Press <b>Run an action</b> to fire the tasks.'; }
   });
   blankWorkers();
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — broadcast out (A) + accumulate back (B) ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const NODES = root.querySelector('#cl-nodes');
+  const WIRE = root.querySelector('#cl-wire');
+  const CODE = root.querySelector('#cl-code');
+  const DATA = root.querySelector('#cl-data');
+  const NARR = root.querySelector('#cl-narr');
+  const partSeg = root.querySelector('#cl-part');
+  const elPrev = root.querySelector('#cl-prev');
+  const elNext = root.querySelector('#cl-next');
+  const elPlay = root.querySelector('#cl-play');
+  const elPfill = root.querySelector('#cl-pfill');
+  const elScount = root.querySelector('#cl-scount');
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const EXECS = 3;
+
+  // dummy code per part (array of lines; index = highlightable line)
+  const CODE_A = [
+    '<span class="c"># DRIVER: build a small lookup, broadcast it ONCE per executor</span>',
+    'lookup = {<span class="s">"US"</span>:<span class="s">"NA"</span>, <span class="s">"DE"</span>:<span class="s">"EU"</span>, <span class="s">"IN"</span>:<span class="s">"APAC"</span>}',
+    'bv = sc.<span class="k">broadcast</span>(lookup)        <span class="c"># ship once / executor</span>',
+    '',
+    '<span class="c"># WORKER: every task on the executor reads the SAME copy</span>',
+    'orders.withColumn(<span class="s">"region"</span>,',
+    '    to_region(<span class="s">"cc"</span>))   <span class="c"># UDF reads bv.value (read-only)</span>'
+  ];
+  const CODE_B = [
+    '<span class="c"># DRIVER: create the shared counter (unnamed)</span>',
+    'bad = sc.<span class="k">accumulator</span>(0)',
+    '',
+    '<span class="k">def</span> <span class="f">check</span>(rows):              <span class="c"># runs on a WORKER</span>',
+    '    <span class="k">for</span> r <span class="k">in</span> rows:',
+    '        <span class="k">if</span> r.amt <span class="k">is</span> <span class="k">None</span>: bad.add(1)  <span class="c"># local partial</span>',
+    '<span class="c"># ACTION -> deltas merge on driver, exactly once</span>',
+    'orders.rdd.<span class="k">foreachPartition</span>(check)',
+    '<span class="k">print</span>(bad.value)          <span class="c"># DRIVER reads total</span>'
+  ];
+  // dummy data rows (orders)
+  const ROWS_A = [
+    'cc=US amt=12.0', 'cc=DE amt=9.5', 'cc=IN amt=4.0',
+    'cc=US amt=7.2', 'cc=DE amt=2.1', 'cc=IN amt=8.8'
+  ];
+  const ROWS_B = [
+    'amt=12.0', 'amt=None ✗', 'amt=4.0',
+    'amt=7.2',  'amt=None ✗', 'amt=8.8'
+  ];
+
+  // ---- STEP DEFINITIONS ------------------------------------------------
+  // each step: {stage, narr, code:[line idx], data:[row idx], render(fn), lit}
+  // render() returns the per-node HTML + sets active nodes; lit toggles the wire.
+  function execNode(i, opts){
+    opts = opts || {};
+    const active = opts.active ? ' active' : '';
+    const parts = opts.parts || '';
+    const sub = opts.sub || '';
+    return '<div class="node' + active + '" data-node="e' + i + '">' +
+           '<h4>Executor ' + i + ' <span class="core">2 tasks</span></h4>' +
+           '<div class="parts">' + parts + '</div>' +
+           '<div class="spillzone">' + sub + '</div></div>';
+  }
+  function driverNode(opts){
+    opts = opts || {};
+    const active = opts.active ? ' active' : '';
+    const parts = opts.parts || '';
+    const sub = opts.sub || '';
+    return '<div class="node driver' + active + '" data-node="d">' +
+           '<h4>Driver <span class="core">main()</span></h4>' +
+           '<div class="parts">' + parts + '</div>' +
+           '<div class="spillzone">' + sub + '</div></div>';
+  }
+  const chip = (cls,txt)=> '<span class="part ' + cls + (reduce?'':' pop') + '">' + txt + '</span>';
+
+  // PART A — broadcast variable: ship lookup once per executor
+  const STEPS_A = [
+    {
+      stage:'Part A · driver builds lookup', code:[1,2], data:[],
+      narr:'On the <b>driver</b>, you build a tiny <code>lookup</code> dict and call <code>sc.broadcast(lookup)</code>. Nothing has crossed the network yet — <code>bv</code> is a handle to a read-only value.',
+      render(){ return driverNode({active:true, parts:chip('k1','lookup {3}'), sub:'bv = sc.broadcast(...)'}) +
+                       execNode(1,{}) + execNode(2,{}) + execNode(3,{}); },
+      lit:false
+    },
+    {
+      stage:'Part A · ship ONCE per executor', code:[2], data:[],
+      narr:'Spark ships the value <b>once to each executor</b> — <b>once per executor</b>, <u>not</u> one per task. Each executor caches its own copy in Storage memory.',
+      render(){ return driverNode({active:true, parts:chip('k1','lookup {3}')}) +
+                       execNode(1,{active:true, parts:chip('k1','bv copy'), sub:'cached'}) +
+                       execNode(2,{active:true, parts:chip('k1','bv copy'), sub:'cached'}) +
+                       execNode(3,{active:true, parts:chip('k1','bv copy'), sub:'cached'}); },
+      lit:true
+    },
+    {
+      stage:'Part A · tasks reuse the local copy', code:[4,5,6], data:[0,1,2,3,4,5],
+      narr:'Every <b>task</b> on an executor reads the <b>same</b> cached <code>bv.value</code> — 2 tasks per executor here, all reusing one copy. Adding tasks costs <b>nothing</b> extra on the wire.',
+      render(){ return driverNode({parts:chip('k1','lookup {3}')}) +
+                       execNode(1,{active:true, parts:chip('k1','bv copy') + chip('k0','task') + chip('k0','task'), sub:'2 tasks → bv.value'}) +
+                       execNode(2,{active:true, parts:chip('k1','bv copy') + chip('k0','task') + chip('k0','task'), sub:'2 tasks → bv.value'}) +
+                       execNode(3,{active:true, parts:chip('k1','bv copy') + chip('k0','task') + chip('k0','task'), sub:'2 tasks → bv.value'}); },
+      lit:false
+    },
+    {
+      stage:'Part A · the takeaway', code:[2,5,6], data:[],
+      narr:'<b>Once per executor, not once per task.</b> A plain closure var would be re-serialized with every task; the broadcast <em>variable</em> ships 3 times total and is reused everywhere. (This is a <b>variable</b>, not a broadcast <b>join</b>.)',
+      render(){ return driverNode({parts:chip('k1','lookup {3}')}) +
+                       execNode(1,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}) +
+                       execNode(2,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}) +
+                       execNode(3,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}); },
+      lit:false
+    }
+  ];
+
+  // PART B — accumulator: tasks add to a local counter; deltas flow back to driver
+  const STEPS_B = [
+    {
+      stage:'Part B · driver creates accumulator', code:[0,1], data:[],
+      narr:'On the <b>driver</b>, <code>bad = sc.accumulator(0)</code> creates a shared counter, initial value 0. Workers will only <code>.add()</code> to it — they can never read the global total.',
+      render(){ return driverNode({active:true, parts:chip('k2','acc = 0'), sub:'sc.accumulator(0)'}) +
+                       execNode(1,{}) + execNode(2,{}) + execNode(3,{}); },
+      lit:false
+    },
+    {
+      stage:'Part B · tasks .add() to a LOCAL partial', code:[3,4,5], data:[0,1,2,3,4,5],
+      narr:'Inside the <code>foreachPartition</code> <b>action</b>, each executor\'s tasks scan rows and <code>bad.add(1)</code> on bad rows — into a <b>local partial</b>. Here Exec 1 and Exec 2 each find one <code>amt=None</code>.',
+      render(){ return driverNode({parts:chip('k2','acc = 0')}) +
+                       execNode(1,{active:true, parts:chip('k0','+1'), sub:'local partial = 1'}) +
+                       execNode(2,{active:true, parts:chip('k0','+1'), sub:'local partial = 1'}) +
+                       execNode(3,{active:true, parts:chip('k3','+0'), sub:'local partial = 0'}); },
+      lit:false
+    },
+    {
+      stage:'Part B · deltas flow BACK to the driver', code:[6,7], data:[],
+      narr:'When the action finishes, each executor sends its <b>partial delta</b> back to the <b>driver</b> — <b>executors → driver</b>. Because the update ran inside an <b>action</b>, each task\'s delta is applied <b>exactly once</b>.',
+      render(){ return driverNode({active:true, parts:chip('k0','+1') + chip('k0','+1') + chip('k3','+0'), sub:'merging partials…'}) +
+                       execNode(1,{parts:chip('k0','Δ=1')}) +
+                       execNode(2,{parts:chip('k0','Δ=1')}) +
+                       execNode(3,{parts:chip('k3','Δ=0')}); },
+      lit:true
+    },
+    {
+      stage:'Part B · only the driver reads .value', code:[6,7,8], data:[],
+      narr:'The driver <b>sums</b> the deltas: 1 + 1 + 0 = <b>2</b>. Only the driver reads <code>bad.value</code>. <b>Exactly-once holds because this ran inside an action</b> — the same <code>.add()</code> in a lazy <code>map</code> could double-count on a recompute.',
+      render(){ return driverNode({active:true, parts:chip('k2','acc = 2'), sub:'print(bad.value) → 2'}) +
+                       execNode(1,{parts:chip('k0','Δ=1')}) +
+                       execNode(2,{parts:chip('k0','Δ=1')}) +
+                       execNode(3,{parts:chip('k3','Δ=0')}); },
+      lit:false
+    }
+  ];
+
+  let part = 'A';
+  let steps = STEPS_A;
+  let codeLines = CODE_A;
+  let dataRows = ROWS_A;
+  let i = 0;
+  let timer = null;
+
+  function litWire(on){
+    WIRE.classList.toggle('lit', !!on);
+  }
+  function renderCode(active){
+    CODE.innerHTML = codeLines.map((ln, idx)=>
+      '<span class="ln' + (active.indexOf(idx) >= 0 ? ' hl' : '') + '">' + (ln === '' ? '&nbsp;' : ln) + '</span>'
+    ).join('');
+  }
+  function renderData(active){
+    DATA.innerHTML = dataRows.map((r, idx)=>
+      '<div class="row' + (active.indexOf(idx) >= 0 ? ' hl' : '') + '">' + r + '</div>'
+    ).join('');
+  }
+  function paint(){
+    const s = steps[i];
+    NODES.innerHTML = s.render();
+    renderCode(s.code || []);
+    renderData(s.data || []);
+    NARR.innerHTML = '<span class="stage">' + s.stage + '</span>' + s.narr;
+    elScount.textContent = 'step ' + (i+1) + ' / ' + steps.length;
+    elPfill.style.width = ((i+1) / steps.length * 100) + '%';
+    elPrev.disabled = (i === 0);
+    elNext.disabled = (i === steps.length - 1);
+    // light the static connector when this step ships/merges across the wire
+    litWire(s.lit);
+  }
+  function goTo(n){
+    i = Math.max(0, Math.min(steps.length - 1, n));
+    paint();
+  }
+  function stopPlay(){
+    if(timer){ clearInterval(timer); timer = null; }
+    elPlay.textContent = '▶ Play';
+  }
+  function startPlay(){
+    if(i >= steps.length - 1){ goTo(0); }
+    elPlay.textContent = '❚❚ Pause';
+    timer = setInterval(()=>{
+      if(i >= steps.length - 1){ stopPlay(); return; }
+      goTo(i + 1);
+    }, reduce ? 900 : 1900);
+  }
+  function setPart(p){
+    part = p;
+    steps = (p === 'A') ? STEPS_A : STEPS_B;
+    codeLines = (p === 'A') ? CODE_A : CODE_B;
+    dataRows = (p === 'A') ? ROWS_A : ROWS_B;
+    partSeg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.part === p)));
+    stopPlay();
+    goTo(0);
+  }
+
+  elPrev.addEventListener('click', ()=>{ stopPlay(); goTo(i - 1); });
+  elNext.addEventListener('click', ()=>{ stopPlay(); goTo(i + 1); });
+  elPlay.addEventListener('click', ()=>{ timer ? stopPlay() : startPlay(); });
+  partSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    setPart(b.dataset.part);
+  });
+
+  setPart('A');
 })();
 </script>
 </body>

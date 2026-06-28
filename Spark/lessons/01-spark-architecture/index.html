@@ -9,120 +9,198 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul,ol{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
   /* code-line click-through (diagram 1) */
-  .codelines{font-family:"Spline Sans Mono",monospace;font-size:.84rem;background:var(--ink);border-radius:10px;padding:10px 6px;line-height:1.85;overflow-x:auto}
+  .codelines{font-family:"Spline Sans Mono",monospace;font-size:.84rem;background:#0a0e15;border-radius:10px;padding:10px 6px;line-height:1.85;overflow-x:auto;border:1px solid var(--line)}
   .cl{display:block;padding:4px 12px;border-radius:7px;color:#cdc4d3;cursor:pointer;border-left:3px solid transparent;transition:.15s;white-space:pre}
-  .cl:hover{background:#241b30}
-  .cl.lazy{background:rgba(139,92,246,.16);border-left-color:var(--violet-2);color:#e7defb}
-  .cl.action{background:rgba(249,115,22,.18);border-left-color:var(--flame-2);color:#ffe6cf}
+  .cl:hover{background:rgba(255,255,255,.06)}
+  .cl.lazy{background:rgba(139,92,246,.18);border-left-color:var(--violet-2);color:#e7defb}
+  .cl.action{background:rgba(249,115,22,.2);border-left-color:var(--flame-2);color:#ffe6cf}
   .cl .tagk{font-family:"Spline Sans Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;float:right;opacity:.85}
   .cl.lazy .tagk{color:var(--violet-2)}
   .cl.action .tagk{color:var(--flame-2)}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 4px;font-size:.78rem;color:#5f5460}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0 4px;font-size:.78rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
-  .swatch{width:13px;height:13px;border-radius:4px;display:inline-block}
+  .swatch{width:13px;height:13px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
   .sw-lazy{background:var(--violet-2)}
   .sw-action{background:var(--flame-2)}
   /* job tree (diagram 2) */
   .tree{margin-top:8px}
-  .tnode{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:#fff;box-shadow:var(--shadow)}
-  .tnode>.thead{cursor:pointer;padding:13px 16px;display:flex;align-items:center;gap:11px;font-weight:600}
-  .tnode>.thead .tw{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#fff;background:var(--flame);border-radius:6px;padding:2px 8px}
-  .tnode>.thead .tw.s{background:var(--violet)}
-  .tnode>.thead .tw.t{background:#0f9d58}
+  .tnode{border:1px solid var(--line);border-radius:10px;margin:8px 0;background:rgba(255,255,255,.03);box-shadow:var(--shadow)}
+  .tnode>.thead{cursor:pointer;padding:13px 16px;display:flex;align-items:center;gap:11px;font-weight:600;color:var(--ink)}
+  .tnode>.thead .tw{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:#160d06;background:var(--flame);border-radius:6px;padding:2px 8px}
+  .tnode>.thead .tw.s{background:var(--violet-2);color:#1a1030}
+  .tnode>.thead .tw.t{background:#34d399;color:#04231a}
   .tnode>.thead .arr{margin-left:auto;color:var(--flame);transition:.2s;font-family:"Spline Sans Mono",monospace}
   .tnode.open>.thead .arr{transform:rotate(90deg)}
   .tkids{display:none;padding:0 14px 12px 30px}
   .tnode.open>.tkids{display:block}
-  .tnote{font-size:.86rem;color:#5f5460;padding:0 16px 12px 16px;margin-top:-4px}
+  .tnote{font-size:.86rem;color:var(--muted);padding:0 16px 12px 16px;margin-top:-4px}
   .tasks{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .tk{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:#e7f6ee;border:1px solid #b6e0c8;color:#0f7a43;border-radius:6px;padding:4px 8px}
+  .tk{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:rgba(52,211,153,.14);border:1px solid rgba(52,211,153,.4);color:#6ee7b7;border-radius:6px;padding:4px 8px}
   /* narrow vs wide (diagram 3) */
   .stagewrap{display:flex;align-items:stretch;gap:0;flex-wrap:wrap;margin-top:6px}
-  .stagebox{flex:1;min-width:190px;border:1px dashed var(--line);border-radius:12px;padding:14px;background:var(--paper)}
+  .stagebox{flex:1;min-width:190px;border:1px dashed var(--line);border-radius:12px;padding:14px;background:rgba(255,255,255,.03)}
   .stagebox .sh{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--flame);margin-bottom:8px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.74rem;background:#fff;border:1px solid var(--line);border-radius:7px;padding:6px 9px;margin:5px 0;display:flex;justify-content:space-between;gap:8px}
-  .part b{color:var(--violet)}
+  .nwpart{font-family:"Spline Sans Mono",monospace;font-size:.74rem;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:7px;padding:6px 9px;margin:5px 0;display:flex;justify-content:space-between;gap:8px;color:var(--ink)}
+  .nwpart b{color:var(--violet-2)}
   .exch{display:flex;align-items:center;justify-content:center;min-width:120px;flex:0 0 auto;padding:8px}
-  .exch .box{text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#9a3412;background:#fde7d6;border:1px dashed #f3cfa6;border-radius:10px;padding:10px 12px}
+  .exch .box{text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:#fbbf77;background:rgba(249,115,22,.14);border:1px dashed rgba(249,115,22,.4);border-radius:10px;padding:10px 12px}
   .exch.hidden{display:none}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes / how the shuffle works" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  /* static network wire linking the executors (no animation) */
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  /* stepper controls */
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5;color:var(--ink)}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  /* dummy code + data panes that highlight per step */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
@@ -310,10 +388,10 @@
       <div class="stagewrap">
         <div class="stagebox">
           <div class="sh">Stage 0 — input partitions</div>
-          <div class="part">partition 0 <b>p0</b></div>
-          <div class="part">partition 1 <b>p1</b></div>
-          <div class="part">partition 2 <b>p2</b></div>
-          <div class="part">partition 3 <b>p3</b></div>
+          <div class="nwpart">partition 0 <b>p0</b></div>
+          <div class="nwpart">partition 1 <b>p1</b></div>
+          <div class="nwpart">partition 2 <b>p2</b></div>
+          <div class="nwpart">partition 3 <b>p3</b></div>
         </div>
         <div class="exch hidden" id="nw-exch">
           <div class="box">Exchange<br>hashpartitioning<br>&#8595;<br>shuffle:<br>disk + network</div>
@@ -331,6 +409,68 @@
       </div>
       <div class="verdict" id="nw-verdict"></div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration of why a wide dependency forces a new stage — the <code>Exchange</code> node in the physical plan.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB: THE SHUFFLE ANIMATION ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Everything above comes together here. This is <code>events.groupBy("key").count()</code> running on a tiny cluster: <strong>1 driver + 3 executors</strong>, with <strong>9 dummy records</strong> tagged <code>A</code>, <code>B</code>, or <code>C</code> scattered arbitrarily across the executors' input partitions. Step through it and watch the <strong>shuffle</strong> physically move records across the network so every key lands on one executor — the expensive wide-dependency stage boundary at the heart of this track.</p>
+    <div class="lab" id="lab-shuffle">
+      <div class="lab-head"><span class="lab-title">Cluster execution lab — the shuffle</span></div>
+      <p class="lab-sub">Driver builds the plan; executors do the work. Use Prev / Play / Next to walk the stages.</p>
+
+      <div class="cluster" id="sh-cluster">
+        <div class="nodes" id="sh-nodes">
+          <div class="node driver" id="sh-driver">
+            <h4>Driver <span class="core">plan + schedule</span></h4>
+            <div class="parts" id="sh-driver-parts"></div>
+            <div class="spillzone" id="sh-driver-note">idle</div>
+          </div>
+          <div class="node" id="sh-e1" data-key="0">
+            <h4>Executor 1 <span class="core">2 cores</span></h4>
+            <div class="parts" id="sh-e1-parts"></div>
+            <div class="spillzone" id="sh-e1-note"></div>
+          </div>
+          <div class="node" id="sh-e2" data-key="1">
+            <h4>Executor 2 <span class="core">2 cores</span></h4>
+            <div class="parts" id="sh-e2-parts"></div>
+            <div class="spillzone" id="sh-e2-note"></div>
+          </div>
+          <div class="node" id="sh-e3" data-key="2">
+            <h4>Executor 3 <span class="core">2 cores</span></h4>
+            <div class="parts" id="sh-e3-parts"></div>
+            <div class="spillzone" id="sh-e3-note"></div>
+          </div>
+        </div>
+        <div class="wire" id="sh-wire"></div>
+      </div>
+
+      <div class="stepper" id="sh-stepper">
+        <button id="sh-prev" aria-label="Previous step">&larr; Prev</button>
+        <button id="sh-play" class="play" aria-label="Play animation">&#9654; Play</button>
+        <button id="sh-next" aria-label="Next step">Next &rarr;</button>
+        <div class="pbar"><div class="pfill" id="sh-pfill"></div></div>
+        <span class="scount" id="sh-scount">step 1 / 6</span>
+      </div>
+
+      <div class="narr" id="sh-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">dummy PySpark</div>
+          <div class="codepane" id="sh-code"><span class="ln" data-ln="0"><span class="c"># 9 events, key in {A,B,C}, 3 input partitions</span></span><span class="ln" data-ln="1">events = spark.read.parquet(<span class="s">"/events"</span>)</span><span class="ln" data-ln="2">tagged = events.withColumn(<span class="s">"key"</span>, key_udf)   <span class="c"># narrow</span></span><span class="ln" data-ln="3">grouped = tagged.groupBy(<span class="s">"key"</span>)            <span class="c"># wide → shuffle</span></span><span class="ln" data-ln="4">result  = grouped.count()                  <span class="c"># action → job</span></span><span class="ln" data-ln="5">result.show()</span></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">per-key result</div>
+          <div class="datapane" id="sh-data">
+            <div class="row" data-key="0">key A &rarr; <span id="sh-cA">·</span></div>
+            <div class="row" data-key="1">key B &rarr; <span id="sh-cB">·</span></div>
+            <div class="row" data-key="2">key C &rarr; <span id="sh-cC">·</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration — real shuffles use <code>spark.sql.shuffle.partitions</code> (200 in OSS Spark; <code>auto</code> on Databricks) post-shuffle partitions, not one per key.</p>
     </div>
   </section>
 
@@ -542,10 +682,10 @@ wide.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite
     narrow: {
       stages: 1, shuffle: 'No', cost: 'low',
       h2: '(same stage — pipelined output)',
-      body: '<div class="part">p0 &rarr; <b>p0\'</b></div>' +
-            '<div class="part">p1 &rarr; <b>p1\'</b></div>' +
-            '<div class="part">p2 &rarr; <b>p2\'</b></div>' +
-            '<div class="part">p3 &rarr; <b>p3\'</b></div>',
+      body: '<div class="nwpart">p0 &rarr; <b>p0\'</b></div>' +
+            '<div class="nwpart">p1 &rarr; <b>p1\'</b></div>' +
+            '<div class="nwpart">p2 &rarr; <b>p2\'</b></div>' +
+            '<div class="nwpart">p3 &rarr; <b>p3\'</b></div>',
       plan: '<span class="dim">== Physical Plan ==</span>\n' +
             '<span class="ok">Project</span> [id, (id * 2) AS x]\n' +
             '+- <span class="ok">Filter</span> (id &gt; 10)\n' +
@@ -555,10 +695,10 @@ wide.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite
     wide: {
       stages: 2, shuffle: 'Yes', cost: 'high',
       h2: 'Stage 1 — after the Exchange',
-      body: '<div class="part">group A <b>(from p0..p3)</b></div>' +
-            '<div class="part">group B <b>(from p0..p3)</b></div>' +
-            '<div class="part">group C <b>(from p0..p3)</b></div>' +
-            '<div class="part">… up to 200 parts</div>',
+      body: '<div class="nwpart">group A <b>(from p0..p3)</b></div>' +
+            '<div class="nwpart">group B <b>(from p0..p3)</b></div>' +
+            '<div class="nwpart">group C <b>(from p0..p3)</b></div>' +
+            '<div class="nwpart">… up to 200 parts</div>',
       plan: '<span class="dim">== Physical Plan ==</span>\n' +
             '<span class="ok">HashAggregate</span> (final count)\n' +
             '+- <span class="bad">Exchange</span> hashpartitioning(g, 200)  <span class="bad">&lt;- the shuffle / stage boundary ❌</span>\n' +
@@ -587,6 +727,187 @@ wide.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite
     show(b.dataset.d);
   });
   show('narrow');
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — the shuffle, stage by stage ---- */
+(function(){
+  const root = document.getElementById('lab-shuffle');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // 9 dummy records, each tagged with a key in {A,B,C}, scattered across 3 input partitions.
+  // key index: 0=A (k0/ember), 1=B (k1/violet), 2=C (k2/cyan).
+  const KEY = ['A','B','C'];
+  // home[k] = which executor (1..3) every key-k record must end up on after the shuffle.
+  const HOME = {0:1, 1:2, 2:3};
+  // initial layout: arbitrary mix on each executor's input partition.
+  const INIT = {
+    1:[{id:'r0',k:0},{id:'r1',k:1},{id:'r2',k:2}],   // Executor 1: A,B,C
+    2:[{id:'r3',k:1},{id:'r4',k:2},{id:'r5',k:0}],   // Executor 2: B,C,A
+    3:[{id:'r6',k:2},{id:'r7',k:0},{id:'r8',k:1}]    // Executor 3: C,A,B
+  };
+
+  const parts = {1:root.querySelector('#sh-e1-parts'),2:root.querySelector('#sh-e2-parts'),3:root.querySelector('#sh-e3-parts')};
+  const nodes = {1:root.querySelector('#sh-e1'),2:root.querySelector('#sh-e2'),3:root.querySelector('#sh-e3')};
+  const notes = {1:root.querySelector('#sh-e1-note'),2:root.querySelector('#sh-e2-note'),3:root.querySelector('#sh-e3-note')};
+  const driver = root.querySelector('#sh-driver');
+  const driverNote = root.querySelector('#sh-driver-note');
+  const wire = root.querySelector('#sh-wire');
+  const narr = root.querySelector('#sh-narr');
+  const pfill = root.querySelector('#sh-pfill');
+  const scount = root.querySelector('#sh-scount');
+  const codeLines = root.querySelectorAll('#sh-code .ln');
+  const dataRows = root.querySelectorAll('#sh-data .row');
+  const counts = {0:root.querySelector('#sh-cA'),1:root.querySelector('#sh-cB'),2:root.querySelector('#sh-cC')};
+  const prevBtn = root.querySelector('#sh-prev');
+  const playBtn = root.querySelector('#sh-play');
+  const nextBtn = root.querySelector('#sh-next');
+
+  function chip(rec, opts){
+    opts = opts || {};
+    const el = document.createElement('span');
+    el.className = 'part k'+rec.k + (opts.pop && !reduce ? ' pop' : '') + (opts.dim ? ' dim' : '');
+    el.textContent = (opts.bucket ? 'bucket ' : '') + KEY[rec.k] + (opts.showId ? ':'+rec.id : '');
+    return el;
+  }
+  function clearChips(){ [1,2,3].forEach(e=>{parts[e].innerHTML='';}); }
+  function clearActive(){ [1,2,3].forEach(e=>nodes[e].classList.remove('active')); driver.classList.remove('active'); }
+  function setNotes(t){ [1,2,3].forEach(e=>{notes[e].textContent=t;}); }
+  function hlCode(i){ codeLines.forEach(l=>l.classList.toggle('hl', Number(l.dataset.ln)===i)); }
+  function hlData(on){ dataRows.forEach(r=>r.classList.toggle('hl', !!on)); }
+  function setCounts(show){
+    [0,1,2].forEach(k=>{ counts[k].textContent = show ? '3' : '·'; });
+  }
+
+  // Render the input layout (records sitting on their original executor).
+  function renderInit(opts){
+    clearChips();
+    [1,2,3].forEach(e=>{ INIT[e].forEach(rec=> parts[e].appendChild(chip(rec, opts))); });
+  }
+  // Render the post-shuffle layout (all key-k records gathered on HOME[k]).
+  function renderShuffled(opts){
+    clearChips();
+    const byHome = {1:[],2:[],3:[]};
+    [1,2,3].forEach(e=>{ INIT[e].forEach(rec=> byHome[HOME[rec.k]].push(rec)); });
+    [1,2,3].forEach(e=>{ byHome[e].forEach(rec=> parts[e].appendChild(chip(rec, opts))); });
+  }
+
+  const steps = [
+    { // 1 — read input partitions
+      stage:'Stage 0 · read',
+      code:1,
+      text:'Each <b>executor reads its own input partition</b> — a mixed bag of keys (A, B, C) sitting wherever the data happened to land. Nothing has moved yet.',
+      run:function(){
+        wire.classList.remove('lit'); clearActive(); hlData(false); setCounts(false);
+        renderInit({pop:true});
+        [1,2,3].forEach(e=>nodes[e].classList.add('active'));
+        setNotes('input partition loaded');
+        driverNote.textContent='plan built, tasks dispatched';
+      }
+    },
+    { // 2 — map / narrow stage, local, no movement
+      stage:'Stage 0 · map (narrow)',
+      code:2,
+      text:'The <b>map / narrow stage</b> runs <b>locally on each executor</b> — tagging each row with its key. Narrow dependency: one input partition → one output partition, <b>so no data crosses the network</b>.',
+      run:function(){
+        wire.classList.remove('lit'); clearActive(); hlData(false); setCounts(false);
+        renderInit({});
+        [1,2,3].forEach(e=>nodes[e].classList.add('active'));
+        setNotes('map runs in place — no movement');
+        driverNote.textContent='idle (executors working)';
+      }
+    },
+    { // 3 — shuffle write: bucket by key into shuffle files
+      stage:'Stage 0 · shuffle write',
+      code:3,
+      text:'<b>Shuffle write.</b> Each executor <b>buckets its records by key</b> and writes <b>shuffle files to local disk</b> — one bucket per destination. This is the map side of the wide dependency.',
+      run:function(){
+        wire.classList.remove('lit'); clearActive(); hlData(false); setCounts(false);
+        clearChips();
+        [1,2,3].forEach(e=>{
+          INIT[e].forEach(rec=> parts[e].appendChild(chip(rec,{bucket:true})));
+          nodes[e].classList.add('active');
+        });
+        setNotes('wrote shuffle files (bucketed by key)');
+        driverNote.textContent='waiting at stage barrier';
+      }
+    },
+    { // 4 — exchange: records fly across the network to their home executor
+      stage:'Exchange · network',
+      code:3,
+      text:'<b>The Exchange.</b> Records <b>fly across the network</b> so all <b>A</b> → Executor 1, all <b>B</b> → Executor 2, all <b>C</b> → Executor 3. Disk + network + serialize + a stage barrier wait: <b>this is the most expensive thing Spark does.</b>',
+      run:function(){
+        clearActive(); hlData(false); setCounts(false);
+        renderShuffled({pop:true});
+        wire.classList.add('lit');
+        [1,2,3].forEach(e=>nodes[e].classList.add('active'));
+        setNotes('fetching its key over the wire');
+        driverNote.textContent='stage barrier crossed';
+      }
+    },
+    { // 5 — shuffle read: each reducer reads its slice
+      stage:'Stage 1 · shuffle read',
+      code:4,
+      text:'<b>Shuffle read.</b> Stage 1 begins only now. Each reducer <b>reads the slice routed to it</b> — Executor 1 holds every A, Executor 2 every B, Executor 3 every C. Same key, same executor.',
+      run:function(){
+        wire.classList.remove('lit'); clearActive(); hlData(false); setCounts(false);
+        renderShuffled({});
+        [1,2,3].forEach(e=>nodes[e].classList.add('active'));
+        setNotes('read its shuffle slice');
+        driverNote.textContent='idle (reduce running)';
+      }
+    },
+    { // 6 — reduce / aggregate result per key
+      stage:'Stage 1 · reduce',
+      code:5,
+      text:'<b>Reduce / aggregate.</b> With each key co-located, every executor counts locally: <b>A=3, B=3, C=3</b>. The driver collects three small results. The whole cost was the <b>shuffle in step 4</b> — the wide-dependency boundary.',
+      run:function(){
+        wire.classList.remove('lit'); clearActive(); hlData(true); setCounts(true);
+        renderShuffled({});
+        [1,2,3].forEach(e=>nodes[e].classList.add('active'));
+        driver.classList.add('active');
+        setNotes('count() done for its key');
+        driverNote.textContent='collected 3 results → show()';
+      }
+    }
+  ];
+
+  let i = 0, timer = null;
+  function render(){
+    const s = steps[i];
+    s.run();
+    hlCode(s.code);
+    narr.innerHTML = '<span class="stage">'+s.stage+'</span>'+s.text;
+    pfill.style.width = ((i+1)/steps.length*100)+'%';
+    scount.textContent = 'step '+(i+1)+' / '+steps.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===steps.length-1);
+  }
+  function goTo(n){
+    i = Math.max(0, Math.min(steps.length-1, n));
+    render();
+  }
+  function stop(){
+    if(timer){ clearInterval(timer); timer=null; }
+    playBtn.innerHTML = '&#9654; Play';
+    playBtn.setAttribute('aria-pressed','false');
+  }
+  function play(){
+    if(timer){ stop(); return; }
+    if(i===steps.length-1) goTo(0);
+    playBtn.innerHTML = '&#10073;&#10073; Pause';
+    playBtn.setAttribute('aria-pressed','true');
+    timer = setInterval(function(){
+      if(i>=steps.length-1){ stop(); return; }
+      goTo(i+1);
+    }, reduce ? 900 : 1900);
+  }
+
+  prevBtn.addEventListener('click', function(){ stop(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stop(); goTo(i+1); });
+  playBtn.addEventListener('click', play);
+
+  goTo(0);
 })();
 </script>
 </body>

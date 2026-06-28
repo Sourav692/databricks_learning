@@ -9,92 +9,180 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
   /* driver-heap fill bar */
-  .heapbar{position:relative;height:50px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:18px 0 6px;background:var(--paper-2)}
-  .heapbar .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--flame-2),var(--flame));transition:width .25s ease,background .25s ease;display:flex;align-items:center;justify-content:flex-end;color:#fff4ec;font-family:"Spline Sans Mono",monospace;font-size:.7rem;padding-right:8px}
-  .heapbar.danger .fill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 7px,#9a3412 7px,#9a3412 14px)}
-  .heapbar .limit{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--violet);box-shadow:0 0 0 1px #fff}
-  .heapbar .limit::after{content:"maxResultSize 1g";position:absolute;top:-20px;left:6px;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet);white-space:nowrap}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .heapbar{position:relative;height:50px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:18px 0 6px;background:rgba(255,255,255,.05)}
+  .heapbar .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--flame-2),var(--flame));transition:width .25s ease,background .25s ease;display:flex;align-items:center;justify-content:flex-end;color:#160d06;font-family:"Spline Sans Mono",monospace;font-size:.7rem;font-weight:600;padding-right:8px}
+  .heapbar.danger .fill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 7px,#9a3412 7px,#9a3412 14px);color:#ffe0c2}
+  .heapbar .limit{position:absolute;top:-4px;bottom:-4px;width:3px;background:var(--violet-2);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+  .heapbar .limit::after{content:"maxResultSize 1g";position:absolute;top:-20px;left:6px;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet-2);white-space:nowrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  /* driver heap mini-fill inside a node (for this lesson's driver) */
+  .drvheap{margin-top:10px}
+  .drvheap .dlbl{font-family:"Spline Sans Mono",monospace;font-size:.56rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:4px;display:flex;justify-content:space-between}
+  .drvheap .dbar{position:relative;height:16px;border-radius:6px;overflow:hidden;border:1px solid var(--line);background:rgba(255,255,255,.05)}
+  .drvheap .dfill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--flame-2),var(--flame));transition:width .4s ease,background .4s ease}
+  .drvheap.danger .dfill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 6px,#9a3412 6px,#9a3412 12px)}
+  .drvheap .dlimit{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--violet-2);box-shadow:0 0 0 1px rgba(0,0,0,.6)}
+  /* static connector wire between the nodes and the driver heap */
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  /* stepper controls */
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  /* dummy code + data panes that highlight per step */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.drvheap .dfill,.heapbar .fill,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
@@ -227,6 +315,61 @@
       <div class="step" data-step><div class="head"><span class="ix">03</span> Need rows locally? Bound the pull</div><div class="detail">If you truly need rows on the driver, never pull the whole thing: <code>take(n)</code> / <code>limit(n).collect()</code> caps it at <code>n</code> rows, and aggregating first (<code>groupBy().agg()</code>) returns a few summary rows instead of the raw table.</div></div>
       <div class="verdict">Cost lives in <b>step 02a</b>. The fix is to prefer <b>02b</b> (write / noop) and, when you must pull rows, to <b>bound</b> them (take / limit / aggregate).</div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration of where action results physically land.</p>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE 4: CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Watch a <code>collect()</code> run across <strong>1 driver + 3 executors</strong>. Each executor computes a result partition, then ships it back to the single driver heap — which fills toward the <strong>1g</strong> <code>maxResultSize</code> line until one partition too many tips it over into a driver OOM. Then flip to the <strong>fix</strong> and watch <code>df.write</code> keep the driver flat. Use <em>Prev / Play / Next</em>.</p>
+    <div class="lab" id="lab-run">
+      <div class="lab-head">
+        <span class="lab-title">collect() vs write() across the nodes</span>
+        <div class="seg" id="lr-mode" role="group" aria-label="action mode">
+          <button data-mode="collect" aria-pressed="true">collect()</button>
+          <button data-mode="write" aria-pressed="false">df.write (the fix)</button>
+        </div>
+      </div>
+      <p class="lab-sub">Dummy job: a 4-partition fact table pulled to a <strong>1g</strong> driver with a <strong>1g</strong> <code>maxResultSize</code> guardrail. Each partition ≈ 320 MB of serialized result.</p>
+
+      <div class="cluster" id="lr-cluster">
+        <div class="nodes" id="lr-nodes">
+          <div class="node driver" id="lr-driver" data-node="driver">
+            <h4>Driver <span class="core">heap 1g</span></h4>
+            <div class="parts" id="lr-driver-parts"></div>
+            <div class="drvheap" id="lr-drvheap">
+              <div class="dlbl"><span>driver heap</span><span id="lr-heaplbl">0 MB</span></div>
+              <div class="dbar"><div class="dfill" id="lr-dfill"></div><div class="dlimit" id="lr-dlimit"></div></div>
+            </div>
+          </div>
+          <div class="node" id="lr-exec0" data-node="e0"><h4>Executor 1 <span class="core">P0</span></h4><div class="parts" id="lr-e0-parts"></div></div>
+          <div class="node" id="lr-exec1" data-node="e1"><h4>Executor 2 <span class="core">P1</span></h4><div class="parts" id="lr-e1-parts"></div></div>
+          <div class="node" id="lr-exec2" data-node="e2"><h4>Executor 3 <span class="core">P2·P3</span></h4><div class="parts" id="lr-e2-parts"></div></div>
+        </div>
+        <div class="wire" id="lr-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="lr-prev">‹ Prev</button>
+        <button id="lr-play" class="play">▶ Play</button>
+        <button id="lr-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="lr-pfill"></div></div>
+        <span class="scount" id="lr-scount">step 1 / 5</span>
+      </div>
+
+      <div class="narr" id="lr-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">PySpark — dummy code</div>
+          <div class="codepane" id="lr-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Result partitions (dummy data)</div>
+          <div class="datapane" id="lr-data"></div>
+        </div>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: sizes are illustrative and the real heap shares space with plan + scheduler state.</p>
     </div>
   </section>
 
@@ -554,6 +697,292 @@ spark.conf.set(<span class="s">"spark.driver.maxResultSize"</span>, <span class=
     show(b.dataset.p);
   });
   show('collect');
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — collect() vs write() across 1 driver + 3 executors ---- */
+(function(){
+  const root = document.getElementById('lab-run');
+  if(!root) return;
+
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ---- node + element refs ----
+  const driverNode = root.querySelector('#lr-driver');
+  const execNodes  = [root.querySelector('#lr-exec0'), root.querySelector('#lr-exec1'), root.querySelector('#lr-exec2')];
+  const execParts  = [root.querySelector('#lr-e0-parts'), root.querySelector('#lr-e1-parts'), root.querySelector('#lr-e2-parts')];
+  const drvParts   = root.querySelector('#lr-driver-parts');
+  const drvheap    = root.querySelector('#lr-drvheap');
+  const dfill      = root.querySelector('#lr-dfill');
+  const dlimit     = root.querySelector('#lr-dlimit');
+  const heaplbl    = root.querySelector('#lr-heaplbl');
+  const wire       = root.querySelector('#lr-wire');
+  const narr       = root.querySelector('#lr-narr');
+  const codeEl     = root.querySelector('#lr-code');
+  const dataEl     = root.querySelector('#lr-data');
+  const prevBtn    = root.querySelector('#lr-prev');
+  const nextBtn    = root.querySelector('#lr-next');
+  const playBtn    = root.querySelector('#lr-play');
+  const pfill      = root.querySelector('#lr-pfill');
+  const scount     = root.querySelector('#lr-scount');
+  const modeSeg    = root.querySelector('#lr-mode');
+
+  // ---- dummy model: 4 result partitions on 3 executors ----
+  const HEAP_MB = 1024;          // driver heap = 1g
+  const LIMIT_MB = 1024;         // maxResultSize = 1g
+  const PART_MB = 320;           // each result partition ≈ 320 MB serialized (illustrative)
+  // partition -> which executor holds it; exec3 (index 2) holds P2 and P3
+  const PARTS = [
+    { id:'P0', kc:'k0', exec:0 },
+    { id:'P1', kc:'k1', exec:1 },
+    { id:'P2', kc:'k2', exec:2 },
+    { id:'P3', kc:'k3', exec:2 }
+  ];
+
+  dlimit.style.left = (Math.min(LIMIT_MB/HEAP_MB,1)*100) + '%';
+
+  // ---- dummy code (two variants), with line ids to highlight ----
+  const CODE = {
+    collect: [
+      '<span class="c"># 4-partition fact table</span>',
+      'df = spark.table(<span class="s">"sales.fact"</span>)',
+      '',
+      '<span class="c"># pull EVERY partition to the driver</span>',
+      'rows = df.<span class="k">collect</span>()'
+    ],
+    write: [
+      '<span class="c"># 4-partition fact table</span>',
+      'df = spark.table(<span class="s">"sales.fact"</span>)',
+      '',
+      '<span class="c"># executors write in parallel</span>',
+      'df.<span class="k">write</span>.mode(<span class="s">"overwrite"</span>) \\',
+      '  .saveAsTable(<span class="s">"sales.result"</span>)'
+    ]
+  };
+
+  function renderCode(mode, hlSet){
+    codeEl.innerHTML = CODE[mode].map(function(ln,i){
+      const hl = hlSet && hlSet.indexOf(i) !== -1 ? ' hl' : '';
+      return '<span class="ln'+hl+'">'+(ln===''?'&nbsp;':ln)+'</span>';
+    }).join('');
+  }
+  function renderData(activeIds){
+    dataEl.innerHTML = PARTS.map(function(p){
+      const hl = activeIds && activeIds.indexOf(p.id) !== -1 ? ' hl' : '';
+      return '<div class="row'+hl+'">'+p.id+'  ≈ '+PART_MB+' MB  (exec '+(p.exec+1)+')</div>';
+    }).join('');
+  }
+
+  // make a part chip
+  function chip(p, pop){
+    const el = document.createElement('span');
+    el.className = 'part ' + p.kc + (pop && !reduce ? ' pop' : '');
+    el.textContent = p.id;
+    el.dataset.id = p.id;
+    return el;
+  }
+  function clearNodes(){
+    execParts.forEach(function(c){ c.innerHTML=''; });
+    drvParts.innerHTML='';
+    execNodes.forEach(function(n){ n.classList.remove('active'); });
+    driverNode.classList.remove('active');
+  }
+  function setHeap(mb, danger){
+    const pct = Math.min(mb/HEAP_MB,1)*100;
+    dfill.style.width = pct + '%';
+    drvheap.classList.toggle('danger', !!danger);
+    heaplbl.textContent = (mb>=1024 ? (mb/1024).toFixed(2)+' GB' : Math.round(mb)+' MB');
+  }
+  // static connector: light the wire when results flow executors → driver
+  function setWire(lit){
+    wire.classList.toggle('lit', !!lit);
+  }
+
+  // ---- STEP DEFINITIONS ----
+  // collect() story (5 steps): compute → ship → fill → tip over → fix
+  const stepsCollect = [
+    {
+      stage:'Stage 1 · compute', code:[0,1],
+      narr:'Executors compute their result partitions in <b>executor</b> memory. The driver only holds the plan so far.',
+      run:function(){
+        clearNodes(); setHeap(0,false); setWire(false);
+        renderData([]);
+        execParts[0].appendChild(chip(PARTS[0],true));
+        execParts[1].appendChild(chip(PARTS[1],true));
+        execParts[2].appendChild(chip(PARTS[2],true));
+        execParts[2].appendChild(chip(PARTS[3],true));
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+      }
+    },
+    {
+      stage:'Stage 2 · collect()', code:[3,4],
+      narr:'<code>collect()</code> tells <b>every executor</b> to serialize its partition and ship it across the network to the single driver.',
+      run:function(){
+        clearNodes(); setHeap(0,false);
+        execParts[0].appendChild(chip(PARTS[0]));
+        execParts[1].appendChild(chip(PARTS[1]));
+        execParts[2].appendChild(chip(PARTS[2]));
+        execParts[2].appendChild(chip(PARTS[3]));
+        renderData(['P0','P1','P2','P3']);
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+        driverNode.classList.add('active');
+        setWire(true);
+      }
+    },
+    {
+      stage:'Stage 3 · heap fills', code:[3,4],
+      narr:'P0, P1 and P2 land on the driver — the heap climbs to <b>'+(3*PART_MB)+' MB</b>, still under the <code>maxResultSize</code> (1g) line.',
+      run:function(){
+        clearNodes();
+        execParts[2].appendChild(chip(PARTS[3])); // P3 still on exec 3
+        drvParts.appendChild(chip(PARTS[0],true));
+        drvParts.appendChild(chip(PARTS[1],true));
+        drvParts.appendChild(chip(PARTS[2],true));
+        setHeap(3*PART_MB,false);
+        renderData(['P0','P1','P2']);
+        driverNode.classList.add('active');
+        execNodes[2].classList.add('active');
+        setWire(true);
+      }
+    },
+    {
+      stage:'Stage 4 · tips over', code:[3,4],
+      narr:'<b>One more partition (P3) tips it over.</b> Job aborted: spark.driver.maxResultSize (1g) exceeded → driver OOM.',
+      run:function(){
+        clearNodes();
+        drvParts.appendChild(chip(PARTS[0]));
+        drvParts.appendChild(chip(PARTS[1]));
+        drvParts.appendChild(chip(PARTS[2]));
+        drvParts.appendChild(chip(PARTS[3],true));
+        setHeap(4*PART_MB,true);   // 1280 MB > 1024 MB heap
+        renderData(['P0','P1','P2','P3']);
+        driverNode.classList.add('active');
+        setWire(false);
+      }
+    },
+    {
+      stage:'Stage 5 · the fix', code:[3,4],
+      narr:'The fix: switch to <code>df.write</code> — results stay on the executors, written in parallel. <b>The driver stays small.</b> Flip the toggle above to watch it.',
+      run:function(){
+        clearNodes(); setHeap(0,false); setWire(false);
+        execParts[0].appendChild(chip(PARTS[0]));
+        execParts[1].appendChild(chip(PARTS[1]));
+        execParts[2].appendChild(chip(PARTS[2]));
+        execParts[2].appendChild(chip(PARTS[3]));
+        renderData([]);
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+      }
+    }
+  ];
+
+  // write() story (5 steps): compute → write in parallel → committed → driver flat → contrast
+  const stepsWrite = [
+    {
+      stage:'Stage 1 · compute', code:[0,1],
+      narr:'Same job, same 4 partitions computed on the <b>executors</b>. Nothing on the driver yet.',
+      run:function(){
+        clearNodes(); setHeap(0,false); setWire(false);
+        renderData([]);
+        execParts[0].appendChild(chip(PARTS[0],true));
+        execParts[1].appendChild(chip(PARTS[1],true));
+        execParts[2].appendChild(chip(PARTS[2],true));
+        execParts[2].appendChild(chip(PARTS[3],true));
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+      }
+    },
+    {
+      stage:'Stage 2 · df.write', code:[3,4,5],
+      narr:'<code>df.write</code> tells each executor to write <b>its own partition</b> directly to storage — in parallel. The connector to the driver stays dark.',
+      run:function(){
+        clearNodes(); setHeap(0,false); setWire(false);
+        execParts[0].appendChild(chip(PARTS[0]));
+        execParts[1].appendChild(chip(PARTS[1]));
+        execParts[2].appendChild(chip(PARTS[2]));
+        execParts[2].appendChild(chip(PARTS[3]));
+        renderData(['P0','P1','P2','P3']);
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+      }
+    },
+    {
+      stage:'Stage 3 · written', code:[3,4,5],
+      narr:'Each partition is now persisted to <code>sales.result</code> from the executor that produced it. <b>Zero rows return to the driver.</b>',
+      run:function(){
+        clearNodes(); setHeap(0,false); setWire(false);
+        ['P0','P1','P2','P3'].forEach(function(){});
+        const labels=['P0→storage','P1→storage','P2→storage','P3→storage'];
+        PARTS.forEach(function(p,i){
+          const el=chip(p);
+          el.textContent = p.id+'✓';
+          execParts[p.exec].appendChild(el);
+        });
+        renderData([]);
+      }
+    },
+    {
+      stage:'Stage 4 · driver flat', code:[3,4,5],
+      narr:'The driver only collected tiny commit metadata — the heap reads <b>~0 MB</b>, nowhere near the 1g line. No abort, no OOM.',
+      run:function(){
+        clearNodes(); setHeap(8,false); setWire(false);
+        renderData([]);
+        driverNode.classList.add('active');
+      }
+    },
+    {
+      stage:'Stage 5 · contrast', code:[3,4,5],
+      narr:'Same 4 partitions, same cluster — but <code>collect()</code> piled <b>'+(4*PART_MB)+' MB</b> onto one heap, while <code>df.write</code> kept the driver flat. Flip back to <code>collect()</code> to compare.',
+      run:function(){
+        clearNodes(); setHeap(8,false); setWire(false);
+        PARTS.forEach(function(p){
+          const el=chip(p); el.textContent=p.id+'✓';
+          execParts[p.exec].appendChild(el);
+        });
+        renderData([]);
+      }
+    }
+  ];
+
+  let mode = 'collect';
+  let steps = stepsCollect;
+  let i = 0;
+  let timer = null;
+
+  function goTo(n){
+    i = Math.max(0, Math.min(n, steps.length-1));
+    const s = steps[i];
+    s.run();
+    renderCode(mode, s.code);
+    narr.innerHTML = '<span class="stage">'+s.stage+'</span>'+s.narr;
+    pfill.style.width = ((i+1)/steps.length*100) + '%';
+    scount.textContent = 'step '+(i+1)+' / '+steps.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===steps.length-1);
+  }
+
+  function stopPlay(){
+    if(timer){ clearInterval(timer); timer=null; playBtn.textContent='▶ Play'; }
+  }
+  function startPlay(){
+    if(i >= steps.length-1) goTo(0);
+    playBtn.textContent='❚❚ Pause';
+    timer = setInterval(function(){
+      if(i >= steps.length-1){ stopPlay(); return; }
+      goTo(i+1);
+    }, reduce ? 700 : 1700);
+  }
+
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
+  playBtn.addEventListener('click', function(){ if(timer) stopPlay(); else startPlay(); });
+
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    stopPlay();
+    mode = b.dataset.mode;
+    steps = (mode === 'write') ? stepsWrite : stepsCollect;
+    modeSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+    goTo(0);
+  });
+
+  goTo(0);
 })();
 </script>
 </body>

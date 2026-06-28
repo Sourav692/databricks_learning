@@ -9,98 +9,187 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+
+  /* ---------- sections ---------- */
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;flex-wrap:wrap}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;flex-wrap:wrap}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
   .toggles{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 4px}
-  .tgl{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:var(--paper-2);color:#5f5460;border-radius:999px;padding:7px 14px;cursor:pointer;transition:.18s;user-select:none}
-  .tgl[aria-pressed="true"]{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 2px 8px -2px rgba(109,40,217,.5)}
+  .tgl{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);border-radius:999px;padding:7px 14px;cursor:pointer;transition:.18s;user-select:none}
+  .tgl[aria-pressed="true"]{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 2px 10px -2px rgba(139,92,246,.6)}
   .tgl.dis{opacity:.4;cursor:not-allowed}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
   /* where-blocks-land tiers */
   .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 4px}
-  .tier{border:1px dashed var(--line);border-radius:11px;padding:14px;background:var(--paper);min-height:120px;transition:.25s}
-  .tier .th{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:#857890;margin-bottom:10px}
-  .tier.active{border-style:solid;border-color:var(--flame-2);background:#fff;box-shadow:var(--shadow)}
+  .tier{border:1px dashed var(--line);border-radius:11px;padding:14px;background:rgba(255,255,255,.025);min-height:120px;transition:.25s}
+  .tier .th{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
+  .tier.active{border-style:solid;border-color:var(--flame-2);background:rgba(249,115,22,.07);box-shadow:0 14px 34px -20px rgba(249,115,22,.7)}
   .blocks{display:flex;flex-wrap:wrap;gap:6px}
-  .blk{width:30px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#fff;background:var(--violet);box-shadow:0 2px 6px -2px rgba(109,40,217,.5)}
-  .blk.disk{background:#8a7d6b}
-  .blk.off{background:var(--flame)}
-  .blk.rep{outline:2px dotted #fff;outline-offset:-4px}
-  .tierempty{font-size:.8rem;color:#9a8f9d;font-style:italic}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .blk{width:30px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#fff;background:var(--violet);box-shadow:0 2px 8px -3px rgba(139,92,246,.7)}
+  .blk.disk{background:#6b5f4d}
+  .blk.off{background:var(--flame-2);color:#160d06}
+  .blk.rep{outline:2px dotted rgba(255,255,255,.85);outline-offset:-4px}
+  .tierempty{font-size:.8rem;color:var(--faint);font-style:italic}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.3rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.cached{background:rgba(139,92,246,.4);border-color:var(--violet);color:#ece2ff;box-shadow:0 2px 10px -3px rgba(139,92,246,.8)}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  .spillzone b{color:var(--violet-2)}
+  /* clean static connector under the nodes (replaces the old animated net-svg) */
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  /* stepper controls */
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  /* dummy code + data panes that highlight per step */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.tiers{grid-template-columns:1fr}}
@@ -244,6 +333,56 @@
       <div class="step" data-step><div class="head"><span class="ix">04</span> <code>df.unpersist()</code> — free it (eager)</div><div class="detail">When you're done, <code>unpersist()</code> <strong>immediately</strong> drops the blocks from memory and disk, returning Storage memory to the pool so execution and other caches can use it. Skipping this leaves stale blocks pinning <code>R</code> and pressuring GC for the rest of the session.</div></div>
       <div class="verdict">The whole game lives in <b>step 02</b> being lazy and <b>step 04</b> being eager. Cache only when steps 03 happen <b>≥ 2 times</b>; otherwise step 02's tax buys you nothing.</div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration of the persist → materialize → reuse → unpersist lifecycle.</p>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE: CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Watch <code>df.persist()</code> followed by <strong>two actions</strong> play out across a <strong>1 driver + 3 executor</strong> cluster, each executor holding its own <strong>block manager</strong>. The first action computes <em>and</em> stores; with a replicated level a block is copied to a peer; the second action reads straight from the cached blocks — <strong>no recompute</strong>.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head"><span class="lab-title">Cluster execution — persist, materialize, reuse</span></div>
+      <p class="lab-sub">Storage level <code>MEMORY_AND_DISK_2</code> (replicated). 4 partitions of a cleaned join, spread across 3 executors.</p>
+      <div class="controls">
+        <div class="seg" id="cl-level" role="group" aria-label="storage level">
+          <button data-rep="0" aria-pressed="true">MEMORY_AND_DISK</button>
+          <button data-rep="1" aria-pressed="false">MEMORY_AND_DISK_2</button>
+        </div>
+      </div>
+      <div class="cluster" id="cl-stage">
+        <div class="nodes" id="cl-nodes">
+          <div class="node driver" id="cl-driver"><h4>Driver <span class="core">main()</span></h4><div class="parts" id="cl-d-parts"></div><div class="spillzone" id="cl-d-spill"></div></div>
+          <div class="node" id="cl-ex0"><h4>Executor 0 <span class="core">block mgr</span></h4><div class="parts" id="cl-e0"></div><div class="spillzone" id="cl-e0-spill"></div></div>
+          <div class="node" id="cl-ex1"><h4>Executor 1 <span class="core">block mgr</span></h4><div class="parts" id="cl-e1"></div><div class="spillzone" id="cl-e1-spill"></div></div>
+          <div class="node" id="cl-ex2"><h4>Executor 2 <span class="core">block mgr</span></h4><div class="parts" id="cl-e2"></div><div class="spillzone" id="cl-e2-spill"></div></div>
+        </div>
+        <div class="wire" id="cl-wire"></div>
+      </div>
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">Dummy PySpark</div>
+          <div class="codepane" id="cl-code"><span class="ln" data-ln="0"><span class="k">clean</span> = events.join(devices, <span class="s">"device_id"</span>)</span><span class="ln" data-ln="1">clean.persist(StorageLevel.MEMORY_AND_DISK<span id="cl-lvl-sfx"></span>)</span><span class="ln" data-ln="2">clean.count()        <span class="c"># action 1</span></span><span class="ln" data-ln="3">clean.groupBy(<span class="s">"country"</span>).count()  <span class="c"># action 2</span></span><span class="ln" data-ln="4">clean.unpersist()    <span class="c"># free the blocks</span></span></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Block manager state</div>
+          <div class="datapane" id="cl-data">
+            <div class="row" data-row="0">p0 → exec 0</div>
+            <div class="row" data-row="1">p1 → exec 1</div>
+            <div class="row" data-row="2">p2 → exec 2</div>
+            <div class="row" data-row="3">p3 → exec 0</div>
+          </div>
+        </div>
+      </div>
+      <div class="stepper">
+        <button id="cl-prev">‹ Prev</button>
+        <button id="cl-play" class="play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="cl-fill"></div></div>
+        <span class="scount" id="cl-count">step 1 / 6</span>
+      </div>
+      <div class="narr" id="cl-narr"><span class="stage">ready</span></div>
+      <button id="cl-reset" style="margin-top:10px;font-family:'Spline Sans Mono',monospace;font-size:.72rem;background:none;border:none;color:var(--faint);cursor:pointer;text-decoration:underline">reset</button>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of cache materialization and reuse across executor block managers — partition counts and node counts are illustrative.</p>
     </div>
   </section>
 
@@ -581,6 +720,209 @@ reused.unpersist()</code></pre>
     show(b.dataset.s);
   });
   show('none');
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — persist, materialize, reuse ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  // partition → executor mapping (p3 also lands on exec 0)
+  const partOf = [
+    {id:'p0', ex:0, k:'k0'},
+    {id:'p1', ex:1, k:'k1'},
+    {id:'p2', ex:2, k:'k2'},
+    {id:'p3', ex:0, k:'k3'}
+  ];
+  const exEls = [
+    root.querySelector('#cl-e0'),
+    root.querySelector('#cl-e1'),
+    root.querySelector('#cl-e2')
+  ];
+  const exNodes = [
+    root.querySelector('#cl-ex0'),
+    root.querySelector('#cl-ex1'),
+    root.querySelector('#cl-ex2')
+  ];
+  const spillEls = [
+    root.querySelector('#cl-e0-spill'),
+    root.querySelector('#cl-e1-spill'),
+    root.querySelector('#cl-e2-spill')
+  ];
+  const driverNode = root.querySelector('#cl-driver');
+  const codeLns = Array.prototype.slice.call(root.querySelectorAll('#cl-code .ln'));
+  const dataRows = Array.prototype.slice.call(root.querySelectorAll('#cl-data .row'));
+  const narr = root.querySelector('#cl-narr');
+  const fill = root.querySelector('#cl-fill');
+  const count = root.querySelector('#cl-count');
+  const wire = root.querySelector('#cl-wire');
+  const lvlSfx = root.querySelector('#cl-lvl-sfx');
+  const levelSeg = root.querySelector('#cl-level');
+  const btnPrev = root.querySelector('#cl-prev');
+  const btnNext = root.querySelector('#cl-next');
+  const btnPlay = root.querySelector('#cl-play');
+  const btnReset = root.querySelector('#cl-reset');
+
+  let replicated = false;     // MEMORY_AND_DISK_2 when true
+  let i = 0;                  // current step index
+  let timer = null;
+
+  // create the partition chips inside each executor (each starts uncomputed/dim)
+  function buildChips(){
+    exEls.forEach(function(e){ e.innerHTML = ''; });
+    partOf.forEach(function(p){
+      const c = document.createElement('div');
+      c.className = 'part ' + p.k + ' dim';
+      c.id = 'cl-chip-' + p.id;
+      c.textContent = p.id;
+      exEls[p.ex].appendChild(c);
+    });
+  }
+  function chip(pid){ return root.querySelector('#cl-chip-' + pid); }
+
+  function clearActive(){
+    exNodes.forEach(function(n){ n.classList.remove('active'); });
+    driverNode.classList.remove('active');
+  }
+  function litWire(on){ wire.classList.toggle('lit', !!on); }
+  function hlCode(idx){ codeLns.forEach(function(l){ l.classList.toggle('hl', idx.indexOf(parseInt(l.dataset.ln,10))>-1); }); }
+  function hlData(idx){ dataRows.forEach(function(r){ r.classList.toggle('hl', idx.indexOf(parseInt(r.dataset.row,10))>-1); }); }
+
+  // STEP definitions — each renders the full state for that step (idempotent)
+  const steps = [
+    {
+      stage: 'persist() — register the level',
+      code: [1], data: [],
+      run: function(){
+        clearActive(); litWire(false);
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.add('dim'); c.classList.remove('cached'); });
+        spillEls.forEach(function(s){ s.innerHTML=''; });
+        narr.innerHTML = '<span class="stage">lazy</span> <code>persist()</code> only <b>registers</b> the storage level on <code>clean</code>. Nothing is computed and <b>nothing is stored yet</b> — the Storage tab is empty. Caching is lazy; it waits for the first action.';
+      }
+    },
+    {
+      stage: 'action 1 — compute partitions (work)',
+      code: [2], data: [0,1,2,3],
+      run: function(){
+        litWire(false);
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim','cached'); if(!reduce) c.classList.add('pop'); });
+        exNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.remove('active');
+        spillEls.forEach(function(s){ s.innerHTML=''; });
+        narr.innerHTML = '<span class="stage">materialize</span> The <b>first action</b> (<code>count()</code>) runs the full lineage — the costly join — so <b>each executor computes its partition</b>. This action is slower: it pays the compute now so later actions don\'t have to.';
+      }
+    },
+    {
+      stage: 'action 1 — store as cached blocks',
+      code: [2], data: [0,1,2,3],
+      run: function(){
+        litWire(false); clearActive();
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); if(!reduce) c.classList.add('pop'); });
+        spillEls.forEach(function(s){ s.innerHTML='<b>cached</b> · mem→disk spill if full'; });
+        narr.innerHTML = '<span class="stage">store</span> Each executor <b>stores its computed partition as a cached block</b> in its block manager, per <code>MEMORY_AND_DISK</code> — RAM first, spilling overflow to local disk (never recompute). The Storage tab now shows the entry.';
+      }
+    },
+    {
+      stage: replicated ? 'replicate one block to a peer (_2)' : 'no replication (single copy)',
+      code: [1], data: [3],
+      run: function(){
+        clearActive();
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); });
+        if(replicated){
+          // copy p3 (lives on exec 0) to exec 1 as a second replica
+          exNodes[0].classList.add('active'); exNodes[1].classList.add('active');
+          let dup = root.querySelector('#cl-chip-p3-rep');
+          if(!dup){
+            dup = document.createElement('div');
+            dup.className = 'part k3 cached rep'; dup.id = 'cl-chip-p3-rep'; dup.textContent = 'p3*';
+            dup.style.outline = '2px dotted rgba(255,255,255,.7)'; dup.style.outlineOffset = '-3px';
+            exEls[1].appendChild(dup);
+          }
+          if(!reduce) dup.classList.add('pop');
+          spillEls[1].innerHTML = '<b>replica</b> of p3 from exec 0';
+          litWire(true);
+          narr.innerHTML = '<span class="stage">replicated _2</span> With <code>MEMORY_AND_DISK_2</code> each block is <b>copied to a second executor</b> (here <code>p3</code> → exec 1). If an executor is lost, its blocks survive on the peer — no recompute of the expensive join.';
+        } else {
+          const dup = root.querySelector('#cl-chip-p3-rep'); if(dup) dup.remove();
+          spillEls.forEach(function(s){ s.innerHTML='<b>cached</b> · single copy'; });
+          litWire(false);
+          narr.innerHTML = '<span class="stage">single copy</span> Plain <code>MEMORY_AND_DISK</code> keeps <b>one copy</b> of each block. Lose an executor and its partitions must be <b>recomputed</b>. Switch the level to <code>_2</code> above to replicate a block to a peer.';
+        }
+      }
+    },
+    {
+      stage: 'action 2 — read from cache, no recompute',
+      code: [3], data: [0,1,2,3],
+      run: function(){
+        litWire(false);
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); if(!reduce) c.classList.add('pop'); });
+        exNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.add('active');
+        spillEls.forEach(function(s,ix){ s.innerHTML = '<b>cache hit</b> — fast read'; });
+        narr.innerHTML = '<span class="stage">reuse — the win</span> The <b>second action</b> reads straight from the cached blocks: <b>no join, no recompute</b>. In <code>.explain()</code> the <code>SortMergeJoin</code> is replaced by <code>InMemoryTableScan</code>. This reuse is the whole reason to cache.';
+      }
+    },
+    {
+      stage: 'unpersist() — free the blocks (eager)',
+      code: [4], data: [],
+      run: function(){
+        clearActive(); litWire(false);
+        const dup = root.querySelector('#cl-chip-p3-rep'); if(dup) dup.remove();
+        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('cached'); c.classList.add('dim'); });
+        spillEls.forEach(function(s){ s.innerHTML=''; });
+        narr.innerHTML = '<span class="stage">free — eager</span> <code>unpersist()</code> <b>immediately</b> drops every cached block (and replicas) from memory and disk, returning Storage memory to the pool. Unlike persist/cache it is eager — always unpersist when done.';
+      }
+    }
+  ];
+
+  function render(){
+    // rebuild the dynamic step-3 stage label for the current level
+    steps[3].stage = replicated ? 'replicate one block to a peer (_2)' : 'no replication (single copy)';
+    const total = steps.length;
+    if(i < 0) i = 0; if(i > total-1) i = total-1;
+    // strip transient pop classes before re-running
+    root.querySelectorAll('.part.pop').forEach(function(c){ c.classList.remove('pop'); });
+    const s = steps[i];
+    s.run();
+    hlCode(s.code); hlData(s.data);
+    fill.style.width = ((i+1)/total*100) + '%';
+    count.textContent = 'step ' + (i+1) + ' / ' + total;
+    btnPrev.disabled = (i===0);
+    btnNext.disabled = (i===total-1);
+  }
+
+  function goTo(n){ i = n; render(); }
+  function next(){ if(i < steps.length-1){ i++; render(); } else { stop(); } }
+  function prev(){ if(i > 0){ i--; render(); } }
+
+  function stop(){ if(timer){ clearInterval(timer); timer = null; } btnPlay.textContent = '▶ Play'; btnPlay.setAttribute('aria-pressed','false'); }
+  function play(){
+    if(timer){ stop(); return; }
+    if(i === steps.length-1) goTo(0);
+    btnPlay.textContent = '❚❚ Pause'; btnPlay.setAttribute('aria-pressed','true');
+    timer = setInterval(function(){
+      if(i >= steps.length-1){ stop(); return; }
+      next();
+    }, reduce ? 700 : 1700);
+  }
+
+  btnPrev.addEventListener('click', function(){ stop(); prev(); });
+  btnNext.addEventListener('click', function(){ stop(); next(); });
+  btnPlay.addEventListener('click', play);
+  btnReset.addEventListener('click', function(){ stop(); goTo(0); });
+
+  levelSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    replicated = (b.dataset.rep === '1');
+    levelSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); });
+    lvlSfx.textContent = replicated ? '_2' : '';
+    const dup = root.querySelector('#cl-chip-p3-rep'); if(dup && i < 3) dup.remove();
+    render();
+  });
+
+  // init
+  buildChips();
+  lvlSfx.textContent = '';
+  render();
 })();
 </script>
 </body>

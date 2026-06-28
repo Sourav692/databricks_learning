@@ -9,104 +9,179 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+
+  /* ---------- sections ---------- */
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
   /* stacked memory bar */
   .membar{display:flex;height:54px;border-radius:10px;overflow:hidden;border:1px solid var(--line);margin:16px 0 6px;font-family:"Spline Sans Mono",monospace;font-size:.64rem}
-  .membar .seg-r{display:flex;align-items:center;justify-content:center;color:#fff;transition:flex-basis .35s ease,background .3s;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.35)}
-  .membar .m-reserved{background:#9c8f7d}
-  .membar .m-user{background:#b08968}
+  .membar .seg-r{display:flex;align-items:center;justify-content:center;color:#fff;transition:flex-basis .35s ease,background .3s;white-space:nowrap;overflow:hidden;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+  .membar .m-reserved{background:#4a5365}
+  .membar .m-user{background:#6b5847}
   .membar .m-storage{background:var(--violet)}
-  .membar .m-exec{background:var(--flame)}
+  .membar .m-exec{background:var(--flame-2)}
   .membar .m-spill{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 6px,#9a3412 6px,#9a3412 12px)}
   .membar.oom{box-shadow:0 0 0 3px #ef4444, 0 0 22px -2px rgba(239,68,68,.7)}
   .rfloor{position:relative;height:14px;margin:-4px 0 12px}
-  .rfloor .mark{position:absolute;top:0;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet);transform:translateX(-50%);white-space:nowrap}
-  .rfloor .mark:before{content:"";position:absolute;left:50%;top:-8px;height:8px;border-left:1px dashed var(--violet)}
+  .rfloor .mark{position:absolute;top:0;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:var(--violet-2);transform:translateX(-50%);white-space:nowrap}
+  .rfloor .mark:before{content:"";position:absolute;left:50%;top:-8px;height:8px;border-left:1px dashed var(--violet-2)}
   .extra{display:flex;gap:10px;margin:12px 0 0;flex-wrap:wrap}
-  .extbox{flex:1;min-width:150px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;background:var(--paper);font-size:.82rem;color:#5f5460;opacity:.45;transition:.25s}
-  .extbox.on{opacity:1;border-style:solid;border-color:var(--flame-2);background:#fff}
+  .extbox{flex:1;min-width:150px;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;background:rgba(255,255,255,.025);font-size:.82rem;color:var(--muted);opacity:.45;transition:.25s}
+  .extbox.on{opacity:1;border-style:solid;border-color:var(--flame-2);background:rgba(249,115,22,.08)}
   .extbox .t{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--flame);display:block;margin-bottom:3px}
-  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:.78rem;color:#5f5460}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;font-size:.78rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
   .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
-  .sw.s-res{background:#9c8f7d}.sw.s-usr{background:#b08968}.sw.s-sto{background:var(--violet)}.sw.s-exe{background:var(--flame)}
+  .sw.s-res{background:#4a5365}.sw.s-usr{background:#6b5847}.sw.s-sto{background:var(--violet)}.sw.s-exe{background:var(--flame-2)}
   .sw.s-spl{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 4px,#9a3412 4px,#9a3412 8px)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
@@ -197,6 +272,68 @@
         <span><i class="sw s-spl"></i>spill (disk)</span>
       </div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration: real accounting is per-task and continuous; the asymmetry (execution evicts storage down to R; storage never evicts execution) is exact.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Watch a single aggregation play out on <strong>one executor</strong> (two more shown for context). As the task builds its hash tables, <strong>execution</strong> grows in region <code>M</code>, <strong>evicts cached blocks</strong> down to the <code>R</code> floor, then <strong>spills to local disk</strong> when it exceeds <code>M</code> — and finally a <strong>skewed partition</strong> can't spill fast enough and the executor <strong>OOMs</strong>. Step through with Prev / Play / Next.</p>
+    <div class="lab" id="lab-run">
+      <div class="lab-head"><span class="lab-title">Cluster execution lab — aggregation, spill &amp; OOM</span></div>
+      <p class="lab-sub">Defaults: reserved <b>300 MiB</b> · <code>spark.memory.fraction = 0.6</code> → <code>M</code> · <code>spark.memory.storageFraction = 0.5</code> → <code>R</code> (eviction-immune cache). Focus on <b>Executor A</b>.</p>
+
+      <div class="cluster netwrap">
+        <div class="nodes" id="run-nodes">
+          <div class="node driver" data-node="driver">
+            <h4>Driver <span class="core">schedules</span></h4>
+            <div class="parts" id="run-driver"></div>
+            <div class="spillzone" id="run-driver-spill"></div>
+          </div>
+          <div class="node" data-node="A">
+            <h4>Executor A <span class="core">M≈434 · R≈217</span></h4>
+            <div class="parts" id="run-A"></div>
+            <div class="spillzone" id="run-A-spill"></div>
+          </div>
+          <div class="node" data-node="B">
+            <h4>Executor B <span class="core">M≈434 · R≈217</span></h4>
+            <div class="parts" id="run-B"></div>
+            <div class="spillzone" id="run-B-spill"></div>
+          </div>
+          <div class="node" data-node="C">
+            <h4>Executor C <span class="core">M≈434 · R≈217</span></h4>
+            <div class="parts" id="run-C"></div>
+            <div class="spillzone" id="run-C-spill"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">Dummy PySpark — an aggregation</div>
+          <div class="codepane" id="run-code"><span class="ln" data-ln="0"><span class="c"># cache a reference table in storage (region M)</span></span><span class="ln" data-ln="1">ref = big.<span class="k">persist</span>(StorageLevel.MEMORY_AND_DISK)</span><span class="ln" data-ln="2">ref.<span class="k">count</span>()                       <span class="c"># materialize cache</span></span><span class="ln" data-ln="3"><span class="c"># wide aggregation builds per-key hash tables</span></span><span class="ln" data-ln="4">agg = ref.<span class="k">groupBy</span>(<span class="s">"k"</span>).<span class="k">count</span>()</span><span class="ln" data-ln="5">agg.write.<span class="k">format</span>(<span class="s">"noop"</span>).<span class="k">save</span>()</span></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Executor A — region M (≈434 MiB)</div>
+          <div class="datapane" id="run-data">
+            <div class="row" data-row="cache">cache (storage) ......  0 MiB</div>
+            <div class="row" data-row="exec">execution (hash) .....  0 MiB</div>
+            <div class="row" data-row="rfloor">R floor (immune) .....  217 MiB</div>
+            <div class="row" data-row="spill">spill to disk ........  0 MiB</div>
+            <div class="row" data-row="state">state ................  idle</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stepper">
+        <button id="run-prev">‹ Prev</button>
+        <button id="run-play" class="play">▶ Play</button>
+        <button id="run-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="run-pfill"></div></div>
+        <span class="scount" id="run-scount">step 1 / 6</span>
+      </div>
+      <div class="narr" id="run-narr"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: per-task accounting is continuous, but the order — execution grows, evicts storage to <code>R</code>, spills, then OOMs on skew — is exact.</p>
     </div>
   </section>
 
@@ -611,6 +748,235 @@ print(spark.conf.get(<span class="s">"spark.executor.pyspark.memory"</span>, <sp
   root.querySelectorAll('[data-step]').forEach(function(step){
     step.addEventListener('click', function(){ step.classList.toggle('open'); });
   });
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — aggregation, spill & OOM on one executor ---- */
+(function(){
+  const root = document.getElementById('lab-run');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  const nodeA  = root.querySelector('#run-A');
+  const nodeB  = root.querySelector('#run-B');
+  const nodeC  = root.querySelector('#run-C');
+  const drv    = root.querySelector('#run-driver');
+  const spillA = root.querySelector('#run-A-spill');
+  const nodeEls = {
+    driver: root.querySelector('[data-node="driver"]'),
+    A: root.querySelector('[data-node="A"]'),
+    B: root.querySelector('[data-node="B"]'),
+    C: root.querySelector('[data-node="C"]')
+  };
+  const rows = {};
+  root.querySelectorAll('#run-data .row').forEach(function(r){ rows[r.dataset.row] = r; });
+  const codeLns = root.querySelectorAll('#run-code .ln');
+  const narr   = root.querySelector('#run-narr');
+  const pfill  = root.querySelector('#run-pfill');
+  const scount = root.querySelector('#run-scount');
+  const btnPrev = root.querySelector('#run-prev');
+  const btnNext = root.querySelector('#run-next');
+  const btnPlay = root.querySelector('#run-play');
+
+  // Helper: render a list of chips into a node's .parts container.
+  function chips(container, list){
+    container.innerHTML = '';
+    list.forEach(function(c){
+      const el = document.createElement('span');
+      el.className = 'part ' + (c.cls || '');
+      el.textContent = c.t;
+      if(c.dim) el.classList.add('dim');
+      if(!reduce && c.pop) el.classList.add('pop');
+      container.appendChild(el);
+    });
+  }
+  function pad(label, val){ return (label + ' ....................').slice(0,22) + ' ' + val; }
+
+  function activate(name){
+    Object.keys(nodeEls).forEach(function(k){ nodeEls[k].classList.toggle('active', k === name); });
+  }
+  function hlCode(idxList){
+    codeLns.forEach(function(ln){
+      ln.classList.toggle('hl', idxList.indexOf(parseInt(ln.dataset.ln,10)) !== -1);
+    });
+  }
+  function hlRows(keys){
+    Object.keys(rows).forEach(function(k){ rows[k].classList.toggle('hl', keys.indexOf(k) !== -1); });
+  }
+
+  // Steps: each renders the whole scene (idempotent), so Prev/Next/jump all work.
+  const STEPS = [
+    {
+      stage: 'Stage start · cache materialized',
+      code: [0,1,2],
+      build: function(){
+        activate('A');
+        chips(nodeA, [
+          {t:'cache·c1', cls:'k1'}, {t:'cache·c2', cls:'k1'}, {t:'cache·c3', cls:'k1'}, {t:'cache·c4', cls:'k1'}
+        ]);
+        chips(nodeB, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(nodeC, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(drv,   [{t:'plan', cls:'k2'}, {t:'tasks→', cls:'k2'}]);
+        spillA.textContent = '';
+        rows.cache.textContent  = pad('cache (storage)', '300 MiB');
+        rows.exec.textContent   = pad('execution (hash)', '0 MiB');
+        rows.rfloor.textContent = pad('R floor (immune)', '217 MiB');
+        rows.spill.textContent  = pad('spill to disk', '0 MiB');
+        rows.state.textContent  = pad('state', 'healthy');
+        hlCode([0,1,2]); hlRows(['cache']);
+      },
+      narr: '<b>persist()</b> filled storage with ~300 MiB of cached blocks on Executor A. Execution is idle — storage is free to borrow the whole of region <b>M</b> for now.'
+    },
+    {
+      stage: '1 · execution grows in M',
+      code: [3,4],
+      build: function(){
+        activate('A');
+        chips(nodeA, [
+          {t:'cache·c1', cls:'k1'}, {t:'cache·c2', cls:'k1'}, {t:'cache·c3', cls:'k1'}, {t:'cache·c4', cls:'k1'},
+          {t:'hash·h1', cls:'k0', pop:true}, {t:'hash·h2', cls:'k0', pop:true}
+        ]);
+        chips(nodeB, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(nodeC, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(drv,   [{t:'plan', cls:'k2', dim:true}]);
+        spillA.textContent = '';
+        rows.cache.textContent  = pad('cache (storage)', '300 MiB');
+        rows.exec.textContent   = pad('execution (hash)', '120 MiB');
+        rows.rfloor.textContent = pad('R floor (immune)', '217 MiB');
+        rows.spill.textContent  = pad('spill to disk', '0 MiB');
+        rows.state.textContent  = pad('state', 'building');
+        hlCode([3,4]); hlRows(['exec']);
+      },
+      narr: '<b>groupBy("k").count()</b> starts building per-key <b>hash tables</b> — that\'s <b>execution</b> memory growing inside the shared region <b>M</b>. Free space absorbs it first; cache is still untouched.'
+    },
+    {
+      stage: '2 · execution evicts storage to R',
+      code: [4],
+      build: function(){
+        activate('A');
+        chips(nodeA, [
+          {t:'cache·c1', cls:'k1'}, {t:'cache·c2', cls:'k1'},
+          {t:'cache·c3', cls:'k1', dim:true}, {t:'cache·c4', cls:'k1', dim:true},
+          {t:'hash·h1', cls:'k0'}, {t:'hash·h2', cls:'k0'}, {t:'hash·h3', cls:'k0', pop:true}, {t:'hash·h4', cls:'k0', pop:true}
+        ]);
+        chips(nodeB, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(nodeC, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(drv,   [{t:'plan', cls:'k2', dim:true}]);
+        spillA.textContent = '↳ evicted cache·c3, cache·c4 (above R)';
+        rows.cache.textContent  = pad('cache (storage)', '217 MiB (=R)');
+        rows.exec.textContent   = pad('execution (hash)', '217 MiB');
+        rows.rfloor.textContent = pad('R floor (immune)', '217 MiB');
+        rows.spill.textContent  = pad('spill to disk', '0 MiB');
+        rows.state.textContent  = pad('state', 'evicting');
+        hlCode([4]); hlRows(['cache','rfloor']);
+      },
+      narr: '<b>Execution needs more room, so it evicts cached blocks down to the R floor (≈217 MiB).</b> The asymmetry in action: execution evicts storage — storage can <b>never</b> evict execution. Blocks inside R stay immune.'
+    },
+    {
+      stage: '3 · execution exceeds M → spill',
+      code: [4],
+      build: function(){
+        activate('A');
+        chips(nodeA, [
+          {t:'cache·c1', cls:'k1'}, {t:'cache·c2', cls:'k1'},
+          {t:'hash·h1', cls:'k0'}, {t:'hash·h2', cls:'k0'}, {t:'hash·h3', cls:'k0'},
+          {t:'hash·h4', cls:'k0'}, {t:'hash·h5', cls:'k0', pop:true}, {t:'hash·h6', cls:'k0', pop:true}
+        ]);
+        chips(nodeB, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(nodeC, [{t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true}]);
+        chips(drv,   [{t:'plan', cls:'k2', dim:true}]);
+        spillA.textContent = '⤓ spill (memory)→(disk): h5, h6 → local disk';
+        rows.cache.textContent  = pad('cache (storage)', '217 MiB (=R)');
+        rows.exec.textContent   = pad('execution (hash)', '434 MiB (=M)');
+        rows.rfloor.textContent = pad('R floor (immune)', '217 MiB');
+        rows.spill.textContent  = pad('spill to disk', '180 MiB');
+        rows.state.textContent  = pad('state', 'SPILLING');
+        hlCode([4]); hlRows(['exec','spill']);
+      },
+      narr: '<b>spill (memory) → (disk).</b> Region M (≈434 MiB) is exhausted, so the extra hash partitions spill to <b>local disk</b>. The job still finishes — just slower (disk I/O + GC). Watch <b>Spill (Disk)</b> in the Stages tab.'
+    },
+    {
+      stage: '4 · skewed partition → OOM',
+      code: [4],
+      build: function(){
+        activate('A');
+        nodeEls.A.style.boxShadow = '0 0 0 2px #ef4444, 0 0 26px -2px rgba(239,68,68,.7)';
+        chips(nodeA, [
+          {t:'cache·c1', cls:'k1', dim:true}, {t:'cache·c2', cls:'k1', dim:true},
+          {t:'hash·SKEW', cls:'k0'}, {t:'hash·SKEW', cls:'k0'}, {t:'hash·SKEW', cls:'k0'},
+          {t:'hash·SKEW', cls:'k0', pop:true}, {t:'hash·SKEW', cls:'k0', pop:true}, {t:'✕ killed', cls:'k0', pop:true}
+        ]);
+        chips(nodeB, [{t:'done', cls:'k2', dim:true}]);
+        chips(nodeC, [{t:'done', cls:'k2', dim:true}]);
+        chips(drv,   [{t:'task FAILED', cls:'k0'}]);
+        spillA.textContent = '⤓ spilling… but one hot key grows faster than spill drains → container limit hit';
+        rows.cache.textContent  = pad('cache (storage)', 'evicted');
+        rows.exec.textContent   = pad('execution (hash)', '> container');
+        rows.rfloor.textContent = pad('R floor (immune)', 'gone');
+        rows.spill.textContent  = pad('spill to disk', 'cannot keep up');
+        rows.state.textContent  = pad('state', 'OOM ✕');
+        hlCode([4]); hlRows(['exec','state']);
+      },
+      narr: '<b>Executor OOM.</b> A <b>skewed partition</b> — one key holding most rows — builds a hash table faster than spill can drain it. Even spilling can\'t keep it inside the container, so the executor <b>dies</b>. Fix the skew (AQE skew join → salting, Lesson 08); don\'t just add heap.'
+    },
+    {
+      stage: 'Recap · which region failed?',
+      code: [3,4],
+      build: function(){
+        activate('A');
+        nodeEls.A.style.boxShadow = '';
+        chips(nodeA, [
+          {t:'cache≤R', cls:'k1'}, {t:'exec=M', cls:'k0'}, {t:'spill→disk', cls:'k3'}, {t:'OOM if skew', cls:'k0', dim:true}
+        ]);
+        chips(nodeB, [{t:'cache≤R', cls:'k1', dim:true}, {t:'exec=M', cls:'k0', dim:true}]);
+        chips(nodeC, [{t:'cache≤R', cls:'k1', dim:true}, {t:'exec=M', cls:'k0', dim:true}]);
+        chips(drv,   [{t:'next stage', cls:'k2'}]);
+        spillA.textContent = 'order: grow → evict storage to R → spill → OOM (on skew)';
+        rows.cache.textContent  = pad('cache (storage)', '≤ R = immune');
+        rows.exec.textContent   = pad('execution (hash)', 'wins region M');
+        rows.rfloor.textContent = pad('R floor (immune)', '217 MiB');
+        rows.spill.textContent  = pad('spill to disk', 'graceful');
+        rows.state.textContent  = pad('state', 'diagnosed');
+        hlCode([3,4]); hlRows([]);
+      },
+      narr: 'The lifecycle on one executor: <b>execution grows in M → evicts storage down to R → spills to disk → OOMs only when a skewed partition outruns spill.</b> Name the region first, then fix the right thing.'
+    }
+  ];
+
+  let i = 0, timer = null, playing = false;
+  function goTo(n){
+    i = Math.max(0, Math.min(STEPS.length - 1, n));
+    const s = STEPS[i];
+    if(reduce){
+      // jump: clear pop animation flags by rebuilding then no transitions kick in visually
+      s.build();
+    } else {
+      s.build();
+    }
+    narr.innerHTML = '<span class="stage">' + s.stage + '</span>' + s.narr;
+    pfill.style.width = ((i + 1) / STEPS.length * 100) + '%';
+    scount.textContent = 'step ' + (i + 1) + ' / ' + STEPS.length;
+    btnPrev.disabled = (i === 0);
+    btnNext.disabled = (i === STEPS.length - 1);
+  }
+  function stop(){
+    playing = false;
+    if(timer){ clearInterval(timer); timer = null; }
+    btnPlay.textContent = '▶ Play';
+  }
+  function play(){
+    if(playing){ stop(); return; }
+    if(i === STEPS.length - 1) goTo(0);
+    playing = true;
+    btnPlay.textContent = '❚❚ Pause';
+    timer = setInterval(function(){
+      if(i >= STEPS.length - 1){ stop(); return; }
+      goTo(i + 1);
+    }, reduce ? 900 : 2200);
+  }
+  btnPrev.addEventListener('click', function(){ stop(); goTo(i - 1); });
+  btnNext.addEventListener('click', function(){ stop(); goTo(i + 1); });
+  btnPlay.addEventListener('click', play);
+  goTo(0);
 })();
 </script>
 </body>

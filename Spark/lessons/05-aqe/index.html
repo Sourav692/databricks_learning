@@ -9,94 +9,181 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+
+  /* ---------- sections ---------- */
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
   /* partition bars for the coalesce + skew diagrams */
-  .bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin:16px 0 6px;padding:10px;background:var(--paper);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
-  .bar{flex:1 0 7px;min-width:7px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--flame-2),var(--flame));transition:height .4s ease,background .3s,opacity .3s}
+  .bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin:16px 0 6px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
+  .bar{flex:1 0 7px;min-width:7px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--flame),var(--flame-2));transition:height .4s ease,background .3s,opacity .3s}
   .bar.tiny{opacity:.55}
   .bar.coalesced{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
   .bar.skew{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 5px,#9a3412 5px,#9a3412 10px)}
   .bar.split{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
-  .barslabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a;margin-bottom:4px}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;color:#5f5460}
+  .barslabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
   .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes / how the shuffle works" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  /* clean static connector between driver/executors and the stepper */
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  /* stepper controls */
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  /* dummy code + data panes that highlight per step */
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
@@ -239,6 +326,71 @@
       <div class="planbox" id="sk-plan"></div>
       <div class="verdict" id="sk-verdict"></div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration; real splitting also weighs the target sub-partition size and the matching-side replication.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Step through how AQE re-optimizes across <strong>1 driver + 3 executors</strong> at the shuffle boundary. Watch the post-shuffle partitions arrive tiny and uneven, then get <strong>coalesced</strong> toward 64 MB, the <strong>skewed</strong> one <strong>split</strong> across executors, and finally a sort-merge join <strong>flipped to broadcast</strong> at runtime — with the driver re-planning each step from real stats.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head"><span class="lab-title">AQE on the driver + 3 executors</span></div>
+      <p class="lab-sub">Dummy job: <code>tx.join(accounts, "account_id")</code> after a shuffle on <code>account_id</code>. Chips are post-shuffle partitions (tiny ones + one hot/skewed key).</p>
+
+      <div class="cluster" id="cl-cluster">
+        <div class="nodes">
+          <div class="node driver" id="cl-driver" style="grid-column:1/-1">
+            <h4>Driver <span class="core">re-plans at each stage boundary</span></h4>
+            <div class="parts" id="cl-driver-parts"></div>
+            <div class="spillzone" id="cl-driver-note">Holds the adaptive plan · reads map-output stats after the shuffle</div>
+          </div>
+          <div class="node" id="cl-ex0">
+            <h4>Executor 1 <span class="core">4 cores</span></h4>
+            <div class="parts" id="cl-ex0-parts"></div>
+            <div class="spillzone" id="cl-ex0-note">&nbsp;</div>
+          </div>
+          <div class="node" id="cl-ex1">
+            <h4>Executor 2 <span class="core">4 cores</span></h4>
+            <div class="parts" id="cl-ex1-parts"></div>
+            <div class="spillzone" id="cl-ex1-note">&nbsp;</div>
+          </div>
+          <div class="node" id="cl-ex2">
+            <h4>Executor 3 <span class="core">4 cores</span></h4>
+            <div class="parts" id="cl-ex2-parts"></div>
+            <div class="spillzone" id="cl-ex2-note">&nbsp;</div>
+          </div>
+        </div>
+        <div class="wire" id="cl-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="cl-prev" aria-label="Previous step">‹ Prev</button>
+        <button id="cl-play" class="play" aria-label="Play animation">▶ Play</button>
+        <button id="cl-next" aria-label="Next step">Next ›</button>
+        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
+        <span class="scount" id="cl-scount">step 1 / 5</span>
+      </div>
+
+      <div class="narr" id="cl-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">Dummy PySpark</div>
+          <div class="codepane" id="cl-code"><span class="ln" data-ln="0"><span class="c"># AQE on by default since Spark 3.2.0 / DBR 7.3+</span></span><span class="ln" data-ln="1">spark.conf.set(<span class="s">"spark.sql.adaptive.enabled"</span>, <span class="s">"true"</span>)</span><span class="ln" data-ln="2"><span class="c"># advisory target 64 MB · skew 5x median & &gt; 256 MB</span></span><span class="ln" data-ln="3">agg = tx.groupBy(<span class="s">"account_id"</span>).sum(<span class="s">"amt"</span>)   <span class="c"># shuffle</span></span><span class="ln" data-ln="4">joined = agg.join(accounts, <span class="s">"account_id"</span>)        <span class="c"># SMJ?</span></span><span class="ln" data-ln="5">joined.write.format(<span class="s">"delta"</span>).save(path)</span></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Runtime stats AQE reads</div>
+          <div class="datapane" id="cl-data">
+            <div class="row" data-row="0">post-shuffle partitions = 12</div>
+            <div class="row" data-row="1">median size      ≈ 3 MB</div>
+            <div class="row" data-row="2">advisory target  = 64 MB</div>
+            <div class="row" data-row="3">hot account_id   ≈ 320 MB</div>
+            <div class="row" data-row="4">skew test  320 &gt; 5x median &amp; &gt; 256 MB</div>
+            <div class="row" data-row="5">accounts side    ≈ 22 MB (post-filter)</div>
+          </div>
+        </div>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the adaptive plan; real coalescing merges by contiguous byte size and skew split also weighs matching-side replication.</p>
     </div>
   </section>
 
@@ -602,6 +754,143 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
     show(b.dataset.s);
   });
   show('init');
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — AQE across driver + 3 executors ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  const ex = [
+    root.querySelector('#cl-ex0-parts'),
+    root.querySelector('#cl-ex1-parts'),
+    root.querySelector('#cl-ex2-parts')
+  ];
+  const exNote = [
+    root.querySelector('#cl-ex0-note'),
+    root.querySelector('#cl-ex1-note'),
+    root.querySelector('#cl-ex2-note')
+  ];
+  const exNode = [
+    root.querySelector('#cl-ex0'),
+    root.querySelector('#cl-ex1'),
+    root.querySelector('#cl-ex2')
+  ];
+  const driverNode = root.querySelector('#cl-driver');
+  const driverNote = root.querySelector('#cl-driver-note');
+  const narr   = root.querySelector('#cl-narr');
+  const pfill  = root.querySelector('#cl-pfill');
+  const scount = root.querySelector('#cl-scount');
+  const prev   = root.querySelector('#cl-prev');
+  const next   = root.querySelector('#cl-next');
+  const play   = root.querySelector('#cl-play');
+  const codeLns = Array.prototype.slice.call(root.querySelectorAll('#cl-code .ln'));
+  const dataRows = Array.prototype.slice.call(root.querySelectorAll('#cl-data .row'));
+  const wire = root.querySelector('#cl-wire');
+
+  function chip(label, kind, extra){
+    return '<span class="part ' + kind + (extra ? ' ' + extra : '') + '">' + label + '</span>';
+  }
+  function clearActive(){
+    exNode.forEach(function(n){ n.classList.remove('active'); });
+    driverNode.classList.remove('active');
+  }
+  function setNotes(a,b,c){ exNote[0].innerHTML=a||'&nbsp;'; exNote[1].innerHTML=b||'&nbsp;'; exNote[2].innerHTML=c||'&nbsp;'; }
+  function lit(on){ wire.classList.toggle('lit', !!on); }
+  function hlCode(idxs){ codeLns.forEach(function(l){ l.classList.toggle('hl', idxs.indexOf(parseInt(l.dataset.ln,10))>=0); }); }
+  function hlData(idxs){ dataRows.forEach(function(r){ r.classList.toggle('hl', idxs.indexOf(parseInt(r.dataset.row,10))>=0); }); }
+
+  // Each step paints the three executor partition-chip rows + driver + notes + narration.
+  const steps = [
+    { // 0 — after the shuffle: 12 tiny chips scattered + one skewed hot chip
+      stage:'Shuffle finished', code:[3], data:[0,1],
+      build:function(){
+        lit(false); clearActive();
+        ex[0].innerHTML = chip('p0 2MB','k1','pop')+chip('p1 3MB','k1','pop')+chip('p2 2MB','k1','pop')+chip('p3 4MB','k1','pop');
+        ex[1].innerHTML = chip('p4 3MB','k2','pop')+chip('p5 2MB','k2','pop')+chip('p6 3MB','k2','pop')+chip('p7 320MB','k0','pop');
+        ex[2].innerHTML = chip('p8 4MB','k3','pop')+chip('p9 2MB','k3','pop')+chip('p10 3MB','k3','pop')+chip('p11 2MB','k3','pop');
+        driverNote.innerHTML = 'Holds the adaptive plan · about to read map-output stats';
+        setNotes('4 tiny partitions','3 tiny + 1 HOT (320MB)','4 tiny partitions');
+        narr.innerHTML = '<span class="stage">Stage boundary</span>The shuffle on <code>account_id</code> wrote <b>12 post-shuffle partitions</b> across the 3 executors — most a few MB, plus one <b>hot</b> 320 MB partition on Executor 2 (the skewed key). A static plan would schedule 12 tasks and let that one straggler stall the stage.';
+      }
+    },
+    { // 1 — driver reads real stats
+      stage:'AQE reads runtime stats', code:[1], data:[0,1,2,3,4],
+      build:function(){
+        lit(true); clearActive(); driverNode.classList.add('active');
+        ex[0].innerHTML = chip('p0 2MB','k1')+chip('p1 3MB','k1')+chip('p2 2MB','k1')+chip('p3 4MB','k1');
+        ex[1].innerHTML = chip('p4 3MB','k2')+chip('p5 2MB','k2')+chip('p6 3MB','k2')+chip('p7 320MB','k0');
+        ex[2].innerHTML = chip('p8 4MB','k3')+chip('p9 2MB','k3')+chip('p10 3MB','k3')+chip('p11 2MB','k3');
+        driverNote.innerHTML = 'Reads per-partition byte sizes &rarr; median &asymp; 3 MB, one &asymp; 320 MB';
+        setNotes('reporting sizes','reporting sizes','reporting sizes');
+        narr.innerHTML = '<span class="stage">Re-optimize</span>At the boundary the <b>driver</b> collects the exact per-partition byte sizes from the map output — stats a static plan never had. Median &asymp; <b>3 MB</b>; advisory target = <b>64 MB</b>. AQE is on by <b>default since Spark 3.2.0</b> (DBR 7.3+).';
+      }
+    },
+    { // 2 — coalesce adjacent tiny chips into ~64MB partitions
+      stage:'AQE coalesce', code:[2,3], data:[0,1,2],
+      build:function(){
+        lit(false); clearActive(); exNode[0].classList.add('active'); exNode[2].classList.add('active');
+        ex[0].innerHTML = chip('c0 ~62MB','k1','pop');
+        ex[1].innerHTML = chip('c1 ~58MB','k2','pop')+chip('p7 320MB','k0');
+        ex[2].innerHTML = chip('c2 ~60MB','k3','pop');
+        driverNote.innerHTML = '<code>advisoryPartitionSizeInBytes = 64 MB</code> · merges adjacent partitions';
+        setNotes('4 tiny &rarr; 1 (~62MB)','3 tiny &rarr; 1 (~58MB)','4 tiny &rarr; 1 (~60MB)');
+        narr.innerHTML = '<span class="stage">Coalesce post-shuffle partitions</span>AQE greedily merges adjacent tiny partitions until each nears <code>advisoryPartitionSizeInBytes = <b>64 MB</b></code> (never below the 1 MB floor). The 11 small chips collapse into <b>3 full ones</b> — far fewer tasks. The hot 320 MB partition is left for the next step.';
+      }
+    },
+    { // 3 — split the skewed partition across executors
+      stage:'AQE skew split', code:[2,4], data:[3,4],
+      build:function(){
+        lit(true); clearActive(); exNode.forEach(function(n){ n.classList.add('active'); });
+        ex[0].innerHTML = chip('c0 ~62MB','k1')+chip('p7a ~80MB','k0','pop');
+        ex[1].innerHTML = chip('c1 ~58MB','k2')+chip('p7b ~80MB','k0','pop');
+        ex[2].innerHTML = chip('c2 ~60MB','k3')+chip('p7c ~80MB','k0','pop')+chip('p7d ~80MB','k0','pop');
+        driverNote.innerHTML = 'skew test: 320 MB &gt; 5&times; median <b>and</b> &gt; 256 MB &rarr; split';
+        setNotes('+ skew sub-part','+ skew sub-part','+ 2 skew sub-parts');
+        narr.innerHTML = '<span class="stage">Optimize skew join</span>The 320 MB partition is <b>both</b> &gt; <b>5&times;</b> the median <b>and</b> &gt; <b>256 MB</b>, so AQE flags it skewed and <b>splits</b> it into balanced ~80 MB sub-partitions spread across all 3 executors (replicating the matching side). The straggler becomes parallel sub-tasks; max task time drops toward the median.';
+      }
+    },
+    { // 4 — runtime join switch SMJ -> broadcast
+      stage:'AQE join switch', code:[4,5], data:[5],
+      build:function(){
+        lit(false); clearActive(); driverNode.classList.add('active');
+        exNode.forEach(function(n){ n.classList.add('active'); });
+        ex[0].innerHTML = chip('c0 ⋈ bcast','k1','pop')+chip('p7a ⋈ bcast','k0');
+        ex[1].innerHTML = chip('c1 ⋈ bcast','k2','pop')+chip('p7b ⋈ bcast','k0');
+        ex[2].innerHTML = chip('c2 ⋈ bcast','k3','pop')+chip('p7c ⋈ bcast','k0')+chip('p7d ⋈ bcast','k0');
+        driverNode.classList.add('active');
+        driverNote.innerHTML = 'broadcasts the 22 MB <code>accounts</code> side &rarr; <b>BroadcastHashJoin</b>';
+        setNotes('joins locally','joins locally','joins locally');
+        narr.innerHTML = '<span class="stage">Switch sort-merge &rarr; broadcast</span>The <code>accounts</code> side turned out to be only <b>~22 MB</b> after filtering — under the runtime broadcast switch (OSS 10 MB; <b>Databricks 30 MB</b>). AQE rewrites the planned sort-merge join to a <b>BroadcastHashJoin</b>: <code>accounts</code> ships to every executor and each balanced partition joins locally. <code>isFinalPlan=true</code>.';
+      }
+    }
+  ];
+
+  let i = 0, timer = null;
+  function render(){
+    steps[i].build();
+    hlCode(steps[i].code || []);
+    hlData(steps[i].data || []);
+    pfill.style.width = ((i+1)/steps.length*100) + '%';
+    scount.textContent = 'step ' + (i+1) + ' / ' + steps.length;
+    prev.disabled = (i===0);
+    next.disabled = (i===steps.length-1);
+  }
+  function goTo(n){ i = Math.max(0, Math.min(steps.length-1, n)); render(); }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; play.textContent='▶ Play'; } }
+  function start(){
+    if(i===steps.length-1) goTo(0);
+    play.textContent='❚❚ Pause';
+    timer = setInterval(function(){
+      if(i>=steps.length-1){ stop(); return; }
+      goTo(i+1);
+    }, reduce ? 700 : 1900);
+  }
+  prev.addEventListener('click', function(){ stop(); goTo(i-1); });
+  next.addEventListener('click', function(){ stop(); goTo(i+1); });
+  play.addEventListener('click', function(){ timer ? stop() : start(); });
+  render();
 })();
 </script>
 </body>

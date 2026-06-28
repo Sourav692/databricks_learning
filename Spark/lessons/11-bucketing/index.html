@@ -9,99 +9,172 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .toggle{display:inline-flex;align-items:center;gap:9px;font-size:.86rem;color:#574b53;font-weight:500;cursor:pointer;user-select:none}
+  .toggle{display:inline-flex;align-items:center;gap:9px;font-size:.86rem;color:var(--muted);font-weight:500;cursor:pointer;user-select:none}
   .toggle input{accent-color:var(--flame);width:17px;height:17px;cursor:pointer}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
   /* bucket diagram */
   .buckets{margin:18px 0 6px}
-  .blabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#73677a;margin:14px 0 7px}
+  .blabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:14px 0 7px}
   .brow{display:flex;gap:6px;flex-wrap:wrap}
   .bk{flex:1 1 0;min-width:30px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.64rem;font-weight:600;border:1px solid var(--line);transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,box-shadow .3s}
-  .bk.a{background:linear-gradient(135deg,var(--flame-2),var(--flame));border-color:#9a3412;color:#fff4ec}
-  .bk.b{background:linear-gradient(135deg,#e6d8fb,#c9b1f3);border-color:#b69aee;color:#4c1d95}
-  .bk.match{box-shadow:0 6px 16px -6px rgba(109,40,217,.6);transform:translateY(-3px)}
+  .bk.a{background:linear-gradient(135deg,var(--flame),var(--flame-2));border-color:#9a3412;color:#160d06}
+  .bk.b{background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(124,58,237,.45));border-color:var(--violet);color:#ece2ff}
+  .bk.match{box-shadow:0 6px 16px -6px rgba(139,92,246,.7);transform:translateY(-3px)}
   .link{height:18px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.1em}
-  .link.colocated{color:var(--violet)}
+  .link.colocated{color:var(--violet-2)}
   .link.shuffled{color:var(--flame)}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#5f5460}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
   .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes / how the shuffle works" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
@@ -151,6 +224,70 @@
     </ul>
   </section>
 
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Step through how a daily <code>transactions&nbsp;&#8904;&nbsp;accounts</code> join on <code>account_id</code> executes across <strong>1 driver + 3 executors</strong>. First the unbucketed shuffle moves <strong>both</strong> tables over the network; then bucketing pre-places matching keys so the buckets are co-located and the join runs locally with <strong>no <code>Exchange</code></strong>; finally see what a bucket-count mismatch brings back.</p>
+    <div class="lab" id="lab-run">
+      <div class="lab-head"><span class="lab-title">Cluster execution lab — bucketed join</span></div>
+      <p class="lab-sub">Records are chips colored by their key bucket. <span class="mono" style="color:var(--flame)">t</span> = transactions row, <span class="mono" style="color:var(--violet-2)">a</span> = accounts row. Watch where each lands and whether the network <code>Exchange</code> fires.</p>
+
+      <div class="cluster" id="run-cluster">
+        <div class="nodes" id="run-nodes">
+          <div class="node driver" id="run-driver" style="grid-column:1/-1">
+            <h4>Driver <span class="core">plans · schedules</span></h4>
+            <div class="parts" id="run-driver-parts"></div>
+          </div>
+          <div class="node" data-ex="0"><h4>Executor 1 <span class="core">bucket 0</span></h4><div class="parts" data-parts="0"></div></div>
+          <div class="node" data-ex="1"><h4>Executor 2 <span class="core">bucket 1</span></h4><div class="parts" data-parts="1"></div></div>
+          <div class="node" data-ex="2"><h4>Executor 3 <span class="core">bucket 2</span></h4><div class="parts" data-parts="2"></div></div>
+        </div>
+        <div class="wire" id="run-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="run-prev" aria-label="Previous step">&larr; Prev</button>
+        <button id="run-play" class="play" aria-label="Play">&#9654; Play</button>
+        <button id="run-next" aria-label="Next step">Next &rarr;</button>
+        <div class="pbar"><div class="pfill" id="run-pfill"></div></div>
+        <span class="scount" id="run-scount">step 1 / 7</span>
+      </div>
+
+      <div class="narr" id="run-narr"><span class="stage">stage</span>narration</div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">PySpark</div>
+          <div class="codepane" id="run-code">
+<span class="ln" data-ln="0"><span class="c"># daily big &#8904; big join on account_id</span></span>
+<span class="ln" data-ln="1">t = spark.table(<span class="s">"transactions"</span>)</span>
+<span class="ln" data-ln="2">a = spark.table(<span class="s">"accounts"</span>)</span>
+<span class="ln" data-ln="3">joined = t.<span class="k">join</span>(a, <span class="s">"account_id"</span>)  <span class="c"># shuffles both</span></span>
+<span class="ln" data-ln="4"><span class="c"># --- bucket ONCE on write ---</span></span>
+<span class="ln" data-ln="5">t.write.<span class="k">bucketBy</span>(<span class="s">3</span>,<span class="s">"account_id"</span>).<span class="k">sortBy</span>(<span class="s">"account_id"</span>)\</span>
+<span class="ln" data-ln="6">  .<span class="k">saveAsTable</span>(<span class="s">"transactions_bkt"</span>)  <span class="c"># 3 buckets</span></span>
+<span class="ln" data-ln="7">a.write.<span class="k">bucketBy</span>(<span class="s">3</span>,<span class="s">"account_id"</span>).<span class="k">saveAsTable</span>(<span class="s">"accounts_bkt"</span>)</span>
+<span class="ln" data-ln="8">tb.<span class="k">join</span>(ab, <span class="s">"account_id"</span>)  <span class="c"># no Exchange</span></span>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Records by key bucket</div>
+          <div class="datapane" id="run-data">
+            <div class="row" data-r="0"><span style="color:var(--flame)">t</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
+            <div class="row" data-r="1"><span style="color:var(--flame)">t</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
+            <div class="row" data-r="2"><span style="color:var(--flame)">t</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
+            <div class="row" data-r="3"><span style="color:var(--violet-2)">a</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
+            <div class="row" data-r="4"><span style="color:var(--violet-2)">a</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
+            <div class="row" data-r="5"><span style="color:var(--violet-2)">a</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="verdict" id="run-verdict"></div>
+      <p class="lab-sub" style="margin-top:14px">Simplified: 3 executors / 3 buckets and a handful of rows stand in for hundreds of buckets and billions of rows. The mechanism is identical.</p>
+    </div>
+  </section>
+
   <!-- ============ INTERACTIVE 1: SHUFFLE-ELIMINATOR ============ -->
   <section>
     <h2>See it work — the shuffle eliminator</h2>
@@ -178,8 +315,8 @@
       <div class="planbox" id="bx-plan"></div>
       <div class="verdict" id="bx-verdict"></div>
       <div class="legend">
-        <span><i class="sw" style="background:linear-gradient(135deg,var(--flame-2),var(--flame))"></i> transactions bucket</span>
-        <span><i class="sw" style="background:linear-gradient(135deg,#e6d8fb,#c9b1f3)"></i> accounts bucket</span>
+        <span><i class="sw" style="background:linear-gradient(135deg,var(--flame),var(--flame-2))"></i> transactions bucket</span>
+        <span><i class="sw" style="background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(124,58,237,.45))"></i> accounts bucket</span>
       </div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration: bucket files are drawn small; real tables use hundreds of buckets. Co-located = same key set in the same-numbered bucket on both sides.</p>
     </div>
@@ -425,6 +562,164 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
 </footer>
 
 <script>
+/* ---- Cluster Execution Lab: how a bucketed join runs across driver + 3 executors ---- */
+(function(){
+  const root = document.getElementById('lab-run');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  const driverParts = root.querySelector('#run-driver-parts');
+  const driverNode  = root.querySelector('#run-driver');
+  const exNodes     = [0,1,2].map(function(i){ return root.querySelector('.node[data-ex="'+i+'"]'); });
+  const exParts     = [0,1,2].map(function(i){ return root.querySelector('.parts[data-parts="'+i+'"]'); });
+  const wire        = root.querySelector('#run-wire');
+  const codeLns     = root.querySelectorAll('#run-code .ln');
+  const dataRows    = root.querySelectorAll('#run-data .row');
+  const narr        = root.querySelector('#run-narr');
+  const verdict     = root.querySelector('#run-verdict');
+  const pfill       = root.querySelector('#run-pfill');
+  const scount      = root.querySelector('#run-scount');
+  const btnPrev     = root.querySelector('#run-prev');
+  const btnNext     = root.querySelector('#run-next');
+  const btnPlay     = root.querySelector('#run-play');
+
+  // record model: t/a side, key bucket 0..2, label
+  const recs = [
+    {side:'t', bk:0, label:'t·100'}, {side:'t', bk:1, label:'t·211'}, {side:'t', bk:2, label:'t·322'},
+    {side:'a', bk:0, label:'a·100'}, {side:'a', bk:1, label:'a·211'}, {side:'a', bk:2, label:'a·322'}
+  ];
+  const KCLS = ['k0','k1','k2'];
+
+  function clearNodes(){
+    driverParts.innerHTML='';
+    exParts.forEach(function(p){ p.innerHTML=''; });
+    driverNode.classList.remove('active');
+    exNodes.forEach(function(n){ n.classList.remove('active'); });
+    wire.classList.remove('lit');
+  }
+  function chip(rec, dim){
+    const d=document.createElement('div');
+    d.className='part '+KCLS[rec.bk]+(dim?' dim':'')+(reduce?'':' pop');
+    d.textContent=rec.label;
+    return d;
+  }
+  function place(parent, list, dim){
+    list.forEach(function(r){ parent.appendChild(chip(r, dim)); });
+  }
+  function hlCode(lines){
+    codeLns.forEach(function(l){ l.classList.toggle('hl', lines.indexOf(+l.dataset.ln)>-1); });
+  }
+  function hlData(idxs){
+    dataRows.forEach(function(r){ r.classList.toggle('hl', idxs.indexOf(+r.dataset.r)>-1); });
+  }
+
+  // STEPS: each renders the node layout + arrows for that moment.
+  const steps = [
+    { stage:'Setup', code:[0,1,2],
+      narr:'Two big tables — <b>transactions</b> and <b>accounts</b> — both keyed on <code>account_id</code>. Neither is small enough to broadcast, and this join runs <b>every day</b>.',
+      data:[],
+      render:function(){
+        place(driverParts, recs, false);
+        verdict.innerHTML='The driver holds the plan; the rows still need to be matched by key across the cluster.';
+      }},
+    { stage:'Without bucketing · read', code:[3],
+      narr:'<b>Without bucketing.</b> Rows are scanned in arbitrary partitions — matching <code>account_id</code>s are scattered across executors, so the join can\'t run locally yet.',
+      data:[],
+      render:function(){
+        // scatter rows arbitrarily (not by key) across the 3 executors
+        place(exParts[0], [recs[0],recs[4]], false);
+        place(exParts[1], [recs[2],recs[3]], false);
+        place(exParts[2], [recs[1],recs[5]], false);
+        verdict.innerHTML='Equal keys (e.g. both <code>acct 100</code>) sit on <b>different</b> executors. To join, Spark must move them together — a <b>shuffle</b>.';
+      }},
+    { stage:'Without bucketing · Exchange', code:[3],
+      narr:'<b>The <code>Exchange</code> fires.</b> Spark hash-partitions <b>both</b> tables by <code>account_id</code> over the network so equal keys land on the same node — network I/O + disk spill, re-paid on every run.',
+      data:[0,1,2,3,4,5],
+      flow:true,
+      render:function(){
+        // after shuffle: rows land by key bucket -> co-located, but it cost a full exchange
+        place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
+        place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
+        place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
+        exNodes.forEach(function(n){ n.classList.add('active'); });
+        verdict.innerHTML='<b>Both</b> 2&nbsp;TB + 300&nbsp;GB sides cross the network into <code>hashpartitioning(account_id, 200)</code> — the expensive double shuffle the rest of this lesson removes.';
+      }},
+    { stage:'With bucketing · write once', code:[4,5,6,7],
+      narr:'<b>Bucket both tables by the key into the SAME N on write.</b> <code>bucketBy(3,"account_id").saveAsTable(...)</code> pre-shuffles <b>once</b> — <code>saveAsTable</code> is required so the bucket spec is stored.',
+      data:[0,1,2,3,4,5],
+      render:function(){
+        // records pre-placed by key bucket on write -> matching buckets co-located
+        place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
+        place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
+        place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
+        verdict.innerHTML='Bucket <code>i</code> of both tables holds the same key set (<code>hash(account_id)%3</code>). Matching buckets are now <b>co-located</b> on the same executor — pre-paid, once.';
+      }},
+    { stage:'With bucketing · local join', code:[8],
+      narr:'<b>The join runs LOCALLY on each executor — <code>Exchange</code> omitted.</b> Each node already has both sides of its bucket, so it sort-merge-joins in place with <b>no data movement</b>.',
+      data:[],
+      render:function(){
+        place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
+        place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
+        place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
+        exNodes.forEach(function(n){ n.classList.add('active'); });
+        verdict.innerHTML='No arrows. The plan is a <code>SortMergeJoin</code> with <b>no <code>Exchange</code></b> under either side — the daily shuffle is gone for good.';
+      }},
+    { stage:'Mismatched bucket counts', code:[8],
+      narr:'<b>Mismatch the bucket counts</b> (e.g. 3 vs 2) and the layouts no longer line up — the <code>HashPartitioning</code> differs, so the <b>shuffle returns</b> on one side.',
+      data:[],
+      flow:true,
+      render:function(){
+        // accounts side re-shuffled to reconcile counts
+        place(exParts[0], [recs[0],recs[3]], false);
+        place(exParts[1], [recs[1]], false);
+        place(exParts[2], [recs[2]], false);
+        place(exParts[1], [recs[4]], true);
+        place(exParts[2], [recs[5]], true);
+        exNodes.forEach(function(n){ n.classList.add('active'); });
+        verdict.innerHTML='Different N &rarr; the accounts side is re-shuffled to match. The <code>Exchange</code> is back unless one count is an exact multiple of the other.';
+      }},
+    { stage:'coalesceBucketsInJoin', code:[8],
+      narr:'<b>Unless <code>coalesceBucketsInJoin</code> applies.</b> When one count is a multiple of the other, Spark coalesces the larger side instead of shuffling — but it\'s <code>false</code> by default (since 3.1).',
+      data:[],
+      render:function(){
+        place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
+        place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
+        place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
+        verdict.innerHTML='Best practice: <b>pick one bucket count and use it on both tables</b> so the <code>Exchange</code> never comes back — no flag needed.';
+      }}
+  ];
+
+  let i=0, timer=null;
+  function render(){
+    clearNodes();
+    const s=steps[i];
+    if(s.code) hlCode(s.code); else hlCode([]);
+    hlData(s.data||[]);
+    s.render();
+    if(s.flow){ wire.classList.add('lit'); }
+    narr.innerHTML='<span class="stage">'+s.stage+'</span>'+s.narr;
+    pfill.style.width=((i+1)/steps.length*100)+'%';
+    scount.textContent='step '+(i+1)+' / '+steps.length;
+    btnPrev.disabled=(i===0);
+    btnNext.disabled=(i===steps.length-1);
+  }
+  function go(n){ i=Math.max(0,Math.min(steps.length-1,n)); render(); }
+  function stop(){ if(timer){ clearInterval(timer); timer=null; btnPlay.innerHTML='&#9654; Play'; } }
+  function play(){
+    if(timer){ stop(); return; }
+    if(i===steps.length-1) go(0);
+    btnPlay.innerHTML='&#10074;&#10074; Pause';
+    timer=setInterval(function(){
+      if(i>=steps.length-1){ stop(); return; }
+      go(i+1);
+    }, reduce?700:1900);
+  }
+  btnPrev.addEventListener('click', function(){ stop(); go(i-1); });
+  btnNext.addEventListener('click', function(){ stop(); go(i+1); });
+  btnPlay.addEventListener('click', play);
+  go(0);
+})();
+
 /* ---- Diagram 1: bucketed-join shuffle eliminator ---- */
 (function(){
   const root = document.getElementById('lab-bucket');

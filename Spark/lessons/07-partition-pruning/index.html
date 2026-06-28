@@ -9,102 +9,174 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;--hit:#c2410c;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
   .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
-  .filterbar select,.filterbar input[type=text]{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
+  .filterbar select,.filterbar input[type=text]{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg-2);color:var(--ink);cursor:pointer}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#fbbf77;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:#0a0e15;color:#fbbf77;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px;border:1px solid var(--line)}
   .gridwrap{margin:20px 0 6px}
-  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#73677a;margin-bottom:8px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
   .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
-  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:#8a7d6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden;text-align:center;line-height:1.1}
-  .file.hit{background:linear-gradient(135deg,var(--flame-2),var(--flame));border-color:#9a3412;color:#fff4ec;box-shadow:0 6px 16px -6px rgba(194,65,12,.7);transform:translateY(-3px) scale(1.04);z-index:2}
-  .file.skip{opacity:.3;filter:grayscale(.4)}
-  .file.dpp{background:linear-gradient(135deg,#e6d8fb,#c9b1f3);border-color:#b69aee;color:#4c1d95}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#5f5460}
+  .file{aspect-ratio:1;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden;text-align:center;line-height:1.1}
+  .file.hit{background:linear-gradient(135deg,var(--flame),var(--flame-2));border-color:#fb923c;color:#160d06;box-shadow:0 6px 16px -6px rgba(249,115,22,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.28;filter:grayscale(.4)}
+  .file.dpp{background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(124,58,237,.4));border-color:var(--violet);color:#ece2ff}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
   .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
   .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .dim{color:#7c8aa0}
   .planbox .vio{color:#c4b5fd}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1px}
   .verdict b{color:var(--flame)}
   .dpprow{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
   .dpcol{flex:1;min-width:220px}
-  .dpcol h4{margin:0 0 8px;font-family:"Spline Sans",sans-serif;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a}
+  .dpcol h4{margin:0 0 8px;font-family:"Spline Sans",sans-serif;font-size:.82rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint)}
   .dimbar{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
-  .dimcell{border-radius:7px;padding:10px 0;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;background:var(--paper-2);border:1px solid var(--line);color:#8a7d6b;cursor:pointer;transition:.2s}
-  .dimcell.sel{background:linear-gradient(135deg,#8b5cf6,#6d28d9);border-color:#5b21b6;color:#fff}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .dimcell{border-radius:7px;padding:10px 0;text-align:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--faint);cursor:pointer;transition:.2s}
+  .dimcell.sel{background:linear-gradient(135deg,var(--violet),#6d28d9);border-color:var(--violet);color:#fff}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes / how the shuffle works" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.grid{grid-template-columns:repeat(6,1fr)}}
@@ -178,8 +250,8 @@
         <div class="grid" id="pg-grid"></div>
       </div>
       <div class="legend">
-        <span><span class="sw" style="background:linear-gradient(135deg,var(--flame-2),var(--flame))"></span> read (hit)</span>
-        <span><span class="sw" style="background:var(--paper-2)"></span> skipped (pruned)</span>
+        <span><span class="sw" style="background:linear-gradient(135deg,var(--flame),var(--flame-2))"></span> read (hit)</span>
+        <span><span class="sw" style="background:rgba(255,255,255,.05)"></span> skipped (pruned)</span>
       </div>
       <div class="readout">
         <div class="stat win"><div class="big" id="pg-read">—</div><div class="lbl">directories read</div></div>
@@ -271,6 +343,58 @@
       <div class="planbox" id="dp-plan"></div>
       <div class="verdict" id="dp-verdict"></div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration of <code>dynamicpruningexpression</code> on the fact-side scan.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Now watch pruning happen <em>on the nodes</em>. The driver lists the <code>sales</code> table's on-disk partition directories (<code>country=US/IN/UK/DE</code>); executors run one scan task per surviving directory. Step through a full scan, then static pruning, then DPP — and watch tasks <strong>skip</strong> the directories that can be pruned away.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head"><span class="lab-title">Cluster execution lab — pruning the scan</span></div>
+      <p class="lab-sub"><code>sales</code> partitioned by <code>country</code> · driver lists directories, executors scan the survivors.</p>
+
+      <div class="cluster netwrap" id="cx-cluster">
+        <div class="glabel">on-disk partition directories — /sales/country=…</div>
+        <div class="parts" id="cx-dirs" style="margin-bottom:14px"></div>
+        <div class="nodes" id="cx-nodes">
+          <div class="node driver" data-node="driver">
+            <h4>Driver <span class="core">lists dirs · plans</span></h4>
+            <div class="parts" id="cx-driver"></div>
+            <div class="spillzone" id="cx-driver-note"></div>
+          </div>
+          <div class="node" data-node="e0">
+            <h4>Executor A <span class="core">scan task</span></h4>
+            <div class="parts" id="cx-e0"></div>
+          </div>
+          <div class="node" data-node="e1">
+            <h4>Executor B <span class="core">scan task</span></h4>
+            <div class="parts" id="cx-e1"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stepper" id="cx-step">
+        <button class="prev" type="button" aria-label="Previous step">&larr; Prev</button>
+        <button class="play" type="button" aria-label="Play">▶ Play</button>
+        <button class="next" type="button" aria-label="Next step">Next &rarr;</button>
+        <span class="pbar"><span class="pfill" id="cx-pfill"></span></span>
+        <span class="scount" id="cx-scount">step 1 / 6</span>
+      </div>
+
+      <div class="narr" id="cx-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">dummy PySpark</div>
+          <div class="codepane" id="cx-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">what the scan reads</div>
+          <div class="datapane" id="cx-data"></div>
+        </div>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: directory listing happens on the driver before tasks launch; pruned directories never become scan tasks.</p>
     </div>
   </section>
 
@@ -643,6 +767,226 @@ spark.conf.set(<span class="s">"spark.sql.optimizer.dynamicPartitionPruning.enab
     show(b.dataset.s);
   });
   show('stat');
+})();
+
+/* ---- Cluster Execution Lab: pruning the scan on driver + executors ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const dirsEl   = root.querySelector('#cx-dirs');
+  const driverEl = root.querySelector('#cx-driver');
+  const dnoteEl  = root.querySelector('#cx-driver-note');
+  const e0El     = root.querySelector('#cx-e0');
+  const e1El     = root.querySelector('#cx-e1');
+  const nodeEls  = {
+    driver: root.querySelector('[data-node="driver"]'),
+    e0:     root.querySelector('[data-node="e0"]'),
+    e1:     root.querySelector('[data-node="e1"]')
+  };
+  const codeEl   = root.querySelector('#cx-code');
+  const dataEl   = root.querySelector('#cx-data');
+  const narrEl   = root.querySelector('#cx-narr');
+  const pfill    = root.querySelector('#cx-pfill');
+  const scount   = root.querySelector('#cx-scount');
+  const stepBar  = root.querySelector('#cx-step');
+  const btnPrev  = stepBar.querySelector('.prev');
+  const btnNext  = stepBar.querySelector('.next');
+  const btnPlay  = stepBar.querySelector('.play');
+
+  // 4 on-disk partition directories, mapped to executors (A scans US/IN, B scans UK/DE)
+  const DIRS = [
+    {c:'US', k:'k0', exec:'e0'},
+    {c:'IN', k:'k1', exec:'e0'},
+    {c:'UK', k:'k2', exec:'e1'},
+    {c:'DE', k:'k3', exec:'e1'}
+  ];
+
+  // dummy PySpark code lines (highlight one+ per step)
+  const CODE = [
+    {t:'<span class="c"># sales partitioned by country</span>'},
+    {t:'sales = spark.table(<span class="s">"main.perf.sales"</span>)'},
+    {t:'<span class="c"># (2) static: literal on partition col</span>'},
+    {t:'us = sales.where(<span class="s">"country = \'US\'"</span>)'},
+    {t:'<span class="c"># (3) DPP: filter lives on the dim</span>'},
+    {t:'dim = spark.table(<span class="s">"main.perf.country_dim"</span>)'},
+    {t:'q = (sales.join(dim, <span class="s">"country"</span>)'},
+    {t:'        .where(dim.region == <span class="s">"AMER"</span>))'}
+  ];
+
+  function renderCode(hl){
+    codeEl.innerHTML = CODE.map(function(l, i){
+      const on = hl.indexOf(i) !== -1 ? ' hl' : '';
+      return '<span class="ln' + on + '">' + l.t + '</span>';
+    }).join('');
+  }
+
+  // build a directory chip
+  function chip(d){
+    const s = document.createElement('span');
+    s.className = 'part ' + d.k;
+    s.textContent = 'country=' + d.c;
+    s.dataset.c = d.c;
+    return s;
+  }
+
+  // STEPS
+  const STEPS = [
+    {
+      stage:'Setup · the table on disk',
+      hl:[0,1],
+      data:'/sales/country=US/   *.parquet\n/sales/country=IN/   *.parquet\n/sales/country=UK/   *.parquet\n/sales/country=DE/   *.parquet',
+      active:[],
+      narr:'<b>Four directories</b> — one per <code>country</code> value. The driver lists them from the catalog; each surviving directory becomes one scan task on an executor.',
+      apply:function(){
+        // all directories live; both executors hold their assigned scan tasks, none dim
+        layout({prune:null, dpp:false});
+        dnoteEl.textContent = 'driver: lists 4 partition directories';
+      }
+    },
+    {
+      stage:'(1) Full scan · no filter',
+      hl:[0,1],
+      data:'task US → read  ✔\ntask IN → read  ✔\ntask UK → read  ✔\ntask DE → read  ✔\n→ 4 / 4 directories scanned',
+      active:['e0','e1'],
+      narr:'<b>No filter → read everything.</b> Without a predicate on the partition column, every directory becomes a scan task. 4 of 4 read — the baseline we want to beat.',
+      apply:function(){
+        layout({prune:null, dpp:false});
+        dnoteEl.textContent = 'driver: PartitionFilters: []  → all 4 scheduled';
+      }
+    },
+    {
+      stage:'(2) Static pruning · the filter',
+      hl:[2,3],
+      data:"WHERE country = 'US'\n\ndriver matches literal to dir names…",
+      active:['driver'],
+      narr:'A <b>literal</b> filter <code>country = \'US\'</code> resolves <b>at plan time</b>. The driver matches it against the directory names before any task launches.',
+      apply:function(){
+        layout({prune:['US'], dpp:false, settleOnly:true});
+        dnoteEl.textContent = "driver: PartitionFilters: [(country = US)]";
+      }
+    },
+    {
+      stage:'(2) Static pruning · tasks skip',
+      hl:[2,3],
+      data:'task US → read  ✔\ntask IN → SKIP\ntask UK → SKIP\ntask DE → SKIP\n→ 1 / 4 directories scanned',
+      active:['e0'],
+      narr:'<b>Non-US directories are pruned</b> — they never become tasks. Only <code>country=US</code> is scanned. <b>Read less = the cheapest win.</b> Confirm via <code>PartitionFilters</code> in <code>.explain()</code>.',
+      apply:function(){
+        layout({prune:['US'], dpp:false});
+        dnoteEl.textContent = "driver: 3 dirs pruned · 1 scan task scheduled";
+      }
+    },
+    {
+      stage:'(3) DPP · broadcast the dim keys',
+      hl:[4,5,6,7],
+      data:"country_dim WHERE region = 'AMER'\n→ surviving keys: {US}\n\nbroadcast {US} → fact scan",
+      active:['driver'],
+      narr:'<b>DPP.</b> The filter sits on the <code>dim</code>, so no literal hits the fact at plan time. Spark runs the small dim first, broadcasts its surviving key set <code>{US}</code>, and at <b>runtime</b> pushes it onto the fact\'s partition column.',
+      apply:function(){
+        layout({prune:['US'], dpp:true, settleOnly:true, flow:true});
+        dnoteEl.textContent = 'driver: SubqueryBroadcast → keys {US}';
+      }
+    },
+    {
+      stage:'(3) DPP · fact pruned at runtime',
+      hl:[6,7],
+      data:'task US → read  ✔  (dynamicpruningexpression)\ntask IN → SKIP\ntask UK → SKIP\ntask DE → SKIP\n→ 1 / 4 fact directories scanned',
+      active:['e0'],
+      narr:'The pushed key set prunes the fact <b>before the scan</b> — only <code>country=US</code> partitions are read. Plan signal: <code>PartitionFilters:[dynamicpruningexpression(...)]</code>. DPP is on by default: <code>spark.sql.optimizer.dynamicPartitionPruning.enabled=true</code> since Spark 3.0.',
+      apply:function(){
+        layout({prune:['US'], dpp:true});
+        dnoteEl.textContent = 'driver: fact pruned to 1 dir at runtime';
+      }
+    }
+  ];
+
+  // (re)build directory chips into the on-disk row, driver listing + executor lanes
+  function layout(opts){
+    opts = opts || {};
+    const prune = opts.prune;      // null = none pruned; array of countries kept
+    const dpp = !!opts.dpp;
+    const settleOnly = !!opts.settleOnly; // dim selected but tasks not yet skipped
+    // on-disk directory row (always shows all 4; dim the pruned-away ones)
+    dirsEl.innerHTML = '';
+    DIRS.forEach(function(d){
+      const ch = chip(d);
+      const kept = !prune || prune.indexOf(d.c) !== -1;
+      if(prune && !kept && !settleOnly) ch.classList.add('dim');
+      dirsEl.appendChild(ch);
+    });
+    // driver always shows the full listing
+    driverEl.innerHTML = '';
+    DIRS.forEach(function(d){
+      const ch = chip(d);
+      const kept = !prune || prune.indexOf(d.c) !== -1;
+      if(prune && !kept) ch.classList.add('dim');
+      driverEl.appendChild(ch);
+    });
+    // executors show only their assigned directories as scan tasks
+    e0El.innerHTML = ''; e1El.innerHTML = '';
+    DIRS.forEach(function(d){
+      const lane = d.exec === 'e0' ? e0El : e1El;
+      const ch = chip(d);
+      const kept = !prune || prune.indexOf(d.c) !== -1;
+      // during "settleOnly" the driver has decided but exec lanes still show all (about to skip)
+      if(prune && !kept && !settleOnly) ch.classList.add('dim');
+      if(dpp && kept) ch.title = 'dynamicpruningexpression';
+      lane.appendChild(ch);
+    });
+    // network flow (DPP broadcast) toggle
+    // (no SVG paths in markup here; we just light up the driver node)
+  }
+
+  let i = 0;
+  let timer = null;
+
+  function applyStep(idx){
+    const s = STEPS[idx];
+    renderCode(s.hl);
+    dataEl.textContent = s.data;
+    narrEl.innerHTML = '<span class="stage">' + s.stage + '</span>' + s.narr;
+    s.apply();
+    // node active states
+    Object.keys(nodeEls).forEach(function(k){
+      nodeEls[k].classList.toggle('active', s.active.indexOf(k) !== -1);
+    });
+    // pop the newly-rendered chips (skip when reduced motion)
+    if(!reduce){
+      root.querySelectorAll('#cx-dirs .part, #cx-e0 .part, #cx-e1 .part, #cx-driver .part').forEach(function(p){
+        p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop');
+      });
+    }
+    pfill.style.width = ((idx) / (STEPS.length - 1) * 100) + '%';
+    scount.textContent = 'step ' + (idx + 1) + ' / ' + STEPS.length;
+    btnPrev.disabled = idx === 0;
+    btnNext.disabled = idx === STEPS.length - 1;
+  }
+
+  function goTo(idx){
+    i = Math.max(0, Math.min(STEPS.length - 1, idx));
+    applyStep(i);
+  }
+
+  function stopPlay(){
+    if(timer){ clearInterval(timer); timer = null; btnPlay.textContent = '▶ Play'; }
+  }
+  function play(){
+    if(timer){ stopPlay(); return; }
+    if(i === STEPS.length - 1) goTo(0);
+    btnPlay.textContent = '❚❚ Pause';
+    timer = setInterval(function(){
+      if(i >= STEPS.length - 1){ stopPlay(); return; }
+      goTo(i + 1);
+    }, reduce ? 700 : 1900);
+  }
+
+  btnPrev.addEventListener('click', function(){ stopPlay(); goTo(i - 1); });
+  btnNext.addEventListener('click', function(){ stopPlay(); goTo(i + 1); });
+  btnPlay.addEventListener('click', play);
+
+  goTo(0);
 })();
 </script>
 </body>

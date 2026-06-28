@@ -9,91 +9,164 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#16111d;--paper:#f5efe7;--paper-2:#ece2d4;
-    --flame:#c2410c;--flame-2:#f97316;--ember:#fde2c4;
-    --violet:#6d28d9;--violet-2:#8b5cf6;--line:#ddd1bf;--skip:#cabfa9;
-    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(40,20,10,.35);--radius:14px;
+    --bg:#070a10;          /* page background — matches the hero */
+    --bg-2:#0b1018;
+    --ink:#eaf0f7;         /* primary text */
+    --muted:#94a2b6;
+    --faint:#5d6b7e;
+    --line:rgba(255,255,255,.09);
+    --card:rgba(17,23,33,.6);
+    --flame:#fb923c;       /* PySpark primary accent (ember) */
+    --flame-2:#f97316;
+    --violet:#8b5cf6;      /* secondary accent */
+    --violet-2:#a78bfa;
+    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
+    --gold:#f5a524;
+    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
+    --radius:14px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
-  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Spline Sans",sans-serif;line-height:1.6;
-    background-image:radial-gradient(circle at 12% -10%,rgba(249,115,22,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(109,40,217,.08),transparent 35%);background-attachment:fixed;}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+  }
+  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
+  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+    background:
+      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
+      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
+      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
+      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
+    animation:drift 28s ease-in-out infinite alternate}
+  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
+  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
   code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
-  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  header{padding:72px 0 40px;position:relative}
   .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
   h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{color:var(--flame-2);font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:#43383f}
+  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
+  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
   .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#574b53}
-  .pill b{color:var(--violet);font-weight:600}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
+  .pill b{color:var(--violet-2);font-weight:600}
   .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
   p{margin:.6em 0}
   ul,ol{padding-left:1.1em}
   li{margin:.35em 0}
-  strong{font-weight:600}
-  .callout{background:linear-gradient(180deg,#f3edff,#ece2ff);border:1px solid #d8c9f5;border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet);display:block;margin-bottom:4px}
+  strong{font-weight:600;color:#f4f7fb}
+  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
   .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:#f3ecff;color:#5b21b6;border:1px solid #ddccf7}
-  .chip.usecase{background:#fde7d6;color:#9a3412;border:1px solid #f3cfa6}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
-  .tbl th{background:var(--flame);color:#fff2e8;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
-  .tbl tr:nth-child(even) td{background:var(--paper)}
-  pre{background:#16111d;color:#efe9f2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
+  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
+  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
+  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
   pre code{background:none;padding:0}
-  pre .c{color:#8c8093}
-  pre .k{color:#f6a96b;font-weight:500}
+  pre .c{color:#7c8aa0}
+  pre .k{color:#fbbf77;font-weight:500}
   pre .s{color:#b7e88f}
   pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e6276;text-transform:uppercase}
-  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
   .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
-  .lab-sub{color:#5f5460;font-size:.93rem;margin:0 0 18px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
   .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#5f5460;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame);color:#fff;box-shadow:0 2px 8px -2px rgba(194,65,12,.5)}
-  .filterbar label{font-size:.86rem;color:#574b53;font-weight:500;display:flex;align-items:center;gap:10px}
+  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
+  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
   input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
   .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:var(--ink);color:#efe9f2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap}
+  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
   .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#f6a96b}
-  .planbox .dim{color:#8c8093}
+  .planbox .bad{color:#fbbf77}
+  .planbox .dim{color:#7c8aa0}
   .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
   .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:#857890;margin-top:6px}
-  .stat.win .big{color:var(--violet)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
+  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--violet-2)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
   .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame-2)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--flame)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
   .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:#473b43;font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,#fff,#faf4ee);border-color:var(--flame-2)}
+  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
   .step.open .detail{display:block}
   /* skew bar-chart simulator */
-  .partlabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:#73677a;margin:10px 0 6px}
-  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:10px 8px;background:var(--paper);border:1px solid var(--line);border-radius:11px}
-  .bar{flex:1;border-radius:5px 5px 0 0;min-height:3px;background:linear-gradient(180deg,var(--flame-2),var(--flame));transition:height .45s cubic-bezier(.2,.9,.3,1.4),background .3s;position:relative}
+  .partlabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:10px 0 6px}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:10px 8px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px}
+  .bar{flex:1;border-radius:5px 5px 0 0;min-height:3px;background:linear-gradient(180deg,var(--flame),var(--flame-2));transition:height .45s cubic-bezier(.2,.9,.3,1.4),background .3s;position:relative}
   .bar.hot{background:linear-gradient(180deg,#fb7185,#be123c)}
-  .bar.salted{background:linear-gradient(180deg,#a78bfa,var(--violet))}
+  .bar.salted{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
   .explodebox{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .copy{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:#ece2ff;border:1px solid #d8c9f5;color:#4c1d95;border-radius:7px;padding:5px 9px;transition:transform .3s,opacity .3s}
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#73677a;font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(194,65,12,.3)}
+  .copy{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);color:#ddd0ff;border-radius:7px;padding:5px 9px;transition:transform .3s,opacity .3s}
+
+  /* ====================================================================
+     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
+     "how it runs on the Spark nodes / how the shuffle works" animations.
+     ==================================================================== */
+  .cluster{margin:18px 0}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(63,169,201,.4)}
+  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--cyan)}
+  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
+  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
+  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
+  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
+  .part.dim{opacity:.28}
+  .part.pop{animation:partpop .5s ease}
+  @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
+  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
+  .stepper button:hover{border-color:var(--flame);color:#fff}
+  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
+  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
+  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
+  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--flame)}
+  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(249,115,22,.2)}
+  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
+  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
+  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
+  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
   footer a:hover{border-color:var(--flame)}
   .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
   @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.bars{height:140px}}
@@ -234,6 +307,63 @@
       <div class="step" data-step><div class="head"><span class="ix">04</span> Join on the combined key &amp; verify</div><div class="detail">Join on <code>["merchant_id","salt"]</code>. The hot key's work is now spread across N partitions on both sides. <code>.explain(mode="formatted")</code> still shows a <code>SortMergeJoin</code>, but on <code>(merchant_id, salt)</code>; in the Stages tab the join stage's <strong>Max</strong> task time now tracks the <strong>Median</strong>.</div></div>
       <div class="verdict">Cost lives in <b>step 03</b> — the explosion. Salt only the confirmed hot keys (constant <code>salt=0</code> for the rest) so the blow-up stays proportional. And always try <b>AQE skew join</b> (step 01) before any of this.</div>
       <p class="lab-sub" style="margin-top:14px">Simplified illustration of the query rewrite behind a salted join.</p>
+    </div>
+  </section>
+
+  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <section>
+    <h2>See it run on the cluster</h2>
+    <p>Step through how a skewed join actually executes across <strong>1 driver + 3 executors</strong>. The hot key <code>US</code> dominates the rows; after the shuffle it piles onto one executor as a straggler, then salting splits it across all three. Use <strong>Prev / Play / Next</strong> — the dummy PySpark and the rows highlight per step.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head"><span class="lab-title">Salted join — cluster execution lab</span></div>
+      <p class="lab-sub"><code>clicks</code> (skewed on <code>country</code>, <code>US</code> = most rows) ⋈ <code>dim</code>. Watch one task straggle, then rebalance after salting.</p>
+
+      <div class="cluster" id="cl-cluster">
+        <div class="nodes" id="cl-nodes">
+          <div class="node driver" id="cl-driver">
+            <h4>Driver <span class="core">plan · schedule</span></h4>
+            <div class="parts" id="cl-driver-parts"></div>
+          </div>
+          <div class="node" id="cl-ex0">
+            <h4>Executor 1 <span class="core">1 core</span></h4>
+            <div class="parts" id="cl-ex0-parts"></div>
+            <div class="spillzone" id="cl-ex0-spill"></div>
+          </div>
+          <div class="node" id="cl-ex1">
+            <h4>Executor 2 <span class="core">1 core</span></h4>
+            <div class="parts" id="cl-ex1-parts"></div>
+            <div class="spillzone" id="cl-ex1-spill"></div>
+          </div>
+          <div class="node" id="cl-ex2">
+            <h4>Executor 3 <span class="core">1 core</span></h4>
+            <div class="parts" id="cl-ex2-parts"></div>
+            <div class="spillzone" id="cl-ex2-spill"></div>
+          </div>
+        </div>
+        <div class="wire" id="cl-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="cl-prev">&larr; Prev</button>
+        <button class="play" id="cl-play">&#9654; Play</button>
+        <button id="cl-next">Next &rarr;</button>
+        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
+        <span class="scount" id="cl-scount">step 1 / 4</span>
+      </div>
+
+      <div class="narr" id="cl-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">Dummy PySpark</div>
+          <div class="codepane" id="cl-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Dummy rows (clicks)</div>
+          <div class="datapane" id="cl-data"></div>
+        </div>
+      </div>
+      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real partition counts, hashing, and task timings vary. The point is how the hot key <code>US</code> stragglers one task, and how salting spreads it across executors.</p>
     </div>
   </section>
 
@@ -569,6 +699,198 @@ fast = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>
     show(b.dataset.h);
   });
   show('join');
+})();
+
+/* ---- Diagram 4: CLUSTER EXECUTION LAB — salted join across driver + 3 executors ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+
+  const ex = [
+    { parts: root.querySelector('#cl-ex0-parts'), node: root.querySelector('#cl-ex0'), spill: root.querySelector('#cl-ex0-spill') },
+    { parts: root.querySelector('#cl-ex1-parts'), node: root.querySelector('#cl-ex1'), spill: root.querySelector('#cl-ex1-spill') },
+    { parts: root.querySelector('#cl-ex2-parts'), node: root.querySelector('#cl-ex2'), spill: root.querySelector('#cl-ex2-spill') }
+  ];
+  const driverParts = root.querySelector('#cl-driver-parts');
+  const driverNode  = root.querySelector('#cl-driver');
+  const wire    = root.querySelector('#cl-wire');
+  const codeEl  = root.querySelector('#cl-code');
+  const dataEl  = root.querySelector('#cl-data');
+  const narr    = root.querySelector('#cl-narr');
+  const scount  = root.querySelector('#cl-scount');
+  const pfill   = root.querySelector('#cl-pfill');
+  const prevBtn = root.querySelector('#cl-prev');
+  const nextBtn = root.querySelector('#cl-next');
+  const playBtn = root.querySelector('#cl-play');
+
+  // dummy code lines (highlight indices per step)
+  const CODE = [
+    {t:'<span class="c"># clicks: country is skewed, US dominates</span>', },
+    {t:'joined = (clicks'},
+    {t:'  .join(dim, "country"))   <span class="c"># shuffle by country</span>'},
+    {t:''},
+    {t:'<span class="c"># --- SALT the hot key US across N=3 ---</span>'},
+    {t:'salted = clicks.withColumn("salt",'},
+    {t:'  F.when(col("country")=="US",'},
+    {t:'    (F.rand()*3).cast("int")).otherwise(0))'},
+    {t:'dimX = dim.withColumn("salt",'},
+    {t:'  F.explode(F.array(*[lit(i) for i in range(3)])))'},
+    {t:'j = salted.join(dimX, ["country","salt"])  <span class="c"># balanced</span>'},
+    {t:'res = j.groupBy("country").agg(...)   <span class="c"># undo salt</span>'}
+  ];
+
+  // dummy rows (the clicks side) — US is the hot key
+  const ROWS = [
+    {k:'US',  label:'(US, click)'},
+    {k:'US',  label:'(US, click)'},
+    {k:'US',  label:'(US, click)'},
+    {k:'US',  label:'(US, click)'},
+    {k:'US',  label:'(US, click)'},
+    {k:'US',  label:'(US, click)'},
+    {k:'DE',  label:'(DE, click)'},
+    {k:'JP',  label:'(JP, click)'},
+    {k:'BR',  label:'(BR, click)'}
+  ];
+
+  // chips: each chip = {label, kls (k0/k1/k2/k3)}; key->color class
+  function chip(label, kls){ return {label:label, kls:kls}; }
+
+  // STEP DEFINITIONS -----------------------------------------------------
+  // Each step: stage label, narration, highlighted code lines, highlighted
+  // data rows, which executor is .active, and the chip layout per executor.
+  const STEPS = [
+    {
+      stage:'Stage 2 · after shuffle (skewed)',
+      html:'<b>One executor straggles.</b> The shuffle sends every <code>US</code> row to the same partition by <code>hash("US")</code>, so all six pile onto <b>Executor 1</b> — one long task spills while Executors 2 &amp; 3 sit nearly idle. This is <b>Max ≫ Median</b> in the Spark UI.',
+      code:[0,1,2],
+      rows:[0,1,2,3,4,5],
+      active:[0],
+      ex:[
+        [chip('US×6','k0')],
+        [chip('DE','k1')],
+        [chip('JP','k2'), chip('BR','k3')]
+      ],
+      spill:['spill (disk) ↑','',''],
+      flow:true
+    },
+    {
+      stage:'Driver · apply salting',
+      html:'<b>Salt only the hot key.</b> The driver rewrites the plan: <code>US</code> gets <code>salt = floor(rand()*3)</code> → <code>US_0 / US_1 / US_2</code>; the other side is <b>exploded ×3</b> so every salted <code>US</code> row still finds its match. Other keys keep <code>salt=0</code>.',
+      code:[4,5,6,7,8,9],
+      rows:[0,1,2,3,4,5],
+      active:[],
+      driver:true,
+      ex:[
+        [chip('US_0','k0'), chip('US_1','k0'), chip('US_2','k0')],
+        [chip('DE','k1')],
+        [chip('JP','k2'), chip('BR','k3')]
+      ],
+      spill:['','',''],
+      flow:false
+    },
+    {
+      stage:'Stage 2 · re-shuffle on (country, salt)',
+      html:'<b>Load rebalances.</b> The combined key <code>(country, salt)</code> now hashes <code>US_0 / US_1 / US_2</code> to <b>three different partitions</b> — they spread across all 3 executors. No single task owns the whole hot key; task times even out (<b>Max ≈ Median</b>), and the spill is gone.',
+      code:[10],
+      rows:[0,1,2,3,4,5],
+      active:[0,1,2],
+      ex:[
+        [chip('US_0','k0'), chip('BR','k3')],
+        [chip('US_1','k0'), chip('DE','k1')],
+        [chip('US_2','k0'), chip('JP','k2')]
+      ],
+      spill:['','',''],
+      flow:true
+    },
+    {
+      stage:'Stage 3 · re-aggregate by original key',
+      html:'<b>Undo the salt.</b> A small final stage re-groups by the original <code>country</code> alone, folding <code>US_0 + US_1 + US_2</code> back into one <code>US</code> total. <b>AQE skew join is the first defence</b> — reach for salting only on the few keys it can\'t split.',
+      code:[11],
+      rows:[0,1,2,3,4,5],
+      active:[1],
+      ex:[
+        [chip('BR','k3')],
+        [chip('US (re-agg)','k0'), chip('DE','k1'), chip('JP','k2')],
+        []
+      ],
+      spill:['','',''],
+      flow:false
+    }
+  ];
+
+  let i = 0, playing = false, timer = null;
+
+  // build the code pane once
+  codeEl.innerHTML = CODE.map((c,ix)=>'<span class="ln" data-ln="'+ix+'">'+(c.t||'&nbsp;')+'</span>').join('');
+  // build the data pane once
+  dataEl.innerHTML = ROWS.map((r,ix)=>'<span class="row" data-row="'+ix+'">'+r.label+'</span>').join('');
+
+  function renderParts(container, chips){
+    container.innerHTML = '';
+    chips.forEach(function(c){
+      const el = document.createElement('span');
+      el.className = 'part ' + c.kls + (reduce ? '' : ' pop');
+      el.textContent = c.label;
+      container.appendChild(el);
+    });
+  }
+
+  function goTo(n){
+    i = Math.max(0, Math.min(STEPS.length - 1, n));
+    const s = STEPS[i];
+
+    // nodes + chips
+    ex.forEach(function(e, idx){
+      renderParts(e.parts, s.ex[idx] || []);
+      e.node.classList.toggle('active', (s.active||[]).indexOf(idx) !== -1);
+      e.spill.textContent = (s.spill && s.spill[idx]) ? s.spill[idx] : '';
+    });
+    driverNode.classList.toggle('active', !!s.driver);
+    driverParts.innerHTML = s.driver
+      ? '<span class="part k1' + (reduce ? '' : ' pop') + '">rewrite plan</span>'
+      : '<span class="part" style="opacity:.5">idle</span>';
+
+    // static connector: lit when this step redistributes work across executors
+    wire.classList.toggle('lit', !!s.flow);
+
+    // code highlight
+    codeEl.querySelectorAll('.ln').forEach(function(ln){
+      ln.classList.toggle('hl', (s.code||[]).indexOf(parseInt(ln.dataset.ln,10)) !== -1);
+    });
+    // data highlight
+    dataEl.querySelectorAll('.row').forEach(function(rw){
+      rw.classList.toggle('hl', (s.rows||[]).indexOf(parseInt(rw.dataset.row,10)) !== -1);
+    });
+
+    // narration + progress
+    narr.innerHTML = '<span class="stage">' + s.stage + '</span>' + s.html;
+    scount.textContent = 'step ' + (i+1) + ' / ' + STEPS.length;
+    pfill.style.width = ((i+1) / STEPS.length * 100) + '%';
+    prevBtn.disabled = (i === 0);
+    nextBtn.disabled = (i === STEPS.length - 1);
+  }
+
+  function stopPlay(){
+    playing = false;
+    if(timer){ clearInterval(timer); timer = null; }
+    playBtn.innerHTML = '&#9654; Play';
+  }
+  function startPlay(){
+    if(i >= STEPS.length - 1){ goTo(0); }
+    playing = true;
+    playBtn.innerHTML = '&#10073;&#10073; Pause';
+    timer = setInterval(function(){
+      if(i >= STEPS.length - 1){ stopPlay(); return; }
+      goTo(i + 1);
+    }, reduce ? 700 : 1900);
+  }
+
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i - 1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i + 1); });
+  playBtn.addEventListener('click', function(){ playing ? stopPlay() : startPlay(); });
+
+  goTo(0);
 })();
 </script>
 </body>
