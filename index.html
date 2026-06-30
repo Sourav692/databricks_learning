@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Databricks Mastery — Field Engineering Learning Library</title>
-<meta name="description" content="Four deep, interactive Databricks learning tracks — Data Engineering, Networking & Security, Delta Optimization, and Spark internals — built from official docs, every concept paired with a runnable notebook, an interactive diagram, and an independent review.">
+<meta name="description" content="Four deep, interactive Databricks learning tracks — Data Engineering, Networking & Security, Delta Optimization, and Spark internals — built from official docs, every concept paired with a runnable notebook, an interactive diagram, and an independent review. Plus a 24-card one-pager quick-reference library for last-mile interview revision.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -74,10 +74,11 @@
 
   /* ---------- stats band ---------- */
   .stats{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(255,255,255,.015)}
-  .stats-in{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:34px 0}
+  .stats-in{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:34px 0}
   .stat{text-align:center}
   .stat b{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(1.9rem,4vw,2.9rem);line-height:1;background:linear-gradient(120deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:block}
   .stat span{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);margin-top:9px;display:block}
+  @media(max-width:880px){.stats-in{grid-template-columns:repeat(3,1fr);gap:30px 10px}}
   @media(max-width:620px){.stats-in{grid-template-columns:repeat(2,1fr);gap:26px 10px}}
 
   /* ---------- section headings ---------- */
@@ -112,6 +113,29 @@
   .enter .arr{transition:transform .22s}
   .track:hover .enter .arr{transform:translateX(5px)}
   .track .stretch{position:absolute;inset:0;z-index:2}
+
+  /* ---------- companion (one-pager) card ---------- */
+  .companion{grid-column:1/-1;display:flex;align-items:center;gap:26px;flex-wrap:wrap;position:relative;overflow:hidden;
+    border:1px solid var(--line);border-radius:var(--radius);padding:26px 30px;
+    background:var(--card);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    transition:transform .28s cubic-bezier(.2,.8,.3,1),border-color .28s,box-shadow .28s}
+  .companion::after{content:"";position:absolute;width:260px;height:260px;left:-70px;top:-120px;border-radius:50%;
+    background:radial-gradient(circle,var(--a),transparent 68%);opacity:.16;filter:blur(8px);transition:opacity .3s,transform .5s;pointer-events:none}
+  .companion:hover{transform:translateY(-5px);border-color:transparent;box-shadow:0 26px 60px -28px var(--glow)}
+  .companion:hover::after{opacity:.3;transform:scale(1.16)}
+  .c-ico{width:54px;height:54px;flex:0 0 auto;border-radius:13px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.03);color:var(--a)}
+  .c-ico svg{width:28px;height:28px}
+  .c-body{flex:1 1 380px;min-width:0}
+  .c-num{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.16em;color:var(--a);text-transform:uppercase}
+  .c-name{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;line-height:1.1;letter-spacing:-.01em;margin:2px 0 6px}
+  .c-desc{color:var(--muted);font-size:.95rem;margin:0 0 13px}
+  .c-chips{display:flex;flex-wrap:wrap;gap:7px}
+  .c-cta{flex:0 0 auto;display:inline-flex;align-items:center;gap:9px;font-weight:600;font-size:.95rem;color:var(--ink);
+    border:1px solid var(--line);border-radius:11px;padding:13px 22px;transition:.2s}
+  .companion:hover .c-cta{border-color:var(--a)}
+  .c-cta .arr{transition:transform .22s}
+  .companion:hover .c-cta .arr{transform:translateX(5px)}
+  @media(max-width:620px){.c-cta{width:100%;justify-content:center}}
 
   /* ---------- methodology ---------- */
   #method{background:linear-gradient(180deg,transparent,rgba(255,255,255,.018),transparent)}
@@ -154,6 +178,7 @@
       <a href="#net">Networking</a>
       <a href="#delta">Delta</a>
       <a href="#spark">Spark</a>
+      <a href="one-pagers/index.html">One-Pagers</a>
       <a class="nav-cta" href="#tracks">Explore →</a>
     </div>
   </div>
@@ -163,9 +188,10 @@
   <div class="wrap">
     <span class="eyebrow"><span class="dot"></span>Field Engineering · Interview Mastery</span>
     <h1>Master the Databricks platform, <span class="grad">end to end.</span></h1>
-    <p class="lede">Four deep, interactive learning tracks — <b>Data Engineering</b>, <b>Networking &amp; Security</b>, <b>Delta Optimization</b>, and <b>Spark internals</b>. Built from the official docs, every concept paired with an interactive diagram, a runnable notebook, and an independent review.</p>
+    <p class="lede">Four deep, interactive learning tracks — <b>Data Engineering</b>, <b>Networking &amp; Security</b>, <b>Delta Optimization</b>, and <b>Spark internals</b>. Built from the official docs, every concept paired with an interactive diagram, a runnable notebook, and an independent review. Plus a <b>24-card one-pager library</b> for last-mile interview revision.</p>
     <div class="cta-row">
       <a class="btn btn-primary" href="#tracks">Explore the tracks <span class="arr">→</span></a>
+      <a class="btn btn-ghost" href="one-pagers/index.html">Interview one-pagers <span class="arr">→</span></a>
       <a class="btn btn-ghost" href="#method">How it's built</a>
     </div>
     <div class="scrolldown"><span class="mouse"></span>Scroll</div>
@@ -175,6 +201,7 @@
 <div class="stats">
   <div class="wrap stats-in" id="statsband">
     <div class="stat"><b data-target="4">0</b><span>Learning tracks</span></div>
+    <div class="stat"><b data-target="24">0</b><span>One-pagers</span></div>
     <div class="stat"><b data-target="100" data-suffix="+">0</b><span>Lessons</span></div>
     <div class="stat"><b data-target="140" data-suffix="+">0</b><span>Interactive diagrams</span></div>
     <div class="stat"><b data-target="100" data-suffix="%">0</b><span>Reviewer-approved</span></div>
@@ -183,7 +210,7 @@
 
 <section id="tracks">
   <div class="wrap">
-    <p class="sec-eyebrow reveal">Four tracks · one standard</p>
+    <p class="sec-eyebrow reveal">Four deep tracks · one quick-reference library</p>
     <h2 class="sec-title reveal">Pick a track. Go from fundamentals to expert.</h2>
     <p class="sec-sub reveal">Each track is a connected story, not a pile of articles — sequenced beginner→expert, grounded in current Azure Databricks &amp; Apache Spark documentation.</p>
 
@@ -233,6 +260,18 @@
         <div class="t-foot"><span class="t-meta"><b>11</b> lessons · <b>33</b> diagrams</span><span class="enter">Enter track <span class="arr">→</span></span></div>
       </a>
 
+      <!-- Interview One-Pagers (companion quick-reference) -->
+      <a class="companion reveal" href="one-pagers/index.html" style="--a:var(--flame);--glow:rgba(249,115,22,.45)">
+        <div class="c-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8M8 15h5"/></svg></div>
+        <div class="c-body">
+          <div class="c-num">Companion · Quick reference</div>
+          <h3 class="c-name">Interview One-Pagers</h3>
+          <p class="c-desc">The tracks go deep; these go fast. 24 single-page cheat-sheets across the platform — key concepts, one small snippet, and one interactive diagram each, doc-grounded for last-mile revision.</p>
+          <div class="c-chips"><span class="chip">Unity Catalog</span><span class="chip">Delta Lake</span><span class="chip">Lakeflow</span><span class="chip">Spark · Photon</span><span class="chip">Mosaic AI · Agents</span><span class="chip">+19 more</span></div>
+        </div>
+        <span class="c-cta">Open library <span class="arr">→</span></span>
+      </a>
+
     </div>
   </div>
 </section>
@@ -278,6 +317,7 @@
       <a href="DBX%20Networking/index.html">Networking</a>
       <a href="DBX_Delta_Optimization/index.html">Delta</a>
       <a href="Spark/index.html">Spark</a>
+      <a href="one-pagers/index.html">One-Pagers</a>
     </div>
   </div>
 </footer>

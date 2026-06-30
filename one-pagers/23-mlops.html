@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MLOps on Databricks — Databricks One-Pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ea; --paper-2:#efe9dd; --card:#fbf9f4; --line:#e0d8c8;
+    --ink:#26211c; --muted:#6b6155; --faint:#9c9183;
+    --flame:#ff3621; --flame-deep:#d6260f; --violet:#7b4bd6; --frost:#1a7f78;
+    --code-bg:#221d18; --code-ink:#efe7da;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:34px 22px 80px}
+  a{color:var(--flame-deep);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:rgba(0,0,0,.05);padding:.06em .35em;border-radius:5px;font-size:.9em}
+
+  /* hero */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--flame);margin:22px 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.1rem,5.5vw,3.2rem);
+    line-height:1.02;margin:0 0 14px;letter-spacing:-.02em}
+  h1 .drip{font-style:italic;background:linear-gradient(105deg,var(--flame),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{font-size:1.12rem;color:var(--muted);max-width:64ch;margin:0 0 16px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted)}
+  .pill.ga{border-color:var(--frost);color:var(--frost)}
+  .pill.flame{border-color:var(--flame);color:var(--flame-deep)}
+
+  /* sections */
+  section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:0 0 12px}
+  h3{font-size:1rem;margin:0 0 6px}
+  p{margin:0 0 12px}
+  .oneliner{font-size:1.18rem;font-weight:600;border-left:3px solid var(--flame);
+    padding:4px 0 4px 16px;margin:4px 0 0}
+
+  /* concept cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h3{color:var(--flame-deep)}
+  .card p{margin:0;font-size:.95rem;color:var(--muted)}
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{position:relative;padding:6px 0 6px 24px;color:var(--ink)}
+  ul.clean li::before{content:"→";position:absolute;left:0;color:var(--flame);
+    font-family:"Spline Sans Mono",monospace}
+
+  /* callout / soundbites */
+  .callout{background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--violet);
+    border-radius:var(--radius);padding:16px 18px}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--violet);display:block;margin-bottom:8px}
+  .callout ul{margin:0;padding-left:18px}
+  .callout li{margin:5px 0}
+
+  /* code */
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);
+    padding:16px 18px;overflow:auto;font-size:.86rem;line-height:1.5;margin:0}
+  pre .tag{display:block;font-family:"Spline Sans Mono",monospace;font-size:.62rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  pre code{background:none;padding:0;color:inherit}
+  .k{color:#ff9d7a}.s{color:#9ad9a0}.c{color:#7d7468;font-style:italic}.n{color:#e2b6ff}
+
+  /* interactive diagram */
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-top:6px}
+  .diagram-title{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.72rem;cursor:pointer;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+    color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--flame);color:#fff;border-color:var(--flame)}
+  .stage rect,.stage circle{transition:fill .2s,stroke .2s,opacity .2s}
+  .node-box{fill:var(--paper-2);stroke:var(--line);stroke-width:1.5}
+  .node-box.on{fill:var(--flame);stroke:var(--flame-deep)}
+  .node-label{font-family:"Spline Sans",sans-serif;font-size:13px;fill:var(--ink)}
+  .node-label.on{fill:#fff;font-weight:600}
+  .flow-line{stroke:var(--faint);stroke-width:1.5}
+  .diagram-info{margin-top:12px;background:var(--paper-2);border-radius:10px;padding:12px 14px;
+    font-size:.92rem;color:var(--muted);min-height:38px}
+  .diagram-info strong{color:var(--flame-deep)}
+
+  /* footer / refs */
+  .doclinks{list-style:none;padding:0;margin:0}
+  .doclinks li{padding:4px 0;font-size:.92rem}
+  .verified{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:var(--faint);
+    margin-top:14px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <a class="crumb" href="index.html">← One-Pager Library</a>
+  <div class="eyebrow">Databricks · One-Pager · MLOps</div>
+  <h1>MLOps on <span class="drip">Databricks</span></h1>
+  <p class="lede">The end-to-end discipline for training, registering, deploying, and monitoring classic predictive ML models on the Lakehouse — DevOps + DataOps + ModelOps under one Unity Catalog governance plane.</p>
+  <div class="pills">
+    <span class="pill ga">GA</span>
+    <span class="pill flame">Deploy code, not models</span>
+    <span class="pill">Verified June 2026 docs</span>
+  </div>
+
+  <!-- ============ IN ONE LINE ============ -->
+  <section>
+    <h2>In one line</h2>
+    <p class="oneliner">MLOps on Databricks is the practice of managing the ML lifecycle — data → features → train/track (MLflow) → register (Unity Catalog) → deploy (serving/batch) → monitor — as governed, promotable code across dev, staging, and prod.</p>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <p>It turns one-off notebooks into reproducible, auditable production pipelines. Because models, features, and data all live in Unity Catalog, you get one access-control and lineage model for the whole lifecycle — and you ship by promoting reviewed code through environments rather than copying model files around.</p>
+  </section>
+
+  <!-- ============ CORE CONCEPTS ============ -->
+  <section>
+    <h2>Core concepts</h2>
+    <div class="cards">
+      <div class="card"><h3>MLflow tracking</h3><p>Experiments hold runs; each run logs params, metrics, and artifacts. <code>mlflow.autolog()</code> captures them automatically, and <code>log_model()</code> packages the model in MLflow format.</p></div>
+      <div class="card"><h3>Models in Unity Catalog</h3><p>Register to the three-level namespace <code>catalog.schema.model</code>; versioned, governed, lineage-tracked. Set <code>registry_uri("databricks-uc")</code> (default in MLflow 3).</p></div>
+      <div class="card"><h3>Aliases, not stages</h3><p>A mutable named pointer like <code>@Champion</code>/<code>@Challenger</code> points at a version, decoupling deployment from the inference pipeline. Aliases replace the deprecated stages.</p></div>
+      <div class="card"><h3>Feature Engineering</h3><p>Feature tables in UC, joined to labels via <code>FeatureLookup</code> with point-in-time correctness — the same computation at train and serve time kills train/serve skew.</p></div>
+      <div class="card"><h3>Deploy code, not models</h3><p>Promote <em>code</em> through dev → staging → prod so prod models are produced by reviewed, tested prod code. MLOps Stacks (Asset Bundles) scaffold the CI/CD.</p></div>
+      <div class="card"><h3>Serve + monitor</h3><p>Real-time via Model Serving (serverless, scale-to-zero REST), or batch inference over a Delta table. Lakehouse Monitoring profiles the inference table for drift and quality.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE DIAGRAM ============ -->
+  <section>
+    <h2>How it works</h2>
+    <div class="diagram">
+      <div class="diagram-title">Click a stage</div>
+      <div class="tabs" id="tabs">
+        <span class="tab active" data-i="0">1 · Features</span>
+        <span class="tab" data-i="1">2 · Train + Track</span>
+        <span class="tab" data-i="2">3 · Register (UC)</span>
+        <span class="tab" data-i="3">4 · Deploy</span>
+        <span class="tab" data-i="4">5 · Monitor</span>
+      </div>
+      <svg viewBox="0 0 720 120" width="100%" role="img" aria-label="MLOps lifecycle flow">
+        <g class="stage">
+          <line class="flow-line" x1="135" y1="60" x2="160" y2="60"/>
+          <line class="flow-line" x1="270" y1="60" x2="295" y2="60"/>
+          <line class="flow-line" x1="405" y1="60" x2="430" y2="60"/>
+          <line class="flow-line" x1="540" y1="60" x2="565" y2="60"/>
+          <g data-i="0"><rect class="node-box on" x="15"  y="35" width="120" height="50" rx="10"/><text class="node-label on" x="75"  y="65" text-anchor="middle">Features</text></g>
+          <g data-i="1"><rect class="node-box"    x="150" y="35" width="120" height="50" rx="10"/><text class="node-label"    x="210" y="65" text-anchor="middle">Train+Track</text></g>
+          <g data-i="2"><rect class="node-box"    x="285" y="35" width="120" height="50" rx="10"/><text class="node-label"    x="345" y="65" text-anchor="middle">Register</text></g>
+          <g data-i="3"><rect class="node-box"    x="420" y="35" width="120" height="50" rx="10"/><text class="node-label"    x="480" y="65" text-anchor="middle">Deploy</text></g>
+          <g data-i="4"><rect class="node-box"    x="555" y="35" width="120" height="50" rx="10"/><text class="node-label"    x="615" y="65" text-anchor="middle">Monitor</text></g>
+        </g>
+      </svg>
+      <div class="diagram-info" id="info"><strong>Features</strong> — feature tables in Unity Catalog supply training data via point-in-time <code>FeatureLookup</code> joins, so train and serve use identical features.</div>
+    </div>
+  </section>
+
+  <!-- ============ ONE SMALL SNIPPET ============ -->
+  <section>
+    <h2>Minimal example</h2>
+    <pre><span class="tag">PySpark · Python</span><code><span class="k">import</span> mlflow
+<span class="k">from</span> mlflow <span class="k">import</span> MlflowClient
+
+mlflow.set_registry_uri(<span class="s">"databricks-uc"</span>)   <span class="c"># register to UC, not the workspace registry</span>
+
+<span class="k">with</span> mlflow.start_run():
+    mlflow.autolog()                          <span class="c"># auto-log params, metrics, the model</span>
+    model = clf.fit(X_train, y_train)
+    info = mlflow.sklearn.log_model(
+        model, name=<span class="s">"model"</span>, input_example=X_train[:5],
+        registered_model_name=<span class="s">"prod.ml_team.churn"</span>)   <span class="c"># catalog.schema.model</span>
+
+<span class="c"># point the deploy alias at the new version — pipelines load models:/...@Champion</span>
+MlflowClient().set_registered_model_alias(<span class="s">"prod.ml_team.churn"</span>, <span class="s">"Champion"</span>, info.registered_model_version)</code></pre>
+  </section>
+
+  <!-- ============ GOTCHAS & LIMITS ============ -->
+  <section>
+    <h2>Gotchas &amp; limits</h2>
+    <ul class="clean">
+      <li>UC registration needs a model <strong>signature</strong> (use <code>input_example</code>) plus <code>CREATE MODEL</code> on the schema and <code>USE SCHEMA</code>/<code>USE CATALOG</code> — the catalog and schema must already exist.</li>
+      <li>Aliases replace the legacy <code>Staging</code>/<code>Production</code> <strong>stages</strong>; stages and the workspace Model Registry are deprecated — don't reach for them in new work.</li>
+      <li>Lakehouse Monitoring computes drift/quality but <strong>does not modify the monitored table</strong>; model-quality metrics need a ground-truth label column joined back to the inference log.</li>
+      <li>Model Serving is serverless and scales to zero, so an idle endpoint adds <strong>cold-start latency</strong> — prefer batch inference for high-volume, latency-tolerant scoring.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERVIEW SOUNDBITES ============ -->
+  <section>
+    <h2>Interview soundbites</h2>
+    <div class="callout">
+      <span class="lbl">Say this out loud</span>
+      <ul>
+        <li>"Databricks MLOps says <em>deploy code, not models</em> — you promote reviewed pipeline code through dev/staging/prod, so the prod model is always built by prod code."</li>
+        <li>"Models live in Unity Catalog as <code>catalog.schema.model</code> with versions and aliases; flipping the <code>@Champion</code> alias is a zero-downtime deploy that the serving/inference pipeline picks up without code changes."</li>
+        <li>"Feature tables give point-in-time-correct joins so the same feature logic runs at train and serve time — that's how you avoid train/serve skew — and Lakehouse Monitoring watches the inference table for drift afterward."</li>
+        <li>"Classic ML registers a trained model and serves it; LLMOps (page 22) is the same lifecycle but the unit is a GenAI agent, evaluated with MLflow traces instead of accuracy metrics."</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <ul class="doclinks">
+      <li><a href="https://docs.databricks.com/aws/en/machine-learning/mlops/mlops-workflow">MLOps workflow on Databricks (deploy code, not models; dev/staging/prod)</a></li>
+      <li><a href="https://docs.databricks.com/machine-learning/manage-model-lifecycle/">Manage model lifecycle — Models in Unity Catalog (registration, aliases)</a></li>
+      <li><a href="https://docs.databricks.com/mlflow/experiments">MLflow experiment tracking (runs, autolog, log_model)</a></li>
+      <li><a href="https://docs.databricks.com/machine-learning/feature-store/">Feature Engineering in Unity Catalog / Feature Store</a></li>
+      <li><a href="https://docs.databricks.com/machine-learning/model-serving/">Model Serving</a></li>
+      <li><a href="https://docs.databricks.com/machine-learning/model-inference/">Batch model inference</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/lakehouse-monitoring/index">Lakehouse Monitoring (inference profile: drift &amp; model quality)</a></li>
+      <li><a href="https://docs.databricks.com/dev-tools/bundles/">Databricks Asset Bundles / MLOps Stacks</a></li>
+    </ul>
+    <p class="verified">Verified against docs.databricks.com · June 2026</p>
+  </section>
+
+</div>
+
+<script>
+  // Interactive diagram: one source of truth for stage copy; tabs/nodes drive it.
+  var INFO = [
+    ["Features", "feature tables in Unity Catalog supply training data via point-in-time <code>FeatureLookup</code> joins, so train and serve use identical features"],
+    ["Train + Track", "MLflow logs each run's params, metrics, and artifacts; <code>autolog()</code> captures them and <code>log_model()</code> packages the model"],
+    ["Register", "the model is registered to <code>catalog.schema.model</code> in Unity Catalog — versioned, governed, and lineage-linked to its features and data"],
+    ["Deploy", "an alias like <code>@Champion</code> points at the chosen version; serve it real-time via Model Serving or score a Delta table in batch"],
+    ["Monitor", "Lakehouse Monitoring profiles the inference table for data drift, prediction drift, and model-quality metrics over time windows"]
+  ];
+  var tabs  = document.querySelectorAll('#tabs .tab');
+  var boxes = document.querySelectorAll('.stage g[data-i] .node-box');
+  var labs  = document.querySelectorAll('.stage g[data-i] .node-label');
+  var info  = document.getElementById('info');
+  function select(i){
+    tabs.forEach(function(t,k){ t.classList.toggle('active', k===i); });
+    boxes.forEach(function(b,k){ b.classList.toggle('on', k===i); });
+    labs.forEach(function(l,k){ l.classList.toggle('on', k===i); });
+    info.innerHTML = '<strong>'+INFO[i][0]+'</strong> — '+INFO[i][1]+'.';
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ select(+t.dataset.i); }); });
+  document.querySelectorAll('.stage g[data-i]').forEach(function(g){
+    g.style.cursor='pointer';
+    g.addEventListener('click', function(){ select(+g.dataset.i); });
+  });
+</script>
+</body>
+</html>

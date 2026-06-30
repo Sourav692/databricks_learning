@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delta Lake — Databricks One-Pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ea; --paper-2:#efe9dd; --card:#fbf9f4; --line:#e0d8c8;
+    --ink:#26211c; --muted:#6b6155; --faint:#9c9183;
+    --flame:#ff3621; --flame-deep:#d6260f; --violet:#7b4bd6; --frost:#1a7f78;
+    --code-bg:#221d18; --code-ink:#efe7da;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:34px 22px 80px}
+  a{color:var(--flame-deep);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:rgba(0,0,0,.05);padding:.06em .35em;border-radius:5px;font-size:.9em}
+
+  /* hero */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--flame);margin:22px 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.1rem,5.5vw,3.2rem);
+    line-height:1.02;margin:0 0 14px;letter-spacing:-.02em}
+  h1 .drip{font-style:italic;background:linear-gradient(105deg,var(--flame),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{font-size:1.12rem;color:var(--muted);max-width:64ch;margin:0 0 16px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted)}
+  .pill.ga{border-color:var(--frost);color:var(--frost)}
+  .pill.flame{border-color:var(--flame);color:var(--flame-deep)}
+
+  /* sections */
+  section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:0 0 12px}
+  h3{font-size:1rem;margin:0 0 6px}
+  p{margin:0 0 12px}
+  .oneliner{font-size:1.18rem;font-weight:600;border-left:3px solid var(--flame);
+    padding:4px 0 4px 16px;margin:4px 0 0}
+
+  /* concept cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h3{color:var(--flame-deep)}
+  .card p{margin:0;font-size:.95rem;color:var(--muted)}
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{position:relative;padding:6px 0 6px 24px;color:var(--ink)}
+  ul.clean li::before{content:"→";position:absolute;left:0;color:var(--flame);
+    font-family:"Spline Sans Mono",monospace}
+
+  /* callout / soundbites */
+  .callout{background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--violet);
+    border-radius:var(--radius);padding:16px 18px}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--violet);display:block;margin-bottom:8px}
+  .callout ul{margin:0;padding-left:18px}
+  .callout li{margin:5px 0}
+
+  /* code */
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);
+    padding:16px 18px;overflow:auto;font-size:.86rem;line-height:1.5;margin:0}
+  pre .tag{display:block;font-family:"Spline Sans Mono",monospace;font-size:.62rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  pre code{background:none;padding:0;color:inherit}
+  .k{color:#ff9d7a}.s{color:#9ad9a0}.c{color:#7d7468;font-style:italic}.n{color:#e2b6ff}
+
+  /* interactive diagram */
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-top:6px}
+  .diagram-title{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.72rem;cursor:pointer;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+    color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--flame);color:#fff;border-color:var(--flame)}
+  .stage rect,.stage circle{transition:fill .2s,stroke .2s,opacity .2s}
+  .node-box{fill:var(--paper-2);stroke:var(--line);stroke-width:1.5}
+  .node-box.on{fill:var(--flame);stroke:var(--flame-deep)}
+  .node-label{font-family:"Spline Sans",sans-serif;font-size:13px;fill:var(--ink)}
+  .node-label.on{fill:#fff;font-weight:600}
+  .flow-line{stroke:var(--faint);stroke-width:1.5}
+  .diagram-info{margin-top:12px;background:var(--paper-2);border-radius:10px;padding:12px 14px;
+    font-size:.92rem;color:var(--muted);min-height:38px}
+  .diagram-info strong{color:var(--flame-deep)}
+
+  /* footer / refs */
+  .doclinks{list-style:none;padding:0;margin:0}
+  .doclinks li{padding:4px 0;font-size:.92rem}
+  .verified{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:var(--faint);
+    margin-top:14px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <a class="crumb" href="index.html">← One-Pager Library</a>
+  <div class="eyebrow">Databricks · One-Pager · Storage Format</div>
+  <h1>Delta Lake <span class="drip">log</span></h1>
+  <p class="lede">An open storage layer that wraps Parquet with a file-based transaction log, giving cloud object storage real ACID transactions, time travel, and schema control.</p>
+  <div class="pills">
+    <span class="pill ga">GA</span>
+    <span class="pill flame">Default table format on Databricks</span>
+    <span class="pill">Verified June 2026 docs</span>
+  </div>
+
+  <!-- ============ IN ONE LINE ============ -->
+  <section>
+    <h2>In one line</h2>
+    <p class="oneliner">Delta Lake is the optimized storage layer for the lakehouse — Parquet data files plus a JSON transaction log (<code>_delta_log</code>) that delivers ACID transactions, versioning, and time travel on plain object storage.</p>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <p>Raw Parquet on S3/ADLS/GCS has no transactions: concurrent writers corrupt data, partial writes leak, and there is no rollback. Delta Lake adds a log on top so a data lake behaves like a database — atomic commits, consistent reads, and "undo" — and it is the default for every table created on Databricks.</p>
+  </section>
+
+  <!-- ============ CORE CONCEPTS ============ -->
+  <section>
+    <h2>Core concepts</h2>
+    <div class="cards">
+      <div class="card"><h3>ACID on object storage</h3><p>Atomicity comes from the log: data files are written first, then one commit makes them visible. Uncommitted files from a failed write are simply never referenced.</p></div>
+      <div class="card"><h3>The transaction log</h3><p>Each commit is an ordered JSON file in <code>_delta_log</code>; periodic Parquet <em>checkpoints</em> roll up the log so readers don't replay every commit.</p></div>
+      <div class="card"><h3>Optimistic concurrency</h3><p>Writers read the latest version, write files, then validate against concurrent commits before committing — no locks; conflicting writes fail instead of corrupting.</p></div>
+      <div class="card"><h3>Time travel</h3><p>Every version is a snapshot; query the past with <code>VERSION AS OF</code> / <code>TIMESTAMP AS OF</code>, inspect it via <code>DESCRIBE HISTORY</code>, and roll back with <code>RESTORE</code>.</p></div>
+      <div class="card"><h3>Schema enforcement &amp; evolution</h3><p>Writes that don't match the schema are rejected by default; opt into change with <code>mergeSchema</code> or <code>WITH SCHEMA EVOLUTION</code>.</p></div>
+      <div class="card"><h3>Deletion vectors</h3><p>Merge-on-read: <code>DELETE</code>/<code>UPDATE</code>/<code>MERGE</code> mark rows as soft-deleted in metadata instead of rewriting whole Parquet files, then apply them at read time.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE DIAGRAM ============ -->
+  <section>
+    <h2>How a write becomes a readable snapshot</h2>
+    <div class="diagram">
+      <div class="diagram-title">Click a stage</div>
+      <div class="tabs" id="tabs">
+        <span class="tab active" data-i="0">1 · Write files</span>
+        <span class="tab" data-i="1">2 · Commit JSON</span>
+        <span class="tab" data-i="2">3 · Checkpoint</span>
+        <span class="tab" data-i="3">4 · Reader snapshot</span>
+      </div>
+      <svg viewBox="0 0 720 120" width="100%" role="img" aria-label="Delta Lake write to commit to checkpoint to reader-snapshot flow">
+        <g class="stage">
+          <line class="flow-line" x1="150" y1="60" x2="190" y2="60"/>
+          <line class="flow-line" x1="320" y1="60" x2="360" y2="60"/>
+          <line class="flow-line" x1="490" y1="60" x2="530" y2="60"/>
+          <g data-i="0"><rect class="node-box on" x="20"  y="35" width="130" height="50" rx="10"/><text class="node-label on" x="85"  y="65" text-anchor="middle">Write files</text></g>
+          <g data-i="1"><rect class="node-box"    x="190" y="35" width="130" height="50" rx="10"/><text class="node-label"    x="255" y="65" text-anchor="middle">Commit JSON</text></g>
+          <g data-i="2"><rect class="node-box"    x="360" y="35" width="130" height="50" rx="10"/><text class="node-label"    x="425" y="65" text-anchor="middle">Checkpoint</text></g>
+          <g data-i="3"><rect class="node-box"    x="530" y="35" width="130" height="50" rx="10"/><text class="node-label"    x="595" y="65" text-anchor="middle">Reader snapshot</text></g>
+        </g>
+      </svg>
+      <div class="diagram-info" id="info"><strong>Write files</strong> — new Parquet data files land in the table directory but are invisible until a commit references them, so a failed write leaves no trace.</div>
+    </div>
+  </section>
+
+  <!-- ============ ONE SMALL SNIPPET (≤ ~15 lines) ============ -->
+  <section>
+    <h2>Minimal example</h2>
+    <pre><span class="tag">SQL · time travel + rollback</span><code><span class="c">-- See every version, with timestamp, user, and operation</span>
+<span class="k">DESCRIBE HISTORY</span> sales.orders;
+
+<span class="c">-- Read the table exactly as it was at version 42</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> sales.orders <span class="k">VERSION AS OF</span> <span class="n">42</span>;
+
+<span class="c">-- Or as of a point in time</span>
+<span class="k">SELECT</span> * <span class="k">FROM</span> sales.orders <span class="k">TIMESTAMP AS OF</span> <span class="s">'2026-06-01T00:00:00Z'</span>;
+
+<span class="c">-- The one line that matters: undo a bad load by restoring a prior version</span>
+<span class="k">RESTORE TABLE</span> sales.orders <span class="k">TO VERSION AS OF</span> <span class="n">41</span>;</code></pre>
+  </section>
+
+  <!-- ============ GOTCHAS & LIMITS ============ -->
+  <section>
+    <h2>Gotchas &amp; limits</h2>
+    <ul class="clean">
+      <li><code>VACUUM</code> permanently removes data files past <code>delta.deletedFileRetentionDuration</code> (default 7 days) — time travel to versions referencing those files then breaks.</li>
+      <li>History (log) is kept for <code>delta.logRetentionDuration</code> (default 30 days), but data-file retention is the real limit on how far back you can travel; raise both together to extend it.</li>
+      <li>Schema enforcement rejects mismatched writes by default — enable evolution per operation (<code>mergeSchema</code> / <code>WITH SCHEMA EVOLUTION</code>) rather than session-wide to avoid accidental schema drift.</li>
+      <li>Enabling reader features like deletion vectors upgrades the table protocol and can be irreversible — older clients below the required runtime may no longer read or write the table.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERVIEW SOUNDBITES ============ -->
+  <section>
+    <h2>Interview soundbites</h2>
+    <div class="callout">
+      <span class="lbl">Say this out loud</span>
+      <ul>
+        <li>"Delta Lake is Parquet plus a transaction log. The log in <code>_delta_log</code> is what turns a dumb object store into an ACID table — atomic commits, snapshot reads, and time travel."</li>
+        <li>"Concurrency is optimistic: writers read the current version, write data files, then commit only if no conflicting commit landed first — no locks, conflicting writes fail instead of corrupting."</li>
+        <li>"Time travel is free because every commit is an immutable snapshot — <code>VERSION AS OF</code> to query the past, <code>RESTORE</code> to roll back, bounded by VACUUM's 7-day file retention."</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <ul class="doclinks">
+      <li><a href="https://docs.databricks.com/aws/en/delta/">What is Delta Lake in Databricks?</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/lakehouse/acid.html">How does Databricks manage Delta Lake ACID transactions?</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/delta/history.html">Work with Delta Lake table history (time travel)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/delta/tutorial.html">Tutorial: Delta Lake (CREATE, DESCRIBE HISTORY, VERSION/TIMESTAMP AS OF)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/delta/update-schema.html">Update Delta Lake table schema (enforcement &amp; evolution)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/delta/deletion-vectors.html">What are deletion vectors?</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/delta/feature-compatibility.html">Delta Lake feature compatibility and protocols</a></li>
+    </ul>
+    <p class="verified">Verified against docs.databricks.com · June 2026</p>
+  </section>
+
+</div>
+
+<script>
+  // Interactive diagram: one source of truth for stage copy; tabs/nodes drive it.
+  var INFO = [
+    ["Write files", "new Parquet data files land in the table directory but are invisible until a commit references them, so a failed write leaves no trace"],
+    ["Commit JSON", "an ordered JSON file (e.g. 0000…42.json) is atomically added to _delta_log listing the files added/removed — this single act makes the new version visible"],
+    ["Checkpoint", "every few commits Delta writes a Parquet checkpoint summarizing the log, so readers start from the checkpoint instead of replaying every JSON commit"],
+    ["Reader snapshot", "a reader loads the latest checkpoint plus newer JSON commits to compute one consistent snapshot — the basis for both current reads and time travel"]
+  ];
+  var tabs  = document.querySelectorAll('#tabs .tab');
+  var boxes = document.querySelectorAll('.stage g[data-i] .node-box');
+  var labs  = document.querySelectorAll('.stage g[data-i] .node-label');
+  var info  = document.getElementById('info');
+  function select(i){
+    tabs.forEach(function(t,k){ t.classList.toggle('active', k===i); });
+    boxes.forEach(function(b,k){ b.classList.toggle('on', k===i); });
+    labs.forEach(function(l,k){ l.classList.toggle('on', k===i); });
+    info.innerHTML = '<strong>'+INFO[i][0]+'</strong> — '+INFO[i][1]+'.';
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ select(+t.dataset.i); }); });
+  document.querySelectorAll('.stage g[data-i]').forEach(function(g){
+    g.style.cursor='pointer';
+    g.addEventListener('click', function(){ select(+g.dataset.i); });
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lakeflow Declarative Pipelines — Databricks One-Pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ea; --paper-2:#efe9dd; --card:#fbf9f4; --line:#e0d8c8;
+    --ink:#26211c; --muted:#6b6155; --faint:#9c9183;
+    --flame:#ff3621; --flame-deep:#d6260f; --violet:#7b4bd6; --frost:#1a7f78;
+    --code-bg:#221d18; --code-ink:#efe7da;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:34px 22px 80px}
+  a{color:var(--flame-deep);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:rgba(0,0,0,.05);padding:.06em .35em;border-radius:5px;font-size:.9em}
+
+  /* hero */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--flame);margin:22px 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.1rem,5.5vw,3.2rem);
+    line-height:1.02;margin:0 0 14px;letter-spacing:-.02em}
+  h1 .drip{font-style:italic;background:linear-gradient(105deg,var(--flame),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{font-size:1.12rem;color:var(--muted);max-width:64ch;margin:0 0 16px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted)}
+  .pill.ga{border-color:var(--frost);color:var(--frost)}
+  .pill.flame{border-color:var(--flame);color:var(--flame-deep)}
+
+  /* sections */
+  section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:0 0 12px}
+  h3{font-size:1rem;margin:0 0 6px}
+  p{margin:0 0 12px}
+  .oneliner{font-size:1.18rem;font-weight:600;border-left:3px solid var(--flame);
+    padding:4px 0 4px 16px;margin:4px 0 0}
+
+  /* concept cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h3{color:var(--flame-deep)}
+  .card p{margin:0;font-size:.95rem;color:var(--muted)}
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{position:relative;padding:6px 0 6px 24px;color:var(--ink)}
+  ul.clean li::before{content:"→";position:absolute;left:0;color:var(--flame);
+    font-family:"Spline Sans Mono",monospace}
+
+  /* callout / soundbites */
+  .callout{background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--violet);
+    border-radius:var(--radius);padding:16px 18px}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--violet);display:block;margin-bottom:8px}
+  .callout ul{margin:0;padding-left:18px}
+  .callout li{margin:5px 0}
+
+  /* code */
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);
+    padding:16px 18px;overflow:auto;font-size:.86rem;line-height:1.5;margin:0}
+  pre .tag{display:block;font-family:"Spline Sans Mono",monospace;font-size:.62rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  pre code{background:none;padding:0;color:inherit}
+  .k{color:#ff9d7a}.s{color:#9ad9a0}.c{color:#7d7468;font-style:italic}.n{color:#e2b6ff}
+
+  /* interactive diagram */
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-top:6px}
+  .diagram-title{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.72rem;cursor:pointer;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+    color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--flame);color:#fff;border-color:var(--flame)}
+  .stage rect,.stage circle{transition:fill .2s,stroke .2s,opacity .2s}
+  .node-box{fill:var(--paper-2);stroke:var(--line);stroke-width:1.5}
+  .node-box.on{fill:var(--flame);stroke:var(--flame-deep)}
+  .node-label{font-family:"Spline Sans",sans-serif;font-size:13px;fill:var(--ink)}
+  .node-label.on{fill:#fff;font-weight:600}
+  .node-sub{font-family:"Spline Sans Mono",monospace;font-size:9px;fill:var(--faint)}
+  .node-sub.on{fill:#ffe2da}
+  .flow-line{stroke:var(--faint);stroke-width:1.5}
+  .diagram-info{margin-top:12px;background:var(--paper-2);border-radius:10px;padding:12px 14px;
+    font-size:.92rem;color:var(--muted);min-height:38px}
+  .diagram-info strong{color:var(--flame-deep)}
+
+  /* footer / refs */
+  .doclinks{list-style:none;padding:0;margin:0}
+  .doclinks li{padding:4px 0;font-size:.92rem}
+  .verified{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:var(--faint);
+    margin-top:14px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <a class="crumb" href="index.html">← One-Pager Library</a>
+  <div class="eyebrow">Databricks · One-Pager · Data Engineering</div>
+  <h1>Lakeflow Declarative <span class="drip">Pipelines</span></h1>
+  <p class="lede">Define the tables you want; the framework figures out the dependency graph, the compute, and the incremental updates — so you describe <em>what</em>, not <em>how</em>.</p>
+  <div class="pills">
+    <span class="pill ga">GA</span>
+    <span class="pill flame">SQL &amp; Python · serverless default</span>
+    <span class="pill">formerly Delta Live Tables / DLT</span>
+    <span class="pill">Verified Jun 2026 docs</span>
+  </div>
+
+  <!-- ============ IN ONE LINE ============ -->
+  <section>
+    <h2>In one line</h2>
+    <p class="oneliner">Lakeflow Declarative Pipelines is a declarative framework for building batch and streaming ETL pipelines in SQL or Python, where you define datasets and the engine auto-orchestrates their dependencies, execution, and data-quality enforcement.</p>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <p>Hand-rolled ETL means wiring task order, checkpoints, retries, and quality checks yourself across dozens of jobs. Here you declare each table once; the pipeline derives the DAG, runs stages in the right order with the right parallelism, and tracks streaming state for you — the default path for medallion (bronze → silver → gold) pipelines on Databricks.</p>
+  </section>
+
+  <!-- ============ CORE CONCEPTS ============ -->
+  <section>
+    <h2>Core concepts</h2>
+    <div class="cards">
+      <div class="card"><h3>Pipeline + flows</h3><p>A pipeline is the container of datasets; a flow reads a source, applies logic, and writes a target. The pipeline analyzes dependencies and orchestrates order and parallelism.</p></div>
+      <div class="card"><h3>Streaming table</h3><p>UC-managed table for append-only sources — each record processed exactly once. Use for ingestion and incremental processing of continuously growing data.</p></div>
+      <div class="card"><h3>Materialized view</h3><p>UC-managed batch target whose results are recomputed (incrementally when possible) to reflect current source state. Use for transforms and aggregations when sources change via update/delete.</p></div>
+      <div class="card"><h3>Expectations</h3><p>SQL-boolean data-quality constraints checked per record — keep (warn, default), drop the row, or fail the update.</p></div>
+      <div class="card"><h3>Automatic DAG</h3><p>Reading one dataset from another declares the edge; the framework infers the full graph — no manual task ordering.</p></div>
+      <div class="card"><h3>Serverless</h3><p>Default and recommended compute: Databricks-managed, horizontal + vertical autoscaling, no cluster config.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE DIAGRAM ============ -->
+  <section>
+    <h2>How it works</h2>
+    <div class="diagram">
+      <div class="diagram-title">Click a stage — the engine builds this DAG from your dataset definitions</div>
+      <div class="tabs" id="tabs">
+        <span class="tab active" data-i="0">1 · Bronze ST</span>
+        <span class="tab" data-i="1">2 · Silver MV + expectations</span>
+        <span class="tab" data-i="2">3 · Gold MV</span>
+        <span class="tab" data-i="3">4 · Auto-orchestration</span>
+      </div>
+      <svg viewBox="0 0 720 130" width="100%" role="img" aria-label="Bronze streaming table to silver materialized view with expectations to gold materialized view DAG">
+        <g class="stage">
+          <line class="flow-line" x1="190" y1="60" x2="230" y2="60"/>
+          <line class="flow-line" x1="400" y1="60" x2="440" y2="60"/>
+          <g data-i="0"><rect class="node-box on" x="30"  y="35" width="160" height="50" rx="10"/><text class="node-label on" x="110" y="58" text-anchor="middle">Bronze</text><text class="node-sub on" x="110" y="74" text-anchor="middle">STREAMING TABLE</text></g>
+          <g data-i="1"><rect class="node-box"    x="240" y="35" width="160" height="50" rx="10"/><text class="node-label"    x="320" y="58" text-anchor="middle">Silver</text><text class="node-sub"    x="320" y="74" text-anchor="middle">MAT VIEW + EXPECT</text></g>
+          <g data-i="2"><rect class="node-box"    x="450" y="35" width="160" height="50" rx="10"/><text class="node-label"    x="530" y="58" text-anchor="middle">Gold</text><text class="node-sub"    x="530" y="74" text-anchor="middle">MATERIALIZED VIEW</text></g>
+          <g data-i="3"><rect class="node-box"    x="240" y="100" width="370" height="22" rx="8" opacity="0.55"/><text class="node-sub" x="425" y="115" text-anchor="middle">SERVERLESS ENGINE · DERIVES DAG · ENFORCES QUALITY</text></g>
+        </g>
+      </svg>
+      <div class="diagram-info" id="info"><strong>Bronze streaming table</strong> — ingests raw files/events append-only from cloud storage or a message bus; each record processed exactly once.</div>
+    </div>
+  </section>
+
+  <!-- ============ ONE SMALL SNIPPET ============ -->
+  <section>
+    <h2>Minimal example</h2>
+    <pre><span class="tag">Python · pyspark.pipelines (was: dlt)</span><code><span class="k">from</span> pyspark <span class="k">import</span> pipelines <span class="k">as</span> dp
+
+<span class="n">@dp.table</span>                                   <span class="c"># streaming table (returns a streaming read)</span>
+<span class="n">@dp.expect_or_drop</span>(<span class="s">"valid_id"</span>, <span class="s">"id IS NOT NULL"</span>)  <span class="c"># the line that matters: drop bad rows</span>
+<span class="k">def</span> bronze():
+    <span class="k">return</span> spark.readStream.format(<span class="s">"cloudFiles"</span>) \
+        .option(<span class="s">"cloudFiles.format"</span>, <span class="s">"json"</span>).load(<span class="s">"/Volumes/raw/events"</span>)
+
+<span class="n">@dp.materialized_view</span>                         <span class="c"># silver MV; dep on bronze inferred automatically</span>
+<span class="k">def</span> silver():
+    <span class="k">return</span> spark.read.table(<span class="s">"bronze"</span>).dropDuplicates([<span class="s">"id"</span>])</code></pre>
+  </section>
+
+  <!-- ============ GOTCHAS & LIMITS ============ -->
+  <section>
+    <h2>Gotchas &amp; limits</h2>
+    <ul class="clean">
+      <li>Default expectation policy is <em>retain</em> — invalid records are written and only counted; you must add <code>ON VIOLATION DROP ROW</code> / <code>FAIL UPDATE</code> to act on them.</li>
+      <li>Expectation constraints are pure SQL booleans — no custom Python UDFs, external calls, or subqueries against other tables.</li>
+      <li>Streaming tables are append-only / exactly-once; pick a materialized view when the source mutates via updates and deletes, not a streaming table.</li>
+      <li>Datasets are pipeline-managed — don't write to a pipeline's tables from outside; <code>FAIL UPDATE</code> aborts the whole update on a single bad row.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERVIEW SOUNDBITES ============ -->
+  <section>
+    <h2>Interview soundbites</h2>
+    <div class="callout">
+      <span class="lbl">Say this out loud</span>
+      <ul>
+        <li>"Lakeflow Declarative Pipelines — formerly Delta Live Tables — is declarative ETL: I define streaming tables and materialized views, and the engine builds the dependency DAG and runs it."</li>
+        <li>"Streaming table = append-only, exactly-once ingestion; materialized view = recomputed (incrementally when possible) to match current source state."</li>
+        <li>"Expectations are per-record SQL constraints with three policies — keep/warn by default, drop the row, or fail the update — and serverless is the default compute."</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <ul class="doclinks">
+      <li><a href="https://docs.databricks.com/ldp/">Lakeflow Spark Declarative Pipelines (overview)</a></li>
+      <li><a href="https://docs.databricks.com/ldp/concepts">Lakeflow Declarative Pipelines concepts — pipeline, flow, streaming table, materialized view, sink</a></li>
+      <li><a href="https://docs.databricks.com/ldp/expectations">Manage data quality with pipeline expectations</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/dlt/serverless-dlt">Serverless compute for Lakeflow Declarative Pipelines</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/dlt/python-ref">Pipelines Python language reference (<code>pyspark.pipelines</code>, was <code>dlt</code>)</a></li>
+    </ul>
+    <p class="verified">Verified against docs.databricks.com · June 2026</p>
+  </section>
+
+</div>
+
+<script>
+  // Interactive diagram: one source of truth for stage copy; tabs/nodes drive it.
+  var INFO = [
+    ["Bronze streaming table", "ingests raw files/events append-only from cloud storage or a message bus; each record processed exactly once"],
+    ["Silver materialized view + expectations", "cleans and dedupes; per-record SQL constraints keep, drop, or fail bad rows; recomputed incrementally when possible"],
+    ["Gold materialized view", "business-level aggregates recomputed to reflect the current state of upstream data"],
+    ["Auto-orchestration", "the serverless engine reads the table definitions, derives the dependency DAG, runs stages in order with autoscaling, and enforces quality"]
+  ];
+  var tabs  = document.querySelectorAll('#tabs .tab');
+  var boxes = document.querySelectorAll('.stage g[data-i] .node-box');
+  var labs  = document.querySelectorAll('.stage g[data-i] .node-label');
+  var subs  = document.querySelectorAll('.stage g[data-i] .node-sub');
+  var info  = document.getElementById('info');
+  function select(i){
+    tabs.forEach(function(t,k){ t.classList.toggle('active', k===i); });
+    boxes.forEach(function(b,k){ b.classList.toggle('on', k===i); });
+    labs.forEach(function(l,k){ l.classList.toggle('on', k===i); });
+    subs.forEach(function(s,k){ s.classList.toggle('on', k===i); });
+    info.innerHTML = '<strong>'+INFO[i][0]+'</strong> — '+INFO[i][1]+'.';
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ select(+t.dataset.i); }); });
+  document.querySelectorAll('.stage g[data-i]').forEach(function(g){
+    g.style.cursor='pointer';
+    g.addEventListener('click', function(){ select(+g.dataset.i); });
+  });
+</script>
+</body>
+</html>

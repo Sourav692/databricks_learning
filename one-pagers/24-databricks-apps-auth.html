@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks Apps Authorization — Databricks One-Pager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ea; --paper-2:#efe9dd; --card:#fbf9f4; --line:#e0d8c8;
+    --ink:#26211c; --muted:#6b6155; --faint:#9c9183;
+    --flame:#ff3621; --flame-deep:#d6260f; --violet:#7b4bd6; --frost:#1a7f78;
+    --code-bg:#221d18; --code-ink:#efe7da;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:34px 22px 80px}
+  a{color:var(--flame-deep);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:rgba(0,0,0,.05);padding:.06em .35em;border-radius:5px;font-size:.9em}
+
+  /* hero */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--muted)}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--flame);margin:22px 0 10px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.1rem,5.5vw,3.2rem);
+    line-height:1.02;margin:0 0 14px;letter-spacing:-.02em}
+  h1 .drip{font-style:italic;background:linear-gradient(105deg,var(--flame),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{font-size:1.12rem;color:var(--muted);max-width:64ch;margin:0 0 16px}
+  .pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted)}
+  .pill.ga{border-color:var(--frost);color:var(--frost)}
+  .pill.flame{border-color:var(--flame);color:var(--flame-deep)}
+  .pill.violet{border-color:var(--violet);color:var(--violet)}
+
+  /* sections */
+  section{border-top:1px solid var(--line);margin-top:30px;padding-top:24px}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:1.5rem;margin:0 0 12px}
+  h3{font-size:1rem;margin:0 0 6px}
+  p{margin:0 0 12px}
+  .oneliner{font-size:1.18rem;font-weight:600;border-left:3px solid var(--flame);
+    padding:4px 0 4px 16px;margin:4px 0 0}
+
+  /* concept cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px}
+  .card h3{color:var(--flame-deep)}
+  .card p{margin:0;font-size:.95rem;color:var(--muted)}
+  ul.clean{list-style:none;padding:0;margin:0}
+  ul.clean li{position:relative;padding:6px 0 6px 24px;color:var(--ink)}
+  ul.clean li::before{content:"→";position:absolute;left:0;color:var(--flame);
+    font-family:"Spline Sans Mono",monospace}
+
+  /* callout / soundbites */
+  .callout{background:var(--paper-2);border:1px solid var(--line);border-left:4px solid var(--violet);
+    border-radius:var(--radius);padding:16px 18px}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--violet);display:block;margin-bottom:8px}
+  .callout ul{margin:0;padding-left:18px}
+  .callout li{margin:5px 0}
+
+  /* code */
+  pre{background:var(--code-bg);color:var(--code-ink);border-radius:var(--radius);
+    padding:16px 18px;overflow:auto;font-size:.86rem;line-height:1.5;margin:0}
+  pre .tag{display:block;font-family:"Spline Sans Mono",monospace;font-size:.62rem;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  pre code{background:none;padding:0;color:inherit}
+  .k{color:#ff9d7a}.s{color:#9ad9a0}.c{color:#7d7468;font-style:italic}.n{color:#e2b6ff}
+
+  /* interactive diagram */
+  .diagram{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px;margin-top:6px}
+  .diagram-title{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+  .tab{font-family:"Spline Sans Mono",monospace;font-size:.72rem;cursor:pointer;
+    padding:6px 12px;border-radius:999px;border:1px solid var(--line);background:var(--paper);
+    color:var(--muted);transition:all .15s}
+  .tab.active{background:var(--flame);color:#fff;border-color:var(--flame)}
+  .stage rect,.stage circle{transition:fill .2s,stroke .2s,opacity .2s}
+  .node-box{fill:var(--paper-2);stroke:var(--line);stroke-width:1.5}
+  .node-box.on{fill:var(--flame);stroke:var(--flame-deep)}
+  .node-box.onv{fill:var(--violet);stroke:#5a32a8}
+  .node-label{font-family:"Spline Sans",sans-serif;font-size:13px;fill:var(--ink)}
+  .node-label.on{fill:#fff;font-weight:600}
+  .flow-line{stroke:var(--faint);stroke-width:1.5}
+  .diagram-info{margin-top:12px;background:var(--paper-2);border-radius:10px;padding:12px 14px;
+    font-size:.92rem;color:var(--muted);min-height:38px}
+  .diagram-info strong{color:var(--flame-deep)}
+
+  /* footer / refs */
+  .doclinks{list-style:none;padding:0;margin:0}
+  .doclinks li{padding:4px 0;font-size:.92rem}
+  .verified{font-family:"Spline Sans Mono",monospace;font-size:.7rem;color:var(--faint);
+    margin-top:14px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ============ HERO ============ -->
+  <a class="crumb" href="index.html">← One-Pager Library</a>
+  <div class="eyebrow">Databricks · One-Pager · Databricks Apps</div>
+  <h1>Apps Auth: <span class="drip">whose</span> identity?</h1>
+  <p class="lede">Every Databricks App can act as its own service principal (app authorization) or as the signed-in user (on-behalf-of-user authorization) — the choice hinges on whether the data is shared or per-user.</p>
+  <div class="pills">
+    <span class="pill ga">App auth · GA</span>
+    <span class="pill violet">User auth (OBO) · Public Preview</span>
+    <span class="pill flame">SSO sign-in</span>
+    <span class="pill">Verified Jun 2026 docs</span>
+  </div>
+
+  <!-- ============ IN ONE LINE ============ -->
+  <section>
+    <h2>In one line</h2>
+    <p class="oneliner">A Databricks App authorizes either as its own <strong>service principal</strong> (app authorization) or <strong>on behalf of the signed-in user</strong> via a forwarded user token (user authorization / OBO).</p>
+  </section>
+
+  <!-- ============ WHY IT MATTERS ============ -->
+  <section>
+    <h2>Why it matters</h2>
+    <p>It is the security boundary of every app. App authorization gives one shared identity (good for service/shared data); user authorization makes the app inherit each viewer's Unity Catalog permissions — including row filters and column masks — so users only see what they're entitled to. Picking the wrong model either over-shares data or breaks per-user access.</p>
+  </section>
+
+  <!-- ============ CORE CONCEPTS ============ -->
+  <section>
+    <h2>Core concepts</h2>
+    <div class="cards">
+      <div class="card"><h3>App service principal</h3><p>Each app gets a dedicated SP as its identity; Databricks injects <code>DATABRICKS_CLIENT_ID</code> / <code>DATABRICKS_CLIENT_SECRET</code>, which the SDK uses automatically.</p></div>
+      <div class="card"><h3>App resources</h3><p>Warehouses, UC tables, serving endpoints, secrets, Genie are declared as app <em>resources</em> and granted to the SP (e.g. <code>CAN USE</code>, <code>SELECT</code>, <code>CAN QUERY</code>).</p></div>
+      <div class="card"><h3>User authorization (OBO)</h3><p>The app reads the user's token from the <code>X-Forwarded-Access-Token</code> header and calls Databricks as that user — enforcing their existing UC permissions.</p></div>
+      <div class="card"><h3>Scopes</h3><p>OBO is gated by configured scopes (e.g. <code>sql</code>, <code>dashboards.genie</code>, <code>files.files</code>; defaults <code>iam.access-control:read</code>, <code>iam.current-user:read</code>) that cap what the app may do as the user.</p></div>
+      <div class="card"><h3>Forwarded identity headers</h3><p>Every request carries <code>X-Forwarded-User</code>, <code>X-Forwarded-Email</code>, <code>X-Forwarded-Preferred-Username</code> (from the IdP) plus the OBO <code>X-Forwarded-Access-Token</code>.</p></div>
+      <div class="card"><h3>OAuth / SSO sign-in</h3><p>End users sign in to the app automatically through Databricks OAuth/SSO; no separate login — the platform handles the identity provider flow.</p></div>
+    </div>
+  </section>
+
+  <!-- ============ INTERACTIVE DIAGRAM ============ -->
+  <section>
+    <h2>How it works</h2>
+    <div class="diagram">
+      <div class="diagram-title">Pick the authorization model</div>
+      <div class="tabs" id="tabs">
+        <span class="tab active" data-i="0">App authorization (service principal)</span>
+        <span class="tab" data-i="1">User authorization (on-behalf-of-user)</span>
+      </div>
+      <svg viewBox="0 0 720 130" width="100%" role="img" aria-label="App auth vs user auth flow">
+        <g class="stage">
+          <line class="flow-line" x1="150" y1="65" x2="190" y2="65"/>
+          <line class="flow-line" x1="320" y1="65" x2="360" y2="65"/>
+          <line class="flow-line" x1="490" y1="65" x2="530" y2="65"/>
+          <g data-i="a"><rect class="node-box" x="20"  y="40" width="130" height="50" rx="10"/><text class="node-label" x="85"  y="70" text-anchor="middle">User (SSO)</text></g>
+          <g data-i="b"><rect class="node-box" x="190" y="40" width="130" height="50" rx="10"/><text class="node-label" x="255" y="70" text-anchor="middle">App</text></g>
+          <g data-i="c"><rect class="node-box on" x="360" y="40" width="130" height="50" rx="10"/><text class="node-label on" x="425" y="64" text-anchor="middle">Identity</text><text class="node-label on" id="idsub" x="425" y="80" text-anchor="middle" font-size="11">app SP creds</text></g>
+          <g data-i="d"><rect class="node-box" x="530" y="40" width="160" height="50" rx="10"/><text class="node-label" x="610" y="70" text-anchor="middle">UC resource</text></g>
+        </g>
+      </svg>
+      <div class="diagram-info" id="info"><strong>App authorization</strong> — the app calls the resource with its own service principal credentials (<code>DATABRICKS_CLIENT_ID</code>/<code>SECRET</code>); every user sees the same SP-scoped data.</div>
+    </div>
+  </section>
+
+  <!-- ============ ONE SMALL SNIPPET ============ -->
+  <section>
+    <h2>Minimal example</h2>
+    <pre><span class="tag">Python · databricks-sdk</span><code><span class="k">from</span> databricks.sdk <span class="k">import</span> WorkspaceClient
+<span class="k">from</span> flask <span class="k">import</span> request
+
+<span class="c"># Default client = the app's SERVICE PRINCIPAL (app authorization).</span>
+<span class="c"># Uses injected DATABRICKS_CLIENT_ID / DATABRICKS_CLIENT_SECRET automatically.</span>
+app_sp = WorkspaceClient()
+
+<span class="c"># OBO: act AS the signed-in user via the forwarded user token.</span>
+user_token = request.headers.get(<span class="s">"X-Forwarded-Access-Token"</span>)  <span class="c"># the line that matters</span>
+as_user = WorkspaceClient(host=app_sp.config.host, token=user_token)
+as_user.tables.get(<span class="s">"main.sales.customers"</span>)  <span class="c"># enforces the USER's UC grants</span></code></pre>
+  </section>
+
+  <!-- ============ GOTCHAS & LIMITS ============ -->
+  <section>
+    <h2>Gotchas &amp; limits</h2>
+    <ul class="clean">
+      <li>Double-grant: for OBO through a warehouse, the SP needs access to <em>both</em> the warehouse and the table, AND the user needs access to the table — both identities must be authorized.</li>
+      <li>OBO is gated by scopes you configure (+Add scope); if a needed scope (e.g. <code>sql</code>) isn't added, the user-token call fails.</li>
+      <li>Build the user (OBO) client at request time, not app startup — no user token exists until a request arrives.</li>
+      <li>User authorization is Public Preview (Jun 2026); app authorization is GA. Token in <code>X-Forwarded-Access-Token</code> is short-lived — don't cache it.</li>
+    </ul>
+  </section>
+
+  <!-- ============ INTERVIEW SOUNDBITES ============ -->
+  <section>
+    <h2>Interview soundbites</h2>
+    <div class="callout">
+      <span class="lbl">Say this out loud</span>
+      <ul>
+        <li>"App-auth vs user-auth: choose by whether the data is shared (app service principal) or per-user (on-behalf-of-user). Shared data → SP; row-level/per-user data → OBO."</li>
+        <li>"Every app runs as its own service principal; resources are granted to that SP and declared as app resources via the injected <code>DATABRICKS_CLIENT_ID</code>/<code>SECRET</code>."</li>
+        <li>"OBO reads <code>X-Forwarded-Access-Token</code> and calls as the user — so it's a double-grant: the SP and the user both need access, and the app is capped by configured scopes."</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <h2>References</h2>
+    <ul class="doclinks">
+      <li><a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth">Configure authorization in a Databricks app (app auth vs user auth / OBO, scopes, double-grant)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/http-headers">Access HTTP headers passed to Databricks apps (X-Forwarded-User / -Email / -Preferred-Username)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources">Add resources to a Databricks app (grant to the app service principal)</a></li>
+      <li><a href="https://docs.databricks.com/aws/en/dev-tools/databricks-apps/">Databricks Apps overview</a></li>
+    </ul>
+    <p class="verified">Verified against docs.databricks.com · June 2026</p>
+  </section>
+
+</div>
+
+<script>
+  // Two authorization models: app SP (flame) vs user OBO (violet).
+  var INFO = [
+    ["App authorization", "the app calls the resource with its own service principal credentials (DATABRICKS_CLIENT_ID/SECRET); every user sees the same SP-scoped data", "app SP creds", "on"],
+    ["User authorization (OBO)", "the app forwards the user's token (X-Forwarded-Access-Token) and calls as that user, so Unity Catalog enforces the user's own grants, row filters and column masks", "user token", "onv"]
+  ];
+  var tabs  = document.querySelectorAll('#tabs .tab');
+  var idBox = document.querySelector('.stage g[data-i="c"] .node-box');
+  var idSub = document.getElementById('idsub');
+  var info  = document.getElementById('info');
+  function select(i){
+    tabs.forEach(function(t,k){ t.classList.toggle('active', k===i); });
+    idBox.classList.remove('on','onv');
+    idBox.classList.add(INFO[i][3]);
+    idSub.textContent = INFO[i][2];
+    info.innerHTML = '<strong>'+INFO[i][0]+'</strong> — '+INFO[i][1]+'.';
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ select(+t.dataset.i); }); });
+</script>
+</body>
+</html>

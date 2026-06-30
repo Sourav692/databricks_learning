@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Databricks One-Pager Library — Tech Peer Round</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1ea; --paper-2:#efe9dd; --card:#fbf9f4; --line:#e0d8c8;
+    --ink:#26211c; --muted:#6b6155; --faint:#9c9183;
+    --flame:#ff3621; --flame-deep:#d6260f; --violet:#7b4bd6; --frost:#1a7f78;
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1040px;margin:0 auto;padding:44px 22px 90px}
+  a{color:inherit;text-decoration:none}
+
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.76rem;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--flame);margin:0 0 12px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.4rem,6vw,3.8rem);
+    line-height:1.0;margin:0 0 16px;letter-spacing:-.02em}
+  h1 .drip{font-style:italic;background:linear-gradient(105deg,var(--flame),var(--violet));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .lede{font-size:1.15rem;color:var(--muted);max-width:70ch;margin:0 0 18px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.06em;
+    text-transform:uppercase;padding:5px 11px;border-radius:999px;border:1px solid var(--line);
+    background:var(--card);color:var(--muted)}
+  .pill.flame{border-color:var(--flame);color:var(--flame-deep)}
+
+  .band{margin-top:40px}
+  .band-title{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);padding-bottom:10px;border-bottom:1px solid var(--line);
+    margin-bottom:18px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:16px}
+  .tile{display:block;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;transition:transform .12s,border-color .12s,box-shadow .12s}
+  .tile:hover{transform:translateY(-2px);border-color:var(--flame);box-shadow:0 6px 22px rgba(214,38,15,.08)}
+  .tile .num{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--flame);letter-spacing:.08em}
+  .tile .cat{float:right;font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--faint)}
+  .tile h3{font-family:"Fraunces",serif;font-weight:600;font-size:1.2rem;margin:6px 0 6px}
+  .tile p{margin:0;font-size:.9rem;color:var(--muted);line-height:1.5}
+
+  footer{margin-top:54px;border-top:1px solid var(--line);padding-top:18px;
+    font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);letter-spacing:.04em}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Databricks · Tech Peer Round · Interview Revision</div>
+  <h1>One-Pager <span class="drip">Library</span></h1>
+  <p class="lede">Twenty-four single-page cheat-sheets on the Databricks platform — concepts, one small snippet, and one interactive diagram each. Built to skim in the last hour before the interview. Every fact grounded in the official docs and verified June 2026.</p>
+  <div class="meta">
+    <span class="pill flame">24 features</span>
+    <span class="pill">Doc-grounded</span>
+    <span class="pill">Interactive diagrams</span>
+    <span class="pill">Verified Jun 2026</span>
+  </div>
+
+  <div class="band">
+    <div class="band-title">Foundations</div>
+    <div class="grid">
+      <a class="tile" href="01-lakehouse-medallion.html"><span class="num">01</span><span class="cat">Architecture</span><h3>Lakehouse &amp; Medallion</h3><p>One platform fusing a lake's cheap open storage with a warehouse's reliability — refined Bronze → Silver → Gold.</p></a>
+      <a class="tile" href="02-unity-catalog.html"><span class="num">02</span><span class="cat">Governance</span><h3>Unity Catalog</h3><p>The unified governance layer — one permission model, one lineage graph, one audit trail across every workspace.</p></a>
+      <a class="tile" href="03-delta-lake.html"><span class="num">03</span><span class="cat">Storage Format</span><h3>Delta Lake</h3><p>Parquet wrapped in a transaction log — real ACID, time travel, and schema control on cloud object storage.</p></a>
+      <a class="tile" href="04-auto-loader.html"><span class="num">04</span><span class="cat">Ingestion</span><h3>Auto Loader</h3><p>A streaming source that ingests new files as they land — no manual bookkeeping of what's already processed.</p></a>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="band-title">Pipelines &amp; Orchestration</div>
+    <div class="grid">
+      <a class="tile" href="05-lakeflow-declarative-pipelines.html"><span class="num">05</span><span class="cat">Data Engineering</span><h3>Lakeflow Declarative Pipelines</h3><p>Define the tables you want; the framework builds the DAG, the compute, and the incremental updates. (formerly DLT)</p></a>
+      <a class="tile" href="06-lakeflow-jobs.html"><span class="num">06</span><span class="cat">Orchestration</span><h3>Lakeflow Jobs</h3><p>The native lakehouse scheduler — wire tasks into a DAG, trigger on a clock or new data. (formerly Workflows)</p></a>
+      <a class="tile" href="10-structured-streaming.html"><span class="num">10</span><span class="cat">Streaming</span><h3>Structured Streaming</h3><p>Run the same DataFrame code over an unbounded stream — exactly-once results via checkpoints.</p></a>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="band-title">Spark, Performance &amp; SQL</div>
+    <div class="grid">
+      <a class="tile" href="07-spark-architecture.html"><span class="num">07</span><span class="cat">Apache Spark</span><h3>Spark Architecture</h3><p>Code → parallel work: a driver plans, executors run, and nothing happens until an action fires.</p></a>
+      <a class="tile" href="08-spark-performance.html"><span class="num">08</span><span class="cat">Performance</span><h3>Spark Performance Tuning</h3><p>Let AQE re-plan at runtime, pick the right join, and stop reading data you don't need.</p></a>
+      <a class="tile" href="09-delta-optimization.html"><span class="num">09</span><span class="cat">Delta Optimization</span><h3>Delta Optimization &amp; Liquid Clustering</h3><p>Compaction, data skipping, and the clustering model that replaces partitioning + Z-order with no rewrite.</p></a>
+      <a class="tile" href="11-dbsql-photon.html"><span class="num">11</span><span class="cat">SQL &amp; BI</span><h3>Databricks SQL &amp; Photon</h3><p>Serverless SQL warehouses on Photon — the vectorized C++ engine that accelerates work with no code change.</p></a>
+      <a class="tile" href="12-compute-clusters.html"><span class="num">12</span><span class="cat">Compute</span><h3>Compute &amp; Cluster Types</h3><p>All-purpose, jobs, SQL warehouses, serverless — plus access modes, policies, autoscaling, spot, and Photon.</p></a>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="band-title">AI, ML, GenAI &amp; Agents</div>
+    <div class="grid">
+      <a class="tile" href="13-model-serving-mlflow.html"><span class="num">13</span><span class="cat">AI / ML</span><h3>Model Serving + MLflow</h3><p>Track and register with MLflow, govern in Unity Catalog, deploy behind one autoscaling REST endpoint.</p></a>
+      <a class="tile" href="14-vector-search.html"><span class="num">14</span><span class="cat">AI / ML</span><h3>Mosaic AI Vector Search</h3><p>Serverless similarity search that turns Delta tables into governed vector indexes — the retrieval layer for RAG.</p></a>
+      <a class="tile" href="15-genie-aibi.html"><span class="num">15</span><span class="cat">AI / BI</span><h3>AI/BI Genie &amp; Dashboards</h3><p>Ask governed data questions in plain English — Genie writes and runs the SQL; dashboards share the result.</p></a>
+      <a class="tile" href="19-agent-bricks.html"><span class="num">19</span><span class="cat">GenAI / Agents</span><h3>Agent Bricks</h3><p>Declaratively build domain agents on your data — describe the task, it generates the eval and tunes the agent.</p></a>
+      <a class="tile" href="20-agent-framework.html"><span class="num">20</span><span class="cat">GenAI / Agents</span><h3>Mosaic AI Agent Framework</h3><p>The code-first way to author, log, evaluate, deploy, and trace production agents — built around MLflow.</p></a>
+      <a class="tile" href="21-genai-evaluation.html"><span class="num">21</span><span class="cat">GenAI / Eval</span><h3>GenAI Evaluation</h3><p>Measure GenAI/agent quality with LLM-as-judge scorers, eval datasets, human labeling, and production monitoring.</p></a>
+      <a class="tile" href="22-llmops.html"><span class="num">22</span><span class="cat">MLOps</span><h3>LLMOps on Databricks</h3><p>MLOps extended for GenAI: prompts, RAG, and agents through one develop → evaluate → deploy → monitor loop.</p></a>
+      <a class="tile" href="23-mlops.html"><span class="num">23</span><span class="cat">MLOps</span><h3>MLOps on Databricks</h3><p>Train, register, deploy, and monitor classic predictive models — DevOps + DataOps + ModelOps under one UC plane.</p></a>
+    </div>
+  </div>
+
+  <div class="band">
+    <div class="band-title">Sharing, OLTP, DevOps &amp; Apps</div>
+    <div class="grid">
+      <a class="tile" href="16-delta-sharing.html"><span class="num">16</span><span class="cat">Data Sharing</span><h3>Delta Sharing &amp; Marketplace</h3><p>An open protocol to share live data and AI assets across orgs and clouds — no copying, no lock-in.</p></a>
+      <a class="tile" href="17-lakebase.html"><span class="num">17</span><span class="cat">OLTP</span><h3>Lakebase Postgres</h3><p>A managed Postgres-compatible OLTP database built into Databricks — low-latency txns next to your lakehouse.</p></a>
+      <a class="tile" href="18-asset-bundles.html"><span class="num">18</span><span class="cat">DevOps / CI-CD</span><h3>Databricks Asset Bundles</h3><p>Infrastructure-as-code for the lakehouse — describe resources in YAML and ship them dev → prod with one CLI.</p></a>
+      <a class="tile" href="24-databricks-apps-auth.html"><span class="num">24</span><span class="cat">Databricks Apps</span><h3>Apps Authorization</h3><p>Act as the app's service principal (shared data) or as the signed-in user via OBO (per-user data) — plus forwarded identity headers.</p></a>
+    </div>
+  </div>
+
+  <footer>Databricks Tech Peer Round · 24 one-pagers · grounded in docs.databricks.com · verified June 2026</footer>
+
+</div>
+</body>
+</html>
