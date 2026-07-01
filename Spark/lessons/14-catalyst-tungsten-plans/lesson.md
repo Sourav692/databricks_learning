@@ -1,138 +1,248 @@
-# Catalyst, Tungsten, and physical plan nodes
+# Reading Spark query plans: Catalyst, physical plans, and codegen
 
 > **Databricks · PySpark Performance · Lesson 14**
-> *Understand how Spark turns DataFrame code into an optimized physical plan, and how to read the nodes that matter in interviews.*
+> *Understand the exact order Spark follows from SQL/DataFrame code to the selected physical plan that runs on executors.*
 >
-> `DataFrame/SQL optimizer` · `EXPLAIN FORMATTED` · `Whole-stage codegen` · `Verified Jun 2026 docs`
+> `EXPLAIN EXTENDED` · `EXPLAIN FORMATTED` · `Catalyst optimizer` · `Physical planning` · `Verified Jun 2026 docs`
 
 ---
 
 ## What it is
 
-This lesson is the missing bridge between "I wrote PySpark" and "Spark executed a plan."
+A Spark query plan is the **assembly line** Spark uses to turn your code into distributed
+work. The important thing is the order:
 
-- **Catalyst** is Spark SQL's optimizer. It analyzes your DataFrame/SQL query, applies rules
-  like predicate pushdown and column pruning, chooses join strategies, and produces a
-  physical plan.
-- **Tungsten** is Spark's execution/memory engine work: compact binary rows, off-heap-aware
-  memory handling, and generated JVM code that avoids slow object-heavy execution.
-- **Physical plan nodes** are the vocabulary you read in `explain()`: `Exchange`, `Sort`,
-  `HashAggregate`, `BroadcastHashJoin`, `SortMergeJoin`, `BroadcastExchange`,
-  `InMemoryTableScan`, `AdaptiveSparkPlan`, and `AQEShuffleRead`.
+1. **SQL / DataFrame** — what you wrote.
+2. **Unresolved logical plan** — Spark parsed the shape, but names may not be resolved yet.
+3. **Analyzed logical plan** — Spark uses the catalog/schema to resolve tables, columns,
+   functions, and data types.
+4. **Logical plan** — Spark now has a valid description of the result you want.
+5. **Optimized logical plan** — Catalyst rewrites the plan to do less work.
+6. **Physical plans** — Spark creates one or more executable strategies.
+7. **Cost model** — Spark chooses the best physical strategy it can estimate.
+8. **Selected physical plan** — the winning plan.
+9. **Code generation / RDD execution** — Spark generates efficient code where possible and
+   runs tasks on executors.
 
-> **The one rule to remember:** Catalyst decides **what plan should run**; Tungsten makes
-> the chosen plan **run efficiently**. When debugging, read Catalyst's output in
-> `explain()` first, then use Spark UI metrics to see whether the physical execution behaved.
+> **The one rule to remember:** the top of `explain(True)` shows how Spark understood and
+> improved your query; the bottom, **Physical Plan**, shows what Spark will actually run.
 
 ---
 
 ## Why it matters
 
-- **DataFrame/SQL gets optimized; arbitrary Python does not.** Built-in expressions are visible
-  to Catalyst. Python UDF internals are mostly a black box.
-- **Plan nodes explain performance.** `Exchange` means shuffle, `BroadcastExchange` means a
-  broadcast build, `InMemoryTableScan` means cache reuse, and `AQEShuffleRead` means AQE
-  changed the runtime plan.
-- **Advanced interview answers need layer separation.** AQE is planning, Photon/Tungsten are
-  execution, caching is storage, and cluster sizing is resource capacity.
+- **It makes `explain()` readable.** Instead of seeing a wall of text, you know each section's
+  job: parsed, analyzed, optimized, physical.
+- **It separates logic from execution.** A logical plan says *what result you want*; a
+  physical plan says *how Spark will produce it*.
+- **It explains performance clues.** `Exchange` means shuffle, `SortMergeJoin` means a
+  shuffle-and-sort join, `HashAggregate -> Exchange -> HashAggregate` means partial/final
+  aggregation, and `Coalesce` means fewer partitions without a full shuffle.
 
 ---
 
 ## How it works — deep dive
 
-### 1 · The plan ladder: parsed -> analyzed -> optimized -> physical
+### 1 · SQL/DataFrame -> unresolved logical plan
 
-`<chip:analogy>` *Analogy:* Catalyst is an architect. It starts with your rough sketch,
-checks the building code, removes unnecessary rooms, then picks a construction method.
+`<chip:analogy>` *Analogy:* this is like writing an order on a form. Spark can read the
+sentence, but it has not yet checked whether every item on the form exists.
 
-- **Parsed logical plan:** Spark has parsed your SQL/DataFrame expression, but names may not
-  be resolved.
-- **Analyzed logical plan:** tables, columns, functions, and types are resolved.
-- **Optimized logical plan:** Catalyst applies rules such as constant folding, predicate
-  pushdown, column pruning, and projection/filter simplification.
-- **Physical plan:** Spark chooses executable operators: scan, exchange, aggregate, join,
-  sort, broadcast, cache scan, and adaptive wrappers.
+- **What Spark has:** the syntax tree of your query.
+- **What may be missing:** exact column IDs, table metadata, data types, and function
+  resolution.
+- **What you see in `explain(True)`:** `== Parsed Logical Plan ==`.
 
 ```python
-q = (sales
-    .filter("event_date >= '2026-01-01'")
-    .select("customer_id", "amount")
-    .join(customers.select("customer_id", "region"), "customer_id")
-    .groupBy("region")
-    .sum("amount"))
-
-q.explain(mode="extended")
-# VERIFY: extended explain shows parsed, analyzed, optimized, and physical plans.
+df = customers.filter(col("city") == "boston").select("cust_id", "name")
+df.explain(True)
+# First section: Parsed Logical Plan
 ```
 
-### 2 · Why DataFrame API beats RDDs for most performance work
+### 2 · Analysis -> analyzed logical plan
 
-- **DataFrame/SQL exposes intent.** Catalyst sees filters, projections, joins, aggregations,
-  and column references.
-- **RDD code hides intent.** A Python or Scala function over rows looks like arbitrary code,
-  so Spark cannot push filters into the scan or prune columns inside the function.
-- **The practical rule:** prefer built-in DataFrame functions and SQL expressions. Use UDFs
-  only when the logic cannot be expressed with native operations.
+Analysis uses the **catalog** and schema to turn names into real attributes.
 
-`<chip:usecase>` *Use case:* replacing a Python UDF filter with `where(col("status") == "ACTIVE")`
-lets Catalyst push the predicate to the file scan and prune unused columns.
+- `city` becomes something like `city#52`.
+- `cust_id` is resolved to the specific column from the specific input.
+- Type casts become explicit when Spark needs them.
+
+If this step fails, you get errors like "cannot resolve column" before Spark ever reaches
+physical execution.
+
+### 3 · Logical optimization -> optimized logical plan
+
+Catalyst now asks: **can I produce the same result with less work?**
+
+Common optimizations:
+
+- **Column pruning:** read only needed columns.
+- **Predicate pushdown:** push filters toward the file/database scan.
+- **Projection collapse:** combine repeated `select` / `withColumn` operations.
+- **Null checks:** add `isnotnull(key)` before joins/aggregations when it helps correctness
+  and performance.
+
+`<chip:usecase>` *Use case:* in the reference notebook, a filter on `city = 'boston'` and
+several `withColumn` calls become a compact optimized plan: one filter, one project, and only
+the needed columns.
 
 ```python
-from pyspark.sql.functions import col
+narrow_plan = (
+    customers
+    .filter(col("city") == "boston")
+    .withColumn("first_name", split("name", " ").getItem(0))
+    .withColumn("last_name", split("name", " ").getItem(1))
+    .select("cust_id", "first_name", "last_name", "gender")
+)
 
-# Better: visible to Catalyst.
-active = events.where(col("status") == "ACTIVE").select("customer_id", "event_ts")
-
-active.explain(mode="formatted")
-# VERIFY: scan details show pushed filters / read schema with only needed columns when possible.
+narrow_plan.explain(True)
+# Optimized plan should be simpler than the parsed chain you wrote.
 ```
 
-### 3 · Common physical plan nodes
+### 4 · Physical planning -> candidate physical plans
 
-| Node | Plain meaning | Performance clue |
-| --- | --- | --- |
-| `Exchange` | Shuffle or repartition boundary | Network + disk + new stage |
-| `BroadcastExchange` | Build and distribute small side | Driver builds; executors receive copy |
-| `BroadcastHashJoin` | Join big side against broadcast side | Usually no big-side shuffle |
-| `SortMergeJoin` | Shuffle both sides, sort, merge | Default big-vs-big join |
-| `HashAggregate` | Partial/final aggregation | Often appears around `Exchange` |
-| `Sort` | Sort rows before merge/window/order | Memory pressure risk |
-| `InMemoryTableScan` | Reading cached data | Cache reuse worked |
-| `AdaptiveSparkPlan` | AQE wrapper | Runtime plan can change |
-| `AQEShuffleRead` | AQE changed shuffle read | Coalesced or skew-split partitions |
+The optimized logical plan still does not say exactly how to run. Physical planning turns it
+into executable operators:
 
-### 4 · Whole-stage codegen and Tungsten in practical terms
+- `FileScan` / scan from data source.
+- `Filter` / `Project`.
+- `Exchange` for shuffle.
+- `Sort`, `HashAggregate`, `SortMergeJoin`, `BroadcastHashJoin`.
+- `Coalesce` for reducing partitions without full shuffle.
 
-- **Whole-stage codegen** fuses compatible operators into generated JVM code, reducing virtual
-  function calls and row-by-row overhead.
-- **Tungsten-style memory** uses compact binary representation and off-heap-aware execution
-  paths to reduce Java object overhead.
-- **Why it matters:** native expressions over columns are far cheaper than creating many
-  Python/JVM objects per row. This is why row-by-row UDFs often lose to built-in functions.
+Spark may have multiple ways to run the same logical operation. A join could be broadcast,
+sort-merge, or shuffle-hash. This is where the **cost model** chooses.
 
-```python
-# SQL EXPLAIN CODEGEN shows generated code for codegen-capable plans.
-spark.sql("""
+### 5 · Cost model -> selected physical plan
+
+The cost model uses available statistics and rules to pick a physical plan.
+
+- If one join side is estimated small enough, Spark may pick `BroadcastHashJoin`.
+- If both sides are large, Spark often picks `SortMergeJoin`.
+- If AQE is enabled, Spark can revise parts of this choice at runtime after seeing real
+  shuffle statistics.
+
+The selected physical plan is the plan you debug first.
+
+### 6 · Code generation -> RDD tasks
+
+After the selected physical plan exists, Spark can generate JVM code for compatible operators
+through whole-stage codegen. Then the plan runs as distributed tasks over Spark's RDD
+execution layer.
+
+```sql
 EXPLAIN CODEGEN
-SELECT customer_id, sum(amount)
-FROM main.pyspark_perf.events
-GROUP BY customer_id
-""").show(truncate=False)
-
-# VERIFY: generated-code sections appear for whole-stage codegen-compatible parts.
+SELECT city, count(*) AS n
+FROM lesson14_transactions
+GROUP BY city;
 ```
 
-### 5 · AQE vs Catalyst vs Tungsten vs Photon
+---
 
-| Layer | Job | Example signal |
+## Reading examples from the demo notebook
+
+### Narrow example: no `Exchange`
+
+Filtering, adding columns, and selecting columns usually produce `Filter` and `Project`
+operators without `Exchange`.
+
+**Interpretation:** rows do not need to move across the network. Spark can process each input
+partition locally.
+
+### `repartition(n)`: look for `Exchange RoundRobinPartitioning`
+
+`repartition(24)` means Spark must redistribute rows into a new set of partitions.
+
+**Interpretation:** physical plan shows `Exchange RoundRobinPartitioning(24)`, which means
+full shuffle.
+
+### `coalesce(n)`: look for `Coalesce`, not `Exchange`
+
+`coalesce(5)` reduces partitions by merging existing partitions.
+
+**Interpretation:** physical plan shows `Coalesce 5`. No `Exchange` means Spark avoided a
+full shuffle.
+
+### Join: look for selected join strategy
+
+With broadcast disabled, the demo join shows:
+
+- `SortMergeJoin`
+- `Sort` on each side
+- `Exchange hashpartitioning(cust_id, 200)` on each side
+
+**Interpretation:** both tables shuffle by `cust_id`, then sort, then merge.
+
+### GroupBy: partial aggregate -> Exchange -> final aggregate
+
+A simple `groupBy("city").count()` shows:
+
+- lower `HashAggregate` = partial count near the data
+- `Exchange hashpartitioning(city, 200)` = move same-city rows together
+- upper `HashAggregate` = final count
+
+**Interpretation:** aggregation is split into local work, shuffle, then final work.
+
+### Count distinct: more exchanges
+
+`countDistinct(city)` can require extra aggregate and exchange steps because Spark must
+deduplicate before counting.
+
+**Interpretation:** more `Exchange` nodes usually means more network and more stage
+boundaries.
+
+---
+
+## Physical node checklist
+
+| Node | Plain meaning | What to check next |
 | --- | --- | --- |
-| Catalyst | Static query optimization before execution | optimized plan, join choice, pushed filters |
-| AQE | Runtime plan changes after shuffle stats arrive | `AdaptiveSparkPlan`, `AQEShuffleRead` |
-| Tungsten | Efficient JVM execution and memory representation | codegen, compact rows, lower object overhead |
-| Photon | Databricks native execution engine | Databricks runtime/UI indicators |
+| `FileScan parquet` | Read files | ReadSchema, PushedFilters, PartitionFilters |
+| `Filter` | Keep matching rows | Was filter pushed down? Is it still needed for correctness? |
+| `Project` | Select/compute columns | Did Catalyst prune unused columns? |
+| `Exchange` | Shuffle / repartition | Spark UI shuffle read/write, stage boundary |
+| `Coalesce` | Reduce partitions without full shuffle | Possible imbalance, output file count |
+| `HashAggregate` | Aggregate rows by key | Partial vs final aggregate around shuffle |
+| `SortMergeJoin` | Shuffle, sort, then join | Big shuffle, sort cost, skew |
+| `BroadcastHashJoin` | Broadcast small side, join locally | Driver build size, executor memory |
+| `AdaptiveSparkPlan` | AQE wrapper | Check final plan after action |
+| `AQEShuffleRead` | AQE changed shuffle reads | Coalesced or skew-split partitions |
 
-The important interview distinction: **AQE changes the plan**, while Tungsten/Photon change
-how operators execute. They are complementary, not replacements for each other.
+---
+
+## Predicate pushdown: why filter can still appear
+
+The reference notebook asks an important question: **if Spark pushed the filter into Parquet,
+why is there still a `Filter` in the physical plan?**
+
+Short answer: correctness.
+
+- Spark may push `city = 'boston'` into the scan as `PushedFilters`.
+- Spark may still keep a `Filter` operator above the scan.
+- Not every data source can fully apply every pushed predicate, so Spark keeps a filter as a
+  safety check to guarantee correct results.
+
+For casts and complex expressions, pushdown may be partial or absent. Example:
+
+```python
+customers.filter(col("age").cast("int") > 50).explain(True)
+# Cast expressions are harder to push down fully.
+```
+
+---
+
+## Catalyst, AQE, Tungsten, and Photon
+
+| Term | Where it fits | Simple explanation |
+| --- | --- | --- |
+| Catalyst | Logical + physical planning | Optimizes and chooses query plans |
+| Cost model | Physical planning | Chooses among candidate physical plans |
+| AQE | Runtime planning | Revises the plan after real shuffle stats arrive |
+| Tungsten | Execution engine internals | Compact memory/codegen for JVM execution |
+| Photon | Databricks execution engine | Native engine that runs compatible operators faster |
+
+The important distinction: **Catalyst/AQE choose the plan; Tungsten/Photon execute operators
+efficiently.**
 
 ---
 
@@ -140,52 +250,38 @@ how operators execute. They are complementary, not replacements for each other.
 
 **Uses**
 
-- Reading `explain()` confidently during debugging.
-- Explaining why DataFrame/SQL is usually faster than RDD/UDF-heavy code.
-- Separating planning problems from execution/resource problems.
+- Read `explain(True)` without getting lost.
+- Explain why `repartition()` is expensive and `coalesce()` is cheaper.
+- Diagnose joins and aggregations from `Exchange`, `SortMergeJoin`, and `HashAggregate`.
 
 **Edge cases**
 
-- UDFs can block pushdown and column pruning because Catalyst cannot inspect their internals.
-- AQE means the final plan may differ from the initial plan after an action.
-- Some operators are not codegen-compatible, so whole-stage codegen will not cover the entire
-  plan.
+- AQE can change the final physical plan after an action.
+- Pushed filters can still appear as physical `Filter` nodes.
+- UDFs and casts can block or limit pushdown and optimization.
 
 **Limitations**
 
-- You do not need to memorize every plan node. Focus on nodes that change decisions:
-  `Exchange`, joins, scans, aggregates, cache scans, and AQE nodes.
-- Tungsten internals are useful context, but most interview debugging still starts with
-  `explain()` and Spark UI metrics.
-
----
-
-## Common mistakes / gotchas
-
-| Mistake | Why it hurts | Better move |
-| --- | --- | --- |
-| Saying Catalyst "runs the query" | Catalyst plans; executors run tasks | Separate planning and execution |
-| Treating all UDFs as harmless | They hide logic from optimizer | Prefer native functions |
-| Ignoring `Exchange` | Misses the biggest cost | Investigate shuffle size/stages |
-| Reading only the initial AQE plan | Final plan may differ | Run action; inspect final plan |
-| Confusing Photon with AQE | Different layers | Photon executes; AQE replans |
+- Do not memorize every physical node. Focus first on scans, filters, projects, exchanges,
+  aggregates, joins, coalesce, and AQE nodes.
+- `explain()` shows the plan. The Spark UI shows runtime cost.
 
 ---
 
 ## Mermaid map
 
 ```mermaid
-flowchart TD
-  A[DataFrame / SQL code] --> B[Parsed logical plan]
-  B --> C[Analyzed logical plan]
-  C --> D[Optimized logical plan<br/>pushdown · pruning · join choice]
-  D --> E[Physical plan<br/>Exchange · joins · aggregate]
-  E --> F{AQE enabled and shuffle stats?}
-  F -->|yes| G[Final adaptive plan<br/>AQEShuffleRead]
-  F -->|no| H[Static physical plan]
-  G --> I[Tungsten / Photon execute operators]
-  H --> I
-  I --> J[Spark UI runtime metrics]
+flowchart LR
+  A[SQL / DataFrame] --> B[Unresolved logical plan]
+  B --> C[Analysis<br/>catalog + schema]
+  C --> D[Analyzed logical plan]
+  D --> E[Logical optimization<br/>prune · pushdown · simplify]
+  E --> F[Optimized logical plan]
+  F --> G[Physical planning<br/>candidate plans]
+  G --> H[Cost model]
+  H --> I[Selected physical plan]
+  I --> J[Code generation]
+  J --> K[RDD tasks on executors]
 ```
 
 ---
@@ -194,6 +290,6 @@ flowchart TD
 
 - Apache Spark — EXPLAIN syntax: https://spark.apache.org/docs/latest/sql-ref-syntax-qry-explain.html
 - Apache Spark — SQL performance tuning: https://spark.apache.org/docs/latest/sql-performance-tuning.html
-- Apache Spark — Tuning guide: https://spark.apache.org/docs/latest/tuning.html
 - Apache Spark — Configuration: https://spark.apache.org/docs/latest/configuration.html
+- Apache Spark — Tuning guide: https://spark.apache.org/docs/latest/tuning.html
 - Azure Databricks — Photon: https://learn.microsoft.com/en-us/azure/databricks/compute/photon
