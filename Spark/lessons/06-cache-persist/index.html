@@ -3,246 +3,354 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cache &amp; persist · Databricks PySpark Performance</title>
+<title>Cache and persist · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
 
-  /* ---------- header ---------- */
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
 
-  /* ---------- sections ---------- */
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  ul{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
 
-  /* ---------- table ---------- */
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
 
-  /* ---------- code blocks ---------- */
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}
-  pre .k{color:#fbbf77;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
 
-  /* ---------- interactive lab shell ---------- */
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px;flex-wrap:wrap}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .toggles{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 4px}
-  .tgl{font-family:"Spline Sans Mono",monospace;font-size:.78rem;border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);border-radius:999px;padding:7px 14px;cursor:pointer;transition:.18s;user-select:none}
-  .tgl[aria-pressed="true"]{background:var(--violet);color:#fff;border-color:var(--violet);box-shadow:0 2px 10px -2px rgba(139,92,246,.6)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
+  /* toggles for the storage-level explorer */
+  .toggles{display:flex;flex-wrap:wrap;gap:9px;margin:10px 0 4px}
+  .tgl{font-family:"JetBrains Mono",monospace;font-size:.72rem;border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:6px;padding:7px 12px;cursor:pointer;transition:.15s;user-select:none;letter-spacing:.02em}
+  .tgl[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
   .tgl.dis{opacity:.4;cursor:not-allowed}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
   /* where-blocks-land tiers */
-  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 4px}
-  .tier{border:1px dashed var(--line);border-radius:11px;padding:14px;background:rgba(255,255,255,.025);min-height:120px;transition:.25s}
-  .tier .th{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:10px}
-  .tier.active{border-style:solid;border-color:var(--flame-2);background:rgba(249,115,22,.07);box-shadow:0 14px 34px -20px rgba(249,115,22,.7)}
-  .blocks{display:flex;flex-wrap:wrap;gap:6px}
-  .blk{width:30px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#fff;background:var(--violet);box-shadow:0 2px 8px -3px rgba(139,92,246,.7)}
+  .tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;margin:18px 0 4px}
+  .tier{border:1px dashed var(--line);border-radius:10px;padding:13px;background:var(--bg);min-height:118px;transition:.22s}
+  .tier .th{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+  .tier.active{border-style:solid;border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+  .blocks{display:flex;flex-wrap:wrap;gap:5px}
+  .blk{width:29px;height:21px;border-radius:5px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:.58rem;color:#fff;background:var(--accent)}
   .blk.disk{background:#6b5f4d}
-  .blk.off{background:var(--flame-2);color:#160d06}
-  .blk.rep{outline:2px dotted rgba(255,255,255,.85);outline-offset:-4px}
-  .tierempty{font-size:.8rem;color:var(--faint);font-style:italic}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.3rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
-  .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
+  .blk.off{background:#9a5b18}
+  .blk.rep{outline:2px dotted var(--ink);outline-offset:-4px}
+  .tierempty{font-size:.78rem;color:var(--faint);font-style:italic}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
-     "how it runs on the Spark nodes" animations.
-     ==================================================================== */
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
+
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.cached{background:rgba(139,92,246,.4);border-color:var(--violet);color:#ece2ff;box-shadow:0 2px 10px -3px rgba(139,92,246,.8)}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
+  .part.k0{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k1{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.k2{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.k3{background:rgba(120,80,180,.14);border-color:rgba(120,80,180,.4);color:#6b46a8}
+  .part.cached{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-2);box-shadow:0 0 0 1px var(--accent)}
+  .part.replica{background:#e7dcc6;border-color:#6b5f4d;color:#6b5f4d;border-style:dashed}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  .spillzone b{color:var(--violet-2)}
-  /* clean static connector under the nodes (replaces the old animated net-svg) */
-  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
-  /* stepper controls */
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  /* dummy code + data panes that highlight per step */
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .drvheap{margin-top:10px}
+  .drvheap .dlbl{font-family:"JetBrains Mono",monospace;font-size:.56rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px;display:flex;justify-content:space-between}
+  .drvheap .dbar{position:relative;height:15px;border-radius:5px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+  .drvheap .dfill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--accent),#5b5bff);transition:width .4s ease,background .4s ease}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}.tiers{grid-template-columns:1fr}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  /* ---------- footer ---------- */
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.tiers{grid-template-columns:1fr}}
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
+
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.drvheap .dfill,.heapbar .fill,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_06 &nbsp;·&nbsp; Lesson 06 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 06</p>
-    <h1>Cache, persist<br>&amp; <span class="drip">storage levels.</span></h1>
-    <p class="lede">Spark is lazy — by default it recomputes a DataFrame from scratch on every action. Cache and persist pin the computed result so later actions reuse it. Here's where the blocks land, why the first action pays, and when caching hurts instead of helps.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
-      <span class="pill">DataFrame default <b>MEMORY_AND_DISK</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_06 · Cache and persist · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Cache and persist</h1>
+    <p class="subline">Storage levels · when to reuse, when not to</p>
+    <p class="lede">Spark is <strong>lazy</strong>: by default it recomputes a DataFrame from scratch on every action. <code>cache</code> and <code>persist</code> pin the computed result so later actions <em>reuse</em> it instead of re-running the whole lineage. <em>This lesson is about where those blocks land, why the first action pays, and when caching hurts instead of helps.</em></p>
+    <div class="specs">
+      <span class="spec">Spark <b>3.2+</b> / DBR LTS</span>
+      <span class="spec">RDD default <b>MEMORY_ONLY</b></span>
+      <span class="spec">DataFrame default <b>MEMORY_AND_DISK</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
-    <p>By default a DataFrame holds only a <strong>recipe</strong> (its lineage of transformations), not its rows. Every <strong>action</strong> (<code>count</code>, <code>write</code>, <code>collect</code>) re-runs that recipe from the source. <strong>Caching</strong> stores the <em>computed</em> partitions so the next action reads them instead of recomputing:</p>
+    <p class="seclabel">01 · What it is</p>
+    <h2>Cook it once, keep it in the fridge</h2>
+    <p>By default a DataFrame holds only a <strong>recipe</strong> — its lineage of transformations — not its rows. Every <strong>action</strong> (<code>count</code>, <code>write</code>, <code>collect</code>) re-runs that recipe from the source. <strong>Caching</strong> stores the <em>computed</em> partitions so the next action reads them instead of recomputing. Three verbs are all you need:</p>
     <ul>
       <li><strong><code>df.cache()</code></strong> — shorthand for <code>df.persist()</code> with the <strong>default</strong> storage level.</li>
-      <li><strong><code>df.persist(level)</code></strong> — same thing, but <em>you</em> pick the <strong>storage level</strong> (memory / disk / off-heap; replicated or not).</li>
+      <li><strong><code>df.persist(level)</code></strong> — same thing, but <em>you</em> pick the <strong>storage level</strong>: memory / disk / off-heap, replicated or not.</li>
       <li><strong><code>df.unpersist()</code></strong> — drop the cached blocks and free the memory. <strong>Eager</strong> (immediate), unlike cache/persist which are lazy.</li>
     </ul>
+    <p><span class="chip analogy">analogy</span> An uncached DataFrame is a <strong>recipe card</strong>: every time you want the dish, you cook it from raw ingredients. Caching is <strong>cooking it once and putting it in the fridge</strong> — later you just reheat. The catch is fridge space (memory) is finite, and stashing food you'll never eat (a read-once DataFrame) just wastes the shelf.</p>
     <div class="callout">
       <span class="lbl">The one rule to remember</span>
-      <code>cache()</code> == <code>persist()</code> with the <strong>default level</strong>. The most-confused fact: that default differs by object — <strong>RDD</strong> <code>cache()</code> = <code>MEMORY_ONLY</code>, but <strong>DataFrame</strong> <code>cache()</code> = <code>MEMORY_AND_DISK</code> (the PySpark enum is <code>MEMORY_AND_DISK_DESER</code>). Quote the right one for the right object.
+      <code>cache()</code> == <code>persist()</code> with the <strong>default level</strong>. The whole game below is <em>where</em> the stored copy lives and <em>what shape</em> it's in — the §03 deep dive is the one place all of that is spelled out.
+    </div>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">What caching does</div>
+        <p>Stores a DataFrame's computed partitions once, so later actions reuse them instead of re-running the whole lineage.</p>
+      </div>
+      <div class="quickcard ok">
+        <div class="qtitle">Cache when</div>
+        <p>The same DataFrame feeds <strong>≥ 2 actions</strong> — and you'll <code>unpersist()</code> it when done.</p>
+      </div>
+      <div class="quickcard danger">
+        <div class="qtitle">Don't cache when</div>
+        <p>It's read <strong>once</strong>, or memory is tight — caching is then pure overhead and can evict execution memory.</p>
+      </div>
     </div>
   </section>
 
-  <!-- ============ WHY IT MATTERS ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>Why it matters</h2>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>Recompute is the default — and it's expensive</h2>
     <ul>
-      <li><strong>Spark recomputes by default.</strong> Run three actions on the same DataFrame and Spark executes the full lineage — every read, filter, join, shuffle — <strong>three times</strong>. If that lineage holds an expensive shuffle, you pay for it on every action.</li>
+      <li><strong>Spark recomputes by default.</strong> Run three actions on the same DataFrame and Spark executes the full lineage — every read, filter, join, shuffle — <strong>three times</strong>. If that lineage holds an expensive shuffle or wide join, you pay for it on <em>every</em> action.</li>
       <li><strong>Caching trades memory for compute.</strong> Materialize once; later actions read the stored blocks. The classic win is <strong>iterative / branching</strong> work: ML training loops, repeated exploratory queries, or one intermediate result fed into several writes.</li>
-      <li><strong>But caching is not free.</strong> Cached blocks pin <strong>Storage memory</strong> (the <code>R</code> region from Lesson 04), which can <strong>evict execution memory</strong> and trigger spill or GC pressure. Caching a DataFrame read <strong>once</strong> is pure overhead — the wrong instinct ("cache everything") makes jobs slower.</li>
+      <li><strong>But caching is not free — and over-caching <em>hurts</em>.</strong> Cached blocks pin <strong>Storage memory</strong> (the <code>R</code> region from Lesson 04), which can evict execution memory and trigger spill or GC pressure. Caching a read-once DataFrame is pure overhead. This is the interview trap: the instinct to "cache everything" makes jobs <em>slower</em>.</li>
     </ul>
     <p><span class="chip usecase">use case</span> You clean and join a 500 GB events table once, then run 6 aggregations off it for a dashboard build — cache the cleaned DataFrame so the expensive join runs <strong>once</strong>, not six times.</p>
   </section>
 
-  <!-- ============ INTERACTIVE 1: STORAGE-LEVEL EXPLORER ============ -->
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
   <section>
-    <h2>See it work — the storage-level explorer</h2>
-    <p>Pick a base level, then toggle <strong>serialized</strong>, <strong>replicated (<code>_2</code>)</strong>, and <strong>off-heap</strong>. Watch where the cached blocks land — RAM, local disk, or off-heap — and read the RDD-vs-DataFrame default callout.</p>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>Lazy lineage, storage levels, and the first action that pays</h2>
+    <p class="dropcap">A DataFrame's transformations are lazy — they only extend the plan, which runs from the source on <strong>each action</strong>. <code>persist()</code> inserts a checkpoint: the first action computes <em>and stores</em> the partitions; later actions read the stored copy. That is the entire idea. Everything below — the levels, the defaults, the lazy tax, the cleanup — is explained here <strong>once</strong>; later sections show it, verify it, and help you decide, but don't re-explain it.</p>
+
+    <h3>3.1 · The storage levels, and where blocks land</h3>
+    <p>A <code>StorageLevel</code> combines a few independent flags: <strong>memory? disk? off-heap?</strong>, <strong>serialized?</strong>, and a <strong>replication count</strong>. Suffix <code>_2</code> replicates each block to a second node (<code>_3</code> exists for disk).</p>
+    <ul>
+      <li><strong><code>MEMORY_ONLY</code></strong> — RAM only; any partition that doesn't fit is <strong>recomputed</strong> on demand. This is the <strong>RDD default</strong>.</li>
+      <li><strong><code>MEMORY_AND_DISK</code></strong> — RAM first, overflow <strong>spills to local disk</strong> instead of failing. This is the <strong>DataFrame default</strong> (PySpark enum <code>MEMORY_AND_DISK_DESER</code>).</li>
+      <li><strong><code>DISK_ONLY</code></strong> — local disk only; zero heap/GC pressure from the cache, at disk-read speed.</li>
+      <li><strong><code>OFF_HEAP</code></strong> — serialized blocks stored <em>outside</em> the JVM heap (no GC on them); <strong>experimental</strong>, needs <code>spark.memory.offHeap.enabled=true</code> and a positive <code>spark.memory.offHeap.size</code>.</li>
+      <li><strong>Scala/Java also expose</strong> <code>MEMORY_ONLY_SER</code> / <code>MEMORY_AND_DISK_SER</code> — a serialized byte array per partition (smaller heap, CPU to deserialize).</li>
+    </ul>
+    <p>The same five levels, as a mechanism map — <em>where each block lands and in what shape</em>:</p>
+    <table class="tbl">
+      <thead><tr><th>Level</th><th>Where blocks land</th><th>Serialized?</th><th>Replicated?</th></tr></thead>
+      <tbody>
+        <tr><td><code>MEMORY_ONLY</code> <em>(RDD default)</em></td><td>RAM; missing partitions recompute</td><td>No (JVM)</td><td><code>_2</code> available</td></tr>
+        <tr><td><code>MEMORY_AND_DISK</code> <em>(DataFrame default)</em></td><td>RAM first, overflow spills to local disk</td><td>No (JVM)</td><td><code>_2</code> available</td></tr>
+        <tr><td><code>DISK_ONLY</code></td><td>Local disk only</td><td>Yes</td><td><code>_2</code> / <code>_3</code> available</td></tr>
+        <tr><td><code>OFF_HEAP</code> <em>(experimental)</em></td><td>Off-heap, outside the JVM (no GC)</td><td>Yes</td><td>No <code>_2</code> variant</td></tr>
+        <tr><td><code>_SER</code> levels <em>(Scala/Java only)</em></td><td>RAM / disk as a byte array</td><td>Yes</td><td><code>_2</code> available</td></tr>
+      </tbody>
+    </table>
+    <p class="mono" style="font-size:.72rem;letter-spacing:.02em;color:var(--faint)">PySpark objects are always Pickle-serialized, so the _SER levels aren't separately exposed there; DISK_ONLY_3 does exist in Python.</p>
+    <div class="callout warn">
+      <span class="lbl">RDD cache() ≠ DataFrame cache()</span>
+      The single most-confused fact on this topic — the <strong>default level differs by object</strong>. <strong>RDD</strong> <code>cache()</code> = <code>MEMORY_ONLY</code> (missing partitions recompute). <strong>DataFrame</strong> <code>cache()</code> = <code>MEMORY_AND_DISK</code> (missing partitions spill to disk). Quote the right one for the right object — interviewers test exactly this.
+    </div>
+
+    <h3>3.2 · The PySpark serialization nuance (the interview trap)</h3>
+    <p><span class="chip usecase">interview trap</span> Doc-quoted: <em>"In Python, stored objects will always be serialized with the Pickle library, so it does not matter whether you choose a serialized level."</em> So PySpark does <strong>not</strong> separately expose the <code>_SER</code> levels — the Python-visible set is <code>MEMORY_ONLY(_2)</code>, <code>MEMORY_AND_DISK(_2)</code>, <code>DISK_ONLY(_2/_3)</code>, and <code>OFF_HEAP</code>. (<code>DISK_ONLY_3</code> <em>does</em> exist in Python.) Asking for <code>MEMORY_ONLY_SER</code> in PySpark is a no-op concept.</p>
+
+    <h3>3.3 · Lazy materialization — the first action pays</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> <code>persist()</code>/<code>cache()</code> only <strong>register</strong> the level — nothing is computed or stored. The blocks are written during the <strong>first action</strong> that materializes the DataFrame; that action is slower (it computes <em>and</em> stores), and every later action reads the cache and is fast.</li>
+      <li><strong>Gotcha.</strong> If you <code>cache()</code> and never run an action, <strong>nothing is cached</strong> — the Storage tab stays empty and later actions still recompute. Force it deliberately with a cheap <code>count()</code> or a <code>noop</code> write.</li>
+    </ul>
+
+    <h3>3.4 · <code>unpersist()</code> — eager cleanup, and the storage-vs-GC trade-off</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> <code>df.unpersist()</code> <strong>immediately</strong> removes the cached blocks from memory and disk and clears the level. Unlike cache/persist it is <strong>eager</strong>. Signature: <code>unpersist(blocking=False)</code>.</li>
+      <li><strong>Why it matters (Rung 3).</strong> Cached blocks live in the Storage sub-region <code>R</code> and stay there until evicted or unpersisted — pinning memory that execution and other caches could use, and adding GC pressure. That's the core trade-off: <strong>storage held for reuse vs. heap freed for execution</strong>. <strong>Always unpersist when done.</strong></li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">Reading it in the plan / UI</span>
+      A persisted DataFrame shows an <code>InMemoryTableScan</code> over an <code>InMemoryRelation</code> in <code>.explain(mode="formatted")</code> — proof the cache is used (the join/scan subtree is gone). The Spark UI <strong>Storage</strong> tab lists each cached DataFrame, its level, size in memory / on disk, and <strong>Fraction Cached</strong> (&lt; 100% means it didn't all fit).
+    </div>
+  </section>
+
+  <!-- ============ DIAGRAM A · storage-level explorer (where blocks land) ============ -->
+  <section>
+    <p class="seclabel">Figure A · where the blocks land</p>
+    <h2>Pick a level, watch the blocks settle</h2>
+    <p>Pick a base level, then toggle <strong>serialized</strong>, <strong>replicated (<code>_2</code>)</strong>, and <strong>off-heap</strong>. Watch where the cached blocks land — RAM, local disk, or off-heap — the resolved level name, and what happens if a block doesn't fit. This figure isolates <strong>one</strong> thing: <em>the shape and location of the stored copy</em>. (Where it runs across the cluster is Figure B.)</p>
     <div class="lab" id="lab-levels">
       <div class="lab-head"><span class="lab-title">StorageLevel explorer</span></div>
       <p class="lab-sub">One cached DataFrame of 8 partitions; the level decides where each block sits and in what shape.</p>
@@ -270,128 +378,18 @@
         <div class="stat"><div class="big" id="sl-miss">—</div><div class="lbl">if it doesn't fit</div></div>
       </div>
       <div class="verdict" id="sl-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: in <strong>PySpark</strong> objects are always Pickle-serialized, so the <code>_SER</code> levels aren't separately exposed — the serialized toggle is shown to explain the Scala/Java matrix interviewers ask about.</p>
+      <p class="lab-note">Simplified illustration — in PySpark objects are always Pickle-serialized, so the _SER levels aren't separately exposed; the serialized toggle explains the Scala/Java matrix interviewers ask about.</p>
     </div>
   </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
-
-    <h3>Quick recap: lazy lineage is why caching exists</h3>
-    <p><span class="chip analogy">analogy</span> An uncached DataFrame is a <strong>recipe card</strong> — every time you want the dish you cook it from raw ingredients. Caching is <strong>cooking it once and putting it in the fridge</strong>: later you just reheat. The catch is fridge space (memory) is finite, and leaving food you'll never eat (a read-once DataFrame) just wastes the shelf. A DataFrame's transformations are lazy; the plan runs from the source on <strong>each action</strong>. <code>persist()</code> inserts a checkpoint — the first action computes <em>and stores</em>; later actions read the stored copy.</p>
-
-    <h3>1 · <code>cache()</code> — the one-liner</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>df.cache()</code> sets the storage level to the default and returns the DataFrame. It is <strong>lazy</strong> — nothing is stored until the first action.</li>
-      <li><strong>The default level:</strong> for a <strong>DataFrame/Dataset</strong> it's <code>MEMORY_AND_DISK</code> — keep blocks in memory and <strong>spill any that don't fit to local disk</strong> (a too-big cache degrades to disk reads, not failure). PySpark surfaces this enum as <code>MEMORY_AND_DISK_DESER</code> ("Disk Memory Deserialized 1x Replicated").</li>
-      <li><strong>Trade-off:</strong> zero ceremony, but you don't control the level.</li>
-    </ul>
-
-    <h3>2 · <code>persist(level)</code> — you choose where it lands</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> identical to <code>cache()</code> but you pass a <code>StorageLevel</code> encoding four choices: <strong>memory? disk? off-heap?</strong>, <strong>serialized?</strong>, <strong>replicated to 2 nodes?</strong></li>
-      <li><strong>When to override:</strong> <code>DISK_ONLY</code> when it's too big for RAM or you want zero heap/GC pressure; <code>MEMORY_AND_DISK_2</code>/<code>DISK_ONLY_2</code> to replicate to two nodes so a lost executor doesn't force a recompute; <code>OFF_HEAP</code> to store serialized blocks outside the JVM heap (no GC) — experimental, needs <code>spark.memory.offHeap.enabled=true</code> and a positive <code>spark.memory.offHeap.size</code>.</li>
-      <li><strong>Trade-off:</strong> more memory (or disk I/O, or 2× storage for <code>_2</code>) in exchange for fewer recomputes.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> A cleaned DataFrame that's 2× cluster RAM → <code>persist(StorageLevel.DISK_ONLY)</code> so you reuse it without starving execution memory.</p>
-
-    <h3>3 · Storage levels — the matrix &amp; the PySpark trap</h3>
-    <ul>
-      <li><strong>The flags:</strong> a level combines <em>memory</em>, <em>disk</em>, <em>off-heap</em>, <em>serialized</em>, and a replication count. Suffix <code>_2</code> = replicate each block to two nodes (<code>_3</code> exists for disk).</li>
-      <li><strong>Full Scala/Java set:</strong> <code>MEMORY_ONLY(_2)</code>, <code>MEMORY_AND_DISK(_2)</code>, <code>DISK_ONLY(_2/_3)</code>, <code>MEMORY_ONLY_SER</code>, <code>MEMORY_AND_DISK_SER</code>, <code>OFF_HEAP</code>.</li>
-      <li><strong>PySpark nuance (interview trap):</strong> <em>"In Python, stored objects will always be serialized with the Pickle library, so it does not matter whether you choose a serialized level."</em> So PySpark doesn't separately expose <code>_SER</code> — the Python set is <code>MEMORY_ONLY(_2)</code>, <code>MEMORY_AND_DISK(_2)</code>, <code>DISK_ONLY(_2/_3)</code>, <code>OFF_HEAP</code>. (<code>DISK_ONLY_3</code> <em>does</em> exist in Python.)</li>
-    </ul>
-
-    <h3>4 · Lazy materialization — the first action pays</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>persist()</code>/<code>cache()</code> only <strong>register</strong> the level — nothing is stored until the <strong>first action</strong> materializes it. That first action is slower (computes <em>and</em> stores); later actions read the cache and are fast.</li>
-      <li><strong>Gotcha:</strong> if you <code>cache()</code> and never run an action, <strong>nothing is cached</strong> — the Storage tab stays empty. Force it with a cheap <code>count()</code> or <code>noop</code> write.</li>
-    </ul>
-
-    <h3>5 · <code>unpersist()</code> — eager cleanup</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>df.unpersist()</code> <strong>immediately</strong> removes the cached blocks from memory and disk and clears the level. Unlike cache/persist it is <strong>eager</strong>. Signature: <code>unpersist(blocking=False)</code>.</li>
-      <li><strong>Why:</strong> cached blocks sit in Storage (<code>R</code>) until evicted or unpersisted — pinning memory and adding GC pressure. <strong>Always unpersist when done.</strong></li>
-    </ul>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Four moves, each with its proof</h2>
+    <p>Every technique below is paired with <strong>how to prove it worked</strong> — the plan node or Spark-UI signal. Apply, then verify; never assume.</p>
     <div class="callout">
-      <span class="lbl">Reading it in the plan / UI</span>
-      A persisted DataFrame shows an <code>InMemoryTableScan</code> over an <code>InMemoryRelation</code> in <code>.explain(mode="formatted")</code> — that's proof the cache is used (the join/scan subtree is gone). The Spark UI <strong>Storage</strong> tab lists each cached DataFrame, its level, size in memory/on disk, and <strong>Fraction Cached</strong> (&lt; 100% means it didn't all fit).
-    </div>
-  </section>
-
-  <!-- ============ INTERACTIVE 2: LAZY MATERIALIZATION STEP-THROUGH ============ -->
-  <section>
-    <h2>Walk the cache lifecycle, step by step</h2>
-    <p>Click each phase. The surprise for most people: <code>cache()</code> stores <em>nothing</em> on its own — the <strong>first action</strong> pays to compute and store.</p>
-    <div class="lab" id="lab-life">
-      <div class="lab-head"><span class="lab-title">Cache lifecycle — lazy in, eager out</span></div>
-      <p class="lab-sub">A DataFrame on top of a costly join, reused by two downstream actions.</p>
-      <div class="step" data-step><div class="head"><span class="ix">01</span> <code>df.persist(MEMORY_AND_DISK)</code> — register the level</div><div class="detail">This sets the storage level on the DataFrame and returns it. It is <strong>lazy</strong>: no partitions are computed, nothing is stored, and the Spark UI <strong>Storage</strong> tab is still empty. You've only declared <em>intent</em> to cache.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">02</span> First action (<code>df.count()</code>) — compute + STORE</div><div class="detail">The first action runs the full lineage (the expensive join/shuffle) <strong>and</strong> writes the resulting partitions into Storage memory (spilling overflow to disk). This action is <strong>slower than normal</strong> because it pays the compute <em>and</em> the store. Now the Storage tab shows the cached entry with its size and Fraction Cached.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">03</span> Later actions — reuse the cache</div><div class="detail">Each subsequent action reads the stored blocks instead of re-running the join. In <code>.explain()</code> you'll see <code>InMemoryTableScan</code> where the <code>SortMergeJoin</code> / <code>FileScan</code> used to be. This is where caching pays off — two reuses turn one expensive join into one compute plus two cheap reads.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">04</span> <code>df.unpersist()</code> — free it (eager)</div><div class="detail">When you're done, <code>unpersist()</code> <strong>immediately</strong> drops the blocks from memory and disk, returning Storage memory to the pool so execution and other caches can use it. Skipping this leaves stale blocks pinning <code>R</code> and pressuring GC for the rest of the session.</div></div>
-      <div class="verdict">The whole game lives in <b>step 02</b> being lazy and <b>step 04</b> being eager. Cache only when steps 03 happen <b>≥ 2 times</b>; otherwise step 02's tax buys you nothing.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the persist → materialize → reuse → unpersist lifecycle.</p>
-    </div>
-  </section>
-
-  <!-- ============ INTERACTIVE: CLUSTER EXECUTION LAB ============ -->
-  <section>
-    <h2>See it run on the cluster</h2>
-    <p>Watch <code>df.persist()</code> followed by <strong>two actions</strong> play out across a <strong>1 driver + 3 executor</strong> cluster, each executor holding its own <strong>block manager</strong>. The first action computes <em>and</em> stores; with a replicated level a block is copied to a peer; the second action reads straight from the cached blocks — <strong>no recompute</strong>.</p>
-    <div class="lab" id="lab-cluster">
-      <div class="lab-head"><span class="lab-title">Cluster execution — persist, materialize, reuse</span></div>
-      <p class="lab-sub">Storage level <code>MEMORY_AND_DISK_2</code> (replicated). 4 partitions of a cleaned join, spread across 3 executors.</p>
-      <div class="controls">
-        <div class="seg" id="cl-level" role="group" aria-label="storage level">
-          <button data-rep="0" aria-pressed="true">MEMORY_AND_DISK</button>
-          <button data-rep="1" aria-pressed="false">MEMORY_AND_DISK_2</button>
-        </div>
-      </div>
-      <div class="cluster" id="cl-stage">
-        <div class="nodes" id="cl-nodes">
-          <div class="node driver" id="cl-driver"><h4>Driver <span class="core">main()</span></h4><div class="parts" id="cl-d-parts"></div><div class="spillzone" id="cl-d-spill"></div></div>
-          <div class="node" id="cl-ex0"><h4>Executor 0 <span class="core">block mgr</span></h4><div class="parts" id="cl-e0"></div><div class="spillzone" id="cl-e0-spill"></div></div>
-          <div class="node" id="cl-ex1"><h4>Executor 1 <span class="core">block mgr</span></h4><div class="parts" id="cl-e1"></div><div class="spillzone" id="cl-e1-spill"></div></div>
-          <div class="node" id="cl-ex2"><h4>Executor 2 <span class="core">block mgr</span></h4><div class="parts" id="cl-e2"></div><div class="spillzone" id="cl-e2-spill"></div></div>
-        </div>
-        <div class="wire" id="cl-wire"></div>
-      </div>
-      <div class="panes">
-        <div class="pane">
-          <div class="ptitle">Dummy PySpark</div>
-          <div class="codepane" id="cl-code"><span class="ln" data-ln="0"><span class="k">clean</span> = events.join(devices, <span class="s">"device_id"</span>)</span><span class="ln" data-ln="1">clean.persist(StorageLevel.MEMORY_AND_DISK<span id="cl-lvl-sfx"></span>)</span><span class="ln" data-ln="2">clean.count()        <span class="c"># action 1</span></span><span class="ln" data-ln="3">clean.groupBy(<span class="s">"country"</span>).count()  <span class="c"># action 2</span></span><span class="ln" data-ln="4">clean.unpersist()    <span class="c"># free the blocks</span></span></div>
-        </div>
-        <div class="pane">
-          <div class="ptitle">Block manager state</div>
-          <div class="datapane" id="cl-data">
-            <div class="row" data-row="0">p0 → exec 0</div>
-            <div class="row" data-row="1">p1 → exec 1</div>
-            <div class="row" data-row="2">p2 → exec 2</div>
-            <div class="row" data-row="3">p3 → exec 0</div>
-          </div>
-        </div>
-      </div>
-      <div class="stepper">
-        <button id="cl-prev">‹ Prev</button>
-        <button id="cl-play" class="play">▶ Play</button>
-        <button id="cl-next">Next ›</button>
-        <div class="pbar"><div class="pfill" id="cl-fill"></div></div>
-        <span class="scount" id="cl-count">step 1 / 6</span>
-      </div>
-      <div class="narr" id="cl-narr"><span class="stage">ready</span></div>
-      <button id="cl-reset" style="margin-top:10px;font-family:'Spline Sans Mono',monospace;font-size:.72rem;background:none;border:none;color:var(--faint);cursor:pointer;text-decoration:underline">reset</button>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of cache materialization and reuse across executor block managers — partition counts and node counts are illustrative.</p>
-    </div>
-  </section>
-
-  <!-- ============ CODE + VERIFICATION ============ -->
-  <section>
-    <h2>The code you'll write (and how to verify it)</h2>
-    <div class="callout">
-      <span class="lbl">Track rule</span>
-      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+      <span class="lbl">Simple reading rule</span>
+      Before every <code>cache()</code>/<code>persist()</code> below, ask one question: <strong>"Is this DataFrame reused across multiple actions — and will I <code>unpersist()</code> it?"</strong> If it's read once, or you'll never free it, don't cache.
     </div>
 
     <h3>Cache a reused DataFrame and confirm it's used</h3>
@@ -408,135 +406,161 @@ clean.count()                                      <span class="c"># FIRST actio
 a = clean.groupBy(<span class="s">"country"</span>).count()
 b = clean.where(<span class="s">"is_fraud"</span>).count()
 
-<span class="c"># VERIFY: the plan reads from cache, not from the join/source again.</span>
-a.explain(mode=<span class="s">"formatted"</span>)
-<span class="c">#   *(n) HashAggregate ...</span>
-<span class="c">#   +- InMemoryTableScan [country#..]            &lt;-- reading the CACHE  ✅</span>
+<span class="c"># VERIFY — a.explain(mode="formatted") reads from the cache, not the join:</span>
+<span class="c">#   +- InMemoryTableScan [country#..]            &lt;-- reading the CACHE</span>
 <span class="c">#         +- InMemoryRelation [..], StorageLevel(disk, memory, deserialized, 1 replicas)</span>
-<span class="c">#   (no SortMergeJoin / no FileScan events here  &lt;-- the join is NOT re-run ✅)</span></code></pre>
-    <p>Spark UI → <strong>Storage</strong> tab: one cached entry, level <code>Disk Memory Deserialized 1x Replicated</code>, <strong>Fraction Cached 100%</strong>. If it's &lt; 100%, the cache didn't all fit.</p>
-
-    <h3>Equivalent in Spark SQL</h3>
-    <pre><span class="tag">sql</span><code><span class="c">-- CACHE TABLE is EAGER by default (materializes immediately) — opposite of df.cache().</span>
-<span class="c">-- LAZY makes it match the DataFrame API's lazy behaviour.</span>
-<span class="k">CACHE</span> <span class="k">LAZY</span> <span class="k">TABLE</span> clean_events <span class="k">AS</span>
-<span class="k">SELECT</span> e.*, d.device_type
-<span class="k">FROM</span>   events e <span class="k">JOIN</span> devices d <span class="k">ON</span> e.device_id = d.device_id;
-
-<span class="k">UNCACHE</span> <span class="k">TABLE</span> clean_events;   <span class="c">-- free it when done (eager)</span>
-<span class="c">-- VERIFY: EXPLAIN SELECT ... shows InMemoryTableScan; Storage tab lists `clean_events`.</span></code></pre>
+<span class="c">#   (no SortMergeJoin / no FileScan events here  &lt;-- the join is NOT re-run)</span></code></pre>
+    <p>Spark UI &rarr; <strong>Storage</strong> tab: one cached entry, level <code>Disk Memory Deserialized 1x Replicated</code>, <strong>Fraction Cached 100%</strong>. If it's &lt; 100%, the cache didn't all fit.</p>
 
     <h3>Choose a non-default level (too big for memory)</h3>
     <pre><span class="tag">python</span><code><span class="c"># The cleaned DataFrame is 2× cluster RAM — don't fight for heap; cache to disk only.</span>
 huge.persist(StorageLevel.DISK_ONLY)   <span class="c"># PySpark also exposes DISK_ONLY_2 / DISK_ONLY_3</span>
 huge.count()                           <span class="c"># materialize</span>
-<span class="c"># VERIFY: Storage tab shows Size in Memory = 0, Size on Disk &gt; 0, level "Disk Serialized 1x".</span></code></pre>
+
+<span class="c"># VERIFY — Storage tab: Size in Memory = 0, Size on Disk &gt; 0, level "Disk Serialized 1x".</span></code></pre>
 
     <h3>Always unpersist when done</h3>
     <pre><span class="tag">python</span><code>clean.unpersist()        <span class="c"># eager: releases Storage memory for execution / other caches</span>
-<span class="c"># VERIFY: the Storage tab entry disappears; later .explain() falls back to the source plan.</span></code></pre>
+
+<span class="c"># VERIFY — the Storage tab entry disappears; later .explain() falls back to the source plan.</span></code></pre>
 
     <h3>Contrast: read-once (don't cache) vs reused (do cache)</h3>
-    <pre><span class="tag">python</span><code><span class="c"># ❌ Anti-pattern: caching a DataFrame used by exactly ONE action — pure overhead.</span>
+    <pre><span class="tag">python</span><code><span class="c"># ANTI-PATTERN: caching a DataFrame used by exactly ONE action — pure overhead.</span>
 once = big.filter(<span class="s">"active"</span>).cache()
-once.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()   <span class="c"># only action → cache added cost for nothing</span>
+once.write.format(<span class="s">"noop"</span>).mode(<span class="s">"overwrite"</span>).save()   <span class="c"># only action → cache cost for nothing</span>
 
-<span class="c"># ✅ Right: cache only when there are ≥ 2 actions, and unpersist after the last one.</span>
-reused = big.filter(<span class="s">"active"</span>); reused.persist(StorageLevel.MEMORY_AND_DISK); reused.count()
-m1 = reused.groupBy(<span class="s">"region"</span>).count(); m2 = reused.where(<span class="s">"vip"</span>).count()   <span class="c"># 2 reuses → pays off</span>
-reused.unpersist()</code></pre>
+<span class="c"># RIGHT: cache only when there are ≥ 2 actions, and unpersist after the last one.</span>
+reused = big.filter(<span class="s">"active"</span>)
+reused.persist(StorageLevel.MEMORY_AND_DISK); reused.count()       <span class="c"># materialize once</span>
+m1 = reused.groupBy(<span class="s">"region"</span>).count(); m2 = reused.where(<span class="s">"vip"</span>).count()  <span class="c"># 2 reuses → pays off</span>
+reused.unpersist()
+
+<span class="c"># VERIFY — Spark UI SQL tab: the reused query shows a cached scan node;</span>
+<span class="c"># the source stages disappear on the second action.</span></code></pre>
   </section>
 
-  <!-- ============ INTERACTIVE 3: TABBED PLAN COMPARE ============ -->
+  <!-- ============ DIAGRAM B · cluster lab (materialize + reuse) ============ -->
   <section>
-    <h2>Compare the plans</h2>
-    <p>Switch between an uncached DataFrame (recomputed each action), a cached one (read from memory), and a cache that didn't fit (partially recomputed / spilled).</p>
-    <div class="lab" id="lab-plans">
-      <div class="lab-head"><span class="lab-title">Physical plan: recompute vs reuse</span></div>
-      <div class="controls">
-        <div class="seg" id="pl-seg" role="group" aria-label="cache state">
-          <button data-s="none" aria-pressed="true">No cache</button>
-          <button data-s="cached" aria-pressed="false">Cached (fits)</button>
-          <button data-s="partial" aria-pressed="false">Cache too big</button>
+    <p class="seclabel">Figure B · materialize once, reuse many</p>
+    <h2>See it run across the cluster</h2>
+    <p>This figure isolates a different thing from Figure A: not the shape of a block, but <em>what happens across the nodes on each action</em>. Step <code>persist()</code> then <strong>two actions</strong> across <strong>1 driver + 3 executors</strong>, each holding its own <strong>block manager</strong>. The first action computes <em>and</em> stores the cached blocks; with a replicated level a copy is placed on a peer; the second action <strong>reuses</strong> them — <em>no recompute</em>. Use <em>Prev / Play / Next</em>.</p>
+    <div class="lab" id="lab-run">
+      <div class="lab-head">
+        <span class="lab-title">persist → materialize → reuse</span>
+        <div class="seg" id="lr-mode" role="group" aria-label="storage level">
+          <button data-mode="plain" aria-pressed="true">MEMORY_AND_DISK</button>
+          <button data-mode="rep" aria-pressed="false">MEMORY_AND_DISK_2</button>
         </div>
       </div>
-      <div class="planbox" id="pl-plan"></div>
-      <div class="verdict" id="pl-note"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of how the same downstream action's plan changes with cache state.</p>
+      <p class="lab-sub">A 4-partition cleaned join spread across 3 executors; each cached block ≈ 240 MB.</p>
+
+      <div class="cluster" id="lr-cluster">
+        <div class="nodes" id="lr-nodes">
+          <div class="node driver" id="lr-driver" data-node="driver">
+            <h4>Driver <span class="core">main()</span></h4>
+            <div class="parts" id="lr-driver-parts"></div>
+            <div class="drvheap" id="lr-drvheap">
+              <div class="dlbl"><span>driver heap</span><span id="lr-heaplbl">0 MB</span></div>
+              <div class="dbar"><div class="dfill" id="lr-dfill"></div></div>
+            </div>
+          </div>
+          <div class="node" id="lr-exec0" data-node="e0"><h4>Executor 1 <span class="core">P0·P3</span></h4><div class="parts" id="lr-e0-parts"></div></div>
+          <div class="node" id="lr-exec1" data-node="e1"><h4>Executor 2 <span class="core">P1</span></h4><div class="parts" id="lr-e1-parts"></div></div>
+          <div class="node" id="lr-exec2" data-node="e2"><h4>Executor 3 <span class="core">P2</span></h4><div class="parts" id="lr-e2-parts"></div></div>
+        </div>
+        <div class="wire" id="lr-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="lr-prev">‹ Prev</button>
+        <button id="lr-play" class="play">▶ Play</button>
+        <button id="lr-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="lr-pfill"></div></div>
+        <span class="scount" id="lr-scount">step 1 / 5</span>
+      </div>
+
+      <div class="narr" id="lr-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">PySpark — dummy code</div>
+          <div class="codepane" id="lr-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Block manager state</div>
+          <div class="datapane" id="lr-data"></div>
+        </div>
+      </div>
+      <p class="lab-note">Simplified illustration — partition sizes, node counts, and heap figures are illustrative.</p>
     </div>
   </section>
 
-  <!-- ============ COMPARISON TABLE ============ -->
+  <!-- ============ 05 · DECISION TABLE (a decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · Decision table</p>
+    <h2>Which level, and what it costs you</h2>
+    <p>Read this by the situation you're in — it answers "which level, and what's the failure mode?" at a glance. (The <em>why</em> is §3; this is the <em>which</em>. The <code>_SER</code> row is Scala/Java only — PySpark always serializes.)</p>
     <table class="tbl">
-      <thead><tr><th>Storage level</th><th>Memory</th><th>Disk</th><th>Off-heap</th><th>Serialized (JVM)</th><th>If it doesn't fit</th><th>Replicas</th></tr></thead>
+      <thead><tr><th>Storage level</th><th>Memory</th><th>Disk</th><th>Serialized (JVM)</th><th>If it doesn't fit</th><th>Reach for it when</th></tr></thead>
       <tbody>
-        <tr><td><code>MEMORY_ONLY</code> <em>(RDD default)</em></td><td>✅</td><td>✗</td><td>✗</td><td>No</td><td><strong>recompute</strong> missing</td><td>1 (<code>_2</code>→2)</td></tr>
-        <tr><td><code>MEMORY_AND_DISK</code> <em>(DataFrame default)</em></td><td>✅</td><td>✅ spill</td><td>✗</td><td>No</td><td><strong>spill</strong> to disk</td><td>1 (<code>_2</code>→2)</td></tr>
-        <tr><td><code>DISK_ONLY</code></td><td>✗</td><td>✅</td><td>✗</td><td>Yes</td><td>n/a (all on disk)</td><td>1 (<code>_2</code>,<code>_3</code>)</td></tr>
-        <tr><td><code>MEMORY_ONLY_SER</code> <em>(not in PySpark)</em></td><td>✅</td><td>✗</td><td>✗</td><td><strong>Yes</strong></td><td>recompute</td><td>1 (<code>_2</code>)</td></tr>
-        <tr><td><code>MEMORY_AND_DISK_SER</code> <em>(not in PySpark)</em></td><td>✅</td><td>✅</td><td>✗</td><td><strong>Yes</strong></td><td>spill</td><td>1 (<code>_2</code>)</td></tr>
-        <tr><td><code>OFF_HEAP</code> <em>(experimental)</em></td><td>off-heap</td><td>✗</td><td>✅</td><td>Yes</td><td>recompute</td><td>1</td></tr>
+        <tr><td><code>MEMORY_ONLY</code> <em>(RDD default)</em></td><td>Yes</td><td>No</td><td>No</td><td class="risk-hi">recompute missing</td><td>RDDs; DataFrames prefer the safer default</td></tr>
+        <tr><td><code>MEMORY_AND_DISK</code> <em>(DataFrame default)</em></td><td>Yes</td><td>spill</td><td>No</td><td class="risk-lo">spill to disk</td><td>The everyday default — safe reuse</td></tr>
+        <tr><td><code>DISK_ONLY</code></td><td>No</td><td>Yes</td><td>Yes</td><td class="risk-lo">n/a (all on disk)</td><td>Too big for RAM; zero heap/GC pressure</td></tr>
+        <tr><td><code>MEMORY_AND_DISK_2</code> / <code>DISK_ONLY_2</code></td><td>Yes / No</td><td>Yes</td><td>—</td><td class="risk-lo">spill / disk</td><td>Fault tolerance — survive an executor loss</td></tr>
+        <tr><td><code>OFF_HEAP</code> <em>(experimental)</em></td><td>off-heap</td><td>No</td><td>Yes</td><td class="risk-hi">recompute</td><td>Cut GC on the cache; needs off-heap enabled</td></tr>
+        <tr><td><code>MEMORY_ONLY_SER</code> <em>(not in PySpark)</em></td><td>Yes</td><td>No</td><td>Yes</td><td class="risk-hi">recompute</td><td>Scala/Java: smaller heap, CPU to deserialize</td></tr>
       </tbody>
     </table>
-    <div class="callout">
-      <span class="lbl">PySpark reality</span>
-      Objects are <strong>always Pickle-serialized</strong>, so the <code>_SER</code> levels aren't separately exposed — Python's set is <code>MEMORY_ONLY(_2)</code>, <code>MEMORY_AND_DISK(_2)</code>, <code>DISK_ONLY(_2/_3)</code>, <code>OFF_HEAP</code>. The <code>_SER</code> rows are Scala/Java only (kept for the "what's the full matrix?" question).
-    </div>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of §3:</p>
     <ul>
-      <li><strong>Reuse across ≥ 2 actions:</strong> an iterative ML loop, repeated exploratory queries on a cleaned DataFrame, or one intermediate result feeding several writes/branches.</li>
-      <li><strong>Break an expensive lineage:</strong> a DataFrame on top of a costly join/shuffle hit multiple times — caching turns N recomputes of the join into one.</li>
-      <li><strong>Fault tolerance on long jobs:</strong> <code>_2</code> levels replicate blocks so losing an executor doesn't force a recompute of an expensive lineage.</li>
+      <li><strong>Cache that doesn't fit behaves differently by level.</strong> <code>MEMORY_ONLY</code> silently <strong>recomputes</strong> the missing partitions (you think it's cached, but it isn't); <code>MEMORY_AND_DISK</code> <strong>spills</strong> them. Always read <strong>Fraction Cached</strong> — anything &lt; 100% is the tell.</li>
+      <li><strong>Over-caching evicts execution memory.</strong> Cached blocks pin Storage (<code>R</code>); too many force shuffles/aggregations to spill or push the executor toward OOM (Lesson 04). Cache less, use <code>DISK_ONLY</code>, or just recompute.</li>
+      <li><strong>The cache is a snapshot.</strong> Mutating the source after caching won't show new rows until you <code>unpersist()</code> and recompute — on Delta, prefer re-reading the table.</li>
+      <li><strong><code>CACHE TABLE</code> is <em>eager</em>, <code>df.cache()</code> is <em>lazy</em>.</strong> The SQL form materializes immediately unless you write <code>CACHE LAZY TABLE</code> — easy to mix up.</li>
     </ul>
-    <h3>Edge cases</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
-      <li><strong><code>cache()</code> then no action → nothing is cached.</strong> Storage tab stays empty; later actions still recompute. Force it with <code>count()</code> / a <code>noop</code> write.</li>
-      <li><strong>Caching a read-once DataFrame</strong> — pure overhead; the first-action "compute + store" tax buys nothing.</li>
-      <li><strong>Cache that doesn't fit:</strong> <code>MEMORY_ONLY</code> silently <strong>recomputes</strong> missing partitions; <code>MEMORY_AND_DISK</code> <strong>spills</strong> them. Check <strong>Fraction Cached</strong>.</li>
-      <li><strong>Over-caching evicts execution memory</strong> — too many cached blocks in <code>R</code> force shuffles/aggregations to spill or push toward OOM (Lesson 04).</li>
-      <li><strong>Mutating the source after caching</strong> — the cache is a snapshot; new rows won't appear until you <code>unpersist()</code> and recompute (on Delta, re-read the table).</li>
-    </ul>
-    <h3>Limitations</h3>
-    <ul>
-      <li>Cache/persist are <strong>lazy</strong>; only <code>unpersist()</code> is eager. There's no "cache now" without an action.</li>
-      <li>A <code>StorageLevel</code> <strong>can't be changed</strong> once set without <code>unpersist()</code> first (persist refuses to reassign a level).</li>
-      <li><code>OFF_HEAP</code> is <strong>experimental</strong> and needs <code>spark.memory.offHeap.enabled=true</code> + <code>spark.memory.offHeap.size &gt; 0</code>.</li>
-      <li>Caching is <strong>not</strong> a substitute for pruning (Lesson 07) or fixing a bad join (Lesson 02) — it reuses an expensive result, it doesn't make it cheaper to compute.</li>
+      <li><strong>There's no "cache now."</strong> Cache/persist are lazy; only <code>unpersist()</code> is eager. Nothing is stored without an action.</li>
+      <li><strong>A level can't be reassigned in place.</strong> <code>persist()</code> refuses to change the level of an already-persisted DataFrame — <code>unpersist()</code> first.</li>
+      <li><strong>Cache is ephemeral.</strong> It's in-cluster and snapshot-in-time — it does not survive a cluster restart.</li>
+      <li><strong>Caching is not a substitute for pruning (Lesson 07) or fixing a bad join (Lesson 02)</strong> — it reuses an expensive result; it doesn't make that result cheaper to compute.</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Quoting the RDD default for a DataFrame.</strong> RDD <code>cache()</code> = <code>MEMORY_ONLY</code>; <strong>DataFrame <code>cache()</code> = <code>MEMORY_AND_DISK</code></strong> (<code>MEMORY_AND_DISK_DESER</code>).</li>
-      <li><strong>Expecting <code>cache()</code> to be eager.</strong> It's lazy — nothing is stored until the first action. <code>df.cache()</code> alone caches nothing.</li>
-      <li><strong>Never calling <code>unpersist()</code>.</strong> Stale blocks pin Storage memory and pressure GC for the rest of the session.</li>
-      <li><strong>Caching everything "to be safe."</strong> Over-caching evicts execution memory → spill / GC / OOM. The right default is <em>not</em> to cache.</li>
-      <li><strong>Asking for <code>MEMORY_ONLY_SER</code> in PySpark.</strong> It isn't separately exposed — Python always serializes (Pickle).</li>
-      <li><strong><code>CACHE TABLE</code> is eager, <code>df.cache()</code> is lazy.</strong> The SQL form materializes immediately unless you write <code>CACHE LAZY TABLE</code>.</li>
-      <li><strong>Assuming cache survives a cluster restart.</strong> It doesn't — cache is in-cluster, ephemeral, and snapshot-in-time.</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Quoting the RDD default for a DataFrame</strong></td><td>The defaults differ by object, so the answer is wrong.</td><td>RDD <code>cache()</code> = <code>MEMORY_ONLY</code>; DataFrame <code>cache()</code> = <code>MEMORY_AND_DISK</code>.</td></tr>
+        <tr><td><strong>Expecting <code>cache()</code> to be eager</strong></td><td>It's lazy — nothing is stored until an action runs.</td><td>Force it with a <code>count()</code> or a <code>noop</code> write.</td></tr>
+        <tr><td><strong>Never calling <code>unpersist()</code></strong></td><td>Stale blocks pin Storage memory and pressure GC for the rest of the session.</td><td>Unpersist eagerly once the last action is done.</td></tr>
+        <tr><td><strong>Caching everything "to be safe"</strong></td><td>Over-caching evicts execution memory and slows the job.</td><td>The right default is <em>not</em> to cache — reserve it for ≥ 2 reuses.</td></tr>
+        <tr><td><strong>Asking for <code>MEMORY_ONLY_SER</code> in PySpark</strong></td><td>It isn't separately exposed — a no-op concept in Python.</td><td>Python always serializes (Pickle); pick a memory/disk/off-heap level.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html#rdd-persistence">Apache Spark — RDD Programming Guide (persistence, storage levels, PySpark "always serialized" nuance)</a>
-      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html#caching-data-in-memory">Apache Spark — SQL Performance Tuning (caching data in memory, CACHE TABLE)</a>
-      <a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.persist.html">Apache Spark — PySpark DataFrame.persist / cache / unpersist API</a>
-      <a href="https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.StorageLevel.html">Apache Spark — pyspark.StorageLevel (Python-exposed levels)</a>
-      <a href="https://spark.apache.org/docs/latest/tuning.html#memory-management-overview">Apache Spark — Tuning (memory management, serialized caching &amp; GC trade-off)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/disk-cache">Azure Databricks — Optimize performance with caching (Spark cache vs disk cache)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html#rdd-persistence">Apache Spark — RDD Programming Guide (persistence, storage levels, the PySpark "always serialized" nuance)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html#caching-data-in-memory">Apache Spark — SQL Performance Tuning (caching data in memory, CACHE TABLE)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrame.persist.html">Apache Spark — PySpark DataFrame.persist / cache / unpersist API</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/api/python/reference/api/pyspark.StorageLevel.html">Apache Spark — pyspark.StorageLevel (the Python-exposed levels)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/tuning.html#memory-management-overview">Apache Spark — Tuning (memory management, serialized caching &amp; GC trade-off)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/disk-cache">Azure Databricks — Optimize performance with caching (Spark cache vs disk cache)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -544,12 +568,13 @@ reused.unpersist()</code></pre>
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · OSS-vs-Databricks defaults noted where they differ · storage levels, the RDD-vs-DataFrame default, and the PySpark "always serialized" nuance are doc-quoted.</p>
   </div>
 </footer>
 
 <script>
-/* ---- Diagram 1: storage-level explorer (base seg + flag toggles) ---- */
+/* ---- Figure A: storage-level explorer (base seg + flag toggles) ---- */
 (function(){
   const root = document.getElementById('lab-levels');
   if(!root) return;
@@ -582,7 +607,6 @@ reused.unpersist()</code></pre>
       into.appendChild(b);
     }
   }
-
   function setActive(el, on){ el.classList.toggle('active', on); }
 
   function render(){
@@ -610,8 +634,8 @@ reused.unpersist()</code></pre>
     if(ser && !off) name += '_SER';
     if(rep) name += '_2';
 
-    blocks(ram, inRam, ser ? 'off' : '', rep);       // serialized in-RAM shown in ember to signal byte-array
-    // re-tag in-RAM blocks: deserialized = violet (default class), serialized = ember
+    blocks(ram, inRam, '', rep);
+    // re-tag in-RAM blocks: deserialized = accent, serialized = ember byte-array
     if(inRam){
       ram.querySelectorAll('.blk').forEach(function(b){
         b.className = 'blk' + (ser ? ' off' : '') + (rep ? ' rep' : '');
@@ -632,11 +656,11 @@ reused.unpersist()</code></pre>
     // verdict + RDD-vs-DataFrame default callout
     let v;
     if(off){
-      v = '<b>OFF_HEAP.</b> Serialized blocks live <em>outside</em> the JVM heap — no GC on them — but it\'s experimental and needs <code>spark.memory.offHeap.enabled=true</code> + a positive <code>spark.memory.offHeap.size</code>. No <code>_2</code> variant.';
+      v = '<b>OFF_HEAP.</b> Serialized blocks live <em>outside</em> the JVM heap — no GC on them — but it\'s experimental and needs <code>spark.memory.offHeap.enabled=true</code> plus a positive <code>spark.memory.offHeap.size</code>. No <code>_2</code> variant.';
     } else if(base === 'memory_only'){
-      v = '<b>MEMORY_ONLY is the RDD <u>default</u>.</b> RAM only — any partition that doesn\'t fit is <em>recomputed</em> on demand (you may think it\'s cached when it isn\'t). For a DataFrame, prefer the safer MEMORY_AND_DISK.';
+      v = '<b>MEMORY_ONLY is the RDD default.</b> RAM only — any partition that doesn\'t fit is <em>recomputed</em> on demand (you may think it\'s cached when it isn\'t). For a DataFrame, prefer the safer MEMORY_AND_DISK.';
     } else if(base === 'memory_and_disk'){
-      v = '<b>MEMORY_AND_DISK is the DataFrame <u>default</u></b> (PySpark enum <code>MEMORY_AND_DISK_DESER</code>). RAM first, overflow <em>spills to disk</em> instead of failing — the safe everyday choice.';
+      v = '<b>MEMORY_AND_DISK is the DataFrame default</b> (PySpark enum <code>MEMORY_AND_DISK_DESER</code>). RAM first, overflow <em>spills to disk</em> instead of failing — the safe everyday choice.';
     } else {
       v = '<b>DISK_ONLY.</b> Keeps the cache entirely off the heap — zero GC pressure from cache — at the cost of disk-speed reads. Reach for it when the DataFrame is too big for RAM.';
     }
@@ -666,263 +690,169 @@ reused.unpersist()</code></pre>
   render();
 })();
 
-/* ---- Diagram 2: cache lifecycle step accordion ---- */
+/* ---- Figure B: CLUSTER EXECUTION LAB — persist → materialize → reuse across 1 driver + 3 executors ---- */
 (function(){
-  const root = document.getElementById('lab-life');
+  const root = document.getElementById('lab-run');
   if(!root) return;
-  root.querySelectorAll('[data-step]').forEach(function(step){
-    step.addEventListener('click', function(){ step.classList.toggle('open'); });
-  });
-})();
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ---- Diagram 3: tabbed plan compare (recompute vs reuse) ---- */
-(function(){
-  const root = document.getElementById('lab-plans');
-  if(!root) return;
-  const seg = root.querySelector('#pl-seg');
-  const plan = root.querySelector('#pl-plan');
-  const note = root.querySelector('#pl-note');
-  const data = {
-    none: {
-      plan: '<span class="dim">== Physical Plan ==  (downstream action, NO cache)</span>\n' +
-            'HashAggregate [country]\n' +
-            '+- <span class="bad">SortMergeJoin</span> [device_id]   <span class="bad">&lt;- the costly join RE-RUNS</span>\n' +
-            '   :- <span class="bad">Exchange</span> hashpartitioning(device_id, 200)\n' +
-            '   :  +- FileScan events\n' +
-            '   +- <span class="bad">Exchange</span> hashpartitioning(device_id, 200)\n' +
-            '      +- FileScan devices',
-      note: '<b>No cache → full recompute.</b> Every action re-reads the source and re-runs the join + two exchanges. Fine for a one-shot read; wasteful if you hit this DataFrame again.'
-    },
-    cached: {
-      plan: '<span class="dim">== Physical Plan ==  (downstream action, cache FITS)</span>\n' +
-            'HashAggregate [country]\n' +
-            '+- <span class="ok">InMemoryTableScan</span> [country#..]      <span class="ok">&lt;- reading the CACHE ✅</span>\n' +
-            '   +- <span class="ok">InMemoryRelation</span> StorageLevel(disk, memory, deserialized, 1 replicas)\n' +
-            '      <span class="dim">(no SortMergeJoin, no FileScan — the join is NOT re-run)</span>',
-      note: '<b>Cache hit.</b> The join subtree is gone — the action reads stored blocks. Storage tab: <b>Fraction Cached 100%</b>. This is the win you cache for (when there are ≥ 2 such actions).'
-    },
-    partial: {
-      plan: '<span class="dim">== Physical Plan ==  (cache TOO BIG for memory)</span>\n' +
-            'HashAggregate [country]\n' +
-            '+- <span class="ok">InMemoryTableScan</span> [country#..]\n' +
-            '   +- InMemoryRelation StorageLevel(disk, memory, deserialized, 1 replicas)\n' +
-            '      <span class="bad">+- (uncached partitions) SortMergeJoin ...  &lt;- recomputed / read from disk</span>',
-      note: '<b>Partial cache.</b> With MEMORY_AND_DISK the overflow <b>spills to disk</b> (slower reads); with MEMORY_ONLY the missing partitions are <b>recomputed</b> each time. Storage tab shows <b>Fraction Cached &lt; 100%</b> — size down the data, use DISK_ONLY, or don\'t cache.'
-    }
-  };
-  function show(s){
-    plan.innerHTML = data[s].plan;
-    note.innerHTML = data[s].note;
-    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s)));
+  const driverNode = root.querySelector('#lr-driver');
+  const execNodes  = [root.querySelector('#lr-exec0'), root.querySelector('#lr-exec1'), root.querySelector('#lr-exec2')];
+  const execParts  = [root.querySelector('#lr-e0-parts'), root.querySelector('#lr-e1-parts'), root.querySelector('#lr-e2-parts')];
+  const drvParts   = root.querySelector('#lr-driver-parts');
+  const dfill      = root.querySelector('#lr-dfill');
+  const heaplbl    = root.querySelector('#lr-heaplbl');
+  const wire       = root.querySelector('#lr-wire');
+  const narr       = root.querySelector('#lr-narr');
+  const codeEl     = root.querySelector('#lr-code');
+  const dataEl     = root.querySelector('#lr-data');
+  const prevBtn    = root.querySelector('#lr-prev');
+  const nextBtn    = root.querySelector('#lr-next');
+  const playBtn    = root.querySelector('#lr-play');
+  const pfill      = root.querySelector('#lr-pfill');
+  const scount     = root.querySelector('#lr-scount');
+  const modeSeg    = root.querySelector('#lr-mode');
+
+  const HEAP_MB = 1024;
+  // 4 partitions: P0 & P3 on exec0, P1 on exec1, P2 on exec2. peer = replica target for _2.
+  const PARTS = [
+    { id:'P0', kc:'k0', exec:0, peer:1 },
+    { id:'P1', kc:'k1', exec:1, peer:2 },
+    { id:'P2', kc:'k2', exec:2, peer:0 },
+    { id:'P3', kc:'k3', exec:0, peer:2 }
+  ];
+
+  function chip(p, cls, pop){
+    const el = document.createElement('span');
+    el.className = 'part ' + p.kc + (cls ? ' ' + cls : '') + (pop && !reduce ? ' pop' : '');
+    el.textContent = p.id + (cls === 'replica' ? '↺' : '');
+    el.dataset.id = p.id;
+    return el;
   }
-  seg.addEventListener('click', function(e){
-    const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.s);
-  });
-  show('none');
-})();
-
-/* ---- Diagram 4: CLUSTER EXECUTION LAB — persist, materialize, reuse ---- */
-(function(){
-  const root = document.getElementById('lab-cluster');
-  if(!root) return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-
-  // partition → executor mapping (p3 also lands on exec 0)
-  const partOf = [
-    {id:'p0', ex:0, k:'k0'},
-    {id:'p1', ex:1, k:'k1'},
-    {id:'p2', ex:2, k:'k2'},
-    {id:'p3', ex:0, k:'k3'}
-  ];
-  const exEls = [
-    root.querySelector('#cl-e0'),
-    root.querySelector('#cl-e1'),
-    root.querySelector('#cl-e2')
-  ];
-  const exNodes = [
-    root.querySelector('#cl-ex0'),
-    root.querySelector('#cl-ex1'),
-    root.querySelector('#cl-ex2')
-  ];
-  const spillEls = [
-    root.querySelector('#cl-e0-spill'),
-    root.querySelector('#cl-e1-spill'),
-    root.querySelector('#cl-e2-spill')
-  ];
-  const driverNode = root.querySelector('#cl-driver');
-  const codeLns = Array.prototype.slice.call(root.querySelectorAll('#cl-code .ln'));
-  const dataRows = Array.prototype.slice.call(root.querySelectorAll('#cl-data .row'));
-  const narr = root.querySelector('#cl-narr');
-  const fill = root.querySelector('#cl-fill');
-  const count = root.querySelector('#cl-count');
-  const wire = root.querySelector('#cl-wire');
-  const lvlSfx = root.querySelector('#cl-lvl-sfx');
-  const levelSeg = root.querySelector('#cl-level');
-  const btnPrev = root.querySelector('#cl-prev');
-  const btnNext = root.querySelector('#cl-next');
-  const btnPlay = root.querySelector('#cl-play');
-  const btnReset = root.querySelector('#cl-reset');
-
-  let replicated = false;     // MEMORY_AND_DISK_2 when true
-  let i = 0;                  // current step index
-  let timer = null;
-
-  // create the partition chips inside each executor (each starts uncomputed/dim)
-  function buildChips(){
-    exEls.forEach(function(e){ e.innerHTML = ''; });
-    partOf.forEach(function(p){
-      const c = document.createElement('div');
-      c.className = 'part ' + p.k + ' dim';
-      c.id = 'cl-chip-' + p.id;
-      c.textContent = p.id;
-      exEls[p.ex].appendChild(c);
-    });
-  }
-  function chip(pid){ return root.querySelector('#cl-chip-' + pid); }
-
-  function clearActive(){
-    exNodes.forEach(function(n){ n.classList.remove('active'); });
+  function clearNodes(){
+    execParts.forEach(function(c){ c.innerHTML=''; });
+    drvParts.innerHTML='';
+    execNodes.forEach(function(n){ n.classList.remove('active'); });
     driverNode.classList.remove('active');
   }
-  function litWire(on){ wire.classList.toggle('lit', !!on); }
-  function hlCode(idx){ codeLns.forEach(function(l){ l.classList.toggle('hl', idx.indexOf(parseInt(l.dataset.ln,10))>-1); }); }
-  function hlData(idx){ dataRows.forEach(function(r){ r.classList.toggle('hl', idx.indexOf(parseInt(r.dataset.row,10))>-1); }); }
+  function setHeap(mb){
+    dfill.style.width = Math.min(mb/HEAP_MB,1)*100 + '%';
+    heaplbl.textContent = (mb>=1024 ? (mb/1024).toFixed(2)+' GB' : Math.round(mb)+' MB');
+  }
+  function setWire(lit){ wire.classList.toggle('lit', !!lit); }
+  function placeBase(cls, pop){
+    PARTS.forEach(function(p){ execParts[p.exec].appendChild(chip(p, cls, pop)); });
+  }
+  function renderData(rep, phase){
+    const rows = PARTS.map(function(p){
+      let where = 'exec ' + (p.exec+1);
+      if(phase === 'stored' || phase === 'reuse'){
+        where = 'cached @ exec ' + (p.exec+1) + (rep ? ' + exec ' + (p.peer+1) : '');
+      }
+      return '<div class="row' + (phase==='reuse'?' hl':'') + '">' + p.id + ' → ' + where + '</div>';
+    });
+    dataEl.innerHTML = rows.join('');
+  }
 
-  // STEP definitions — each renders the full state for that step (idempotent)
-  const steps = [
-    {
-      stage: 'persist() — register the level',
-      code: [1], data: [],
-      run: function(){
-        clearActive(); litWire(false);
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.add('dim'); c.classList.remove('cached'); });
-        spillEls.forEach(function(s){ s.innerHTML=''; });
-        narr.innerHTML = '<span class="stage">lazy</span> <code>persist()</code> only <b>registers</b> the storage level on <code>clean</code>. Nothing is computed and <b>nothing is stored yet</b> — the Storage tab is empty. Caching is lazy; it waits for the first action.';
-      }
-    },
-    {
-      stage: 'action 1 — compute partitions (work)',
-      code: [2], data: [0,1,2,3],
-      run: function(){
-        litWire(false);
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim','cached'); if(!reduce) c.classList.add('pop'); });
-        exNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.remove('active');
-        spillEls.forEach(function(s){ s.innerHTML=''; });
-        narr.innerHTML = '<span class="stage">materialize</span> The <b>first action</b> (<code>count()</code>) runs the full lineage — the costly join — so <b>each executor computes its partition</b>. This action is slower: it pays the compute now so later actions don\'t have to.';
-      }
-    },
-    {
-      stage: 'action 1 — store as cached blocks',
-      code: [2], data: [0,1,2,3],
-      run: function(){
-        litWire(false); clearActive();
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); if(!reduce) c.classList.add('pop'); });
-        spillEls.forEach(function(s){ s.innerHTML='<b>cached</b> · mem→disk spill if full'; });
-        narr.innerHTML = '<span class="stage">store</span> Each executor <b>stores its computed partition as a cached block</b> in its block manager, per <code>MEMORY_AND_DISK</code> — RAM first, spilling overflow to local disk (never recompute). The Storage tab now shows the entry.';
-      }
-    },
-    {
-      stage: replicated ? 'replicate one block to a peer (_2)' : 'no replication (single copy)',
-      code: [1], data: [3],
-      run: function(){
-        clearActive();
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); });
-        if(replicated){
-          // copy p3 (lives on exec 0) to exec 1 as a second replica
-          exNodes[0].classList.add('active'); exNodes[1].classList.add('active');
-          let dup = root.querySelector('#cl-chip-p3-rep');
-          if(!dup){
-            dup = document.createElement('div');
-            dup.className = 'part k3 cached rep'; dup.id = 'cl-chip-p3-rep'; dup.textContent = 'p3*';
-            dup.style.outline = '2px dotted rgba(255,255,255,.7)'; dup.style.outlineOffset = '-3px';
-            exEls[1].appendChild(dup);
-          }
-          if(!reduce) dup.classList.add('pop');
-          spillEls[1].innerHTML = '<b>replica</b> of p3 from exec 0';
-          litWire(true);
-          narr.innerHTML = '<span class="stage">replicated _2</span> With <code>MEMORY_AND_DISK_2</code> each block is <b>copied to a second executor</b> (here <code>p3</code> → exec 1). If an executor is lost, its blocks survive on the peer — no recompute of the expensive join.';
-        } else {
-          const dup = root.querySelector('#cl-chip-p3-rep'); if(dup) dup.remove();
-          spillEls.forEach(function(s){ s.innerHTML='<b>cached</b> · single copy'; });
-          litWire(false);
-          narr.innerHTML = '<span class="stage">single copy</span> Plain <code>MEMORY_AND_DISK</code> keeps <b>one copy</b> of each block. Lose an executor and its partitions must be <b>recomputed</b>. Switch the level to <code>_2</code> above to replicate a block to a peer.';
-        }
-      }
-    },
-    {
-      stage: 'action 2 — read from cache, no recompute',
-      code: [3], data: [0,1,2,3],
-      run: function(){
-        litWire(false);
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('dim'); c.classList.add('cached'); if(!reduce) c.classList.add('pop'); });
-        exNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.add('active');
-        spillEls.forEach(function(s,ix){ s.innerHTML = '<b>cache hit</b> — fast read'; });
-        narr.innerHTML = '<span class="stage">reuse — the win</span> The <b>second action</b> reads straight from the cached blocks: <b>no join, no recompute</b>. In <code>.explain()</code> the <code>SortMergeJoin</code> is replaced by <code>InMemoryTableScan</code>. This reuse is the whole reason to cache.';
-      }
-    },
-    {
-      stage: 'unpersist() — free the blocks (eager)',
-      code: [4], data: [],
-      run: function(){
-        clearActive(); litWire(false);
-        const dup = root.querySelector('#cl-chip-p3-rep'); if(dup) dup.remove();
-        partOf.forEach(function(p){ const c=chip(p.id); c.classList.remove('cached'); c.classList.add('dim'); });
-        spillEls.forEach(function(s){ s.innerHTML=''; });
-        narr.innerHTML = '<span class="stage">free — eager</span> <code>unpersist()</code> <b>immediately</b> drops every cached block (and replicas) from memory and disk, returning Storage memory to the pool. Unlike persist/cache it is eager — always unpersist when done.';
-      }
-    }
+  const CODE = [
+    '<span class="c"># cleaned join, reused by two actions</span>',
+    'clean = events.join(devices, <span class="s">"device_id"</span>)',
+    'clean.<span class="k">persist</span>(MEMORY_AND_DISK<span id="lr-sfx"></span>)  <span class="c"># lazy</span>',
+    'clean.count()               <span class="c"># action 1</span>',
+    'clean.groupBy(<span class="s">"country"</span>).count()  <span class="c"># action 2</span>',
+    'clean.<span class="k">unpersist</span>()            <span class="c"># free the blocks</span>'
+  ];
+  function renderCode(hlSet){
+    codeEl.innerHTML = CODE.map(function(ln,idx){
+      const hl = hlSet && hlSet.indexOf(idx) !== -1 ? ' hl' : '';
+      return '<span class="ln'+hl+'">'+(ln===''?'&nbsp;':ln)+'</span>';
+    }).join('');
+    const sfx = codeEl.querySelector('#lr-sfx');
+    if(sfx) sfx.textContent = (mode === 'rep') ? '_2' : '';
+  }
+
+  // step[2] (index 2) is built per-mode by buildStep3()
+  const baseSteps = [
+    { stage:'Step 1 · persist() — register (lazy)', code:[2],
+      narr:'<code>persist()</code> only <b>registers</b> the storage level. <b>Nothing is stored yet</b> — the source partitions sit on their executors and the Storage tab is empty.',
+      run:function(){ clearNodes(); setHeap(0); setWire(false); placeBase('', true);
+        execNodes.forEach(function(n){ n.classList.add('active'); }); renderData(mode==='rep','base'); } },
+    { stage:'Step 2 · action 1 — compute + STORE', code:[3],
+      narr:'The <b>first action</b> runs the full join <em>and</em> writes each result partition into its executor\'s <b>block manager</b>. This action is slower — it computes <em>and</em> stores. The driver only tracks the tiny count.',
+      run:function(){ clearNodes(); setHeap(6); setWire(true);
+        PARTS.forEach(function(p){ execParts[p.exec].appendChild(chip(p,'cached',true)); });
+        execNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.add('active');
+        renderData(false,'stored'); } },
+    null, // placeholder — replaced by buildStep3()
+    { stage:'Step 4 · action 2 — REUSE (no recompute)', code:[4],
+      narr:'The second action reads the <b>cached blocks</b> directly — <code>InMemoryTableScan</code> replaces the join. The costly shuffle runs <b>once</b>, not twice. This is the whole payoff.',
+      run:function(){ clearNodes(); setHeap(6); setWire(false);
+        PARTS.forEach(function(p){
+          execParts[p.exec].appendChild(chip(p,'cached'));
+          if(mode==='rep') execParts[p.peer].appendChild(chip(p,'replica'));
+        });
+        execNodes.forEach(function(n){ n.classList.add('active'); }); driverNode.classList.add('active');
+        renderData(mode==='rep','reuse'); } },
+    { stage:'Step 5 · unpersist() — free (eager)', code:[5],
+      narr:'<code>unpersist()</code> <b>immediately</b> drops the blocks from every block manager, returning Storage memory to the pool. Skipping this pins <code>R</code> and pressures GC for the rest of the session.',
+      run:function(){ clearNodes(); setHeap(0); setWire(false); placeBase('', false); renderData(mode==='rep','base'); } }
   ];
 
-  function render(){
-    // rebuild the dynamic step-3 stage label for the current level
-    steps[3].stage = replicated ? 'replicate one block to a peer (_2)' : 'no replication (single copy)';
-    const total = steps.length;
-    if(i < 0) i = 0; if(i > total-1) i = total-1;
-    // strip transient pop classes before re-running
-    root.querySelectorAll('.part.pop').forEach(function(c){ c.classList.remove('pop'); });
-    const s = steps[i];
+  function buildStep3(){
+    if(mode === 'rep'){
+      return { stage:'Step 3 · replicate (_2)', code:[3],
+        narr:'With the <code>_2</code> level, each stored block is <b>copied to a peer executor</b> (dashed ↺). Losing one executor no longer forces a recompute — the price is 2× the storage.',
+        run:function(){ clearNodes(); setHeap(6); setWire(true);
+          PARTS.forEach(function(p){
+            execParts[p.exec].appendChild(chip(p,'cached'));
+            execParts[p.peer].appendChild(chip(p,'replica',true));
+          });
+          execNodes.forEach(function(n){ n.classList.add('active'); });
+          renderData(true,'stored'); } };
+    }
+    return { stage:'Step 3 · blocks live in the block managers', code:[3],
+      narr:'The 4 cached blocks now sit in Storage memory across the executors (overflow would <em>spill to disk</em> under <code>MEMORY_AND_DISK</code>). One replica each — a lost executor here would force a recompute of that partition.',
+      run:function(){ clearNodes(); setHeap(6); setWire(false);
+        PARTS.forEach(function(p){ execParts[p.exec].appendChild(chip(p,'cached')); });
+        execNodes.forEach(function(n){ n.classList.add('active'); });
+        renderData(false,'stored'); } };
+  }
+
+  let mode = 'plain', i = 0, timer = null;
+
+  function currentSteps(){
+    const s = baseSteps.slice();
+    s[2] = buildStep3();
+    return s;
+  }
+  function goTo(n){
+    const S = currentSteps();
+    i = Math.max(0, Math.min(n, S.length-1));
+    const s = S[i];
     s.run();
-    hlCode(s.code); hlData(s.data);
-    fill.style.width = ((i+1)/total*100) + '%';
-    count.textContent = 'step ' + (i+1) + ' / ' + total;
-    btnPrev.disabled = (i===0);
-    btnNext.disabled = (i===total-1);
+    renderCode(s.code);
+    narr.innerHTML = '<span class="stage">'+s.stage+'</span>'+s.narr;
+    pfill.style.width = ((i+1)/S.length*100) + '%';
+    scount.textContent = 'step '+(i+1)+' / '+S.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===S.length-1);
   }
-
-  function goTo(n){ i = n; render(); }
-  function next(){ if(i < steps.length-1){ i++; render(); } else { stop(); } }
-  function prev(){ if(i > 0){ i--; render(); } }
-
-  function stop(){ if(timer){ clearInterval(timer); timer = null; } btnPlay.textContent = '▶ Play'; btnPlay.setAttribute('aria-pressed','false'); }
-  function play(){
-    if(timer){ stop(); return; }
-    if(i === steps.length-1) goTo(0);
-    btnPlay.textContent = '❚❚ Pause'; btnPlay.setAttribute('aria-pressed','true');
-    timer = setInterval(function(){
-      if(i >= steps.length-1){ stop(); return; }
-      next();
-    }, reduce ? 700 : 1700);
+  function stopPlay(){ if(timer){ clearInterval(timer); timer=null; playBtn.textContent='▶ Play'; } }
+  function startPlay(){
+    if(i >= currentSteps().length-1) goTo(0);
+    playBtn.textContent='❚❚ Pause';
+    timer = setInterval(function(){ if(i >= currentSteps().length-1){ stopPlay(); return; } goTo(i+1); }, reduce ? 700 : 1700);
   }
-
-  btnPrev.addEventListener('click', function(){ stop(); prev(); });
-  btnNext.addEventListener('click', function(){ stop(); next(); });
-  btnPlay.addEventListener('click', play);
-  btnReset.addEventListener('click', function(){ stop(); goTo(0); });
-
-  levelSeg.addEventListener('click', function(e){
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
+  playBtn.addEventListener('click', function(){ if(timer) stopPlay(); else startPlay(); });
+  modeSeg.addEventListener('click', function(e){
     const b = e.target.closest('button'); if(!b) return;
-    replicated = (b.dataset.rep === '1');
-    levelSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x === b)); });
-    lvlSfx.textContent = replicated ? '_2' : '';
-    const dup = root.querySelector('#cl-chip-p3-rep'); if(dup && i < 3) dup.remove();
-    render();
+    stopPlay(); mode = b.dataset.mode;
+    modeSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+    goTo(0);
   });
-
-  // init
-  buildChips();
-  lvlSfx.textContent = '';
-  render();
+  goTo(0);
 })();
 </script>
 </body>

@@ -3,225 +3,365 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Data skew: salting &amp; SQL hints · Databricks PySpark Performance</title>
+<title>Data skew: salting and SQL hints · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  ul,ol{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}
-  pre .k{color:#fbbf77;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
-  .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
-  .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
-  /* skew bar-chart simulator */
-  .partlabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:10px 0 6px}
-  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:10px 8px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px}
-  .bar{flex:1;border-radius:5px 5px 0 0;min-height:3px;background:linear-gradient(180deg,var(--flame),var(--flame-2));transition:height .45s cubic-bezier(.2,.9,.3,1.4),background .3s;position:relative}
-  .bar.hot{background:linear-gradient(180deg,#fb7185,#be123c)}
-  .bar.salted{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
-  .explodebox{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
-  .copy{font-family:"Spline Sans Mono",monospace;font-size:.66rem;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.4);color:#ddd0ff;border-radius:7px;padding:5px 9px;transition:transform .3s,opacity .3s}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
-     "how it runs on the Spark nodes / how the shuffle works" animations.
-     ==================================================================== */
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
+
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
+
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
+
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
+
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
+
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
+
+  /* ---- skew bar-chart simulator ---- */
+  .partlabel{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:14px 0 6px}
+  .bars{display:flex;align-items:flex-end;gap:6px;height:180px;padding:10px 8px;background:var(--bg);border:1px solid var(--line);border-radius:9px}
+  .bar{flex:1;border-radius:4px 4px 0 0;min-height:3px;background:linear-gradient(180deg,#5b5bff,var(--accent));transition:height .45s cubic-bezier(.2,.9,.3,1.4),background .3s;position:relative}
+  .bar.hot{background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 7px,#d64848 7px,#d64848 14px)}
+  .bar.salted{background:linear-gradient(180deg,#5b5bff,var(--accent))}
+  .explodebox{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .copy{font-family:"JetBrains Mono",monospace;font-size:.64rem;background:var(--accent-soft);border:1px solid rgba(43,43,240,.32);color:var(--accent-2);border-radius:5px;padding:4px 8px}
+
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node.straggler{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s}
+  .part.k0{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k1{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.k2{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.k3{background:rgba(120,80,180,.14);border-color:rgba(120,80,180,.4);color:#6b46a8}
+  .part.hotkey{background:var(--danger-soft);border-color:rgba(185,28,28,.5);color:var(--danger)}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .spillzone{margin-top:8px;border-top:1px dashed var(--line);padding-top:7px;font-size:.56rem;color:var(--danger);font-family:"JetBrains Mono",monospace;min-height:13px;letter-spacing:.04em}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}.bars{height:140px}}
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
+
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}.bars{height:140px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.bar,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_08 &nbsp;·&nbsp; Lesson 08 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 08</p>
-    <h1>Data skew:<br>salting &amp; <span class="drip">SQL hints.</span></h1>
-    <p class="lede">When one key holds most of the rows, one task does most of the work and the whole stage waits on it. Salting breaks the hot key into many pieces; SQL hints steer the planner by hand. Here's the mechanism for each — and how to prove it worked.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
-      <span class="pill">AQE skew join <b>first defence</b></span>
-      <span class="pill">Skew factor <b>5× · 256 MB</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_08 · Data skew · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Data skew</h1>
+    <p class="subline">Salting · SQL hints · taming the one hot key</p>
+    <p class="lede">A shuffle splits a stage into <strong>one task per partition</strong>. When one key holds most of the rows, one partition swells, one task runs long after the rest have finished, and the whole stage waits on it. <em>Salting breaks the hot key into pieces; SQL hints steer the planner by hand.</em></p>
+    <div class="specs">
+      <span class="spec">Spark <b>3.2+</b> / DBR LTS</span>
+      <span class="spec">AQE skew <b>first defence</b></span>
+      <span class="spec">factor <b>5×</b> · <b>256 MB</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
-    <p><strong>Data skew</strong> is when rows are <em>unevenly</em> distributed across keys. After a <strong>shuffle</strong> — Spark moving rows across the network so all rows with the same key land in the same partition — a few "hot" keys land in a few huge partitions while the rest stay tiny. The task that processes a huge partition runs for minutes after every other task finished: a <strong>straggler</strong>. The stage is only as fast as that slowest task.</p>
-    <p>Two manual cures, after AQE has done what it can:</p>
+    <p class="seclabel">01 · What it is</p>
+    <h2>One key too many, one task too slow</h2>
+    <p><strong>Data skew</strong> is rows spread <em>unevenly</em> across keys. After a <strong>shuffle</strong> — Spark moving rows across the network so every row with the same key lands in the same partition — a few "hot" keys pile into a few huge partitions while the rest stay tiny. The task that processes a huge partition runs for minutes after every other task has finished: a <strong>straggler</strong>. And a stage is only as fast as its slowest task.</p>
+    <p><span class="chip analogy">analogy</span> Skew is a supermarket where everyone happens to need the one cashier who handles loyalty cards — nine lanes empty, one lane 200 people deep. A bigger till for that lane doesn't help; <strong>opening more lanes</strong> for those customers does. That is the whole idea behind the two manual cures below.</p>
+    <p>There are exactly two levers here, and both come <em>after</em> the automatic one (AQE skew join, Lesson 05) has done what it can. The deep dive explains each once; for now, just hold the shape:</p>
     <ul>
-      <li><strong>Salting</strong> — add a small random suffix to the hot key so its rows spread across <code>N</code> partitions instead of one. Used for a skewed <strong>aggregation</strong> (two-stage group-by) and a skewed <strong>join</strong> (salt one side, explode the other).</li>
-      <li><strong>SQL hints</strong> — <code>/*+ … */</code> annotations right after <code>SELECT</code> that <em>tell the planner what to do</em>: which <strong>join strategy</strong> to use, or how to <strong>repartition</strong> the data.</li>
+      <li><strong>Salting</strong> — add a small random suffix to the hot key so its rows spread across <code>N</code> partitions instead of one. Used for a skewed <strong>aggregation</strong> and a skewed <strong>join</strong>.</li>
+      <li><strong>SQL hints</strong> — <code>/*+ … */</code> annotations right after <code>SELECT</code> that <em>tell the planner what to do</em>: which join strategy, or how to repartition.</li>
     </ul>
     <div class="callout">
       <span class="lbl">The one rule to remember</span>
-      Skew is a <strong>data</strong> problem, not a memory problem. Throwing a bigger executor at one giant partition just delays the OOM. The fix is to <strong>break the hot key into many smaller pieces</strong> so the work spreads across tasks.
+      Skew is a <strong>data</strong> problem, not a memory problem. A bigger executor for one giant partition just delays the OOM. The fix is to <strong>break the hot key into many smaller pieces</strong> so the work spreads across tasks.
+    </div>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">What skew is</div>
+        <p>Rows spread unevenly across keys, so after a shuffle a few partitions swell while the rest stay tiny.</p>
+      </div>
+      <div class="quickcard ok">
+        <div class="qtitle">Balanced partitions</div>
+        <p>Rows spread evenly — every task does about the same work, and Max task time tracks the Median.</p>
+      </div>
+      <div class="quickcard danger">
+        <div class="qtitle">One hot key</div>
+        <p>One key owns most rows: its partition becomes a straggler that spills and runs long after the rest finish.</p>
+      </div>
     </div>
   </section>
 
-  <!-- ============ WHY IT MATTERS ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>Why it matters</h2>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>One straggler holds the whole cluster hostage</h2>
     <ul>
-      <li>A shuffle splits a stage into one <strong>task per partition</strong>. If 199 partitions hold 1 GB each and one holds 80 GB, 199 tasks finish in seconds and one runs for an hour — <strong>and may spill or OOM</strong> because a single partition no longer fits in execution memory. Your cluster sits idle waiting on one core.</li>
-      <li>Skew is the recurring villain of this track: it makes joins slow (Lesson 02), causes spill and executor OOM (Lesson 04), and is exactly what AQE's skew-join split (Lesson 05) exists to fight. When AQE can't fix it, <strong>salting is the manual lever</strong>.</li>
-      <li>Interviewers probe it constantly: <em>"Your join's last task runs 50× longer than the median — what's happening and how do you fix it?"</em> The answer is <strong>"skew — check AQE skew join, then salt the hot key,"</strong> and you must be able to write the salted join.</li>
+      <li><strong>The cluster sits idle waiting on one core.</strong> If 199 partitions hold 1&nbsp;GB each and one holds 80&nbsp;GB, 199 tasks finish in seconds and one runs for an hour — <strong>and may spill or OOM</strong>, because a single partition no longer fits in execution memory.</li>
+      <li><strong>It's the recurring villain of this track.</strong> Skew makes joins slow, causes spill and executor OOM (Lesson 04), and is exactly what AQE's skew-join split (Lesson 05) exists to fight. When AQE can't finish the job, <strong>salting is the manual lever</strong>.</li>
+      <li><strong>It's a constant interview probe:</strong> <em>"Your join's last task runs 50× longer than the median — what's happening, and how do you fix it?"</em> The expected answer is <strong>"skew — confirm AQE skew join, then salt the hot key,"</strong> and you must be able to write the salted join. The <em>how</em> is the next section.</li>
     </ul>
   </section>
 
-  <!-- ============ INTERACTIVE 1: SKEW VISUALIZER ============ -->
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
   <section>
-    <h2>See it work — the skew visualizer</h2>
-    <p>One key (<code>US</code>, in red) towers over the rest: a classic straggler. Drag the <strong>salt N</strong> slider to split that hot key across <code>N</code> partitions and watch the bars rebalance — then see the other side of a join get <strong>exploded ×N</strong> so every salted row still finds its match.</p>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>Spot it, then split the hot key</h2>
+    <p class="dropcap">Every skew fix rests on one mechanic: the shuffle picks a row's partition from <code>hash(key) % numPartitions</code>, so equal keys collide into the same partition. If one key dominates, its partition dominates. Everything below follows from that. Each idea is explained here once — later sections show it, verify it, and help you choose, but don't re-explain it.</p>
+
+    <h3>3.1 · First, <em>see</em> the skew in the Spark UI</h3>
+    <p>Before any fix, confirm the straggler. Skew has an unmistakable signature:</p>
+    <ul>
+      <li><strong>Stages tab → the slow stage → task table.</strong> The <strong>Max</strong> task duration is far above the <strong>Median</strong> — a <strong>50×–500×</strong> gap is classic skew — and <strong>Max</strong> "Shuffle Read Size / Records" is far above the 75th percentile. A handful of tasks dominate the stage.</li>
+      <li><strong>SQL / DataFrame tab.</strong> The slow node is an aggregate or join right after an <code>Exchange</code>; per-task <strong>spill (memory)/(disk)</strong> shows up on the straggler.</li>
+      <li><strong>If Max ≈ Median, you don't have skew</strong> — look elsewhere. Salting always <em>adds</em> shuffle work, so it only pays off when one key truly dominates.</li>
+    </ul>
+
+    <h3>3.2 · Salting — the mechanism</h3>
+    <p><span class="chip usecase">use case</span> A <code>clickstream</code> where ~90% of rows are <code>country = 'US'</code>. Group-by-country sends nearly all rows to one partition; salting splits <code>US</code> across 16 partitions.</p>
+    <ul>
+      <li><strong>The move.</strong> Append a random integer <code>0..N-1</code> to the hot key, so the combined key <code>(key, salt)</code> hashes to <strong><code>N</code> different partitions</strong>. The hot key's rows now spread across <code>N</code> tasks.</li>
+      <li><strong>Why it works.</strong> You trade "one task does 100% of a hot key" for "<code>N</code> tasks each do <code>~1/N</code> of it." The skew flattens; the straggler disappears.</li>
+      <li><strong>The obligation.</strong> You changed the grouping key, so you must <strong>undo the salt</strong> afterwards — the second stage of a salted aggregation, or the <em>explode</em> step of a salted join. Salting also adds a shuffle, so use it only on genuinely skewed keys.</li>
+    </ul>
+
+    <h3>3.3 · Salting an <em>aggregation</em> — two-stage group-by</h3>
+    <p><span class="chip analogy">analogy</span> Count a stadium by having each section count itself first (stage&nbsp;1), then add the 50 section totals (stage&nbsp;2) — instead of one person counting everyone.</p>
+    <ul>
+      <li><strong>Stage 1 — partial aggregate on the salted key.</strong> Add <code>salt = floor(rand()*N)</code>, group by <code>(key, salt)</code>, compute a <em>partial</em> aggregate. The hot key is split into <code>N</code> groups across <code>N</code> partitions, so <code>N</code> tasks share the work.</li>
+      <li><strong>Stage 2 — final aggregate on the real key.</strong> Drop the salt and re-aggregate the <code>N</code> partials by <code>key</code> alone. Stage&nbsp;1 already collapsed each <code>(key, salt)</code> to one row, so stage&nbsp;2 is tiny.</li>
+      <li><strong>Composability.</strong> <code>sum</code>/<code>count</code>/<code>min</code>/<code>max</code> re-aggregate trivially. An <strong>average</strong> must be carried as <code>sum</code>/<code>count</code> partials and divided at the end — never average the averages.</li>
+    </ul>
+
+    <h3>3.4 · Salting a <em>join</em> — salt one side, explode the other</h3>
+    <p><span class="chip usecase">use case</span> A 5&nbsp;TB <code>transactions</code> fact (skewed on <code>merchant_id</code>, one mega-merchant = 40% of rows) ⋈ a small <code>merchants</code> dimension.</p>
+    <ul>
+      <li><strong>The twist.</strong> If you salt only one side, salted rows won't find their match — <code>MEGA#7</code> on the left has no <code>MEGA#7</code> on the right, only <code>MEGA</code>.</li>
+      <li><strong>The fix.</strong> Salt the <strong>skewed (large) side's</strong> key with a random <code>0..N-1</code>, and <strong>explode</strong> the other side so it holds <strong>one copy of each row per salt value</strong> (<code>MEGA</code> → <code>MEGA#0 … MEGA#(N-1)</code>). Join on the combined <code>(key, salt)</code>.</li>
+      <li><strong>Why it works.</strong> The hot key's join work spreads across <code>N</code> partitions on both sides — no single task gets the whole hot key.</li>
+    </ul>
+
+    <h3>3.5 · SQL hints — the planner override</h3>
+    <p>Hints are <code>/*+ … */</code> comments placed <strong>immediately after <code>SELECT</code></strong> that instruct the planner. Two families, each explained once here:</p>
+    <ul>
+      <li><strong>Join-strategy hints</strong> — <code>BROADCAST(t)</code> (aliases <code>BROADCASTJOIN</code>, <code>MAPJOIN</code>), <code>MERGE(t)</code> (aliases <code>SHUFFLE_MERGE</code>, <code>MERGEJOIN</code>), <code>SHUFFLE_HASH(t)</code>, <code>SHUFFLE_REPLICATE_NL(t)</code>. <strong>Priority:</strong> <code>BROADCAST</code> &gt; <code>MERGE</code> &gt; <code>SHUFFLE_HASH</code> &gt; <code>SHUFFLE_REPLICATE_NL</code>.</li>
+      <li><strong>Partitioning hints</strong> — <code>COALESCE(n)</code> (reduce partitions, no shuffle), <code>REPARTITION(n | col | n,col)</code> (full shuffle), <code>REPARTITION_BY_RANGE([n,] col)</code>, <code>REBALANCE([n][,col])</code> (even out partition sizes — <strong>ignored unless AQE is enabled</strong>).</li>
+      <li><strong>The trade-off.</strong> A hint <em>overrides</em> the cost-based optimizer, so a wrong hint can be worse than none (<code>BROADCAST</code> a 5&nbsp;GB table → driver OOM). A scalpel for when you <em>know</em> the estimate is wrong.</li>
+    </ul>
+    <table class="tbl">
+      <thead><tr><th>Hint</th><th>What it forces</th><th>Note</th></tr></thead>
+      <tbody>
+        <tr><td><code>BROADCAST(t)</code></td><td>Broadcast <code>t</code> to every executor (map-side join)</td><td>Highest join priority; aliases <code>BROADCASTJOIN</code>, <code>MAPJOIN</code></td></tr>
+        <tr><td><code>MERGE(t)</code></td><td>Sort-merge join</td><td>Below <code>BROADCAST</code>; aliases <code>SHUFFLE_MERGE</code>, <code>MERGEJOIN</code></td></tr>
+        <tr><td><code>SHUFFLE_HASH(t)</code></td><td>Shuffle-hash join</td><td>Below <code>MERGE</code> in priority</td></tr>
+        <tr><td><code>SHUFFLE_REPLICATE_NL(t)</code></td><td>Replicated nested-loop join</td><td>Lowest join priority; risks a Cartesian blow-up</td></tr>
+        <tr><td><code>COALESCE(n)</code></td><td>Reduce to <code>n</code> partitions</td><td>No shuffle — merges existing partitions only</td></tr>
+        <tr><td><code>REPARTITION(n | col)</code></td><td>Full shuffle to <code>n</code> / by <code>col</code></td><td>Also <code>REPARTITION_BY_RANGE([n,] col)</code></td></tr>
+        <tr><td><code>REBALANCE([n][,col])</code></td><td>Even out partition sizes</td><td class="risk-hi">Silently ignored unless AQE is enabled</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Join-strategy priority:</strong> <code>BROADCAST</code> &gt; <code>MERGE</code> &gt; <code>SHUFFLE_HASH</code> &gt; <code>SHUFFLE_REPLICATE_NL</code>.</p>
+
+    <h3>3.6 · The order of operations (Rung 3)</h3>
+    <ul>
+      <li><strong>AQE skew join is the first line of defence</strong> (Lesson 05). It splits a skewed partition with <strong>no code change</strong> when the partition is &gt; <code>5×</code> the median <strong>and</strong> &gt; <code>256&nbsp;MB</code>. Salt only what it can't split.</li>
+      <li><strong>The N× blow-up is the cost of a salted join.</strong> Exploding the <em>whole</em> other side ×N is wasteful for the 99% of keys that aren't skewed — so <strong>salt only the confirmed hot keys</strong> (give the rest a constant <code>salt=0</code>) and explode only for those keys.</li>
+      <li><strong>Pick <code>N</code> from the skew:</strong> roughly hot-key row count ÷ a healthy partition size. Too small → still skewed; too large → needless explosion and tiny partitions.</li>
+      <li><strong><code>REBALANCE</code> is silently ignored unless AQE is on</strong> — a classic "why didn't my fix work?" trap.</li>
+    </ul>
+    <div class="callout warn">
+      <span class="lbl">Skew fix ≠ size fix</span>
+      Salting helps <strong>skew</strong>, not raw size. A genuinely huge but <em>even</em> join still needs the full shuffle (or bucketing, Lesson 11). Salting an unskewed job only adds overhead. Confirm Max ≫ Median first — otherwise you are paying for nothing.
+    </div>
+  </section>
+
+  <!-- ============ FIGURE A · skew bar-chart + salt-N slider (distribution facet) ============ -->
+  <section>
+    <p class="seclabel">Figure A · flatten the hot key</p>
+    <h2>Watch the tall bar come down</h2>
+    <p>One key (<code>US</code>, in red hatch) towers over the rest: a classic straggler. Drag the <strong>salt N</strong> slider to split that hot key across <code>N</code> partitions and watch the bars rebalance — and watch the join's small side get <strong>exploded ×N</strong> so every salted row still finds its match. This figure isolates <strong>one</strong> thing: <em>the row distribution</em>. Where it runs across the nodes is Figure&nbsp;B.</p>
     <div class="lab" id="lab-skew">
-      <div class="lab-head"><span class="lab-title">Salt the hot key</span></div>
+      <div class="lab-head"><span class="lab-title">salt(N) → partition balance</span></div>
       <p class="lab-sub">A <code>groupBy(country)</code> / join key where <code>US</code> is ~90% of rows. Salt splits it across partitions.</p>
       <div class="controls">
         <div class="filterbar"><label>Salt N <input type="range" id="sk-n" min="1" max="16" value="1"><span class="sizeval" id="sk-nval">1 (no salt)</span></label></div>
@@ -233,146 +373,21 @@
         <div class="stat win"><div class="big" id="sk-ratio">—</div><div class="lbl">max ÷ median</div></div>
         <div class="stat"><div class="big" id="sk-explode">—</div><div class="lbl">dimension blow-up</div></div>
       </div>
-      <div class="partlabel" style="margin-top:18px">Join side: the small dimension exploded into one copy per salt value</div>
+      <div class="partlabel">Join side: the small dimension exploded into one copy per salt value</div>
       <div class="explodebox" id="sk-copies"></div>
       <div class="verdict" id="sk-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real partition counts and hashing vary; the point is how salt flattens a skewed key and what it costs the joined side.</p>
+      <p class="lab-note">Simplified illustration — real partition counts and hashing vary; the point is how salt flattens a hot key and what it costs the joined side.</p>
     </div>
   </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
-
-    <h3>Quick recap: how to <em>see</em> skew in the Spark UI</h3>
-    <p><span class="chip analogy">analogy</span> Skew is a supermarket where everyone happens to need the one cashier who handles loyalty cards — 9 lanes empty, 1 lane 200 people deep. A bigger till for that lane doesn't help; opening more lanes for those customers does.</p>
-    <ul>
-      <li><strong>Stages tab → slow stage → task table:</strong> the <strong>Max</strong> task duration is far above the <strong>Median</strong> (a 50×–500× gap is classic skew), and <strong>Max</strong> "Shuffle Read Size / Records" is far above the 75th percentile.</li>
-      <li><strong>SQL / DataFrame tab:</strong> the slow node is an aggregate or join right after an <code>Exchange</code>; per-task <strong>spill (memory)/(disk)</strong> appears on the straggler.</li>
-      <li>If <strong>Max ≈ Median</strong>, you don't have skew — look elsewhere. Salting always adds shuffle work, so it only pays off when one key truly dominates.</li>
-    </ul>
-
-    <h3>1 · What is salting?</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> the shuffle picks a row's partition from <code>hash(key) % numPartitions</code>, so equal keys collide into one partition. <strong>Salting</strong> appends a random integer <code>0..N-1</code> to the key, so the combined key <code>(key, salt)</code> hashes to <code>N</code> different partitions. The hot key's rows now spread across <code>N</code> tasks.</li>
-      <li><strong>Why it works:</strong> you trade "one task does 100% of a hot key" for "<code>N</code> tasks each do <code>~1/N</code> of it." Skew flattens; the straggler disappears.</li>
-      <li><strong>Trade-off:</strong> you changed the grouping key, so you must <strong>undo the salt</strong> afterwards — the second stage of a salted aggregation, the <em>explode</em> step of a salted join. Salting also adds a shuffle, so use it only on genuinely skewed keys.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> A <code>clickstream</code> where 90% of rows are <code>country = 'US'</code>. Group-by-country sends nearly all rows to one partition; salting splits <code>US</code> across 16 partitions.</p>
-
-    <h3>2 · Salting an aggregation (two-stage group-by)</h3>
-    <ul>
-      <li><strong>Stage 1 — partial aggregate on the salted key.</strong> Add <code>salt = floor(rand()*N)</code>, group by <code>(key, salt)</code>, compute a <em>partial</em> aggregate. The hot key is split into <code>N</code> groups across <code>N</code> partitions, so <code>N</code> tasks share the work.</li>
-      <li><strong>Stage 2 — final aggregate on the real key.</strong> Drop the salt and re-aggregate the <code>N</code> partials by <code>key</code> alone. Stage 1 already collapsed each <code>(key, salt)</code> to one row, so stage 2 is tiny.</li>
-      <li><strong>Composability:</strong> <code>sum</code>/<code>count</code>/<code>min</code>/<code>max</code> re-aggregate trivially. An <strong>average</strong> must be done as <code>sum</code>/<code>count</code> partials, then divided at the end — never average the averages.</li>
-    </ul>
-    <p><span class="chip analogy">analogy</span> Count a stadium by having each section count itself first (stage 1), then add the 50 section totals (stage 2) — instead of one person counting everyone.</p>
-
-    <h3>3 · What is salting in join operations?</h3>
-    <ul>
-      <li><strong>The twist:</strong> if you salt only one side, salted rows won't find their match — <code>US#7</code> on the left has no <code>US#7</code> on the right, only <code>US</code>.</li>
-      <li><strong>The fix:</strong> salt the <strong>skewed (large) side's</strong> key with a random <code>0..N-1</code>, and <strong>explode</strong> the other side so it has <strong>one copy of each row per salt value</strong> (<code>US</code> → <code>US#0 … US#(N-1)</code>). Join on the combined <code>(key, salt)</code>.</li>
-      <li><strong>Why it works:</strong> the hot key's join work spreads across <code>N</code> partitions on both sides — no single task gets the whole hot key.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> A 5 TB <code>transactions</code> fact (skewed on <code>merchant_id</code>, one mega-merchant = 40% of rows) ⋈ a <code>merchants</code> dimension. Salt <code>merchant_id</code> on transactions; explode <code>merchants</code> ×N; join on <code>(merchant_id, salt)</code>.</p>
-
-    <h3>4 · How to apply salting with JOINS (and the cost)</h3>
-    <ul>
-      <li><strong>The cost is an N× blow-up of the exploded side.</strong> Exploding the <em>whole</em> other side ×N is wasteful for the 99% of keys that aren't skewed.</li>
-      <li><strong>Salt only the hot keys:</strong> give skewed keys a real <code>0..N-1</code> salt and everyone else a constant <code>0</code>; explode the other side ×N only for hot keys. The blow-up stays proportional to the few hot keys.</li>
-      <li><strong>Pick <code>N</code> from the skew:</strong> roughly hot-key row count ÷ a healthy partition size. Too small → still skewed; too large → needless explosion and tiny partitions.</li>
-      <li><strong>Prefer AQE skew join first</strong> (Lesson 05): it splits skewed partitions with <strong>no code change</strong> when a partition's size &gt; <code>5×</code> median <strong>and</strong> &gt; <code>256 MB</code>. Salt only what AQE can't split (a single oversized key, or an aggregation).</li>
-    </ul>
-
-    <h3>5 · SQL hints in Spark</h3>
-    <p>Hints are <code>/*+ … */</code> comments placed <strong>immediately after <code>SELECT</code></strong> that instruct the planner. Two families:</p>
-    <ul>
-      <li><strong>Join-strategy hints</strong> — <code>BROADCAST(t)</code> (aliases <code>BROADCASTJOIN</code>, <code>MAPJOIN</code>), <code>MERGE(t)</code> (aliases <code>SHUFFLE_MERGE</code>, <code>MERGEJOIN</code>), <code>SHUFFLE_HASH(t)</code>, <code>SHUFFLE_REPLICATE_NL(t)</code>. <strong>Priority:</strong> <code>BROADCAST</code> &gt; <code>MERGE</code> &gt; <code>SHUFFLE_HASH</code> &gt; <code>SHUFFLE_REPLICATE_NL</code>.</li>
-      <li><strong>Partitioning hints</strong> — <code>COALESCE(n)</code> (reduce partitions, no shuffle), <code>REPARTITION(n | col | n,col)</code> (full shuffle), <code>REPARTITION_BY_RANGE([n,] col)</code> (range partition), <code>REBALANCE([n][,col])</code> (even out partition sizes — <strong>ignored unless AQE is enabled</strong>).</li>
-      <li><strong>Trade-off:</strong> a hint <em>overrides</em> the cost-based optimizer, so a wrong hint can be worse than none (<code>BROADCAST</code> a 5 GB table → driver OOM). A scalpel for when you <em>know</em> the estimate is wrong.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> <code>/*+ REPARTITION(200, customer_id) */</code> pre-distributes rows before a wide aggregation; <code>/*+ BROADCAST(dim) */</code> forces a broadcast when stats are stale.</p>
-  </section>
-
-  <!-- ============ INTERACTIVE 2: SALTED-JOIN STEP-THROUGH ============ -->
-  <section>
-    <h2>Walk a salted join, phase by phase</h2>
-    <p>Click each phase to see what you change in the query when AQE's skew split isn't enough.</p>
-    <div class="lab" id="lab-saltjoin">
-      <div class="lab-head"><span class="lab-title">Salted join execution</span></div>
-      <p class="lab-sub"><code>transactions</code> ⋈ <code>merchants</code> on <code>merchant_id</code> — one mega-merchant is 40% of the fact.</p>
-      <div class="step" data-step><div class="head"><span class="ix">01</span> Confirm the skew, and that AQE didn't fix it</div><div class="detail">In the Spark UI Stages tab the join stage's <strong>Max</strong> task time is ≫ the <strong>Median</strong> and one task spills. AQE skew join only splits a partition that's &gt; 5× median <strong>and</strong> &gt; 256 MB; a single key bigger than the split target stays skewed — that's when you salt.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">02</span> Salt the skewed (large) side</div><div class="detail">Add <code>salt = (rand()*N).cast("int")</code> to <code>transactions</code> so the mega-merchant's rows carry <code>0..N-1</code>. The combined <code>(merchant_id, salt)</code> now hashes to N partitions instead of one.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">03</span> Explode the other side ×N</div><div class="detail"><code>merchants.withColumn("salt", explode(array(0..N-1)))</code> makes one copy of each merchant row per salt value, so a salted left row like <code>MEGA#7</code> still finds <code>MEGA#7</code> on the right. This is the N× blow-up — keep it small by exploding only the hot keys.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">04</span> Join on the combined key &amp; verify</div><div class="detail">Join on <code>["merchant_id","salt"]</code>. The hot key's work is now spread across N partitions on both sides. <code>.explain(mode="formatted")</code> still shows a <code>SortMergeJoin</code>, but on <code>(merchant_id, salt)</code>; in the Stages tab the join stage's <strong>Max</strong> task time now tracks the <strong>Median</strong>.</div></div>
-      <div class="verdict">Cost lives in <b>step 03</b> — the explosion. Salt only the confirmed hot keys (constant <code>salt=0</code> for the rest) so the blow-up stays proportional. And always try <b>AQE skew join</b> (step 01) before any of this.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the query rewrite behind a salted join.</p>
-    </div>
-  </section>
-
-  <!-- ============ CLUSTER EXECUTION LAB ============ -->
-  <section>
-    <h2>See it run on the cluster</h2>
-    <p>Step through how a skewed join actually executes across <strong>1 driver + 3 executors</strong>. The hot key <code>US</code> dominates the rows; after the shuffle it piles onto one executor as a straggler, then salting splits it across all three. Use <strong>Prev / Play / Next</strong> — the dummy PySpark and the rows highlight per step.</p>
-    <div class="lab" id="lab-cluster">
-      <div class="lab-head"><span class="lab-title">Salted join — cluster execution lab</span></div>
-      <p class="lab-sub"><code>clicks</code> (skewed on <code>country</code>, <code>US</code> = most rows) ⋈ <code>dim</code>. Watch one task straggle, then rebalance after salting.</p>
-
-      <div class="cluster" id="cl-cluster">
-        <div class="nodes" id="cl-nodes">
-          <div class="node driver" id="cl-driver">
-            <h4>Driver <span class="core">plan · schedule</span></h4>
-            <div class="parts" id="cl-driver-parts"></div>
-          </div>
-          <div class="node" id="cl-ex0">
-            <h4>Executor 1 <span class="core">1 core</span></h4>
-            <div class="parts" id="cl-ex0-parts"></div>
-            <div class="spillzone" id="cl-ex0-spill"></div>
-          </div>
-          <div class="node" id="cl-ex1">
-            <h4>Executor 2 <span class="core">1 core</span></h4>
-            <div class="parts" id="cl-ex1-parts"></div>
-            <div class="spillzone" id="cl-ex1-spill"></div>
-          </div>
-          <div class="node" id="cl-ex2">
-            <h4>Executor 3 <span class="core">1 core</span></h4>
-            <div class="parts" id="cl-ex2-parts"></div>
-            <div class="spillzone" id="cl-ex2-spill"></div>
-          </div>
-        </div>
-        <div class="wire" id="cl-wire"></div>
-      </div>
-
-      <div class="stepper">
-        <button id="cl-prev">&larr; Prev</button>
-        <button class="play" id="cl-play">&#9654; Play</button>
-        <button id="cl-next">Next &rarr;</button>
-        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
-        <span class="scount" id="cl-scount">step 1 / 4</span>
-      </div>
-
-      <div class="narr" id="cl-narr"></div>
-
-      <div class="panes">
-        <div class="pane">
-          <div class="ptitle">Dummy PySpark</div>
-          <div class="codepane" id="cl-code"></div>
-        </div>
-        <div class="pane">
-          <div class="ptitle">Dummy rows (clicks)</div>
-          <div class="datapane" id="cl-data"></div>
-        </div>
-      </div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real partition counts, hashing, and task timings vary. The point is how the hot key <code>US</code> stragglers one task, and how salting spreads it across executors.</p>
-    </div>
-  </section>
-
-  <!-- ============ CODE + VERIFICATION ============ -->
-  <section>
-    <h2>The code you'll write (and how to verify it)</h2>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Five moves, each with its proof</h2>
+    <p>Every technique below is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify; never assume.</p>
     <div class="callout">
-      <span class="lbl">Track rule</span>
-      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
+      <span class="lbl">Simple reading rule</span>
+      When you see code, ask one question first: <strong>"Am I fixing the skew at the source (salt / AQE split the hot key), or just adding memory?"</strong> A bigger executor only delays the straggler; splitting the hot key is what actually removes it.
     </div>
 
     <h3>Step 0 — confirm AQE skew join is on (before salting)</h3>
@@ -383,7 +398,8 @@ spark.conf.get(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>)   <
 
 <span class="c"># A partition is "skewed" if its size &gt; skewedPartitionFactor (5.0) × median AND</span>
 <span class="c"># &gt; skewedPartitionThresholdInBytes (256 MB); AQE then SPLITS it into sub-partitions.</span>
-<span class="c"># VERIFY in the Spark UI SQL tab: the join's AQEShuffleRead shows skewed=true and the</span>
+
+<span class="c"># VERIFY — Spark UI SQL tab: the join's AQEShuffleRead node shows skewed=true, and the</span>
 <span class="c"># straggler's Max task time drops toward the Median after AQE splits it.</span></code></pre>
 
     <h3>Salt a skewed aggregation (two-stage group-by)</h3>
@@ -395,7 +411,7 @@ N = <span class="f">16</span>  <span class="c"># salt buckets — split each hot
 <span class="c"># sends nearly all rows to ONE partition -&gt; one straggler task.</span>
 
 <span class="c"># Stage 1: partial aggregate on the SALTED key (key, salt). rand() spreads the hot</span>
-<span class="c"># key's rows across N salt buckets -&gt; N partitions -&gt; N tasks share the work.</span>
+<span class="c"># key's rows across N buckets -&gt; N partitions -&gt; N tasks share the work.</span>
 salted = (clicks
     .withColumn(<span class="s">"salt"</span>, (F.rand() * N).cast(<span class="s">"int"</span>))     <span class="c"># salt in 0..N-1</span>
     .groupBy(<span class="s">"country"</span>, <span class="s">"salt"</span>)
@@ -406,20 +422,20 @@ result = (salted
     .groupBy(<span class="s">"country"</span>)
     .agg(F.sum(<span class="s">"partial_rev"</span>).alias(<span class="s">"revenue"</span>)))
 
-<span class="c"># VERIFY: result.explain(mode="formatted") shows TWO HashAggregate/Exchange pairs</span>
-<span class="c"># (partial then final). In the Stages tab the partial-agg stage's Max task time is</span>
+<span class="c"># VERIFY — result.explain(mode="formatted") shows TWO HashAggregate/Exchange pairs</span>
+<span class="c"># (partial then final). Spark UI Stages tab: the partial-agg stage's Max task time is</span>
 <span class="c"># now close to its Median — the single straggler is gone.</span>
 result.explain(mode=<span class="s">"formatted"</span>)</code></pre>
     <p><strong>Composability note:</strong> use <code>sum</code>/<code>count</code>/<code>min</code>/<code>max</code> for the partial. For an <strong>average</strong>, carry <code>sum</code> and <code>count</code> partials and divide at the very end — averaging the stage-1 averages is wrong.</p>
 
-    <h3>Salt a skewed join (salt one side, explode the other)</h3>
+    <h3>Salt a skewed join (build the salt key + explode the dimension)</h3>
     <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql <span class="k">import</span> functions <span class="k">as</span> F
 
 N = <span class="f">16</span>
 
 <span class="c"># tx is skewed on merchant_id (one mega-merchant = 40%); merchants is small/unskewed.</span>
 
-<span class="c"># 1) Salt the SKEWED (large) side: append a random 0..N-1 to the join key.</span>
+<span class="c"># 1) Build the salt key on the SKEWED (large) side: append a random 0..N-1.</span>
 tx_salted = tx.withColumn(<span class="s">"salt"</span>, (F.rand() * N).cast(<span class="s">"int"</span>))
 
 <span class="c"># 2) EXPLODE the other side into N copies — one per salt value — so every salted</span>
@@ -430,10 +446,10 @@ merchants_exploded = (merchants
 <span class="c"># 3) Join on the COMBINED (merchant_id, salt) key.</span>
 joined = tx_salted.join(merchants_exploded, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>], how=<span class="s">"inner"</span>)
 
-<span class="c"># VERIFY: joined.explain(mode="formatted") still shows a SortMergeJoin, but on</span>
-<span class="c"># (merchant_id, salt). In the Stages tab the join stage's Max task time now tracks</span>
-<span class="c"># the Median — the hot-key straggler is split across N tasks. Cost: the merchants</span>
-<span class="c"># side now has N× the rows (acceptable only because it's small).</span>
+<span class="c"># VERIFY — joined.explain(mode="formatted") still shows a SortMergeJoin, but on</span>
+<span class="c"># (merchant_id, salt). Spark UI Stages tab: the join stage's Max task time now tracks</span>
+<span class="c"># the Median — the hot-key straggler is split across N tasks. Cost: merchants now has</span>
+<span class="c"># N× the rows (acceptable only because it's small).</span>
 joined.explain(mode=<span class="s">"formatted"</span>)</code></pre>
 
     <h3>Salt ONLY the hot keys (keep the blow-up proportional)</h3>
@@ -448,28 +464,28 @@ tx_salted = tx.withColumn(
     F.when(F.col(<span class="s">"merchant_id"</span>).isin(hot), (F.rand() * N).cast(<span class="s">"int"</span>)).otherwise(F.lit(<span class="f">0</span>)))
 
 <span class="c"># Explode the other side ×N ONLY for hot keys; non-hot rows keep a single salt=0 copy.</span>
-m_hot = (merchants.filter(F.col(<span class="s">"merchant_id"</span>).isin(hot))
+m_hot  = (merchants.filter(F.col(<span class="s">"merchant_id"</span>).isin(hot))
     .withColumn(<span class="s">"salt"</span>, F.explode(F.array([F.lit(i) <span class="k">for</span> i <span class="k">in</span> range(N)]))))
 m_cold = merchants.filter(~F.col(<span class="s">"merchant_id"</span>).isin(hot)).withColumn(<span class="s">"salt"</span>, F.lit(<span class="f">0</span>))
 merchants_salted = m_hot.unionByName(m_cold)
 
 joined = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>], how=<span class="s">"inner"</span>)
-<span class="c"># VERIFY: same balanced task times, but merchants only grew N× for the few hot keys —</span>
+
+<span class="c"># VERIFY — same balanced task times, but merchants only grew N× for the few hot keys,</span>
 <span class="c"># not the whole dimension. Check Stages tab Max vs Median again.</span></code></pre>
 
-    <h3>Join-strategy &amp; partitioning hints (DataFrame API)</h3>
+    <h3>Join-strategy &amp; partitioning hints (DataFrame API + SQL)</h3>
     <pre><span class="tag">python</span><code><span class="k">from</span> pyspark.sql.functions <span class="k">import</span> broadcast
 
-<span class="c"># DataFrame-API equivalents of the hints:</span>
+<span class="c"># DataFrame-API equivalents of the SQL hints:</span>
 tx.join(broadcast(merchants), <span class="s">"merchant_id"</span>)             <span class="c"># == /*+ BROADCAST(merchants) */</span>
 tx.hint(<span class="s">"merge"</span>).join(merchants, <span class="s">"merchant_id"</span>)         <span class="c"># == /*+ MERGE(...) */  force sort-merge</span>
 tx.hint(<span class="s">"shuffle_hash"</span>).join(merchants, <span class="s">"merchant_id"</span>)  <span class="c"># == /*+ SHUFFLE_HASH(...) */</span>
 tx.repartition(<span class="f">200</span>, <span class="s">"merchant_id"</span>)                     <span class="c"># == /*+ REPARTITION(200, merchant_id) */</span>
 tx.coalesce(<span class="f">50</span>)                                       <span class="c"># == /*+ COALESCE(50) */</span>
 
-<span class="c"># VERIFY: .explain() shows the forced node (BroadcastHashJoin / SortMergeJoin /</span>
+<span class="c"># VERIFY — .explain() shows the forced node (BroadcastHashJoin / SortMergeJoin /</span>
 <span class="c"># ShuffledHashJoin) or the Exchange with the new partition count / partitioning.</span></code></pre>
-
     <p>Equivalent Spark SQL — hints go <strong>immediately after <code>SELECT</code></strong>:</p>
     <pre><span class="tag">sql</span><code><span class="c">-- Join-strategy hint (priority BROADCAST &gt; MERGE &gt; SHUFFLE_HASH &gt; SHUFFLE_REPLICATE_NL).</span>
 <span class="k">SELECT</span> <span class="c">/*+ BROADCAST(m) */</span> t.*, m.merchant_name
@@ -482,99 +498,123 @@ tx.coalesce(<span class="f">50</span>)                                       <sp
 
 <span class="c">-- REBALANCE evens out partition sizes — but is IGNORED unless AQE is enabled.</span>
 <span class="k">SELECT</span> <span class="c">/*+ REBALANCE(merchant_id) */</span> * <span class="k">FROM</span> catalog.schema.transactions;</code></pre>
-
-    <h3>Contrast: naive skewed join vs salted join</h3>
-    <pre><span class="tag">python</span><code><span class="c"># ❌ Naive: one straggler task does the whole hot key. Spark UI: Max task time ≫ Median,</span>
-<span class="c">#    spill on that task, the stage waits an hour on one core.</span>
-slow = tx.join(merchants, <span class="s">"merchant_id"</span>)
-
-<span class="c"># ✅ Salted: the hot key is split across N partitions; task times balance.</span>
-fast = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>, <span class="s">"salt"</span>])
-<span class="c"># Spark UI Stages tab: `slow` has Max ≫ Median; `fast` has Max ≈ Median.</span></code></pre>
   </section>
 
-  <!-- ============ INTERACTIVE 3: TABBED HINTS REFERENCE ============ -->
+  <!-- ============ FIGURE B · cluster lab (spatial facet) ============ -->
   <section>
-    <h2>The hints, side by side</h2>
-    <p>Switch families to see each hint's syntax, what it forces, and the plan node that proves it landed.</p>
-    <div class="lab" id="lab-hints">
-      <div class="lab-head"><span class="lab-title">SQL hints reference</span></div>
-      <div class="controls">
-        <div class="seg" id="hi-seg" role="group" aria-label="hint family">
-          <button data-h="join" aria-pressed="true">Join strategy</button>
-          <button data-h="part" aria-pressed="false">Partitioning</button>
+    <p class="seclabel">Figure B · where the hot key lands</p>
+    <h2>See it run across the cluster</h2>
+    <p>This figure isolates a different thing from Figure&nbsp;A: not the distribution, but <em>where the work physically lands</em>. Step a skewed join across <strong>1 driver + 3 executors</strong> and watch the hot key <code>US</code> pile onto one executor as a straggler — then flip to <code>salted</code> and watch it spread across all three. Use <em>Prev / Play / Next</em>.</p>
+    <div class="lab" id="lab-cluster">
+      <div class="lab-head">
+        <span class="lab-title">skewed join vs salted join across the nodes</span>
+        <div class="seg" id="cl-mode" role="group" aria-label="join mode">
+          <button data-mode="skew" aria-pressed="true">skewed</button>
+          <button data-mode="salt" aria-pressed="false">salted</button>
         </div>
       </div>
-      <div class="planbox" id="hi-plan"></div>
-      <div class="verdict" id="hi-note"></div>
+      <p class="lab-sub"><code>clicks</code> (skewed on <code>country</code>, <code>US</code> = most rows) ⋈ <code>dim</code>. Watch one task straggle, then rebalance after salting.</p>
+
+      <div class="cluster" id="cl-cluster">
+        <div class="nodes" id="cl-nodes">
+          <div class="node driver" id="cl-driver" data-node="driver">
+            <h4>Driver <span class="core">plan · schedule</span></h4>
+            <div class="parts" id="cl-driver-parts"></div>
+          </div>
+          <div class="node" id="cl-ex0" data-node="e0"><h4>Executor 1 <span class="core">1 core</span></h4><div class="parts" id="cl-e0-parts"></div><div class="spillzone" id="cl-e0-spill"></div></div>
+          <div class="node" id="cl-ex1" data-node="e1"><h4>Executor 2 <span class="core">1 core</span></h4><div class="parts" id="cl-e1-parts"></div><div class="spillzone" id="cl-e1-spill"></div></div>
+          <div class="node" id="cl-ex2" data-node="e2"><h4>Executor 3 <span class="core">1 core</span></h4><div class="parts" id="cl-e2-parts"></div><div class="spillzone" id="cl-e2-spill"></div></div>
+        </div>
+        <div class="wire" id="cl-wire"></div>
+      </div>
+
+      <div class="stepper">
+        <button id="cl-prev">‹ Prev</button>
+        <button id="cl-play" class="play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
+        <span class="scount" id="cl-scount">step 1 / 4</span>
+      </div>
+
+      <div class="narr" id="cl-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">PySpark — dummy code</div>
+          <div class="codepane" id="cl-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Shuffle partitions (by key)</div>
+          <div class="datapane" id="cl-data"></div>
+        </div>
+      </div>
+      <p class="lab-note">Simplified illustration — real partition counts, hashing, and task timings vary. The point is how the hot key stragglers one task, and how salting spreads it.</p>
     </div>
   </section>
 
-  <!-- ============ COMPARISON TABLE ============ -->
+  <!-- ============ 05 · DECISION TABLE (a decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · Decision table</p>
+    <h2>Which lever, and what it costs</h2>
+    <p>Read this by the symptom you're facing — it answers "which tool?" at a glance. (The <em>why</em> is §3; this is the <em>which</em>.)</p>
     <table class="tbl">
-      <thead><tr><th>Dimension</th><th>AQE skew join</th><th>Salting an aggregation</th><th>Salting a join</th><th>SQL hints</th></tr></thead>
+      <thead><tr><th>Lever</th><th>What it fixes</th><th>Code change</th><th>Cost</th><th>When to reach for it</th></tr></thead>
       <tbody>
-        <tr><td><strong>What it fixes</strong></td><td>Skewed <em>join</em> partitions</td><td>Skewed <code>groupBy</code></td><td>Skewed <em>join</em> key</td><td>Wrong strategy / layout</td></tr>
-        <tr><td><strong>Code change?</strong></td><td><strong>None</strong> (automatic)</td><td>Two-stage group-by</td><td>Salt + explode + combined key</td><td>Add <code>/*+ … */</code> or <code>.hint()</code></td></tr>
-        <tr><td><strong>Mechanism</strong></td><td>Splits a skewed partition into sub-partitions</td><td>Group by <code>(key,&nbsp;salt)</code> → re-agg by <code>key</code></td><td>Salt skewed side <code>0..N-1</code>; explode other ×N</td><td>Override the optimizer's choice</td></tr>
-        <tr><td><strong>Cost</strong></td><td>A little extra bookkeeping</td><td>One extra shuffle (second agg)</td><td><strong>N× blow-up</strong> of the exploded side</td><td>A wrong hint can be worse than none</td></tr>
-        <tr><td><strong>When to use</strong></td><td><strong>First</strong> — before salting</td><td>Skewed agg AQE can't help</td><td>Skew AQE's split can't resolve</td><td>You <em>know</em> the plan is wrong</td></tr>
-        <tr><td><strong>Verify</strong></td><td><code>AQEShuffleRead</code> skewed=true; Max→Median</td><td>Two agg stages; balanced tasks</td><td><code>(key,&nbsp;salt)</code> join; balanced tasks</td><td>Forced node / new Exchange</td></tr>
+        <tr><td><strong>AQE skew join</strong></td><td>Skewed <em>join</em> partitions</td><td class="risk-lo">None (automatic)</td><td>A little bookkeeping</td><td><strong>First</strong> — always, before salting</td></tr>
+        <tr><td><strong>Salt an aggregation</strong></td><td>Skewed <code>groupBy</code></td><td>Two-stage group-by</td><td>One extra shuffle</td><td>Skewed agg AQE can't help</td></tr>
+        <tr><td><strong>Salt a join</strong></td><td>Skewed <em>join</em> key</td><td>Salt + explode + combined key</td><td class="risk-hi">N× blow-up of exploded side</td><td>Skew AQE's split can't resolve</td></tr>
+        <tr><td><strong>Join-strategy hint</strong></td><td>Wrong join strategy / stale stats</td><td><code>/*+ … */</code> or <code>.hint()</code></td><td class="risk-hi">Wrong hint worse than none</td><td>You <em>know</em> the estimate is wrong</td></tr>
+        <tr><td><strong>Partitioning hint</strong></td><td>Bad partition layout</td><td><code>/*+ … */</code> or API</td><td>A shuffle (except <code>COALESCE</code>)</td><td>Known-bad layout before a wide op</td></tr>
       </tbody>
     </table>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of §3:</p>
     <ul>
-      <li>A <code>groupBy</code> on a key with one or a few dominant values → <strong>two-stage salted aggregation</strong>.</li>
-      <li>A huge fact ⋈ dimension where one join key is a large fraction of rows and <strong>AQE skew join didn't resolve it</strong> → <strong>salted join</strong> (salt the fact, explode the dimension).</li>
-      <li>A planner mis-estimate / stale-stats join → a <strong>join-strategy hint</strong>; a known-bad partition layout before a wide op → a <strong>partitioning hint</strong>.</li>
+      <li><strong>Non-composable aggregates.</strong> <code>avg</code>, <code>countDistinct</code>, <code>percentile</code> don't re-aggregate by naively re-applying the same function. Carry <code>sum</code>+<code>count</code> for <code>avg</code>; for distinct/percentile, two-stage salting is much harder — often AQE or a different approach wins.</li>
+      <li><strong>Skew AQE genuinely can't fix.</strong> AQE splits a skewed <em>partition</em>; if a <em>single key</em> is bigger than your split target, splitting partitions doesn't help — that's exactly when salting, which sub-divides the key itself, is required.</li>
+      <li><strong>A hint can hurt.</strong> <code>BROADCAST</code> on a table that's actually large → driver OOM / <code>maxResultSize</code> (Lesson 03); <code>SHUFFLE_REPLICATE_NL</code> on big inputs → a Cartesian-shaped explosion.</li>
     </ul>
-    <h3>Edge cases</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
-      <li><strong>Salting explodes cardinality.</strong> Exploding the <em>whole</em> other side ×N is wasteful — salt only the confirmed hot keys (constant <code>salt=0</code> for the rest). Too large an <code>N</code> makes thousands of tiny partitions.</li>
-      <li><strong>Non-composable aggregates.</strong> <code>avg</code>, <code>countDistinct</code>, <code>percentile</code> don't re-aggregate naively. Carry <code>sum</code>+<code>count</code> for <code>avg</code>; for distinct/percentile, two-stage salting is much harder — often AQE wins.</li>
-      <li><strong><code>REBALANCE</code> does nothing with AQE off.</strong> A hint silently ignored is a classic "why didn't my fix work?" trap.</li>
-      <li><strong>Skew AQE can't fix.</strong> AQE splits a skewed <em>partition</em>; if a <em>single key</em> is bigger than your split target, splitting partitions doesn't help — that's exactly when salting (which sub-divides the key itself) is required.</li>
-      <li><strong>A hint can hurt.</strong> <code>BROADCAST</code> on a large table → driver OOM / <code>maxResultSize</code>; <code>SHUFFLE_REPLICATE_NL</code> on big inputs → a Cartesian-shaped explosion.</li>
-    </ul>
-    <h3>Limitations</h3>
-    <ul>
-      <li>Salting is <strong>manual and intrusive</strong> — you rewrite the query and must undo the salt correctly (re-aggregate / explode). It adds at least one extra shuffle.</li>
-      <li>Hints <strong>override</strong> the cost-based optimizer and AQE's runtime switch; a hint frozen into code can become wrong as data grows. Prefer AQE; hint only with a known reason.</li>
-      <li>Salting helps <strong>skew</strong>, not raw size — a genuinely huge non-skewed join still needs the full shuffle (or bucketing, Lesson 11). Salting an unskewed job only adds overhead.</li>
+      <li><strong>Salting is manual and intrusive.</strong> You rewrite the query and must undo the salt correctly (re-aggregate / explode) — it adds at least one extra shuffle. Prefer AQE; salt the residual.</li>
+      <li><strong>Hints override the optimizer and AQE's runtime switch.</strong> A hint frozen into code can become wrong as data grows; hint only with a known reason.</li>
+      <li><strong>Databricks default.</strong> AQE (and its skew-join split) is <strong>on by default from DBR 7.3 LTS+</strong>; on OSS Spark it's default-on since 3.2. Databricks uses a higher runtime broadcast switch (30&nbsp;MB) than the OSS 10&nbsp;MB static threshold.</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Salting before checking the UI.</strong> Salting always adds a shuffle. If Max ≈ Median there's no skew — you're adding cost for nothing.</li>
-      <li><strong>Forgetting the second stage.</strong> A salted <code>groupBy("key","salt")</code> without the final <code>groupBy("key")</code> gives <code>N</code> rows per key — a wrong answer, not just slow.</li>
-      <li><strong>Averaging the averages.</strong> Re-aggregating stage-1 <code>avg</code>s with <code>avg</code> is incorrect; carry <code>sum</code>+<code>count</code> and divide at the end.</li>
-      <li><strong>Salting one side of a join only.</strong> Without exploding the other side, salted rows find no match and you silently <strong>lose rows</strong> (inner join) — a correctness bug.</li>
-      <li><strong>Exploding the entire dimension ×N.</strong> Multiplies <em>every</em> key, not just the hot ones. Salt only the keys you confirmed are hot.</li>
-      <li><strong>Expecting <code>REBALANCE</code> to work with AQE disabled.</strong> It's ignored; partitions stay uneven and you wonder why nothing changed.</li>
-      <li><strong>Reaching for salting before AQE.</strong> AQE skew join needs <strong>zero code</strong> and handles most skew. Try it first; salt the residual.</li>
-      <li><strong>Confusing a partitioning hint with a join hint.</strong> <code>REPARTITION</code>/<code>COALESCE</code>/<code>REBALANCE</code> reshape data; <code>BROADCAST</code>/<code>MERGE</code>/<code>SHUFFLE_HASH</code> pick a join strategy.</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Salting before checking the UI</strong></td><td>Salting an unskewed job just adds a shuffle for nothing.</td><td>Confirm Max ≫ Median first, then salt.</td></tr>
+        <tr><td><strong>Forgetting the second stage</strong></td><td>A salted <code>groupBy("key","salt")</code> alone gives <code>N</code> rows per key — a wrong answer, not just slow.</td><td>Add the final <code>groupBy("key")</code> to drop the salt.</td></tr>
+        <tr><td><strong>Averaging the averages</strong></td><td><code>avg</code> of stage-1 averages is not the true average.</td><td>Carry <code>sum</code>+<code>count</code> partials and divide at the end.</td></tr>
+        <tr><td><strong>Salting one side of a join only</strong></td><td>Salted rows find no match and inner-join silently <em>loses rows</em> — a correctness bug.</td><td>Explode the other side ×N so every salt value matches.</td></tr>
+        <tr><td><strong>Exploding the entire dimension ×N</strong></td><td>The <code>N×</code> blow-up is wasted on the 99% of keys that aren't skewed.</td><td>Salt only confirmed hot keys; give the rest <code>salt=0</code>.</td></tr>
+        <tr><td><strong>Expecting <code>REBALANCE</code> with AQE off</strong></td><td>The hint is silently ignored — the "fix" does nothing.</td><td>Enable AQE, or use <code>REPARTITION</code>.</td></tr>
+        <tr><td><strong>Confusing a partitioning hint with a join hint</strong></td><td>Reshaping data won't change the join strategy, and vice versa.</td><td><code>REPARTITION</code>/<code>COALESCE</code>/<code>REBALANCE</code> reshape; <code>BROADCAST</code>/<code>MERGE</code>/<code>SHUFFLE_HASH</code> pick a join.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (AQE skew join, coalesce, join strategies)</a>
-      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — Join &amp; partitioning hints (BROADCAST / MERGE / SHUFFLE_HASH / SHUFFLE_REPLICATE_NL, COALESCE / REPARTITION / REPARTITION_BY_RANGE / REBALANCE)</a>
-      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.adaptive.skewJoin.*, shuffle.partitions)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (skew join, default-on DBR 7.3+)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (AQE skew join, coalesce, join strategies)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — Join &amp; partitioning hints (BROADCAST / MERGE / SHUFFLE_HASH / SHUFFLE_REPLICATE_NL, COALESCE / REPARTITION / REPARTITION_BY_RANGE / REBALANCE)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.adaptive.skewJoin.*, shuffle.partitions)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (skew join, default-on DBR 7.3+)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -582,12 +622,13 @@ fast = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · OSS-vs-Databricks defaults noted where they differ · hint names &amp; AQE skew thresholds are doc-quoted; the salting query rewrite is established operational practice.</p>
   </div>
 </footer>
 
 <script>
-/* ---- Diagram 1: skew visualizer (salt-N slider rebalances bars + explodes the join side) ---- */
+/* ---- Figure A: skew visualizer (salt-N slider rebalances bars + explodes the join side) ---- */
 (function(){
   const root = document.getElementById('lab-skew');
   if(!root) return;
@@ -643,253 +684,175 @@ fast = tx_salted.join(merchants_salted, on=[<span class="s">"merchant_id"</span>
     if(N === 1){ copies.innerHTML = '<span class="copy">US (single copy — no explosion)</span>'; }
 
     if(N === 1){
-      verdict.innerHTML = '<b>Skewed.</b> The hot key <code>US</code> piles into one partition — one task does ~9× the median work and may spill. This is the straggler you see as Max ≫ Median in the Spark UI.';
+      verdict.innerHTML = '<b>Skewed.</b> The hot key <code>US</code> piles into one partition — one task does ~9× the median work and may spill. This is the straggler you see as Max &#8811; Median in the Spark UI.';
     } else if(N >= PARTS){
-      verdict.innerHTML = '<b>Flat.</b> <code>US</code> is now spread across all ' + PARTS + ' partitions — task times balance (max ÷ median ≈ ' + (max/median(rows)).toFixed(1) + '×). Cost: the joined dimension grew <b>' + N + '×</b> — so salt only the hot keys.';
+      verdict.innerHTML = '<b>Flat.</b> <code>US</code> is now spread across all ' + PARTS + ' partitions — task times balance (max &#247; median &#8776; ' + (max/median(rows)).toFixed(1) + '&#215;). Cost: the joined dimension grew <b>' + N + '&#215;</b>, so salt only the hot keys.';
     } else {
-      verdict.innerHTML = '<b>Better.</b> <code>US</code> now spans ' + N + ' partitions. Push N higher to flatten further — but every bump grows the exploded dimension side <b>' + N + '×</b>, so stop once task times are balanced.';
+      verdict.innerHTML = '<b>Better.</b> <code>US</code> now spans ' + N + ' partitions. Push N higher to flatten further — but every bump grows the exploded dimension side <b>' + N + '&#215;</b>, so stop once task times are balanced.';
     }
   }
   slider.addEventListener('input', render);
   render();
 })();
 
-/* ---- Diagram 2: salted-join step accordion ---- */
-(function(){
-  const root = document.getElementById('lab-saltjoin');
-  if(!root) return;
-  root.querySelectorAll('[data-step]').forEach(function(step){
-    step.addEventListener('click', function(){ step.classList.toggle('open'); });
-  });
-})();
-
-/* ---- Diagram 3: tabbed hints reference ---- */
-(function(){
-  const root = document.getElementById('lab-hints');
-  if(!root) return;
-  const seg  = root.querySelector('#hi-seg');
-  const plan = root.querySelector('#hi-plan');
-  const note = root.querySelector('#hi-note');
-  const data = {
-    join: {
-      plan: '<span class="dim">-- hints go immediately after SELECT, priority high → low</span>\n' +
-            '<span class="ok">/*+ BROADCAST(t) */</span>           <span class="dim">aliases BROADCASTJOIN, MAPJOIN</span>\n' +
-            '<span class="ok">/*+ MERGE(t) */</span>               <span class="dim">aliases SHUFFLE_MERGE, MERGEJOIN</span>\n' +
-            '<span class="ok">/*+ SHUFFLE_HASH(t) */</span>\n' +
-            '<span class="ok">/*+ SHUFFLE_REPLICATE_NL(t) */</span>\n\n' +
-            '<span class="dim">priority:</span> BROADCAST &gt; MERGE &gt; SHUFFLE_HASH &gt; SHUFFLE_REPLICATE_NL',
-      note: '<b>Join-strategy hints force how a join runs</b>, overriding the size estimate. VERIFY in <code>.explain()</code>: the join node becomes <code>BroadcastHashJoin</code> / <code>SortMergeJoin</code> / <code>ShuffledHashJoin</code>. A wrong <code>BROADCAST</code> on a big table → driver OOM.'
-    },
-    part: {
-      plan: '<span class="dim">-- reshape data; an alternative to repartition()/coalesce() in SQL</span>\n' +
-            '<span class="ok">/*+ COALESCE(n) */</span>                  <span class="dim">reduce partitions, NO shuffle</span>\n' +
-            '<span class="ok">/*+ REPARTITION(n | col | n,col) */</span>  <span class="dim">full shuffle to n / by col</span>\n' +
-            '<span class="ok">/*+ REPARTITION_BY_RANGE([n,] col) */</span> <span class="dim">range partition by col</span>\n' +
-            '<span class="bad">/*+ REBALANCE([n][,col]) */</span>          <span class="bad">ignored unless AQE is ON</span>',
-      note: '<b>Partitioning hints reshape the data</b> before a wide op. VERIFY in <code>.explain()</code>: an <code>Exchange</code> with the new partition count / partitioning (or its absence for <code>COALESCE</code>). <code>REBALANCE</code> is a no-op when <code>spark.sql.adaptive.enabled=false</code>.'
-    }
-  };
-  function show(h){
-    plan.innerHTML = data[h].plan;
-    note.innerHTML = data[h].note;
-    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.h === h)));
-  }
-  seg.addEventListener('click', function(e){
-    const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.h);
-  });
-  show('join');
-})();
-
-/* ---- Diagram 4: CLUSTER EXECUTION LAB — salted join across driver + 3 executors ---- */
+/* ---- Figure B: CLUSTER EXECUTION LAB — skewed join vs salted join across 1 driver + 3 executors ---- */
 (function(){
   const root = document.getElementById('lab-cluster');
   if(!root) return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const ex = [
-    { parts: root.querySelector('#cl-ex0-parts'), node: root.querySelector('#cl-ex0'), spill: root.querySelector('#cl-ex0-spill') },
-    { parts: root.querySelector('#cl-ex1-parts'), node: root.querySelector('#cl-ex1'), spill: root.querySelector('#cl-ex1-spill') },
-    { parts: root.querySelector('#cl-ex2-parts'), node: root.querySelector('#cl-ex2'), spill: root.querySelector('#cl-ex2-spill') }
-  ];
-  const driverParts = root.querySelector('#cl-driver-parts');
-  const driverNode  = root.querySelector('#cl-driver');
-  const wire    = root.querySelector('#cl-wire');
-  const codeEl  = root.querySelector('#cl-code');
-  const dataEl  = root.querySelector('#cl-data');
-  const narr    = root.querySelector('#cl-narr');
-  const scount  = root.querySelector('#cl-scount');
-  const pfill   = root.querySelector('#cl-pfill');
-  const prevBtn = root.querySelector('#cl-prev');
-  const nextBtn = root.querySelector('#cl-next');
-  const playBtn = root.querySelector('#cl-play');
+  const driverNode = root.querySelector('#cl-driver');
+  const execNodes  = [root.querySelector('#cl-ex0'), root.querySelector('#cl-ex1'), root.querySelector('#cl-ex2')];
+  const execParts  = [root.querySelector('#cl-e0-parts'), root.querySelector('#cl-e1-parts'), root.querySelector('#cl-e2-parts')];
+  const execSpill  = [root.querySelector('#cl-e0-spill'), root.querySelector('#cl-e1-spill'), root.querySelector('#cl-e2-spill')];
+  const drvParts   = root.querySelector('#cl-driver-parts');
+  const wire       = root.querySelector('#cl-wire');
+  const narr       = root.querySelector('#cl-narr');
+  const codeEl     = root.querySelector('#cl-code');
+  const dataEl     = root.querySelector('#cl-data');
+  const prevBtn    = root.querySelector('#cl-prev');
+  const nextBtn    = root.querySelector('#cl-next');
+  const playBtn    = root.querySelector('#cl-play');
+  const pfill      = root.querySelector('#cl-pfill');
+  const scount     = root.querySelector('#cl-scount');
+  const modeSeg    = root.querySelector('#cl-mode');
 
-  // dummy code lines (highlight indices per step)
-  const CODE = [
-    {t:'<span class="c"># clicks: country is skewed, US dominates</span>', },
-    {t:'joined = (clicks'},
-    {t:'  .join(dim, "country"))   <span class="c"># shuffle by country</span>'},
-    {t:''},
-    {t:'<span class="c"># --- SALT the hot key US across N=3 ---</span>'},
-    {t:'salted = clicks.withColumn("salt",'},
-    {t:'  F.when(col("country")=="US",'},
-    {t:'    (F.rand()*3).cast("int")).otherwise(0))'},
-    {t:'dimX = dim.withColumn("salt",'},
-    {t:'  F.explode(F.array(*[lit(i) for i in range(3)])))'},
-    {t:'j = salted.join(dimX, ["country","salt"])  <span class="c"># balanced</span>'},
-    {t:'res = j.groupBy("country").agg(...)   <span class="c"># undo salt</span>'}
-  ];
-
-  // dummy rows (the clicks side) — US is the hot key
-  const ROWS = [
-    {k:'US',  label:'(US, click)'},
-    {k:'US',  label:'(US, click)'},
-    {k:'US',  label:'(US, click)'},
-    {k:'US',  label:'(US, click)'},
-    {k:'US',  label:'(US, click)'},
-    {k:'US',  label:'(US, click)'},
-    {k:'DE',  label:'(DE, click)'},
-    {k:'JP',  label:'(JP, click)'},
-    {k:'BR',  label:'(BR, click)'}
-  ];
-
-  // chips: each chip = {label, kls (k0/k1/k2/k3)}; key->color class
-  function chip(label, kls){ return {label:label, kls:kls}; }
-
-  // STEP DEFINITIONS -----------------------------------------------------
-  // Each step: stage label, narration, highlighted code lines, highlighted
-  // data rows, which executor is .active, and the chip layout per executor.
-  const STEPS = [
-    {
-      stage:'Stage 2 · after shuffle (skewed)',
-      html:'<b>One executor straggles.</b> The shuffle sends every <code>US</code> row to the same partition by <code>hash("US")</code>, so all six pile onto <b>Executor 1</b> — one long task spills while Executors 2 &amp; 3 sit nearly idle. This is <b>Max ≫ Median</b> in the Spark UI.',
-      code:[0,1,2],
-      rows:[0,1,2,3,4,5],
-      active:[0],
-      ex:[
-        [chip('US×6','k0')],
-        [chip('DE','k1')],
-        [chip('JP','k2'), chip('BR','k3')]
-      ],
-      spill:['spill (disk) ↑','',''],
-      flow:true
-    },
-    {
-      stage:'Driver · apply salting',
-      html:'<b>Salt only the hot key.</b> The driver rewrites the plan: <code>US</code> gets <code>salt = floor(rand()*3)</code> → <code>US_0 / US_1 / US_2</code>; the other side is <b>exploded ×3</b> so every salted <code>US</code> row still finds its match. Other keys keep <code>salt=0</code>.',
-      code:[4,5,6,7,8,9],
-      rows:[0,1,2,3,4,5],
-      active:[],
-      driver:true,
-      ex:[
-        [chip('US_0','k0'), chip('US_1','k0'), chip('US_2','k0')],
-        [chip('DE','k1')],
-        [chip('JP','k2'), chip('BR','k3')]
-      ],
-      spill:['','',''],
-      flow:false
-    },
-    {
-      stage:'Stage 2 · re-shuffle on (country, salt)',
-      html:'<b>Load rebalances.</b> The combined key <code>(country, salt)</code> now hashes <code>US_0 / US_1 / US_2</code> to <b>three different partitions</b> — they spread across all 3 executors. No single task owns the whole hot key; task times even out (<b>Max ≈ Median</b>), and the spill is gone.',
-      code:[10],
-      rows:[0,1,2,3,4,5],
-      active:[0,1,2],
-      ex:[
-        [chip('US_0','k0'), chip('BR','k3')],
-        [chip('US_1','k0'), chip('DE','k1')],
-        [chip('US_2','k0'), chip('JP','k2')]
-      ],
-      spill:['','',''],
-      flow:true
-    },
-    {
-      stage:'Stage 3 · re-aggregate by original key',
-      html:'<b>Undo the salt.</b> A small final stage re-groups by the original <code>country</code> alone, folding <code>US_0 + US_1 + US_2</code> back into one <code>US</code> total. <b>AQE skew join is the first defence</b> — reach for salting only on the few keys it can\'t split.',
-      code:[11],
-      rows:[0,1,2,3,4,5],
-      active:[1],
-      ex:[
-        [chip('BR','k3')],
-        [chip('US (re-agg)','k0'), chip('DE','k1'), chip('JP','k2')],
-        []
-      ],
-      spill:['','',''],
-      flow:false
-    }
-  ];
-
-  let i = 0, playing = false, timer = null;
-
-  // build the code pane once
-  codeEl.innerHTML = CODE.map((c,ix)=>'<span class="ln" data-ln="'+ix+'">'+(c.t||'&nbsp;')+'</span>').join('');
-  // build the data pane once
-  dataEl.innerHTML = ROWS.map((r,ix)=>'<span class="row" data-row="'+ix+'">'+r.label+'</span>').join('');
-
-  function renderParts(container, chips){
-    container.innerHTML = '';
-    chips.forEach(function(c){
-      const el = document.createElement('span');
-      el.className = 'part ' + c.kls + (reduce ? '' : ' pop');
-      el.textContent = c.label;
-      container.appendChild(el);
-    });
+  // a "part" chip = a block of rows for a key: US is the hot key, FR/DE small.
+  function chip(label, cls, pop){
+    const el = document.createElement('span');
+    el.className = 'part ' + cls + (pop && !reduce ? ' pop' : '');
+    el.textContent = label;
+    return el;
   }
+  function clearNodes(){
+    execParts.forEach(function(c){ c.innerHTML=''; });
+    execSpill.forEach(function(s){ s.textContent=''; });
+    drvParts.innerHTML='';
+    execNodes.forEach(function(n){ n.classList.remove('active','straggler'); });
+    driverNode.classList.remove('active');
+  }
+  function setWire(lit){ wire.classList.toggle('lit', !!lit); }
+
+  const CODE = {
+    skew: [
+      '<span class="c"># clicks skewed on country (US dominates)</span>',
+      'clicks = spark.table(<span class="s">"web.clicks"</span>)',
+      '',
+      '<span class="c"># plain join -&gt; US all lands on ONE task</span>',
+      'out = clicks.<span class="k">join</span>(dim, <span class="s">"country"</span>)'
+    ],
+    salt: [
+      'N = <span class="k">16</span>',
+      '<span class="c"># salt the skewed side, explode the dim</span>',
+      'c2  = clicks.withColumn(<span class="s">"salt"</span>,(rand()*N).cast(<span class="s">"int"</span>))',
+      'd2  = dim.withColumn(<span class="s">"salt"</span>, explode(...))',
+      'out = c2.<span class="k">join</span>(d2, [<span class="s">"country"</span>,<span class="s">"salt"</span>])'
+    ]
+  };
+
+  function renderCode(mode, hlSet){
+    codeEl.innerHTML = CODE[mode].map(function(ln,i){
+      const hl = hlSet && hlSet.indexOf(i) !== -1 ? ' hl' : '';
+      return '<span class="ln'+hl+'">'+(ln===''?'&nbsp;':ln)+'</span>';
+    }).join('');
+  }
+  function renderData(rows){
+    dataEl.innerHTML = rows.map(function(r){
+      return '<div class="row'+(r.hl?' hl':'')+'">'+r.t+'</div>';
+    }).join('');
+  }
+
+  // ---- SKEWED steps: US piles onto one executor, stragglers + spills ----
+  const stepsSkew = [
+    { stage:'Stage 1 · scan', code:[0,1],
+      narr:'Three executors scan <code>clicks</code>. Rows carry a <b>country</b> key — <code>US</code> (red) dwarfs <code>FR</code> and <code>DE</code>.',
+      data:[{t:'US  &#8776; 90% of rows',hl:true},{t:'FR  &#8776; 5%'},{t:'DE  &#8776; 5%'}],
+      run:function(){ clearNodes(); setWire(false);
+        execParts[0].appendChild(chip('US','hotkey',true)); execParts[0].appendChild(chip('US','hotkey',true));
+        execParts[1].appendChild(chip('FR','k1',true)); execParts[2].appendChild(chip('DE','k2',true));
+        execNodes.forEach(function(n){ n.classList.add('active'); }); } },
+    { stage:'Stage 2 · shuffle', code:[3,4],
+      narr:'The join shuffles by <code>country</code>: <code>hash(country) % n</code> sends <b>every <code>US</code> row to the same partition</b> — so all of it heads for one executor.',
+      data:[{t:'US &#8594; partition p0',hl:true},{t:'FR &#8594; partition p1'},{t:'DE &#8594; partition p2'}],
+      run:function(){ clearNodes(); setWire(true);
+        execParts[0].appendChild(chip('US','hotkey')); execParts[1].appendChild(chip('FR','k1')); execParts[2].appendChild(chip('DE','k2'));
+        driverNode.classList.add('active'); execNodes.forEach(function(n){ n.classList.add('active'); }); } },
+    { stage:'Stage 3 · straggler', code:[3,4],
+      narr:'<b>Executor 1 gets the whole <code>US</code> partition</b> — it spills and runs for minutes while executors 2 and 3 finished in seconds. Max task time &#8811; Median.',
+      data:[{t:'p0 (US)  huge — spilling',hl:true},{t:'p1 (FR)  done'},{t:'p2 (DE)  done'}],
+      run:function(){ clearNodes(); setWire(false);
+        execParts[0].appendChild(chip('US','hotkey',true)); execParts[0].appendChild(chip('US','hotkey',true)); execParts[0].appendChild(chip('US','hotkey',true));
+        execSpill[0].textContent='⚠ spill (disk) · straggler';
+        execNodes[0].classList.add('straggler');
+        execParts[1].appendChild(chip('FR✓','k1')); execParts[2].appendChild(chip('DE✓','k2')); } },
+    { stage:'Stage 4 · the fix', code:[3,4],
+      narr:'The stage waits an hour on one core. The fix: <b>salt <code>US</code></b> so it no longer lands on a single task. Flip the toggle above to <code>salted</code>.',
+      data:[{t:'p0 (US)  the bottleneck',hl:true},{t:'p1 (FR)  idle, waiting'},{t:'p2 (DE)  idle, waiting'}],
+      run:function(){ clearNodes(); setWire(false);
+        execParts[0].appendChild(chip('US','hotkey')); execParts[0].appendChild(chip('US','hotkey')); execParts[0].appendChild(chip('US','hotkey'));
+        execSpill[0].textContent='⚠ one core, one hour';
+        execNodes[0].classList.add('straggler'); } }
+  ];
+
+  // ---- SALTED steps: US#0..2 spread across all three executors ----
+  const stepsSalt = [
+    { stage:'Stage 1 · build salt', code:[0,1,2],
+      narr:'Add <code>salt = (rand()*N).cast("int")</code> to <code>clicks</code>. The mega-key <code>US</code> now carries a random <code>0..N-1</code>, becoming <code>US#0, US#1, US#2…</code>',
+      data:[{t:'US#0, US#1, US#2 …',hl:true},{t:'FR#0'},{t:'DE#0'}],
+      run:function(){ clearNodes(); setWire(false);
+        execParts[0].appendChild(chip('US#0','k0',true)); execParts[1].appendChild(chip('US#1','k1',true)); execParts[2].appendChild(chip('US#2','k2',true));
+        execNodes.forEach(function(n){ n.classList.add('active'); }); } },
+    { stage:'Stage 2 · explode dim', code:[3],
+      narr:'The small <code>dim</code> is <b>exploded &#215;N</b> — one copy per salt value — so a salted left row like <code>US#2</code> still finds <code>US#2</code> on the right.',
+      data:[{t:'dim.US &#8594; US#0, US#1, US#2 …',hl:true},{t:'dim.FR &#8594; FR#0 …'},{t:'dim.DE &#8594; DE#0 …'}],
+      run:function(){ clearNodes(); setWire(true);
+        execParts[0].appendChild(chip('US#0','k0')); execParts[1].appendChild(chip('US#1','k1')); execParts[2].appendChild(chip('US#2','k2'));
+        driverNode.classList.add('active'); execNodes.forEach(function(n){ n.classList.add('active'); }); } },
+    { stage:'Stage 3 · shuffle spreads', code:[4],
+      narr:'The shuffle now keys on <code>(country, salt)</code>: <code>hash("US#0")</code>, <code>hash("US#1")</code>, <code>hash("US#2")</code> land on <b>different executors</b>. The hot key is split three ways.',
+      data:[{t:'US#0 &#8594; exec 1',hl:true},{t:'US#1 &#8594; exec 2',hl:true},{t:'US#2 &#8594; exec 3',hl:true}],
+      run:function(){ clearNodes(); setWire(true);
+        execParts[0].appendChild(chip('US#0','k0',true)); execParts[1].appendChild(chip('US#1','k1',true)); execParts[2].appendChild(chip('US#2','k2',true));
+        execNodes.forEach(function(n){ n.classList.add('active'); }); } },
+    { stage:'Stage 4 · balanced', code:[4],
+      narr:'Each executor now joins <b>~1/N of <code>US</code></b> — no spill, no straggler. In the Stages tab, <b>Max task time now tracks the Median</b>. The stage is fast.',
+      data:[{t:'exec 1  ~1/3 US · done'},{t:'exec 2  ~1/3 US · done'},{t:'exec 3  ~1/3 US · done'}],
+      run:function(){ clearNodes(); setWire(false);
+        execParts[0].appendChild(chip('US#0✓','k0')); execParts[0].appendChild(chip('FR✓','k1'));
+        execParts[1].appendChild(chip('US#1✓','k0')); execParts[1].appendChild(chip('DE✓','k2'));
+        execParts[2].appendChild(chip('US#2✓','k0'));
+        execNodes.forEach(function(n){ n.classList.add('active'); }); } }
+  ];
+
+  let mode = 'skew', steps = stepsSkew, i = 0, timer = null;
 
   function goTo(n){
-    i = Math.max(0, Math.min(STEPS.length - 1, n));
-    const s = STEPS[i];
-
-    // nodes + chips
-    ex.forEach(function(e, idx){
-      renderParts(e.parts, s.ex[idx] || []);
-      e.node.classList.toggle('active', (s.active||[]).indexOf(idx) !== -1);
-      e.spill.textContent = (s.spill && s.spill[idx]) ? s.spill[idx] : '';
-    });
-    driverNode.classList.toggle('active', !!s.driver);
-    driverParts.innerHTML = s.driver
-      ? '<span class="part k1' + (reduce ? '' : ' pop') + '">rewrite plan</span>'
-      : '<span class="part" style="opacity:.5">idle</span>';
-
-    // static connector: lit when this step redistributes work across executors
-    wire.classList.toggle('lit', !!s.flow);
-
-    // code highlight
-    codeEl.querySelectorAll('.ln').forEach(function(ln){
-      ln.classList.toggle('hl', (s.code||[]).indexOf(parseInt(ln.dataset.ln,10)) !== -1);
-    });
-    // data highlight
-    dataEl.querySelectorAll('.row').forEach(function(rw){
-      rw.classList.toggle('hl', (s.rows||[]).indexOf(parseInt(rw.dataset.row,10)) !== -1);
-    });
-
-    // narration + progress
-    narr.innerHTML = '<span class="stage">' + s.stage + '</span>' + s.html;
-    scount.textContent = 'step ' + (i+1) + ' / ' + STEPS.length;
-    pfill.style.width = ((i+1) / STEPS.length * 100) + '%';
-    prevBtn.disabled = (i === 0);
-    nextBtn.disabled = (i === STEPS.length - 1);
+    i = Math.max(0, Math.min(n, steps.length-1));
+    const s = steps[i];
+    s.run();
+    renderCode(mode, s.code);
+    renderData(s.data);
+    narr.innerHTML = '<span class="stage">'+s.stage+'</span>'+s.narr;
+    pfill.style.width = ((i+1)/steps.length*100) + '%';
+    scount.textContent = 'step '+(i+1)+' / '+steps.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===steps.length-1);
   }
-
-  function stopPlay(){
-    playing = false;
-    if(timer){ clearInterval(timer); timer = null; }
-    playBtn.innerHTML = '&#9654; Play';
-  }
+  function stopPlay(){ if(timer){ clearInterval(timer); timer=null; playBtn.textContent='▶ Play'; } }
   function startPlay(){
-    if(i >= STEPS.length - 1){ goTo(0); }
-    playing = true;
-    playBtn.innerHTML = '&#10073;&#10073; Pause';
-    timer = setInterval(function(){
-      if(i >= STEPS.length - 1){ stopPlay(); return; }
-      goTo(i + 1);
-    }, reduce ? 700 : 1900);
+    if(i >= steps.length-1) goTo(0);
+    playBtn.textContent='❚❚ Pause';
+    timer = setInterval(function(){ if(i >= steps.length-1){ stopPlay(); return; } goTo(i+1); }, reduce ? 800 : 1900);
   }
-
-  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i - 1); });
-  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i + 1); });
-  playBtn.addEventListener('click', function(){ playing ? stopPlay() : startPlay(); });
-
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
+  playBtn.addEventListener('click', function(){ if(timer) stopPlay(); else startPlay(); });
+  modeSeg.addEventListener('click', function(e){
+    const b = e.target.closest('button'); if(!b) return;
+    stopPlay(); mode = b.dataset.mode; steps = (mode === 'salt') ? stepsSalt : stepsSkew;
+    modeSeg.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', String(x===b)); });
+    goTo(0);
+  });
   goTo(0);
 })();
 </script>

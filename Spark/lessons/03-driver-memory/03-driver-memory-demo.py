@@ -38,6 +38,13 @@
 # MAGIC > ⚠️ **Safety:** the "naive `collect()`" cells are written to **stay under the 1g limit** so the
 # MAGIC > notebook runs end-to-end. The cell that would actually trip the guardrail is commented out —
 # MAGIC > uncomment it only on a disposable cluster to watch the abort fire.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Run on a **classic single-user** Databricks cluster. The notebook intentionally uses separate
+# MAGIC cells for separate actions so each Spark UI job is easy to explain: `saveAsTable`, `count`,
+# MAGIC bounded `collect`, and `noop` writes each create their own job. Avoid shared-access /
+# MAGIC Spark Connect clusters for this track when teaching driver behavior because the extra
+# MAGIC indirection makes driver-vs-executor signals harder to read.
 
 # COMMAND ----------
 
@@ -48,6 +55,8 @@
 # COMMAND ----------
 
 # Parameterize the UC namespace at the top so the whole notebook is portable.
+# Single-user tutorial assumption: `catalog` already exists; this notebook creates only the schema
+# and demo tables under it.
 catalog = "main"
 schema  = "pyspark_perf_demo"
 table   = "driver_demo_facts"
@@ -56,6 +65,13 @@ fqn     = f"{catalog}.{schema}.{table}"          # fully-qualified catalog.schem
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 print("Writing demo objects under:", f"{catalog}.{schema}")
+
+LESSON_ID = "Lesson 03 - Driver memory"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -83,8 +99,10 @@ facts = (spark.range(0, 60_000_000)
          .withColumn("country_code", (F.col("id") % 240).cast("int"))  # 240 distinct countries
          .withColumn("pad", F.lit("x" * 80)))                          # widen the row (~bytes/row)
 
+mark_action("write generated facts table")
 facts.write.mode("overwrite").saveAsTable(fqn)   # executors write in parallel — driver untouched
 facts = spark.table(fqn)
+mark_action("count generated facts")
 print("rows:", facts.count(), "| in-memory partitions:", facts.rdd.getNumPartitions())
 
 # COMMAND ----------
@@ -106,6 +124,7 @@ facts.explain(mode="formatted")
 # We cap at 50k rows so this cell is safe to run; conceptually collect() with NO bound = all 60M rows.
 import time
 t0 = time.time()
+mark_action("bounded collect to driver")
 bounded_rows = facts.limit(50_000).collect()     # 50k rows reach the driver (safe)
 print(f"collected {len(bounded_rows):,} rows to the driver in {time.time()-t0:.2f}s")
 
@@ -124,6 +143,7 @@ print(f"collected {len(bounded_rows):,} rows to the driver in {time.time()-t0:.2
 # COMMAND ----------
 
 # ✅ FIX A — write the result. Executors persist their own partitions; nothing returns to the driver.
+mark_action("write transformed result table")
 (facts
  .withColumn("amount_with_tax", F.col("amount") * 1.2)
  .write.mode("overwrite").saveAsTable(f"{catalog}.{schema}.driver_demo_result"))
@@ -134,6 +154,7 @@ print("written — 0 rows returned to the driver")
 # ✅ FIX B — TIME the full job with the noop sink (runs everything, returns NOTHING to the driver).
 # This is the track's safe alternative to collect() for benchmarking a plan.
 t0 = time.time()
+mark_action("run full transform via noop")
 facts.withColumn("amount_with_tax", F.col("amount") * 1.2) \
      .write.format("noop").mode("overwrite").save()
 print(f"full job via noop sink: {time.time()-t0:.2f}s  (driver heap stayed flat)")
@@ -143,6 +164,7 @@ print(f"full job via noop sink: {time.time()-t0:.2f}s  (driver heap stayed flat)
 
 # ✅ FIX C — aggregate on the cluster, collect only the tiny summary (1 row, not 60M).
 t0 = time.time()
+mark_action("aggregate then collect one row")
 total = facts.agg(F.sum("amount").alias("t")).collect()[0]["t"]   # 1 row to the driver
 print(f"sum(amount) = {total:,.0f}  | collected 1 summary row in {time.time()-t0:.2f}s")
 

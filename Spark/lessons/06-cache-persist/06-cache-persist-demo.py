@@ -27,6 +27,12 @@
 # MAGIC - **Spark UI → Storage tab**: cached entry, its **Storage Level**, **Size in Memory / on Disk**, and
 # MAGIC   **Fraction Cached** (&lt; 100% means it didn't all fit).
 # MAGIC - **Spark UI → SQL/DataFrame tab**: the second action's DAG shows the cached scan; the join stages vanish.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Run on a **classic single-user** cluster. Cache lessons are easiest to teach when one user owns
+# MAGIC the driver and the Spark UI, because each action (`count`, `noop` write, `show`) maps directly
+# MAGIC to a Jobs / SQL entry. The comments below distinguish the action that materializes the cache
+# MAGIC from later actions that reuse it.
 
 # COMMAND ----------
 
@@ -39,16 +45,24 @@
 import time
 from pyspark.storagelevel import StorageLevel
 
-catalog = "main"                      # <-- change to a catalog you can write to
+catalog = "main"                      # existing catalog you can write to
 schema  = "pyspark_perf_demo"         # demo schema; dropped in the cleanup cell
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog}")
+# Single-user tutorial assumption: create only the demo schema, not the catalog itself.
 spark.sql(f"CREATE SCHEMA  IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
+
+LESSON_ID = "Lesson 06 - Cache and persist"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # Small helper: time a full job without writing real output (the noop sink).
 # Cleaner than collect() — it triggers the whole plan but pulls nothing to the driver.
 def time_action(df, label):
+    mark_action(label)
     t0 = time.time()
     df.write.format("noop").mode("overwrite").save()
     dt = time.time() - t0

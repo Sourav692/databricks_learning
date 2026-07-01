@@ -36,6 +36,12 @@
 # MAGIC > We measure with `df.explain(mode="formatted")`, `df.rdd.getNumPartitions()`, and a
 # MAGIC > `df.write.format("noop")` timing sink (runs the full job without writing output — and without
 # MAGIC > pulling data to the driver the way `collect()` would).
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Use a **classic single-user** cluster so the Executors tab, Storage tab, and driver logs belong
+# MAGIC to this notebook session. Each action below creates a Spark UI job; the helper function labels
+# MAGIC timing runs and the comments point to the exact GC columns to compare. Shared-access /
+# MAGIC Spark Connect clusters make those signals harder to attribute during a tutorial.
 
 # COMMAND ----------
 
@@ -52,7 +58,7 @@ dbutils.widgets.text("schema", "pyspark_perf_demo", "Schema")
 catalog = dbutils.widgets.get("catalog")
 schema  = dbutils.widgets.get("schema")
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog}")          # no-op if it already exists / managed
+# Use an existing catalog; create only the demo schema under it.
 spark.sql(f"CREATE SCHEMA  IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 
@@ -60,6 +66,13 @@ spark.sql(f"USE {catalog}.{schema}")
 ORIGINAL_MEMORY_FRACTION = spark.conf.get("spark.memory.fraction", "0.6")
 print("catalog.schema =", f"{catalog}.{schema}")
 print("starting spark.memory.fraction =", ORIGINAL_MEMORY_FRACTION)
+
+LESSON_ID = "Lesson 10 - Garbage collection"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -106,7 +119,8 @@ import time
 def time_plan(df, label, runs=3):
     """Force full materialization a few times and report wall-clock. Read GC Time in the Spark UI."""
     times = []
-    for _ in range(runs):
+    for i in range(runs):
+        mark_action(f"{label} run {i + 1}")
         t0 = time.time()
         df.write.format("noop").mode("overwrite").save()
         times.append(time.time() - t0)

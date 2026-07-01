@@ -1,13 +1,14 @@
 # DBX PySpark Performance — Learning Plan
 
-An eleven-lesson path through how Apache Spark actually runs your PySpark — the
+A fourteen-lesson path through how Apache Spark actually runs your PySpark — the
 execution model, joins, memory, runtime adaptivity, caching, pruning, skew, shared
-variables, GC, and bucketing. Built from the official **Apache Spark** docs and the
+variables, GC, bucketing, Spark UI debugging, sizing, and physical-plan reading. Built from the official **Apache Spark** docs and the
 **Azure Databricks** docs (verified June 2026). Each lesson is a self-contained
 interactive HTML page + a markdown companion + a runnable Databricks notebook.
 
 > **The one-line goal:** finish able to *design* a fast PySpark job, *defend* the
-> tuning choices in an interview, and *debug* a slow one from the plan and the Spark UI.
+> tuning choices in an interview, *debug* a slow one from the plan and the Spark UI,
+> and explain the optimizer/runtime layers behind the plan.
 
 ## How to use this plan
 
@@ -24,7 +25,9 @@ interactive HTML page + a markdown companion + a runnable Databricks notebook.
 > **shuffle** → **memory** decides what runs, spills, or OOMs → **AQE** adapts the plan
 > at runtime → **caching** reuses work → **pruning** reads less → **skew** is the
 > recurring villain (salting/hints) → **shared variables** move data efficiently →
-> **GC** and **bucketing** are the last-mile levers.
+> **GC** and **bucketing** are the last-mile levers → **Spark UI + plan reading** turn
+> symptoms into evidence → **sizing** matches partitions to cluster capacity → **Catalyst
+> and Tungsten** explain the advanced concepts behind the plan.
 
 ```mermaid
 flowchart LR
@@ -38,6 +41,9 @@ flowchart LR
   H --> I[09 Broadcast vars & accumulators]
   I --> J[10 Garbage collection]
   J --> K[11 Bucketing]
+  K --> L[12 Spark UI debugging]
+  L --> M[13 Partition & cluster sizing]
+  M --> N[14 Catalyst & physical plans]
 ```
 
 ## Lessons, timings & self-check
@@ -55,8 +61,11 @@ flowchart LR
 | 09 | Broadcast variables & accumulators | The two shared-variable types | 30 min | How is a broadcast *variable* different from a broadcast *join*, and why are accumulators only reliable inside actions? |
 | 10 | Garbage-collection tuning | When the JVM pauses, tasks pause | 30 min | What causes a stop-the-world GC pause, and name three ways to reduce GC time. |
 | 11 | Bucketing to eliminate the shuffle | Pre-shuffle once on write | 35 min | How do two bucketed tables join without an Exchange, and how is bucketing different from partitioning? |
+| 12 | Spark UI and query plan debugging | Turn symptoms into evidence | 45 min | How do `explain()` and the Spark UI complement each other when diagnosing a slow job? |
+| 13 | Partition, shuffle and cluster sizing | Match task waves to cluster capacity | 40 min | Why can adding workers fail to speed up a stage, and when should you use `repartition()` vs `coalesce()`? |
+| 14 | Catalyst, Tungsten and physical plan nodes | Read the optimizer/runtime vocabulary | 40 min | What is the difference between Catalyst, AQE, Tungsten, and Photon, and which plan nodes should you recognize? |
 
-Total: roughly **6 hours** of focused study, plus notebook runtime.
+Total: roughly **8.5 hours** of focused study, plus notebook runtime.
 
 ## The decision method to memorize
 
@@ -70,6 +79,8 @@ Total: roughly **6 hours** of focused study, plus notebook runtime.
 >    level; `unpersist()` when done.
 > 5. **Size memory & GC last** — understand the unified model, cure spill/OOM at the right
 >    region (driver vs executor), tune off-heap and G1GC.
+> 6. **Debug and size with evidence** — use Spark UI tabs, plan nodes, task waves, and
+>    executor metrics to prove the actual bottleneck.
 >
 > Always **verify the change in the plan / Spark UI** — never assume.
 
@@ -92,6 +103,9 @@ Total: roughly **6 hours** of focused study, plus notebook runtime.
 - **Bucketing:** `spark.sql.sources.bucketing.enabled` = **true**;
   `spark.sql.bucketing.coalesceBucketsInJoin.enabled` = **false** (since 3.1); must `saveAsTable()`.
 - **GC:** **G1GC** is the default since **Spark 4.0** (JDK 17); opt-in before via `-XX:+UseG1GC`.
+- **Plan reading:** `EXPLAIN FORMATTED` shows a physical plan outline plus node details;
+  `EXPLAIN EXTENDED` shows parsed, analyzed, optimized, and physical plans; `EXPLAIN CODEGEN`
+  shows generated code for codegen-capable operators.
 
 ## References (official Apache Spark + Azure Databricks docs)
 
@@ -103,3 +117,4 @@ Total: roughly **6 hours** of focused study, plus notebook runtime.
 - Cluster overview / deploy modes — https://spark.apache.org/docs/latest/cluster-overview.html
 - Azure Databricks — Adaptive Query Execution — https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe
 - Azure Databricks — compute / driver node — https://learn.microsoft.com/en-us/azure/databricks/compute/configure
+- Azure Databricks — Photon — https://learn.microsoft.com/en-us/azure/databricks/compute/photon

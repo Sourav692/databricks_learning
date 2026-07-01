@@ -32,6 +32,13 @@
 # MAGIC   aggregation (`filter().count()`), which this notebook does below.
 # MAGIC - We also time actions with the `noop` sink and print `getNumPartitions()` so partition/task
 # MAGIC   counts are explicit.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC This lesson specifically requires a **classic single-user** cluster because it uses
+# MAGIC `SparkContext` APIs (`sc.broadcast`, `sc.accumulator`). On serverless / shared-access
+# MAGIC clusters, use DataFrame-native broadcast joins and aggregations instead. Each action below
+# MAGIC creates a Spark UI job; accumulator examples call that out because repeated actions can
+# MAGIC intentionally double-count.
 
 # COMMAND ----------
 
@@ -40,7 +47,7 @@
 
 # COMMAND ----------
 
-# Three-level UC namespacing — change these to a catalog/schema you can write to.
+# Three-level UC namespacing — change these to an existing catalog/schema you can write to.
 catalog = "main"
 schema  = "pyspark_perf_demo"
 table   = "orders_09"
@@ -49,6 +56,13 @@ fqn     = f"{catalog}.{schema}.{table}"
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 print("Using:", f"{catalog}.{schema}", "| table:", fqn)
+
+LESSON_ID = "Lesson 09 - Broadcast variables and accumulators"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -73,6 +87,7 @@ orders = (
 )
 
 print("in-memory partitions of orders:", orders.rdd.getNumPartitions())  # one task per partition
+mark_action("materialize generated orders")
 orders.write.format("noop").mode("overwrite").save()  # materialize once to fix the row count
 display(orders.limit(5))
 

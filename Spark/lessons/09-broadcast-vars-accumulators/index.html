@@ -3,295 +3,390 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Broadcast variables &amp; accumulators · Databricks PySpark Performance</title>
+<title>Broadcast variables and accumulators · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,900;1,9..144,500&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
 
-  /* ---------- header ---------- */
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  /* breadcrumb back-link to track index */
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
 
-  /* ---------- sections ---------- */
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  .num{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem;margin-right:.5em}
-  ul{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  /* analogy + use-case chips */
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
 
-  /* ---------- table ---------- */
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
 
-  /* ---------- code blocks ---------- */
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}      /* comment */
-  pre .k{color:#fbbf77;font-weight:500} /* keyword */
-  pre .s{color:#b7e88f}      /* string */
-  pre .f{color:#c4b5fd}      /* function/identifier accent (optional) */
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
 
-  /* ---------- interactive lab shell ---------- */
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  .filterbar input[type=range]{accent-color:var(--flame);cursor:pointer}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--flame)}
-  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1px}
-  .verdict b{color:var(--flame)}
-  /* clickable step / accordion (for lifecycle / plan-walkthrough diagrams) */
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
 
-  /* ---------- per-lesson: executor / task panels (broadcast Diagram 1) ---------- */
-  .execgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin:18px 0 6px}
-  @media(max-width:560px){.execgrid{grid-template-columns:1fr}}
-  .exec{border:1px solid var(--line);border-radius:11px;padding:12px 12px 14px;background:rgba(255,255,255,.03)}
-  .exec .ex-name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-  .copies{display:flex;flex-wrap:wrap;gap:5px;min-height:30px}
-  .copy{font-family:"Spline Sans Mono",monospace;font-size:.58rem;border-radius:6px;padding:4px 6px;border:1px solid rgba(139,92,246,.55);background:linear-gradient(135deg,rgba(139,92,246,.32),rgba(124,58,237,.28));color:#ddd0ff;transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
-  .copy.task{border-color:rgba(249,115,22,.55);background:linear-gradient(135deg,rgba(249,115,22,.3),rgba(249,115,22,.2));color:#fcd9b6}
-  .tasks{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-  .tasktile{font-family:"Spline Sans Mono",monospace;font-size:.56rem;border-radius:6px;padding:4px 6px;border:1px dashed var(--line);background:rgba(255,255,255,.04);color:var(--faint)}
-  /* accumulator panels */
-  .accgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:14px 0 4px}
-  @media(max-width:560px){.accgrid{grid-template-columns:1fr}}
-  .accbox{border:1px solid var(--line);border-radius:10px;padding:12px 14px;background:rgba(255,255,255,.03);text-align:center}
-  .accbox .pn{font-family:"Spline Sans Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
-  .accbox .pv{font-family:"Fraunces",serif;font-weight:900;font-size:1.7rem;color:var(--flame);line-height:1.2;margin-top:4px}
-  .accbox.driver{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border-color:rgba(139,92,246,.32)}
-  .accbox.driver .pv{color:var(--violet-2)}
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
-     "how it runs on the Spark nodes" animations.
-     ==================================================================== */
+  /* ---- two-panel contrast (Figure A) ---- */
+  .twopane{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:16px 0 4px}
+  @media(max-width:600px){.twopane{grid-template-columns:1fr}}
+  .cpanel{border:1px solid var(--line);border-radius:10px;padding:14px 14px 16px;background:var(--bg)}
+  .cpanel h4{margin:0 0 4px;font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent-2)}
+  .cpanel .csub{font-family:"Source Serif 4",serif;font-size:.82rem;color:var(--muted);margin:0 0 12px}
+  .execbox{border:1px solid var(--line);border-radius:8px;padding:9px 10px;margin:8px 0;background:var(--card)}
+  .execbox .en{font-family:"JetBrains Mono",monospace;font-size:.58rem;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+  .copies{display:flex;flex-wrap:wrap;gap:5px;min-height:26px}
+  .copy{font-family:"JetBrains Mono",monospace;font-size:.58rem;border-radius:5px;padding:3px 6px;border:1px solid rgba(43,43,240,.42);background:var(--accent-soft);color:var(--accent-2);transition:transform .25s cubic-bezier(.2,.9,.3,1.4)}
+  .copy.task{border-color:rgba(154,91,24,.5);background:rgba(154,91,24,.1);color:#9a5b18}
+  .tasktiles{display:flex;flex-wrap:wrap;gap:5px;margin-top:7px}
+  .tasktile{font-family:"JetBrains Mono",monospace;font-size:.55rem;border-radius:5px;padding:3px 6px;border:1px dashed var(--line);background:var(--card);color:var(--faint)}
+  .accrow{display:flex;gap:8px;margin:8px 0}
+  .accbox{flex:1;border:1px solid var(--line);border-radius:8px;padding:9px 10px;background:var(--card);text-align:center}
+  .accbox .pn{font-family:"JetBrains Mono",monospace;font-size:.55rem;letter-spacing:.04em;text-transform:uppercase;color:var(--faint)}
+  .accbox .pv{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.3rem;color:var(--ink);line-height:1.2;margin-top:4px}
+  .accbox.driver{background:var(--accent-soft);border-color:rgba(43,43,240,.4)}
+  .accbox.driver .pv{color:var(--accent-2)}
+  .accbox.bad .pv{color:var(--danger)}
+  .minibtn{display:inline-flex;gap:3px}
+
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s}
+  .part.k0{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k1{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.k2{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.k3{background:rgba(120,80,180,.14);border-color:rgba(120,80,180,.4);color:#6b46a8}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  /* static connector wire between driver + executors */
-  .netwrap{position:relative}
-  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
-  /* stepper controls */
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  /* dummy code + data panes that highlight per step */
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .spillzone{margin-top:8px;border-top:1px dashed var(--line-2);padding-top:7px;font-size:.56rem;color:var(--faint);font-family:"JetBrains Mono",monospace;min-height:14px}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  /* ---------- footer ---------- */
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
 
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.copy,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_09 &nbsp;·&nbsp; Lesson 09 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 09</p>
-    <h1>Broadcast variables<br>&amp; <span class="drip">accumulators.</span></h1>
-    <p class="lede">Two ways to share data with your tasks: push a small read-only value out to every executor <em>once</em>, and pull aggregated numbers safely back to the driver — plus the exactly-once trap that catches everyone.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
-      <span class="pill">Shipped <b>once per executor</b></span>
-      <span class="pill">Exactly-once <b>actions only</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_09 · Shared variables · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Broadcast variables</h1>
+    <p class="subline">And accumulators · the two shared-variable types</p>
+    <p class="lede">Spark gives you exactly two ways to share data with your tasks: push a small <strong>read-only</strong> value out to every executor <em>once</em>, and pull aggregated numbers safely <strong>back</strong> to the driver. This lesson is about those two pipes — and the exactly-once trap that catches everyone on the way back.</p>
+    <div class="specs">
+      <span class="spec">Spark <b>3.2+</b> / DBR LTS</span>
+      <span class="spec">shipped <b>once / executor</b></span>
+      <span class="spec">exactly-once <b>actions only</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
-    <p>Spark gives you two <strong>shared variables</strong> — values that cross the driver↔executor boundary in a controlled way, instead of being captured ad-hoc by a closure:</p>
+    <p class="seclabel">01 · What it is</p>
+    <h2>Two pipes across the driver↔executor boundary</h2>
+    <p>Most values in your code reach the executors by being <em>captured in a closure</em> and serialized ad-hoc with every task. Spark's two <strong>shared variables</strong> cross that boundary in a controlled way instead — one going out, one coming back:</p>
     <ul>
-      <li><strong>Broadcast variable</strong> — a <strong>read-only</strong> value you create on the driver; Spark caches it <strong>once per executor</strong>, so every task on that executor reads the same in-memory copy. <code>bv = sc.broadcast(value)</code>; read on workers with <code>bv.value</code>.</li>
-      <li><strong>Accumulator</strong> — a <strong>write-only-on-workers</strong> counter: tasks only <code>.add()</code>; <strong>only the driver</strong> reads the final <code>.value</code>. <code>acc = sc.accumulator(0)</code>; tasks do <code>acc.add(1)</code>.</li>
+      <li><strong>A broadcast variable</strong> is a <strong>read-only</strong> value you build on the driver; Spark caches it <strong>once per executor</strong>, so every task on that executor reads the same in-memory copy. Create it with <code>sc.broadcast(value)</code>; read it on workers with <code>bv.value</code>.</li>
+      <li><strong>An accumulator</strong> is a <strong>write-only-on-workers</strong> counter: tasks only <code>.add()</code> to it, and <strong>only the driver</strong> reads the final <code>.value</code>. Create it with <code>sc.accumulator(0)</code>; tasks do <code>acc.add(1)</code>.</li>
     </ul>
-    <p>Think of them as opposite-direction pipes: a <strong>broadcast variable pushes data out</strong> to every executor; an <strong>accumulator pulls aggregated numbers back</strong> to the driver.</p>
-    <div class="callout">
-      <span class="lbl">The one rule to remember</span>
-      A broadcast <strong>variable</strong> is <em>not</em> a broadcast <strong>join</strong>. The variable is a value you reference inside a UDF/<code>map</code>; the join is a <em>strategy</em> the planner picks via <code>autoBroadcastJoinThreshold</code> / the <code>BROADCAST</code> hint (Lesson 02). Same word, different mechanism.
+    <p><span class="chip analogy">analogy</span> Think of them as opposite-direction pipes. A <strong>broadcast variable pushes data out</strong> to every executor; an <strong>accumulator pulls aggregated numbers back</strong> to the driver. The deep dive below covers each pipe once; the diagrams show them running.</p>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">Broadcast variable</div>
+        <p><strong>Read-only</strong> value, cached <strong>once per executor</strong>. Build with <code>sc.broadcast(v)</code>; read on workers via <code>bv.value</code>.</p>
+      </div>
+      <div class="quickcard ok">
+        <div class="qtitle">Accumulator</div>
+        <p><strong>Write-only</strong> on workers (<code>acc.add(n)</code>); <strong>only the driver</strong> reads <code>acc.value</code> after an action.</p>
+      </div>
+      <div class="quickcard danger">
+        <div class="qtitle">The trap</div>
+        <p>Trusting an accumulator updated inside a <strong>transformation</strong> (<code>map</code>/<code>filter</code>) — it may re-run and double-count.</p>
+      </div>
+    </div>
+    <div class="callout warn">
+      <span class="lbl">Broadcast variable ≠ broadcast join</span>
+      A broadcast <strong>variable</strong> is a value you reference inside a UDF/<code>map</code> (<code>sc.broadcast(obj)</code> → <code>bv.value</code>). A broadcast <strong>join</strong> is a <em>join strategy</em> the planner picks via <code>autoBroadcastJoinThreshold</code> (10 MB OSS) or the <code>BROADCAST</code> hint (Lesson 02). Same word, different mechanism — the join hint takes a <strong>DataFrame</strong>; <code>sc.broadcast()</code> takes a <strong>plain Python object</strong>. This is the single distinction interviewers test most on this topic.
     </div>
   </section>
 
-  <!-- ============ WHY IT MATTERS ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>Why it matters</h2>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>What each pipe saves you</h2>
     <ul>
-      <li><strong>Without a broadcast variable</strong>, a lookup dict/set/model referenced in a closure is <strong>serialized and shipped with every task</strong> — 10,000 tasks = 10,000 copies of the same 50 MB map crossing the network. With a broadcast variable it ships <strong>once per executor</strong> and is reused by all its tasks: far less network, GC, and duplicated memory.</li>
-      <li><strong>Without an accumulator</strong>, getting a number (bad-record count, rows-skipped) out of distributed tasks needs a whole extra pass. An accumulator lets tasks <strong>report a number as a side-effect</strong> of work you're already doing — no extra job.</li>
-      <li>Interviewers probe both: <em>"How do you ship a 200 MB model to your UDF without re-sending it per task?"</em> (broadcast variable) and <em>"Can you trust a counter incremented inside a <code>map</code>?"</em> (no — exactly-once holds only inside <strong>actions</strong>).</li>
+      <li><strong>Without a broadcast variable</strong>, a lookup dict/set/model referenced in a closure is <strong>serialized and shipped with every task</strong> — 10,000 tasks on a stage = 10,000 copies of the same 50 MB map crossing the network. With a broadcast variable it ships <strong>once per executor</strong> and is reused by all its tasks: far less network, GC churn, and duplicated memory.</li>
+      <li><strong>Without an accumulator</strong>, getting a number out of distributed tasks (bad-record count, rows-skipped) needs a whole extra pass over the data. An accumulator lets tasks <strong>report a number as a side-effect</strong> of work you're already doing — no extra job.</li>
+      <li><strong>Interviewers probe both:</strong> <em>"How do you ship a 200 MB model to your UDF without re-sending it per task?"</em> (broadcast variable) and <em>"Can you trust a counter incremented inside a <code>map</code>?"</em> (no — the exactly-once guarantee holds only inside <strong>actions</strong>).</li>
     </ul>
   </section>
 
-  <!-- ============ INTERACTIVE 1: ONCE-PER-EXECUTOR vs ONCE-PER-TASK ============ -->
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
   <section>
-    <h2>See it work — once per executor, not once per task</h2>
-    <p>Drag the number of tasks per executor and toggle how the value travels. A plain closure variable is serialized <strong>per task</strong>; a broadcast variable is cached <strong>once per executor</strong> and shared by every task on it. Watch the copy count — and the bytes on the wire — diverge.</p>
-    <div class="lab" id="lab-bcast">
-      <div class="lab-head"><span class="lab-title">Broadcast variable vs closure capture</span></div>
-      <p class="lab-sub">A 50 MB lookup dict referenced by a UDF, across 2 executors.</p>
-      <div class="controls">
-        <div class="filterbar"><label>Tasks per executor <input type="range" id="bc-tasks" min="1" max="8" value="4"><span class="sizeval" id="bc-tasksval">4</span></label></div>
-        <div class="seg" id="bc-mode" role="group" aria-label="ship mode">
-          <button data-mode="bcast" aria-pressed="true">sc.broadcast(v)</button>
-          <button data-mode="closure" aria-pressed="false">Plain closure var</button>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>Ship a value out; count a number back</h2>
+    <p class="dropcap">Each pipe is explained here once — its mechanism, its one hard constraint, and the trap it hides. The diagrams that follow <em>show</em> these ideas run; the tables and gotchas <em>cross-reference</em> them. Neither is re-explained.</p>
+
+    <h3>3.1 · Broadcast variable — a read-only value, once per executor</h3>
+    <p><span class="chip analogy">analogy</span> Like handing every cashier (executor) their own laminated price-list at the start of the shift, instead of faxing it to every customer (task). One copy per till, reused all day.</p>
+    <ul>
+      <li><strong>Mechanism.</strong> <code>bv = sc.broadcast(value)</code> on the <strong>driver</strong> serializes the value and ships it to each executor <strong>once</strong> (a torrent-like fan-out); the executor caches it in Storage memory / the block manager, and <strong>every task reads the same <code>bv.value</code></strong>. The docs define it as <em>"a read-only variable cached on each machine rather than shipping a copy of it with tasks."</em></li>
+      <li><strong>Read-only.</strong> Workers only read <code>bv.value</code>. Mutating it on a worker changes nothing anywhere else — it's broadcast once, not kept in sync.</li>
+      <li><strong>Why it beats a closure variable (Rung 2).</strong> A captured closure var is serialized <strong>once per task</strong> (one copy per partition); a broadcast var is serialized <strong>once per executor</strong>. On a wide stage that's thousands of copies versus one.</li>
+      <li><strong>Lifecycle.</strong> <code>bv.unpersist()</code> drops the cached copies (re-broadcast if reused); <code>bv.destroy()</code> removes it <strong>permanently</strong> (using it afterwards is an error). Release it — it pins Storage memory on every executor.</li>
+      <li><strong>The one hard constraint.</strong> The value must fit on the <strong>driver</strong> (where it's built) <em>and</em> in <strong>each executor's</strong> memory. It's static and read-only; a per-row-changing lookup is the wrong fit.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> A 30 MB <code>country_code → region</code> dict (or a small ML model) referenced in a Python UDF scoring 5 billion rows — broadcast once per executor rather than shipping it with every task.</p>
+
+    <h3>3.2 · Accumulator — count on workers, read on the driver</h3>
+    <p><span class="chip analogy">analogy</span> Like a tally counter at a stadium turnstile — each gate (task) clicks it as people pass, but only the control room (driver) reads the total. Gates can add; they can't read the running count.</p>
+    <ul>
+      <li><strong>Mechanism.</strong> <code>acc = sc.accumulator(0)</code> creates a shared counter on the <strong>driver</strong> — PySpark's <strong>only</strong> accumulator constructor (there is <strong>no</strong> <code>sc.longAccumulator(name)</code> in PySpark; that's Scala/Java-only). Tasks call <code>acc.add(n)</code> (or <code>acc += n</code>); each executor keeps a <strong>local partial</strong> and sends its contribution back, where Spark <strong>merges them on the driver</strong>. Only the driver reads <code>acc.value</code>.</li>
+      <li><strong>Write-only on workers.</strong> A task that reads <code>acc.value</code> sees only its own partial — never the global total. That asymmetry is what makes the merge associative and cheap.</li>
+      <li><strong>Lazy.</strong> The update only happens when an <strong>action</strong> runs the transformation containing it. No action → the count stays at the initial value.</li>
+      <li><strong>The exactly-once caveat (Rung 3 — the whole interview).</strong> The docs guarantee exactly-once <strong>only for updates inside actions</strong> (e.g. <code>foreach</code>): <em>"In transformations, users should be aware that each task's update may be applied more than once if tasks or stages are re-executed."</em> A <code>map</code>/<code>filter</code> that increments an accumulator may run twice (a retried/speculative task, a recomputed stage, or a second action over an uncached DataFrame) → an inflated count.</li>
+      <li><strong>Trade-off.</strong> Great for cheap side-channel metrics; <strong>not</strong> a substitute for a real aggregation. For correctness-critical counts, use <code>groupBy().count()</code> / <code>filter().count()</code>.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> Counting malformed records while writing a cleaned dataset — <code>bad_rows.add(1)</code> inside the <strong>action that writes</strong> (<code>foreachPartition</code>), then log <code>bad_rows.value</code> on the driver, with no second pass.</p>
+  </section>
+
+  <!-- ============ DIAGRAM A · two-panel contrast (structural facet) ============ -->
+  <section>
+    <p class="seclabel">Figure A · the two pipes side by side</p>
+    <h2>Once-per-executor vs. actions-only, in two panels</h2>
+    <p>Two independent panels, each isolating the one thing that trips people up. <strong>Left</strong> — a broadcast variable: drag the tasks-per-executor and watch the copy count stay at <em>one per executor</em>, not one per task. <strong>Right</strong> — an accumulator: run it inside an <em>action</em> or a <em>transformation</em>, then re-run to see the count stay correct or double. (Where the data physically travels across nodes is Figure B.)</p>
+    <div class="lab" id="lab-contrast">
+      <div class="twopane">
+
+        <!-- LEFT: broadcast variable — once per executor vs once per task -->
+        <div class="cpanel">
+          <h4>Broadcast variable</h4>
+          <p class="csub">A 50 MB lookup dict on 2 executors. Copies shipped = the counter to watch.</p>
+          <div class="controls" style="margin-bottom:4px">
+            <div class="filterbar"><label>Tasks / executor <input type="range" id="bc-tasks" min="1" max="8" value="4"><span class="sizeval" id="bc-tasksval">4</span></label></div>
+          </div>
+          <div class="seg" id="bc-mode" role="group" aria-label="ship mode" style="margin:4px 0 10px">
+            <button data-mode="bcast" aria-pressed="true">sc.broadcast(v)</button>
+            <button data-mode="closure" aria-pressed="false">plain closure</button>
+          </div>
+          <div id="bc-cluster"></div>
+          <div class="readout" style="grid-template-columns:1fr 1fr">
+            <div class="stat win"><div class="big" id="bc-copies">—</div><div class="lbl">copies shipped</div></div>
+            <div class="stat"><div class="big" id="bc-bytes">—</div><div class="lbl">~bytes on the wire</div></div>
+          </div>
+          <div class="verdict" id="bc-verdict" style="font-size:.9rem"></div>
         </div>
+
+        <!-- RIGHT: accumulator — actions vs transformations exactly-once -->
+        <div class="cpanel">
+          <h4>Accumulator</h4>
+          <p class="csub"><code>sc.accumulator(0)</code> — 2 executors × 3 tasks × 100 rows. True count = 600.</p>
+          <div class="seg" id="ac-mode" role="group" aria-label="update location" style="margin:0 0 8px">
+            <button data-mode="action" aria-pressed="true">inside action</button>
+            <button data-mode="transform" aria-pressed="false">inside transform</button>
+          </div>
+          <div class="seg minibtn" id="ac-run" role="group" aria-label="run controls" style="margin:0 0 10px">
+            <button data-act="run">Run action</button>
+            <button data-act="rerun">Re-run / retry</button>
+            <button data-act="reset">Reset</button>
+          </div>
+          <div class="accrow" id="ac-workers"></div>
+          <div class="accrow"><div class="accbox driver" style="flex:1"><div class="pn">driver reads acc.value</div><div class="pv" id="ac-driver">0</div></div></div>
+          <div class="verdict" id="ac-verdict" style="font-size:.9rem">Press <b>Run action</b> to fire the tasks.</div>
+        </div>
+
       </div>
-      <div class="execgrid" id="bc-cluster"></div>
-      <div class="readout">
-        <div class="stat win"><div class="big" id="bc-copies">—</div><div class="lbl">copies shipped</div></div>
-        <div class="stat"><div class="big" id="bc-bytes">—</div><div class="lbl">~bytes on the wire</div></div>
-        <div class="stat"><div class="big" id="bc-perexec">—</div><div class="lbl">copies per executor</div></div>
-      </div>
-      <div class="verdict" id="bc-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real broadcast uses a torrent-like fan-out; the takeaway is one cached copy per executor, reused by its tasks.</p>
+      <p class="lab-note">Simplified illustration — real broadcast uses a torrent-like fan-out; "Re-run" models a recomputed stage / second action over an uncached DataFrame. Watch: the copy count on the left, the doubled total on the right.</p>
     </div>
   </section>
 
-  <!-- ============ HOW IT WORKS: BROADCAST VARIABLE ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Three moves, each with its proof</h2>
+    <p>Every snippet below is paired with <strong>how to prove it worked</strong> — the Spark-UI signal or the cross-check. Apply, then verify; never assume.</p>
+    <div class="callout">
+      <span class="lbl">Simple reading rule</span>
+      When you see the word <em>broadcast</em>, ask one question first: <strong>"Is this a broadcast VARIABLE (a value read inside a UDF via <code>bv.value</code>), or a broadcast JOIN (a strategy the planner applies to a DataFrame)?"</strong> <code>sc.broadcast()</code> takes a plain object; <code>broadcast(df)</code> takes a DataFrame. Naming them apart up front prevents the #1 mix-up.
+    </div>
 
-    <h3>1 · Broadcast variable — ship a read-only value once per executor</h3>
-    <p><span class="chip analogy">analogy</span> A broadcast variable is like handing every cashier (executor) their own laminated price-list at the start of the shift, instead of faxing it to every customer (task). One copy per till, reused all day.</p>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>bv = sc.broadcast(value)</code> on the <strong>driver</strong> serializes the value and ships it to each executor <strong>once</strong> (torrent-like fan-out); the executor caches it (in Storage memory / the block manager) and <strong>every task reads the same <code>bv.value</code></strong>. The docs define it as <em>"a read-only variable cached on each machine rather than shipping a copy of it with tasks."</em></li>
-      <li><strong>Read-only:</strong> workers only read <code>bv.value</code>. Mutating it on a worker has no effect anywhere else — it's broadcast once, not kept in sync.</li>
-      <li><strong>Why it beats a closure variable:</strong> a captured closure var is serialized <strong>per task</strong> (one copy per partition); a broadcast var is serialized <strong>once per executor</strong>.</li>
-      <li><strong>Lifecycle:</strong> <code>bv.unpersist()</code> drops the cached copies (re-broadcast if reused); <code>bv.destroy()</code> removes it <strong>permanently</strong> (using it afterwards is an error). Release it — it pins Storage memory on every executor.</li>
-      <li><strong>Trade-off:</strong> the value must fit on the <strong>driver</strong> (where it's built) and in <strong>each executor's</strong> memory; it's static and read-only.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> A 30 MB <code>country_code → region</code> dict (or a small ML model) referenced in a Python UDF scoring 5 billion rows — broadcast it once per executor instead of shipping it with every task.</p>
-
+    <h3>Broadcast a read-only lookup, read it in a UDF</h3>
     <pre><span class="tag">python</span><code><span class="c"># DRIVER: build the small lookup once, then broadcast it (read-only) to every executor.</span>
 lookup = {<span class="s">"US"</span>: <span class="s">"NA"</span>, <span class="s">"CA"</span>: <span class="s">"NA"</span>, <span class="s">"DE"</span>: <span class="s">"EU"</span>, <span class="s">"IN"</span>: <span class="s">"APAC"</span>}
-bv = sc.broadcast(lookup)                       <span class="c"># shipped ONCE per executor</span>
+bv = sc.broadcast([<span class="s">"US"</span>, <span class="s">"CA"</span>, <span class="s">"DE"</span>, <span class="s">"IN"</span>])   <span class="c"># any plain Python object — shipped ONCE per executor</span>
+bv = sc.broadcast(lookup)                              <span class="c"># here: a dict; read on workers via bv.value</span>
 
 <span class="k">from</span> pyspark.sql.functions <span class="k">import</span> udf
 <span class="k">from</span> pyspark.sql.types <span class="k">import</span> StringType
@@ -299,128 +394,80 @@ bv = sc.broadcast(lookup)                       <span class="c"># shipped ONCE p
 <span class="c"># WORKER: each task reads the SAME cached copy via bv.value — no per-task re-send.</span>
 <span class="f">@udf</span>(StringType())
 <span class="k">def</span> <span class="f">to_region</span>(code):
-    <span class="k">return</span> bv.value.get(code, <span class="s">"UNKNOWN"</span>)    <span class="c"># bv.value is READ-ONLY on the worker</span>
+    <span class="k">return</span> bv.value.get(code, <span class="s">"UNKNOWN"</span>)             <span class="c"># bv.value is READ-ONLY on the worker</span>
 
 regions = orders.withColumn(<span class="s">"region"</span>, to_region(<span class="s">"country_code"</span>))
 
-<span class="c"># VERIFY (a *variable*, not a plan node — verify in the Spark UI, not .explain()):</span>
-<span class="c">#   • Spark UI -> Storage tab: one "Broadcast" block, sized ~your value, NOT x num_tasks.</span>
-<span class="c">#   • tasks don't re-serialize the dict per task.</span>
+<span class="c"># VERIFY — it's a *variable*, not a plan node, so check the Spark UI, not .explain():</span>
+<span class="c">#   Spark UI -> Storage tab shows ONE "Broadcast" block sized ~your value, NOT x num_tasks.</span>
 bv.unpersist()   <span class="c"># release when done (re-broadcast if reused) …</span>
 <span class="c"># bv.destroy()   # … or remove permanently (using it afterwards raises an error)</span></code></pre>
 
-    <div class="callout">
-      <span class="lbl">Variable vs join — keep them apart</span>
-      <code>sc.broadcast(dict)</code> ships a <em>value</em> you read in code. <code>df.join(broadcast(small_df), …)</code> (Lesson 02) is a <em>join strategy</em>. The DataFrame <code>broadcast()</code> hint takes a <strong>DataFrame</strong>; <code>sc.broadcast()</code> takes a <strong>plain Python object</strong>. Don't use a broadcast variable to "speed up a join" — use the join hint.
-    </div>
-  </section>
-
-  <!-- ============ INTERACTIVE 2: TABBED VARIABLE-vs-JOIN COMPARE ============ -->
-  <section>
-    <h2>Compare: broadcast <em>variable</em> vs broadcast <em>join</em></h2>
-    <p>The single most-confused pair on this topic. Switch tabs to see what each one actually is, the API, and how you verify it.</p>
-    <div class="lab" id="lab-vsjoin">
-      <div class="lab-head"><span class="lab-title">Same word, two mechanisms</span></div>
-      <div class="controls">
-        <div class="seg" id="vj-seg" role="group" aria-label="which one">
-          <button data-s="var" aria-pressed="true">Broadcast variable</button>
-          <button data-s="join" aria-pressed="false">Broadcast join</button>
-        </div>
-      </div>
-      <div class="planbox" id="vj-plan"></div>
-      <div class="verdict" id="vj-note"></div>
-    </div>
-  </section>
-
-  <!-- ============ HOW IT WORKS: ACCUMULATOR ============ -->
-  <section>
-    <h2>2 · Accumulator — count on workers, read on the driver</h2>
-    <p><span class="chip analogy">analogy</span> An accumulator is like a tally counter at a stadium turnstile — each gate (task) clicks it as people pass, but only the control room (driver) reads the total. Gates can add; they can't read the running total.</p>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>acc = sc.accumulator(0)</code> creates a shared counter on the <strong>driver</strong> — PySpark's <strong>only</strong> accumulator constructor (there is <strong>no</strong> <code>sc.longAccumulator(name)</code> in PySpark; that's Scala/Java-only). Tasks call <code>acc.add(n)</code> (or <code>acc += n</code>); each executor keeps a <strong>local partial</strong> and sends its contribution back, where Spark <strong>merges them on the driver</strong>. Only the driver reads <code>acc.value</code>.</li>
-      <li><strong>Write-only on workers:</strong> a task that reads <code>acc.value</code> sees only its own partial — never the global total. The asymmetry is what makes the merge associative and cheap.</li>
-      <li><strong>Lazy:</strong> the update only happens when an <strong>action</strong> runs the transformation containing it. No action → the count stays at the initial value.</li>
-      <li><strong>The exactly-once caveat (the whole interview):</strong> the docs guarantee exactly-once <strong>only for updates inside actions</strong> (e.g. <code>foreach</code>): <em>"In transformations, users should be aware that each task's update may be applied more than once if tasks or stages are re-executed."</em> A <code>map</code>/<code>filter</code> that increments an accumulator may run twice (retried task, recomputed stage, or a second action over an uncached DataFrame) → inflated count.</li>
-      <li><strong>Trade-off:</strong> great for cheap side-channel metrics; <strong>not</strong> a substitute for a real aggregation. For correctness-critical counts use <code>groupBy().count()</code> / <code>filter().count()</code>.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> Counting malformed records while writing a cleaned dataset — <code>bad_rows.add(1)</code> inside the <strong>action that writes</strong> (<code>foreachPartition</code>), then log <code>bad_rows.value</code> on the driver, with no second pass.</p>
-
-    <pre><span class="tag">python</span><code><span class="c"># DRIVER: sc.accumulator(value) is PySpark's ONLY accumulator constructor — there is no</span>
-<span class="c"># sc.longAccumulator(name) in PySpark (Scala/Java-only). It is UNNAMED.</span>
+    <h3>Count bad records inside an action (exactly-once)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># DRIVER: sc.accumulator(value) is PySpark's ONLY accumulator constructor. It is UNNAMED.</span>
+<span class="c"># (Scala/Java have sc.longAccumulator("name"); PySpark has no sc.longAccumulator.)</span>
 bad_rows = sc.accumulator(<span class="f">0</span>)
 
 <span class="k">def</span> <span class="f">validate_and_write</span>(rows):
     <span class="k">for</span> r <span class="k">in</span> rows:
         <span class="k">if</span> r[<span class="s">"amount"</span>] <span class="k">is</span> <span class="k">None</span>:
-            bad_rows.add(<span class="f">1</span>)                  <span class="c"># WORKER: only .add() — never read .value here</span>
+            bad_rows.add(<span class="f">1</span>)                       <span class="c"># WORKER: only .add() — never read .value here</span>
         <span class="c"># … write/emit the good row …</span>
 
-<span class="c"># ✅ Inside an ACTION (foreachPartition) -> each task's update applied EXACTLY ONCE.</span>
+<span class="c"># Inside an ACTION (foreachPartition) -> each task's update applied EXACTLY ONCE.</span>
 orders.rdd.foreachPartition(validate_and_write)
 
-<span class="c"># DRIVER ONLY reads the merged total — safe because the update ran inside an action.</span>
-<span class="k">print</span>(<span class="s">"bad rows:"</span>, bad_rows.value)
+<span class="k">print</span>(<span class="s">"bad rows:"</span>, bad_rows.value)                <span class="c"># DRIVER ONLY reads the merged total</span>
 
-<span class="c"># VERIFY: PySpark's sc.accumulator() is UNNAMED, so it is typically NOT surfaced by name in</span>
-<span class="c">#   the Spark UI Stages -> Accumulators view. Confirm the count against a real aggregation:</span>
-<span class="k">print</span>(<span class="s">"true count:"</span>, orders.filter(orders.amount.isNull()).count())   <span class="c"># matches bad_rows.value</span></code></pre>
+<span class="c"># VERIFY — PySpark's sc.accumulator() is UNNAMED, so it is typically NOT surfaced by name</span>
+<span class="c">#   in the Spark UI Stages -> Accumulators view. Cross-check against a real aggregation:</span>
+<span class="k">print</span>(<span class="s">"true count:"</span>, orders.filter(orders.amount.isNull()).count())   <span class="c"># must match</span></code></pre>
 
-    <pre><span class="tag">python</span><code><span class="c"># ❌ Anti-pattern: incrementing inside a TRANSFORMATION (lazy + may re-run).</span>
+    <h3>The anti-pattern: incrementing inside a transformation</h3>
+    <pre><span class="tag">python</span><code><span class="c"># WRONG: incrementing inside a TRANSFORMATION (lazy + may re-run) — NOT exactly-once.</span>
 seen = sc.accumulator(<span class="f">0</span>)
-counted = orders.rdd.map(<span class="k">lambda</span> r: (seen.add(<span class="f">1</span>), r)[<span class="f">1</span>])   <span class="c"># transformation — NOT exactly-once</span>
+counted = orders.rdd.map(<span class="k">lambda</span> r: (seen.add(<span class="f">1</span>), r)[<span class="f">1</span>])   <span class="c"># transformation, not action</span>
 counted.count()        <span class="c"># runs once  -> seen == N …</span>
-counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  ⚠️ inflated</span>
-<span class="c"># A retried/speculative task or a recomputed stage can double-count even with one action.</span>
-<span class="c"># Fix for a real count: orders.count() / orders.filter(cond).count()  (a true aggregation).</span></code></pre>
+counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  (inflated)</span>
+
+<span class="c"># A retried/speculative task or a recomputed stage can double-count even with ONE action.</span>
+<span class="c"># VERIFY / FIX — use a true aggregation and compare; they will NOT match after two actions:</span>
+<span class="k">print</span>(orders.count())                       <span class="c"># the real count — trust this, not `seen`</span></code></pre>
   </section>
 
-  <!-- ============ INTERACTIVE 3: ACCUMULATOR add()/merge + exactly-once ============ -->
+  <!-- ============ DIAGRAM B · cluster lab (spatial facet) ============ -->
   <section>
-    <h2>See it work — workers <code>.add()</code>, the driver reads</h2>
-    <p>Press <strong>Run an action</strong> to fire tasks: each worker accumulates a local partial, then the driver merges them. Toggle whether the update sits inside an <strong>action</strong> or a <strong>transformation</strong>, then hit <strong>Re-run / retry</strong> to see how a recompute leaves the count correct (action) or doubled (transformation).</p>
-    <div class="lab" id="lab-acc">
-      <div class="lab-head"><span class="lab-title">Accumulator: add, merge, and the exactly-once trap</span></div>
-      <p class="lab-sub"><code>acc = sc.accumulator(0)</code> — 2 executors, 3 tasks each, every task adds its row count.</p>
-      <div class="controls">
-        <div class="seg" id="ac-mode" role="group" aria-label="where the update lives">
-          <button data-mode="action" aria-pressed="true">Inside an action (foreach)</button>
-          <button data-mode="transform" aria-pressed="false">Inside a transformation (map)</button>
-        </div>
-        <div class="seg" id="ac-run" role="group" aria-label="run controls">
-          <button data-act="run">Run an action</button>
-          <button data-act="rerun">Re-run / retry</button>
-          <button data-act="reset">Reset</button>
-        </div>
-      </div>
-      <div class="accgrid" id="ac-workers"></div>
-      <div class="accgrid">
-        <div class="accbox driver" style="grid-column:1 / -1"><div class="pn">driver reads acc.value</div><div class="pv" id="ac-driver">0</div></div>
-      </div>
-      <div class="verdict" id="ac-verdict">Press <b>Run an action</b> to fire the tasks.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: "Re-run" models a recomputed stage / second action over an uncached DataFrame. Expected true count = 600.</p>
-    </div>
-  </section>
-
-  <!-- ============ CLUSTER EXECUTION LAB ============ -->
-  <section>
-    <h2>See it run on the cluster</h2>
-    <p>One animated walk-through, two parts. <strong>Part A</strong> ships a broadcast <em>variable</em> from the driver — <strong>once per executor</strong> (not once per task) — and every task on that executor reuses its local copy. <strong>Part B</strong> runs an accumulator: each executor's tasks <code>.add()</code> to a <strong>local</strong> counter, the partial deltas flow <em>back</em> to the driver, and only the driver reads <code>.value</code>. Use <strong>Prev / Play / Next</strong> to step through 1 driver + 3 executors.</p>
+    <p class="seclabel">Figure B · where it travels</p>
+    <h2>See it run across the cluster</h2>
+    <p>This figure isolates a different thing from Figure A: not the counters, but <em>where data physically moves</em> across 1 driver + 3 executors. <strong>Part A</strong> ships a broadcast <em>variable</em> out — <strong>once per executor</strong>, reused by every task on it. <strong>Part B</strong> runs an accumulator: tasks <code>.add()</code> to a <strong>local</strong> partial, the deltas flow <em>back</em> to the driver, and only the driver reads <code>.value</code>. Use <em>Prev / Play / Next</em>.</p>
     <div class="lab" id="lab-cluster">
-      <div class="lab-head"><span class="lab-title">Driver + 3 executors — broadcast out, accumulate back</span></div>
-      <p class="lab-sub">Dummy data + dummy PySpark; chips and code lines highlight per step.</p>
-      <div class="controls">
+      <div class="lab-head">
+        <span class="lab-title">Driver + 3 executors — broadcast out, accumulate back</span>
         <div class="seg" id="cl-part" role="group" aria-label="which part">
-          <button data-part="A" aria-pressed="true">Part A · broadcast variable</button>
+          <button data-part="A" aria-pressed="true">Part A · broadcast var</button>
           <button data-part="B" aria-pressed="false">Part B · accumulator</button>
         </div>
       </div>
-      <div class="cluster netwrap" id="cl-stage">
+      <p class="lab-sub">Dummy data + dummy PySpark; chips and code lines highlight per step.</p>
+
+      <div class="cluster" id="cl-stage">
         <div class="nodes" id="cl-nodes"></div>
         <div class="wire" id="cl-wire"></div>
       </div>
+
+      <div class="stepper">
+        <button id="cl-prev">‹ Prev</button>
+        <button class="play" id="cl-play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
+        <span class="scount" id="cl-scount">step 1 / 4</span>
+      </div>
+
+      <div class="narr" id="cl-narr"><span class="stage">ready</span>Press <b>Play</b> to watch it run.</div>
+
       <div class="panes">
         <div class="pane">
-          <div class="ptitle">dummy PySpark</div>
+          <div class="ptitle">PySpark — dummy code</div>
           <div class="codepane" id="cl-code"></div>
         </div>
         <div class="pane">
@@ -428,88 +475,79 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
           <div class="datapane" id="cl-data"></div>
         </div>
       </div>
-      <div class="stepper">
-        <button id="cl-prev">‹ Prev</button>
-        <button class="play" id="cl-play">▶ Play</button>
-        <button id="cl-next">Next ›</button>
-        <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
-        <span class="scount" id="cl-scount">step 1 / 1</span>
-      </div>
-      <div class="narr" id="cl-narr"><span class="stage">ready</span>Press <b>Play</b> to watch it run.</div>
-      <div class="callout" style="margin-top:18px">
-        <span class="lbl">What this is NOT</span>
-        A broadcast <strong>variable</strong> (Part A) is <em>not</em> a broadcast <strong>join</strong> — the variable is a value your code reads; the join is a planner strategy (Lesson 02). And accumulators (Part B) are <strong>exactly-once only inside actions</strong> — the deltas merging on the driver here run inside a <code>foreachPartition</code>; the same <code>.add()</code> inside a lazy <code>map</code> could be applied more than once on a recompute.
-      </div>
+      <p class="lab-note">Simplified illustration — a broadcast variable (Part A) is not a broadcast join; the accumulator deltas (Part B) merge exactly-once only because they run inside a foreachPartition action.</p>
     </div>
   </section>
 
-  <!-- ============ COMPARISON TABLE ============ -->
+  <!-- ============ 05 · COMPARISON TABLE (a decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · Comparison table</p>
+    <h2>The two pipes, dimension by dimension</h2>
+    <p>Read this by the property you care about — it answers "which pipe, and what's its catch?" at a glance. (The <em>why</em> is §3; this is the <em>which</em>.)</p>
     <table class="tbl">
       <thead><tr><th>Dimension</th><th>Broadcast variable</th><th>Accumulator</th></tr></thead>
       <tbody>
         <tr><td><strong>Direction</strong></td><td>Driver → executors (push out)</td><td>Executors → driver (pull back)</td></tr>
         <tr><td><strong>Access</strong></td><td><strong>Read-only</strong> on workers (<code>bv.value</code>)</td><td><strong>Write-only</strong> on workers (<code>acc.add</code>); driver reads <code>acc.value</code></td></tr>
         <tr><td><strong>Shipped / merged</strong></td><td>Cached <strong>once per executor</strong>, reused by its tasks</td><td>Per-task partials <strong>merged on the driver</strong></td></tr>
-        <tr><td><strong>Create</strong></td><td><code>sc.broadcast(value)</code></td><td><code>sc.accumulator(0)</code> (PySpark's only constructor; no <code>longAccumulator</code>)</td></tr>
+        <tr><td><strong>Create</strong></td><td><code>sc.broadcast(value)</code></td><td><code>sc.accumulator(0)</code> (only constructor; no <code>longAccumulator</code>)</td></tr>
         <tr><td><strong>Typical use</strong></td><td>Small lookup dict/set/model in a UDF/<code>map</code></td><td>Counters/metrics: bad-record count, audit tallies</td></tr>
-        <tr><td><strong>Correctness caveat</strong></td><td>Static &amp; read-only — updates don't propagate</td><td><strong>Exactly-once only inside actions</strong>; transformations may double-count</td></tr>
-        <tr><td><strong>Release</strong></td><td><code>unpersist()</code> (re-broadcast if reused) / <code>destroy()</code></td><td>Lives with the <code>SparkContext</code>; reset by re-creating</td></tr>
-        <tr><td><strong>Verify in</strong></td><td>Spark UI <strong>Storage</strong> tab (one Broadcast block)</td><td>Cross-check <code>acc.value</code> vs a real aggregation (Python accumulators are unnamed → not surfaced by name in the UI)</td></tr>
+        <tr><td><strong>Correctness caveat</strong></td><td class="risk-lo">Static &amp; read-only — updates don't propagate</td><td class="risk-hi">Exactly-once <strong>only inside actions</strong>; transformations may double-count</td></tr>
+        <tr><td><strong>Release</strong></td><td><code>unpersist()</code> / <code>destroy()</code></td><td>Lives with the <code>SparkContext</code>; reset by re-creating</td></tr>
+        <tr><td><strong>Verify in</strong></td><td>Spark UI <strong>Storage</strong> tab (one Broadcast block)</td><td>Cross-check <code>acc.value</code> vs a real aggregation (Python accumulators are unnamed)</td></tr>
         <tr><td><strong>NOT this</strong></td><td>A broadcast <strong>join</strong> (a strategy, Lesson 02)</td><td>A real aggregation (<code>groupBy().count()</code>)</td></tr>
       </tbody>
     </table>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of §3:</p>
     <ul>
-      <li><strong>Broadcast variable:</strong> a small static lookup (<code>dict</code>/<code>set</code>), a compiled regex set, or a small ML model referenced inside a UDF/<code>mapInPandas</code>/RDD <code>map</code> over a huge dataset.</li>
-      <li><strong>Accumulator:</strong> lightweight side-channel metrics gathered <em>while</em> doing real work inside an <strong>action</strong> (<code>foreach</code>/<code>foreachPartition</code>) — bad-record counts, rows-dropped, sampled debug tallies.</li>
-      <li>Reach for the DataFrame <code>broadcast()</code> <strong>join hint</strong> (Lesson 02), not a broadcast variable, when the goal is avoiding the shuffle of a small <em>table</em> in a join.</li>
+      <li><strong>A broadcast value that's almost too big.</strong> It must fit on the <strong>driver</strong> and in <strong>each executor's</strong> memory; a 2 GB "small" lookup pressures Storage memory (region <code>R</code>, Lesson 04) and can OOM. Above budget, rethink the design — a join or a bucketed lookup table.</li>
+      <li><strong>Mutating a broadcast value on a worker.</strong> Read-only; local mutations are silently discarded and never propagate. To change the lookup, re-broadcast a new variable.</li>
+      <li><strong>Forgetting to release.</strong> A long-lived broadcast pins Storage memory on every executor and pressures GC (Lesson 10). Call <code>unpersist()</code>/<code>destroy()</code> when done.</li>
+      <li><strong>Accumulator inside a transformation that runs twice.</strong> Two actions over the same <strong>uncached</strong> DataFrame recompute and <strong>double</strong> the count; even one action can double-count on a <strong>retried/speculative task</strong> or <strong>recomputed stage</strong>.</li>
+      <li><strong>Reading an accumulator on a worker.</strong> Illegal/meaningless — you get a partial, not the total. Read <code>.value</code> on the driver, after the action.</li>
     </ul>
-    <h3>Edge cases</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
-      <li><strong>A broadcast value that's almost too big</strong> — it must fit on the <strong>driver</strong> and in <strong>each executor's</strong> memory; a 2 GB "small" lookup pressures Storage memory and can OOM.</li>
-      <li><strong>Mutating a broadcast value on a worker</strong> — read-only; local mutations are silently discarded. To change the lookup, re-broadcast a new variable.</li>
-      <li><strong>Forgetting to release</strong> — a long-lived broadcast pins Storage memory (region <code>R</code>, Lesson 04) on every executor; <code>unpersist()</code>/<code>destroy()</code> when done.</li>
-      <li><strong>Accumulator inside a transformation that runs twice</strong> — two actions over the same <strong>uncached</strong> DataFrame recompute and <strong>double</strong> the count; even one action can double-count on a <strong>retried/speculative task</strong> or <strong>recomputed stage</strong>.</li>
-      <li><strong>Reading an accumulator on a worker</strong> — illegal/meaningless; read <code>.value</code> on the driver, after the action.</li>
-    </ul>
-    <h3>Limitations</h3>
-    <ul>
-      <li><strong>Both are RDD/<code>SparkContext</code>-level APIs</strong> — used via <code>sc.broadcast</code> / <code>sc.accumulator</code> and read inside UDFs/<code>rdd</code> functions. For pure DataFrame work, prefer DataFrame-native tools (the <code>broadcast()</code> join hint; built-in aggregations).</li>
-      <li><strong>Spark Connect / serverless:</strong> <code>SparkContext.broadcast</code> and <code>SparkContext.accumulator</code> are <strong>not supported on Spark Connect</strong>. On Databricks <strong>serverless / shared-access (Spark Connect)</strong> clusters <code>sc</code> isn't available the same way — use a broadcast <em>join</em> hint and DataFrame aggregations there. They work on classic single-user DBR clusters.</li>
-      <li><strong>No exactly-once inside transformations</strong> — by design. Don't build correctness-critical counts on accumulators; use a real aggregation.</li>
+      <li><strong>Both are RDD/<code>SparkContext</code>-level APIs.</strong> Used via <code>sc.broadcast</code> / <code>sc.accumulator</code> and read inside UDFs/<code>rdd</code> functions. For pure DataFrame work, prefer DataFrame-native tools — the <code>broadcast()</code> join hint and built-in aggregations.</li>
+      <li><strong>Spark Connect / serverless.</strong> <code>SparkContext.broadcast</code> and <code>SparkContext.accumulator</code> are <strong>not supported on Spark Connect</strong>. On Databricks <strong>serverless / shared-access</strong> clusters <code>sc</code> isn't available the same way — use a broadcast <em>join</em> hint and DataFrame aggregations there. They work on classic single-user DBR clusters.</li>
+      <li><strong>No exactly-once inside transformations — by design.</strong> Don't build correctness-critical counts on accumulators; use a real aggregation.</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Confusing a broadcast <em>variable</em> with a broadcast <em>join</em>.</strong> <code>sc.broadcast(dict)</code> ships a value you read in a UDF; <code>join(broadcast(df), …)</code> is a join strategy. The #1 trap on this topic.</li>
-      <li><strong>Capturing a big object in a closure instead of broadcasting it.</strong> Referencing a 50 MB dict directly in a UDF serializes it <strong>per task</strong>. Wrap it in <code>sc.broadcast(...)</code> and read <code>bv.value</code>.</li>
-      <li><strong>Trusting an accumulator updated inside a <code>map</code>/<code>filter</code>.</strong> Exactly-once holds <strong>only inside actions</strong>; use <code>foreach</code>/<code>foreachPartition</code>, or a real aggregation.</li>
-      <li><strong>Assuming an accumulator updates without an action.</strong> Accumulators are <strong>lazy</strong> — no action, no increment.</li>
-      <li><strong>Reading <code>acc.value</code> on a worker.</strong> Workers are write-only; you get a partial, not the total. Read on the driver.</li>
-      <li><strong>Never releasing a broadcast.</strong> It pins executor Storage memory and pressures GC (Lesson 10). <code>unpersist()</code>/<code>destroy()</code> when done.</li>
-      <li><strong>Expecting a PySpark accumulator to show by name in the UI.</strong> <code>sc.accumulator(0)</code> is <strong>unnamed</strong> and PySpark has <strong>no</strong> <code>sc.longAccumulator(name)</code> (Scala/Java-only), so Python accumulators aren't surfaced by name in Stages → Accumulators. Verify by comparing <code>acc.value</code> to a real aggregation (<code>filter().count()</code>).</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Confusing a broadcast <em>variable</em> with a broadcast <em>join</em></strong></td><td>They're different mechanisms — the #1 trap on this topic.</td><td><code>sc.broadcast(dict)</code> ships a value you read; <code>join(broadcast(df), …)</code> is a strategy.</td></tr>
+        <tr><td><strong>Capturing a big object in a closure</strong></td><td>It's serialized and shipped once per task, not per executor.</td><td>Wrap it in <code>sc.broadcast(...)</code> and read <code>bv.value</code>.</td></tr>
+        <tr><td><strong>Trusting an accumulator updated inside a <code>map</code>/<code>filter</code></strong></td><td>Exactly-once holds only inside actions; transformations may re-run.</td><td>Use <code>foreach</code>/<code>foreachPartition</code>, or a real aggregation.</td></tr>
+        <tr><td><strong>Assuming an accumulator updates without an action</strong></td><td>It's lazy — no action, no increment.</td><td>Trigger the transformation with an action, then read <code>.value</code>.</td></tr>
+        <tr><td><strong>Reading <code>acc.value</code> on a worker</strong></td><td>Workers are write-only; you get a partial, not the total.</td><td>Read on the driver, after the action.</td></tr>
+        <tr><td><strong>Never releasing a broadcast</strong></td><td>It pins executor Storage memory and pressures GC.</td><td>Call <code>unpersist()</code>/<code>destroy()</code> when done.</td></tr>
+        <tr><td><strong>Expecting a PySpark accumulator to show by name in the UI</strong></td><td><code>sc.accumulator(0)</code> is unnamed (no <code>sc.longAccumulator(name)</code> in PySpark).</td><td>Verify by comparing <code>acc.value</code> to <code>filter().count()</code>.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html#shared-variables">Apache Spark — RDD Programming Guide (Broadcast Variables &amp; Accumulators, exactly-once caveat)</a>
-      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (broadcast <em>join</em> — keep distinct from the variable)</a>
-      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (autoBroadcastJoinThreshold — the join threshold, not the variable)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (runtime broadcast-join behavior)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html#shared-variables">Apache Spark — RDD Programming Guide (Broadcast Variables &amp; Accumulators, exactly-once caveat)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (broadcast <em>join</em> — keep distinct from the variable)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (autoBroadcastJoinThreshold — the join threshold, not the variable)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (runtime broadcast-join behavior)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -517,26 +555,30 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. <code>sc.broadcast</code>/<code>sc.accumulator</code> are classic-<code>SparkContext</code> APIs (not supported on Spark Connect). Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · <code>sc.broadcast</code>/<code>sc.accumulator</code> are classic-SparkContext APIs (not supported on Spark Connect) · the exactly-once caveat and "read-only cached on each machine" definition are doc-quoted · OSS-vs-Databricks defaults noted where they differ.</p>
   </div>
 </footer>
 
 <script>
-/* ---- Diagram 1: broadcast variable — once per executor vs once per task ---- */
+/* ---- Figure A: two-panel contrast — (left) broadcast var once/executor, (right) accumulator exactly-once ---- */
+
+/* LEFT panel: broadcast variable — once per executor vs once per task */
 (function(){
-  const root = document.getElementById('lab-bcast');
+  const root = document.getElementById('lab-contrast');
   if(!root) return;
   const SIZE_MB = 50;                 // size of the lookup value
   const EXECS = 2;                    // two executors
-  const tasks = root.querySelector('#bc-tasks');
+  const tasks    = root.querySelector('#bc-tasks');
   const tasksval = root.querySelector('#bc-tasksval');
-  const modeSeg = root.querySelector('#bc-mode');
-  const cluster = root.querySelector('#bc-cluster');
+  const modeSeg  = root.querySelector('#bc-mode');
+  const cluster  = root.querySelector('#bc-cluster');
   const elCopies = root.querySelector('#bc-copies');
-  const elBytes = root.querySelector('#bc-bytes');
-  const elPer = root.querySelector('#bc-perexec');
-  const verdict = root.querySelector('#bc-verdict');
+  const elBytes  = root.querySelector('#bc-bytes');
+  const verdict  = root.querySelector('#bc-verdict');
   let mode = 'bcast';
+
+  function fmtBytes(mb){ return mb >= 1024 ? (mb/1024).toFixed(1) + ' GB' : mb + ' MB'; }
 
   function render(){
     const t = parseInt(tasks.value, 10);
@@ -546,34 +588,31 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     const totalCopies = copiesPerExec * EXECS;
     const bytes = totalCopies * SIZE_MB;
     elCopies.textContent = totalCopies;
-    elBytes.textContent = bytes >= 1024 ? (bytes/1024).toFixed(1) + ' GB' : bytes + ' MB';
-    elPer.textContent = copiesPerExec;
+    elBytes.textContent  = fmtBytes(bytes);
 
-    // build the two executor panels
     let html = '';
     for(let e=1; e<=EXECS; e++){
       let copies = '';
       for(let c=0; c<copiesPerExec; c++){
         copies += '<span class="copy' + (bcast ? '' : ' task') + '">' + SIZE_MB + ' MB</span>';
       }
-      let tasktiles = '';
+      let tiles = '';
       for(let k=0; k<t; k++){
-        tasktiles += '<span class="tasktile">task ' + k + (bcast ? ' → bv.value' : ' (own copy)') + '</span>';
+        tiles += '<span class="tasktile">task ' + k + (bcast ? ' → bv.value' : ' (own copy)') + '</span>';
       }
-      html += '<div class="exec"><div class="ex-name">Executor ' + e + '</div>' +
+      html += '<div class="execbox"><div class="en">Executor ' + e + '</div>' +
               '<div class="copies">' + copies + '</div>' +
-              '<div class="tasks">' + tasktiles + '</div></div>';
+              '<div class="tasktiles">' + tiles + '</div></div>';
     }
     cluster.innerHTML = html;
 
     if(bcast){
-      verdict.innerHTML = '<b>One cached copy per executor.</b> Spark ships the ' + SIZE_MB +
-        ' MB value <b>' + EXECS + '</b> time(s) total — once per executor — and all ' + (t*EXECS) +
+      verdict.innerHTML = '<b>One cached copy per executor.</b> The ' + SIZE_MB +
+        ' MB value ships <b>' + EXECS + '</b> time(s) total — once per executor — and all ' + (t*EXECS) +
         ' tasks read the same <code>bv.value</code>. Adding tasks costs nothing extra on the wire.';
     } else {
       verdict.innerHTML = '<b>One copy per task.</b> A plain closure variable is serialized with <b>every</b> task: ' +
-        (t*EXECS) + ' copies, ~' + (bytes>=1024 ? (bytes/1024).toFixed(1)+' GB' : bytes+' MB') +
-        ' on the wire — the same dict re-sent again and again. Wrap it in <code>sc.broadcast(...)</code>.';
+        (t*EXECS) + ' copies, ~' + fmtBytes(bytes) + ' on the wire. Wrap it in <code>sc.broadcast(...)</code>.';
     }
   }
   tasks.addEventListener('input', render);
@@ -586,73 +625,35 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
   render();
 })();
 
-/* ---- Diagram 2: broadcast variable vs broadcast join (tabbed compare) ---- */
+/* RIGHT panel: accumulator — add/merge + exactly-once trap */
 (function(){
-  const root = document.getElementById('lab-vsjoin');
-  if(!root) return;
-  const seg = root.querySelector('#vj-seg');
-  const plan = root.querySelector('#vj-plan');
-  const note = root.querySelector('#vj-note');
-  const data = {
-    var: {
-      plan: '<span class="dim"># It is a VALUE you reference in code (no plan node).</span>\n' +
-            'bv = sc.<span class="ok">broadcast</span>({"US": "NA", "DE": "EU"})   <span class="dim"># plain Python object</span>\n' +
-            'df.withColumn("region", to_region("cc"))      <span class="dim"># UDF reads bv.value</span>\n' +
-            '<span class="dim"># VERIFY -> Spark UI Storage tab: one "Broadcast" block.</span>',
-      note: '<b>Broadcast VARIABLE.</b> A read-only value shipped once per executor and read inside a UDF/<code>map</code>. API: <code>sc.broadcast(obj)</code> → <code>bv.value</code>. Not a join, not a plan node — verify in the <b>Storage</b> tab.'
-    },
-    join: {
-      plan: '<span class="dim"># It is a JOIN STRATEGY the planner applies (a plan node).</span>\n' +
-            'big.join(<span class="ok">broadcast</span>(small), "id")        <span class="dim"># broadcast() takes a DataFrame</span>\n' +
-            '<span class="dim"># or SQL:</span> SELECT /*+ <span class="ok">BROADCAST</span>(small) */ ...\n' +
-            '<span class="dim"># VERIFY -> .explain():</span>\n' +
-            '<span class="ok">BroadcastHashJoin</span> [id]   <span class="ok">&lt;- no big-side Exchange ✅</span>',
-      note: '<b>Broadcast JOIN.</b> A strategy chosen via <code>autoBroadcastJoinThreshold</code> (10 MB OSS) or the <code>BROADCAST</code> hint — it ships the small <em>table</em> and skips the big-side shuffle (Lesson 02). Verify in <code>.explain()</code> as <code>BroadcastHashJoin</code>.'
-    }
-  };
-  function show(s){
-    plan.innerHTML = data[s].plan;
-    note.innerHTML = data[s].note;
-    seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.s === s)));
-  }
-  seg.addEventListener('click', function(e){
-    const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.s);
-  });
-  show('var');
-})();
-
-/* ---- Diagram 3: accumulator add/merge + exactly-once trap ---- */
-(function(){
-  const root = document.getElementById('lab-acc');
+  const root = document.getElementById('lab-contrast');
   if(!root) return;
   const EXECS = 2, TASKS = 3, PER_TASK = 100;   // 2 execs x 3 tasks x 100 rows = 600 true
   const TRUE_TOTAL = EXECS * TASKS * PER_TASK;
   const modeSeg = root.querySelector('#ac-mode');
-  const runSeg = root.querySelector('#ac-run');
+  const runSeg  = root.querySelector('#ac-run');
   const workers = root.querySelector('#ac-workers');
-  const elDriver = root.querySelector('#ac-driver');
+  const elDriver= root.querySelector('#ac-driver');
   const verdict = root.querySelector('#ac-verdict');
+  const driverBox = elDriver.closest('.accbox');
   let mode = 'action';
   let ranOnce = false;
-  let partials = [];   // per-executor partial totals
+  let partials = [];
 
-  function blankWorkers(){
-    partials = new Array(EXECS).fill(0);
-    paint();
-  }
+  function blankWorkers(){ partials = new Array(EXECS).fill(0); paint(); }
   function paint(){
     let html = '';
     for(let e=0; e<EXECS; e++){
-      html += '<div class="accbox"><div class="pn">Executor ' + (e+1) + ' — local partial (' + TASKS + ' tasks .add)</div>' +
+      html += '<div class="accbox"><div class="pn">Exec ' + (e+1) + ' partial</div>' +
               '<div class="pv">' + partials[e] + '</div></div>';
     }
     workers.innerHTML = html;
     const total = partials.reduce((a,b)=>a+b, 0);
     elDriver.textContent = total;
+    driverBox.classList.toggle('bad', ranOnce && total !== TRUE_TOTAL);
   }
   function runAction(isRerun){
-    // each executor's tasks add PER_TASK rows
     const contribution = TASKS * PER_TASK;        // 300 per executor
     if(!isRerun){
       partials = partials.map(() => contribution); // first run: clean partials
@@ -660,65 +661,58 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     } else {
       if(!ranOnce){ runAction(false); return; }
       if(mode === 'action'){
-        // inside an action: recompute is idempotent for the accumulator → stays correct
-        partials = partials.map(() => contribution);
+        partials = partials.map(() => contribution);   // action: idempotent → stays correct
       } else {
-        // inside a transformation: re-execution re-applies the update → doubles
-        partials = partials.map(p => p + contribution);
+        partials = partials.map(p => p + contribution); // transformation: re-applies → doubles
       }
     }
     paint();
     const total = partials.reduce((a,b)=>a+b,0);
     if(mode === 'action'){
-      verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true count = ' + TRUE_TOTAL + '). ' +
-        'Updates ran inside an <b>action</b> (<code>foreach</code>) → each task applied <b>exactly once</b>, so re-running/retrying still gives the right total. ✅';
+      verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true = ' + TRUE_TOTAL + '). ' +
+        'Updates ran inside an <b>action</b> (<code>foreach</code>) → each task applied <b>exactly once</b>, so re-running still gives the right total.';
+    } else if(total === TRUE_TOTAL){
+      verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true = ' + TRUE_TOTAL + '). ' +
+        'Looks right after one action — but it lives in a <b>transformation</b> (<code>map</code>). Press <b>Re-run / retry</b> to model a recompute…';
     } else {
-      if(total === TRUE_TOTAL){
-        verdict.innerHTML = '<b>acc.value = ' + total + '</b> (true count = ' + TRUE_TOTAL + '). ' +
-          'Looks right after one action — but the update is inside a <b>transformation</b> (<code>map</code>). Press <b>Re-run / retry</b> to model a recompute…';
-      } else {
-        verdict.innerHTML = '<b>acc.value = ' + total + '</b> — but the true count is only ' + TRUE_TOTAL + '. ⚠️ ' +
-          'The update lives in a <b>transformation</b>, so a recomputed stage / second action <b>re-applied</b> it and inflated the count. Trust accumulators only inside actions, or use a real aggregation.';
-      }
+      verdict.innerHTML = '<b>acc.value = ' + total + '</b> — true count is only ' + TRUE_TOTAL + '. ' +
+        'The update sits in a <b>transformation</b>, so a recomputed stage / second action <b>re-applied</b> it. Trust accumulators only inside actions.';
     }
   }
   modeSeg.addEventListener('click', function(e){
     const b = e.target.closest('button'); if(!b) return;
     mode = b.dataset.mode;
     modeSeg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    ranOnce = false;
-    blankWorkers();
-    verdict.innerHTML = 'Mode set to <b>' + (mode === 'action' ? 'inside an action' : 'inside a transformation') + '</b>. Press <b>Run an action</b>.';
+    ranOnce = false; blankWorkers();
+    verdict.innerHTML = 'Mode: <b>' + (mode === 'action' ? 'inside an action' : 'inside a transformation') + '</b>. Press <b>Run action</b>.';
   });
   runSeg.addEventListener('click', function(e){
     const b = e.target.closest('button'); if(!b) return;
     const act = b.dataset.act;
     if(act === 'run'){ ranOnce = false; runAction(false); }
     else if(act === 'rerun'){ runAction(true); }
-    else { ranOnce = false; blankWorkers(); verdict.innerHTML = 'Reset. Press <b>Run an action</b> to fire the tasks.'; }
+    else { ranOnce = false; blankWorkers(); verdict.innerHTML = 'Reset. Press <b>Run action</b> to fire the tasks.'; }
   });
   blankWorkers();
 })();
 
-/* ---- Diagram 4: CLUSTER EXECUTION LAB — broadcast out (A) + accumulate back (B) ---- */
+/* ---- Figure B: CLUSTER EXECUTION LAB — broadcast out (A) + accumulate back (B) ---- */
 (function(){
   const root = document.getElementById('lab-cluster');
   if(!root) return;
   const NODES = root.querySelector('#cl-nodes');
-  const WIRE = root.querySelector('#cl-wire');
-  const CODE = root.querySelector('#cl-code');
-  const DATA = root.querySelector('#cl-data');
-  const NARR = root.querySelector('#cl-narr');
+  const WIRE  = root.querySelector('#cl-wire');
+  const CODE  = root.querySelector('#cl-code');
+  const DATA  = root.querySelector('#cl-data');
+  const NARR  = root.querySelector('#cl-narr');
   const partSeg = root.querySelector('#cl-part');
-  const elPrev = root.querySelector('#cl-prev');
-  const elNext = root.querySelector('#cl-next');
-  const elPlay = root.querySelector('#cl-play');
+  const elPrev  = root.querySelector('#cl-prev');
+  const elNext  = root.querySelector('#cl-next');
+  const elPlay  = root.querySelector('#cl-play');
   const elPfill = root.querySelector('#cl-pfill');
-  const elScount = root.querySelector('#cl-scount');
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-  const EXECS = 3;
+  const elScount= root.querySelector('#cl-scount');
+  const reduce  = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
 
-  // dummy code per part (array of lines; index = highlightable line)
   const CODE_A = [
     '<span class="c"># DRIVER: build a small lookup, broadcast it ONCE per executor</span>',
     'lookup = {<span class="s">"US"</span>:<span class="s">"NA"</span>, <span class="s">"DE"</span>:<span class="s">"EU"</span>, <span class="s">"IN"</span>:<span class="s">"APAC"</span>}',
@@ -739,24 +733,20 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     'orders.rdd.<span class="k">foreachPartition</span>(check)',
     '<span class="k">print</span>(bad.value)          <span class="c"># DRIVER reads total</span>'
   ];
-  // dummy data rows (orders)
   const ROWS_A = [
     'cc=US amt=12.0', 'cc=DE amt=9.5', 'cc=IN amt=4.0',
     'cc=US amt=7.2', 'cc=DE amt=2.1', 'cc=IN amt=8.8'
   ];
   const ROWS_B = [
-    'amt=12.0', 'amt=None ✗', 'amt=4.0',
-    'amt=7.2',  'amt=None ✗', 'amt=8.8'
+    'amt=12.0', 'amt=None x', 'amt=4.0',
+    'amt=7.2',  'amt=None x', 'amt=8.8'
   ];
 
-  // ---- STEP DEFINITIONS ------------------------------------------------
-  // each step: {stage, narr, code:[line idx], data:[row idx], render(fn), lit}
-  // render() returns the per-node HTML + sets active nodes; lit toggles the wire.
   function execNode(i, opts){
     opts = opts || {};
     const active = opts.active ? ' active' : '';
     const parts = opts.parts || '';
-    const sub = opts.sub || '';
+    const sub   = opts.sub || '';
     return '<div class="node' + active + '" data-node="e' + i + '">' +
            '<h4>Executor ' + i + ' <span class="core">2 tasks</span></h4>' +
            '<div class="parts">' + parts + '</div>' +
@@ -766,7 +756,7 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     opts = opts || {};
     const active = opts.active ? ' active' : '';
     const parts = opts.parts || '';
-    const sub = opts.sub || '';
+    const sub   = opts.sub || '';
     return '<div class="node driver' + active + '" data-node="d">' +
            '<h4>Driver <span class="core">main()</span></h4>' +
            '<div class="parts">' + parts + '</div>' +
@@ -805,9 +795,9 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
       stage:'Part A · the takeaway', code:[2,5,6], data:[],
       narr:'<b>Once per executor, not once per task.</b> A plain closure var would be re-serialized with every task; the broadcast <em>variable</em> ships 3 times total and is reused everywhere. (This is a <b>variable</b>, not a broadcast <b>join</b>.)',
       render(){ return driverNode({parts:chip('k1','lookup {3}')}) +
-                       execNode(1,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}) +
-                       execNode(2,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}) +
-                       execNode(3,{parts:chip('k1','bv copy') + chip('k0','×2 reuse')}); },
+                       execNode(1,{parts:chip('k1','bv copy') + chip('k0','x2 reuse')}) +
+                       execNode(2,{parts:chip('k1','bv copy') + chip('k0','x2 reuse')}) +
+                       execNode(3,{parts:chip('k1','bv copy') + chip('k0','x2 reuse')}); },
       lit:false
     }
   ];
@@ -857,9 +847,7 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
   let i = 0;
   let timer = null;
 
-  function litWire(on){
-    WIRE.classList.toggle('lit', !!on);
-  }
+  function litWire(on){ WIRE.classList.toggle('lit', !!on); }
   function renderCode(active){
     CODE.innerHTML = codeLines.map((ln, idx)=>
       '<span class="ln' + (active.indexOf(idx) >= 0 ? ' hl' : '') + '">' + (ln === '' ? '&nbsp;' : ln) + '</span>'
@@ -880,24 +868,14 @@ counted.count()        <span class="c"># runs AGAIN (not cached) -> seen == 2N  
     elPfill.style.width = ((i+1) / steps.length * 100) + '%';
     elPrev.disabled = (i === 0);
     elNext.disabled = (i === steps.length - 1);
-    // light the static connector when this step ships/merges across the wire
     litWire(s.lit);
   }
-  function goTo(n){
-    i = Math.max(0, Math.min(steps.length - 1, n));
-    paint();
-  }
-  function stopPlay(){
-    if(timer){ clearInterval(timer); timer = null; }
-    elPlay.textContent = '▶ Play';
-  }
+  function goTo(n){ i = Math.max(0, Math.min(steps.length - 1, n)); paint(); }
+  function stopPlay(){ if(timer){ clearInterval(timer); timer = null; } elPlay.textContent = '▶ Play'; }
   function startPlay(){
     if(i >= steps.length - 1){ goTo(0); }
     elPlay.textContent = '❚❚ Pause';
-    timer = setInterval(()=>{
-      if(i >= steps.length - 1){ stopPlay(); return; }
-      goTo(i + 1);
-    }, reduce ? 900 : 1900);
+    timer = setInterval(()=>{ if(i >= steps.length - 1){ stopPlay(); return; } goTo(i + 1); }, reduce ? 900 : 1900);
   }
   function setPart(p){
     part = p;

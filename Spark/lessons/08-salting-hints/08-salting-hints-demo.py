@@ -27,6 +27,12 @@
 # MAGIC - **SQL / DataFrame tab:** the DAG; look for the `Exchange`, `HashAggregate`, `SortMergeJoin`,
 # MAGIC   and `AQEShuffleRead` (which shows `skewed=true` when AQE splits a skewed partition).
 # MAGIC - **The plan is the primary evidence in this track** — `df.explain(mode="formatted")`.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Run on a **classic single-user** cluster so one notebook session maps cleanly to one driver and
+# MAGIC Spark UI. Several cells intentionally trigger actions to create before/after jobs. When the UI
+# MAGIC shows a job per action, read the printed label and the nearby comment to know which Stages row
+# MAGIC demonstrates skew, AQE skew split, salting, or a SQL hint.
 
 # COMMAND ----------
 
@@ -36,7 +42,7 @@
 # COMMAND ----------
 
 # Parameterize catalog/schema at the top — three-level UC names: catalog.schema.table.
-catalog = "main"
+catalog = "main"      # existing catalog where you can create the demo schema/tables
 schema  = "pyspark_perf_demo"
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
@@ -45,9 +51,17 @@ spark.sql(f"USE {catalog}.{schema}")
 from pyspark.sql import functions as F
 import time
 
+LESSON_ID = "Lesson 08 - Skew, salting, hints"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
+
 # Small timing helper: the noop sink runs the FULL job without writing real output —
 # the clean way to time a plan without pulling data to the driver (no collect()).
 def timed(df, label):
+    mark_action(label)
     t0 = time.time()
     df.write.format("noop").mode("overwrite").save()
     dt = time.time() - t0

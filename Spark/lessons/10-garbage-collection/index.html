@@ -3,457 +3,449 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Garbage-Collection Tuning · Databricks PySpark Performance</title>
+<title>Garbage collection · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
 
-  /* ---------- header ---------- */
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
 
-  /* ---------- sections ---------- */
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  ul{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
 
-  /* ---------- table ---------- */
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
 
-  /* ---------- code blocks ---------- */
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}
-  pre .k{color:#fbbf77;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
 
-  /* ---------- interactive lab shell ---------- */
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .btn{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 16px;border-radius:9px;cursor:pointer;transition:.18s;box-shadow:var(--shadow)}
-  .btn:hover{border-color:var(--flame);color:#fff}
-  .btn.primary{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .btn.primary:hover{background:var(--flame);color:#160d06}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
-  .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
-  /* ---- GC timeline diagram (dark) ---- */
-  .gc-lanes{display:flex;flex-direction:column;gap:10px;margin:18px 0 6px}
-  .gc-lane{display:flex;align-items:center;gap:12px}
-  .gc-lane .name{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--muted);width:72px;flex:none}
-  .gc-track{position:relative;flex:1;height:30px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .gc-fill{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,var(--flame-2),var(--flame));width:0;transition:width .12s linear}
-  .gc-pause{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,#3a2350,#3a2350 6px,#6d28d9 6px,#6d28d9 12px);opacity:.92}
-  .gc-pause.minor{background:repeating-linear-gradient(45deg,#7a5a1a,#7a5a1a 5px,#caa33a 5px,#caa33a 10px)}
-  .gc-axis{font-family:"Spline Sans Mono",monospace;font-size:.66rem;color:var(--faint);display:flex;justify-content:space-between;margin:4px 0 0 84px}
-  .gc-heap{height:22px;border-radius:8px;border:1px solid var(--line);overflow:hidden;display:flex;margin:14px 0 4px}
-  .gc-heap .young{background:#caa33a;display:flex;align-items:center;justify-content:center;color:#2b2100;font-family:"Spline Sans Mono",monospace;font-size:.62rem}
-  .gc-heap .old{background:var(--violet);display:flex;align-items:center;justify-content:center;color:#fff;font-family:"Spline Sans Mono",monospace;font-size:.62rem;transition:flex-basis .35s ease}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;color:var(--muted)}
-  .legend span{display:inline-flex;align-items:center;gap:7px}
-  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit (driver/executor nodes,
-     partition chips, Prev/Play/Next stepper, narration, code/data panes).
-     ==================================================================== */
+  .heapbar{position:relative;height:46px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:20px 0 6px;background:var(--bg)}
+  .heapbar .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--accent),#5b5bff);transition:width .25s ease,background .25s ease;display:flex;align-items:center;justify-content:flex-end;color:#fff;font-family:"JetBrains Mono",monospace;font-size:.68rem;font-weight:600;padding-right:8px}
+  .heapbar.danger .fill{background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 7px,#d64848 7px,#d64848 14px)}
+  .heapbar .limit{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
+
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node.frozen{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .heaplabel{font-family:"JetBrains Mono",monospace;font-size:.54rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin:2px 0 3px}
+  .heaplabel.spaced{margin-top:7px}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s}
+  .part.k0{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k1{background:rgba(120,80,180,.14);border-color:rgba(120,80,180,.4);color:#6b46a8}
+  .part.k2{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.k3{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .part.frozen{animation:partfreeze 1s ease-in-out infinite}
-  @keyframes partfreeze{0%,100%{opacity:.35}50%{opacity:.85}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .part.frozen{background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 6px,#d64848 6px,#d64848 12px);border-color:var(--danger);color:#fff;animation:partfreeze 1s ease-in-out infinite}
+  @keyframes partfreeze{0%,100%{opacity:.55}50%{opacity:1}}
+  .statusline{font-family:"JetBrains Mono",monospace;font-size:.56rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-top:8px}
+  .statusline.frozen{color:var(--danger)}
+  .statusline.done{color:var(--ok)}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .wire.frozen{background:linear-gradient(90deg,transparent,var(--danger),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:1fr}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+  /* ---- GC pause timeline (light paper) ---- */
+  .gc-lanes{display:flex;flex-direction:column;gap:9px;margin:18px 0 6px}
+  .gc-lane{display:flex;align-items:center;gap:12px}
+  .gc-lane .name{font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--muted);width:64px;flex:none}
+  .gc-track{position:relative;flex:1;height:28px;background:var(--bg);border:1px solid var(--line);border-radius:7px;overflow:hidden}
+  .gc-fill{position:absolute;top:0;bottom:0;left:0;background:linear-gradient(90deg,var(--accent),#5b5bff);width:0;transition:width .12s linear}
+  .gc-pause{position:absolute;top:0;bottom:0;background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 6px,#d64848 6px,#d64848 12px);opacity:.95}
+  .gc-pause.minor{background:repeating-linear-gradient(45deg,#7a5a1a,#7a5a1a 5px,#caa33a 5px,#caa33a 10px)}
+  .gc-axis{font-family:"JetBrains Mono",monospace;font-size:.6rem;color:var(--faint);display:flex;justify-content:space-between;margin:5px 0 0 76px}
+  .gc-heap{height:22px;border-radius:7px;border:1px solid var(--line);overflow:hidden;display:flex;margin:14px 0 4px;background:var(--bg)}
+  .gc-heap .young{background:#caa33a;display:flex;align-items:center;justify-content:center;color:#2b2100;font-family:"JetBrains Mono",monospace;font-size:.6rem;transition:flex-basis .35s ease}
+  .gc-heap .old{background:linear-gradient(90deg,var(--accent),#5b5bff);display:flex;align-items:center;justify-content:center;color:#fff;font-family:"JetBrains Mono",monospace;font-size:.6rem;transition:flex-basis .35s ease}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:13px;font-size:.78rem;color:var(--muted);font-family:"JetBrains Mono",monospace}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:13px;height:13px;border-radius:3px;display:inline-block;border:1px solid var(--line)}
+
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
+
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.gc-heap .young,.gc-heap .old,.heapbar .fill,.stepper .pfill{transition:none}
+    .part.pop,.part.frozen{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_10 &nbsp;·&nbsp; Lesson 10 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 10</p>
-    <h1>When the JVM pauses,<br>your tasks <span class="drip">pause.</span></h1>
-    <p class="lede">Garbage collection reclaims unreferenced objects for you — but each collection is stop-the-world, freezing every Spark task on that executor. Here's why a full GC stalls a stage, and the levers that make pauses shorter and rarer.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
-      <span class="pill">memory.fraction <b>0.6</b></span>
-      <span class="pill">G1GC default <b>Spark 4.0 / JDK 17</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_10 · Garbage collection · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Garbage collection</h1>
+    <p class="subline">When the JVM pauses, tasks pause</p>
+    <p class="lede">The JVM reclaims unreferenced objects for you — you never <code>free()</code>. But every collection is <strong>stop-the-world</strong>: while it runs, every Spark task thread on that executor <strong>freezes</strong>. <em>This lesson is about why a full GC stalls a whole stage, and the levers that make those pauses shorter and rarer.</em></p>
+    <div class="specs">
+      <span class="spec">Spark <b>3.2+</b> / DBR LTS</span>
+      <span class="spec">memory.fraction <b>0.6</b></span>
+      <span class="spec">G1GC default <b>Spark 4.0 / JDK 17</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
-    <p><strong>Garbage Collection (GC)</strong> is the JVM automatically reclaiming the memory of objects your program no longer references — you never <code>free()</code> in Java/Scala, the GC does it. On a Spark executor that convenience shows up as <strong>pauses</strong>:</p>
-    <ul>
-      <li>The executor heap is split into <strong>generations</strong> — a <strong>Young</strong> generation (where new objects are born) and an <strong>Old</strong> generation (where long-lived objects end up).</li>
-      <li>A <strong>minor GC</strong> cleans the Young generation — frequent but cheap. A <strong>major / full GC</strong> cleans the Old generation — rare but expensive.</li>
-      <li>A GC is <strong>stop-the-world</strong>: while it runs, every application thread — including all of Spark's task threads on that executor — <strong>freezes</strong>. That freeze is a <strong>GC pause</strong>.</li>
-    </ul>
+    <p class="seclabel">01 · What it is</p>
+    <h2>A pause you didn't schedule</h2>
+    <p><strong>Garbage collection (GC)</strong> is the JVM automatically reclaiming the memory of objects your program no longer references — in Java/Scala you never call <code>free()</code>, the collector does it for you. On a Spark executor, that convenience shows up as one thing you can measure: <strong>pauses</strong>.</p>
+    <p><span class="chip analogy">analogy</span> GC is the <strong>cleaning crew</strong> at a restaurant. While they sweep the whole floor, every diner steps outside and waits — and the more plates and crumbs (objects) on the floor, the longer everyone waits at the door. A Spark executor is one restaurant; its task threads are the diners.</p>
+    <p>The deep dive below breaks down the generations, the collection types, and the levers one at a time; for now just hold the shape of the problem — a pause you didn't ask for, paid for in idle CPU.</p>
     <div class="callout">
       <span class="lbl">The one rule to remember</span>
       GC cost is <strong>proportional to the number of Java objects</strong>, not the number of bytes. Many tiny objects (boxed values, deserialized cached rows) = lots of work for the collector = long pauses. Fewer, larger objects = cheaper GC.
     </div>
-  </section>
-
-  <!-- ============ WHY IT MATTERS ============ -->
-  <section>
-    <h2>Why it matters</h2>
-    <ul>
-      <li>A <strong>GC pause is wasted cluster time</strong> — during a stop-the-world collection no task on that executor makes progress; you're paying for idle CPUs.</li>
-      <li><strong>Spark stages wait on the slowest task.</strong> GC runs <em>per executor JVM</em>, so a long pause on one executor stalls its tasks while the rest of the cluster waits at the stage boundary. One GC-thrashing executor can dominate a stage's wall-clock.</li>
-      <li><strong>Heavy caching is the usual trigger.</strong> Cached blocks are long-lived, so they pile into the Old generation; a full Old gen forces frequent, expensive <strong>full GCs</strong> — the "I cached everything and now it's slower" surprise.</li>
-      <li>Interviewers probe it as symptom-vs-cause: <em>"GC time is high — what's happening and what do you change?"</em> The answer is the chain: too many objects / Old gen too full → stop-the-world pauses → executor stalls → tune cache shape, object shape, <code>spark.memory.fraction</code>, or the collector.</li>
-    </ul>
-  </section>
-
-  <!-- ============ INTERACTIVE 1: GC PAUSE TIMELINE ============ -->
-  <section>
-    <h2>See it work — the GC pause timeline</h2>
-    <p>Four task threads run in parallel on one executor. Trigger a <strong>minor GC</strong> (a short blip) or a <strong>full GC</strong> (a long stop-the-world stall) and watch every task freeze for the duration of the collection — then resume together.</p>
-    <div class="lab" id="lab-timeline">
-      <div class="lab-head"><span class="lab-title">Stop-the-world pause simulator</span></div>
-      <p class="lab-sub">One executor JVM, four task threads. A collection pauses <strong>all</strong> of them at once.</p>
-      <div class="controls">
-        <button class="btn primary" id="gt-minor">Trigger minor GC</button>
-        <button class="btn primary" id="gt-full">Trigger full GC</button>
-        <button class="btn" id="gt-reset">Reset</button>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">What GC does</div>
+        <p>The JVM reclaims objects your code no longer references — no manual <code>free()</code>. On an executor that shows up as measurable <strong>pauses</strong>.</p>
       </div>
-      <div class="gc-lanes" id="gt-lanes">
-        <div class="gc-lane"><span class="name">task 0</span><div class="gc-track"><div class="gc-fill"></div></div></div>
-        <div class="gc-lane"><span class="name">task 1</span><div class="gc-track"><div class="gc-fill"></div></div></div>
-        <div class="gc-lane"><span class="name">task 2</span><div class="gc-track"><div class="gc-fill"></div></div></div>
-        <div class="gc-lane"><span class="name">task 3</span><div class="gc-track"><div class="gc-fill"></div></div></div>
+      <div class="quickcard ok">
+        <div class="qtitle">Healthy pattern</div>
+        <p>Short, frequent <strong>minor GCs</strong> clear the small Young gen — a brief blip; task threads barely notice.</p>
       </div>
-      <div class="gc-axis"><span>stage start</span><span>wall-clock &rarr;</span><span>stage end</span></div>
-      <div class="readout">
-        <div class="stat"><div class="big" id="gt-kind">—</div><div class="lbl">last collection</div></div>
-        <div class="stat win"><div class="big" id="gt-pause">0 ms</div><div class="lbl">pause length</div></div>
-        <div class="stat"><div class="big" id="gt-gcpct">0%</div><div class="lbl">GC time of stage</div></div>
+      <div class="quickcard danger">
+        <div class="qtitle">Danger pattern</div>
+        <p>Long <strong>full stop-the-world GC</strong>: an over-full Old gen forces multi-second pauses that freeze every task on the executor.</p>
       </div>
-      <div class="legend">
-        <span><i class="sw" style="background:linear-gradient(90deg,#f97316,#c2410c)"></i> task running</span>
-        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#7a5a1a,#7a5a1a 5px,#caa33a 5px,#caa33a 10px)"></i> minor GC pause</span>
-        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#3a2350,#3a2350 6px,#6d28d9 6px,#6d28d9 12px)"></i> full GC pause (stop-the-world)</span>
-      </div>
-      <div class="verdict" id="gt-verdict">Press a button to inject a collection. Notice the pause band spans <b>every</b> lane — that's stop-the-world.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real pause length depends on live-object count, heap size, and the collector.</p>
     </div>
   </section>
 
-  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>See it run on the cluster</h2>
-    <p>Three executors, each its own JVM heap, run tasks for one stage. We zoom in on <strong>Executor&nbsp;1</strong>'s heap — Eden (young gen) and Old gen — and watch objects pile up, a minor GC clear Eden, and a full GC <strong>freeze every task on that executor</strong> while the others keep going. Drive it with Prev / Play / Next.</p>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>One executor's pause is the whole stage's problem</h2>
+    <ul>
+      <li><strong>A GC pause is wasted cluster time.</strong> During a stop-the-world collection no task on that executor makes progress — you are paying for CPUs that sit idle while the JVM tidies up.</li>
+      <li><strong>A stage waits on its slowest task.</strong> GC runs <em>per executor JVM</em>, so a long pause on one executor stalls its tasks while the rest of the cluster idles at the stage boundary. One GC-thrashing executor becomes a straggler that dominates the stage's wall-clock.</li>
+      <li><strong>Heavy caching is the usual trigger.</strong> Cached blocks are long-lived, so they pile into the Old generation; a full Old gen forces frequent, expensive full GCs — the "I cached everything and now it's slower" surprise.</li>
+      <li><strong>It's a classic interview probe:</strong> <em>"The job slowed down and you see high GC time — what's happening, and what do you change?"</em> The answer is a chain: too many objects / Old gen too full → stop-the-world pauses → executor stalls → tune cache shape, object shape, <code>spark.memory.fraction</code>, or the collector. The <em>how</em> is the next section.</li>
+    </ul>
+  </section>
+
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
+  <section>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>The generations, the collections, and the pause</h2>
+    <p class="dropcap">Everything about GC comes down to <em>the collector walking live objects while the world stops</em>. So the useful way to understand it is: (1) how the heap is split so most collections stay cheap, (2) the two kinds of collection and the pause they share, and (3) how the executor turns a local pause into a stage-wide stall. Each idea below is explained here once — later sections show it, verify it, and help you decide, but don't re-explain it.</p>
+
+    <h3>3.1 · The heap generations — Young and Old</h3>
+    <ul>
+      <li><strong>The split.</strong> The executor heap is divided into a <strong>Young</strong> generation — <strong>Eden</strong> plus two <strong>Survivor</strong> spaces (S0/S1) — and an <strong>Old</strong> generation. New objects are allocated in Eden.</li>
+      <li><strong>How objects move.</strong> When Eden fills, a collection copies the still-live objects into a Survivor space; objects that survive enough of these collections are <strong>promoted to the Old generation</strong>.</li>
+      <li><strong>Why two generations.</strong> Most objects die young (the "weak generational hypothesis"), so collecting the small, churny Young space frequently is cheap; the long-lived Old space needs the expensive collection only rarely.</li>
+      <li><strong>Where Spark's data lands.</strong> Cached blocks and broadcast data are <strong>long-lived</strong> → they end up in Old. Cache too much and Old fills, which is the direct link to GC pain in 3.3.</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> Eden is the <strong>prep counter</strong> (constant fast turnover); the Old gen is the <strong>walk-in freezer</strong> (things that stick around). You wipe the counter constantly and cheaply; you only defrost the freezer occasionally — and defrosting shuts the kitchen.</p>
+
+    <h3>3.2 · Minor vs full GC — and the stop-the-world pause</h3>
+    <ul>
+      <li><strong>Minor GC</strong> collects the <strong>Young</strong> gen only — frequent and cheap, because Eden is small and most of it is already dead.</li>
+      <li><strong>Major / full GC</strong> collects the <strong>Old</strong> gen (often the whole heap) — rare and expensive, because it walks far more live objects.</li>
+      <li><strong>Stop-the-world.</strong> During <em>either</em> collection the JVM suspends <strong>every</strong> application thread. On an executor that freezes <strong>all task threads</strong> for the duration — a minor GC is a short blip; a full GC can be a multi-second stall that looks like a hung executor.</li>
+      <li><strong>The tuning goal.</strong> You can't eliminate GC, only make it <strong>shorter and rarer</strong>: fewer objects (both collections get cheaper) and a less-full Old gen (fewer full GCs). Every lever in §04 targets one of those two.</li>
+    </ul>
+    <table class="tbl">
+      <thead><tr><th>GC type</th><th>Collects</th><th>Frequency</th><th>Cost</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Minor GC</strong></td><td>Young gen only — <strong>Eden + Survivors</strong> (S0/S1)</td><td>Frequent (Eden fills fast)</td><td class="risk-lo">Cheap — a short blip; most of Eden is already dead</td></tr>
+        <tr><td><strong>Major / full GC</strong></td><td>Old gen (often the whole heap)</td><td>Rare</td><td class="risk-hi">Expensive — walks far more live objects; multi-second stall</td></tr>
+        <tr><td><strong>Both are</strong> <span class="mono">· stop-the-world</span></td><td>Suspend <strong>every</strong> task thread on that JVM</td><td>—</td><td>Idle CPU for the pause duration</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <span class="lbl">Minor GC ≠ full GC</span>
+      A minor GC clears the small Young gen — frequent, brief, usually not your problem. A full GC walks the Old gen — rare, but a multi-second stop-the-world stall. High GC Time on a stage is almost always <em>full</em> GCs from an over-full Old gen, not the constant minor churn. This is the distinction interviewers test — hold it firmly.
+    </div>
+
+    <h3>3.3 · The executor's role — a local pause, a global stall</h3>
+    <p><span class="chip usecase">use case</span> One executor caches more than its share, its Old gen stays near-full, and it spends seconds in full GC every few tasks. Its tasks finish late, the stage can't complete until that straggler does, and the job's wall-clock balloons — even though the <em>other</em> executors were idle and healthy.</p>
+    <ul>
+      <li><strong>GC is per-JVM.</strong> Each executor is its own JVM with its own heap, so GC runs independently inside each one. There is no cluster-wide GC.</li>
+      <li><strong>A pause stalls only that executor — but the stage waits for it.</strong> Because a stage completes only when its slowest task finishes, a GC-bound executor becomes the straggler that holds up everyone (§3.2's full GC is what creates it).</li>
+      <li><strong>What loads the Old gen.</strong> Cached blocks (especially deserialized) and broadcast data are long-lived → more Old-gen pressure → more full GCs. This is the concrete mechanism behind "caching too much" hurting.</li>
+    </ul>
+  </section>
+
+  <!-- ============ FIGURE A · cluster execution lab (REQUIRED) ============ -->
+  <section>
+    <p class="seclabel">Figure A · a pause across the cluster</p>
+    <h2>Watch one executor freeze the stage</h2>
+    <p>Three executors, each its own JVM heap, run tasks for one stage. We zoom in on <strong>Executor 1</strong>'s heap — Eden (Young) and Old gen — and watch objects pile up, a minor GC clear Eden, then a <strong>full GC freeze every task thread on that executor</strong> while Executors 2 and 3 keep going. <em>Watch the red frozen chips on Executor 1 and the driver's "waiting" note</em> — the stage can't finish until the straggler resumes. Use <em>Prev / Play / Next</em>.</p>
     <div class="lab" id="lab-cluster">
       <div class="lab-head"><span class="lab-title">GC on Executor 1's heap — step by step</span></div>
-      <p class="lab-sub">GC is per-JVM. A stop-the-world pause on one executor stalls only its tasks — but the stage can't finish until the slowest one does.</p>
+      <p class="lab-sub">GC is per-JVM. A stop-the-world pause on one executor stalls only its tasks — but the stage waits on the slowest of them.</p>
 
       <div class="cluster">
         <div class="nodes" id="cl-nodes">
-          <div class="node driver">
+          <div class="node driver" id="cl-driver">
             <h4>Driver <span class="core">schedules</span></h4>
             <div class="parts"><span class="part">stage&nbsp;7</span><span class="part">3 execs</span></div>
-            <div class="spillzone" id="cl-driver-note">waiting on slowest task</div>
+            <div class="statusline" id="cl-driver-note">stage running</div>
           </div>
           <div class="node" id="cl-exec1" data-exec="1">
             <h4>Executor 1 <span class="core" id="cl-e1-core">heap</span></h4>
-            <div class="spillzone" style="border-top:none;padding-top:0;margin-top:0;color:var(--muted)">Eden (young gen)</div>
+            <div class="heaplabel">Eden (young gen)</div>
             <div class="parts" id="cl-eden"></div>
-            <div class="spillzone" style="color:var(--muted)">Old gen (cache + promoted)</div>
+            <div class="heaplabel spaced">Old gen (cache + promoted)</div>
             <div class="parts" id="cl-old"></div>
           </div>
           <div class="node" id="cl-exec2" data-exec="2">
             <h4>Executor 2 <span class="core">tasks</span></h4>
             <div class="parts" id="cl-e2"><span class="part k2">t4</span><span class="part k2">t5</span></div>
-            <div class="spillzone" id="cl-e2-note">running</div>
+            <div class="statusline" id="cl-e2-note">running</div>
           </div>
           <div class="node" id="cl-exec3" data-exec="3">
             <h4>Executor 3 <span class="core">tasks</span></h4>
             <div class="parts" id="cl-e3"><span class="part k3">t6</span><span class="part k3">t7</span></div>
-            <div class="spillzone" id="cl-e3-note">running</div>
+            <div class="statusline" id="cl-e3-note">running</div>
           </div>
         </div>
-      </div>
-
-      <div class="panes">
-        <div class="pane">
-          <div class="ptitle">Dummy PySpark — cache-heavy stage</div>
-          <div class="codepane" id="cl-code"><span class="ln" data-l="0"><span class="k">df</span> = spark.read.parquet(<span class="s">"/events"</span>)</span><span class="ln" data-l="1"><span class="k">df</span>.cache()  <span class="c"># MEMORY_AND_DISK (pickled)</span></span><span class="ln" data-l="2">hot = <span class="k">df</span>.filter(<span class="s">"amt &gt; 0"</span>).groupBy(<span class="s">"k"</span>).count()</span><span class="ln" data-l="3">hot.count()  <span class="c"># action → stage 7 runs</span></span><span class="ln" data-l="4"><span class="c"># mitigation: shrink the cache region</span></span><span class="ln" data-l="5">spark.conf.set(<span class="s">"spark.memory.fraction"</span>, <span class="s">"0.4"</span>)</span></div>
-        </div>
-        <div class="pane">
-          <div class="ptitle">Executor 1 — heap state</div>
-          <div class="datapane" id="cl-data">
-            <div class="row" data-d="eden">Eden:&nbsp;&nbsp;&nbsp;<span id="cl-d-eden">empty</span></div>
-            <div class="row" data-d="old">Old gen: <span id="cl-d-old">cache blocks</span></div>
-            <div class="row" data-d="gc">GC:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span id="cl-d-gc">idle</span></div>
-            <div class="row" data-d="cost">cost ∝&nbsp;&nbsp;<span id="cl-d-cost">object count</span></div>
-          </div>
-        </div>
+        <div class="wire" id="cl-wire"></div>
       </div>
 
       <div class="stepper" id="cl-stepper">
-        <button id="cl-prev">&larr; Prev</button>
-        <button class="play" id="cl-play">Play</button>
-        <button id="cl-next">Next &rarr;</button>
+        <button id="cl-prev">‹ Prev</button>
+        <button id="cl-play" class="play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
         <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
         <span class="scount" id="cl-scount">step 1 / 6</span>
       </div>
-      <div class="narr" id="cl-narr"><span class="stage">ready</span>Press <b>Play</b> (or Next) to watch one executor's heap fill, collect, and stall.</div>
+
+      <div class="narr" id="cl-narr"></div>
+
+      <div class="panes">
+        <div class="pane">
+          <div class="ptitle">PySpark — cache-heavy stage</div>
+          <div class="codepane" id="cl-code"></div>
+        </div>
+        <div class="pane">
+          <div class="ptitle">Executor 1 — heap &amp; GC state</div>
+          <div class="datapane" id="cl-data">
+            <div class="row" data-d="eden">Eden:&nbsp;&nbsp;&nbsp;<span id="cl-d-eden">empty</span></div>
+            <div class="row" data-d="old">Old&nbsp;gen: <span id="cl-d-old">cache blocks</span></div>
+            <div class="row" data-d="gc">GC:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span id="cl-d-gc">idle</span></div>
+            <div class="row" data-d="tasks">tasks:&nbsp;&nbsp;<span id="cl-d-tasks">running</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="lab-note">Simplified illustration — real pause length depends on live-object count, heap size, and the collector. GC cost ∝ object count; a full GC is stop-the-world per executor.</p>
     </div>
-    <p class="lab-sub" style="margin-top:14px">Simplified illustration. Key takeaway: <strong>GC cost is proportional to the number of objects</strong>, and a full GC is stop-the-world per executor. G1GC has been the default collector since <strong>Spark 4.0 (JDK 17)</strong>.</p>
   </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
-
-    <h3>1 · What is Garbage Collection?</h3>
-    <p><span class="chip analogy">analogy</span> GC is the cleaning crew at a restaurant. While they sweep the whole floor (a full GC), every diner steps outside and waits (stop-the-world) — the more plates and crumbs (objects), the longer everyone waits.</p>
-    <ul>
-      <li><strong>Mechanism:</strong> the JVM tracks which objects are still <strong>reachable</strong> from live variables. Anything unreachable is garbage; the collector reclaims it so new allocations have room. You never free memory manually.</li>
-      <li><strong>Why it costs:</strong> the docs state GC cost is <strong>"proportional to the number of Java objects"</strong> walked, not the byte count. A list of a million boxed <code>Integer</code>s is far costlier to collect than one <code>int[]</code> holding the same data.</li>
-      <li><strong>Why Spark cares:</strong> Spark allocates a lot — every deserialized cached row, shuffle buffer, and intermediate record is a heap object. Object-heavy workloads make the collector work harder, which becomes pause time.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> A job caching a wide DataFrame <em>deserialized</em> (one object per field per row) churns millions of objects; a <em>serialized</em> cache (one byte array per partition) collapses that to a handful of objects per partition — far less GC.</p>
-
-    <h3>2 · The heap generations (Young + Old)</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> the heap splits into <strong>Young</strong> (= <strong>Eden</strong> + two <strong>Survivor</strong> spaces S0/S1) and <strong>Old</strong>. New objects go to Eden; a minor GC copies survivors into a Survivor space; objects that survive enough minor GCs are <strong>promoted to Old</strong>.</li>
-      <li><strong>Why two generations:</strong> most objects die young, so collecting the small churny Young space frequently is cheap; the long-lived Old space needs the expensive collection only rarely.</li>
-      <li><strong>Trade-off:</strong> Spark's <strong>cached blocks and broadcast data</strong> are long-lived → they land in Old. Cache too much and Old fills, forcing frequent <strong>full GCs</strong> — the worst case for pause time.</li>
-    </ul>
-    <p><span class="chip analogy">analogy</span> Eden is the prep counter (constant fast turnover); the Old gen is the walk-in freezer (things that stick around). You wipe the counter constantly and cheaply; you only defrost the freezer occasionally — and defrosting shuts the kitchen.</p>
-
-    <h3>3 · Minor, major &amp; full GC — and the stop-the-world pause</h3>
-    <ul>
-      <li><strong>Minor GC</strong> — collects the <strong>Young</strong> gen only. Frequent and cheap (Eden is small, most of it already dead).</li>
-      <li><strong>Major / full GC</strong> — collects the <strong>Old</strong> gen (often the whole heap). Rare and expensive — it walks far more live objects.</li>
-      <li><strong>Stop-the-world:</strong> during a collection the JVM suspends <strong>every</strong> application thread. On an executor that freezes <strong>all task threads</strong> — a minor GC is a short blip, a full GC a multi-second stall.</li>
-      <li><strong>The tuning goal:</strong> you can't eliminate GC, only make it <strong>shorter and rarer</strong> — fewer objects (both collections get cheaper) and a less-full Old gen (fewer full GCs). Every lever targets one of those two.</li>
-    </ul>
-
-    <h3>4 · The executor's role in the GC cycle</h3>
-    <p><span class="chip usecase">use case</span> One executor caches more than its share, its Old gen stays near-full, and it spends seconds in full GC every few tasks. Its tasks finish late, the stage can't complete until that straggler does, and the job's wall-clock balloons — even though the <em>other</em> executors were idle and healthy.</p>
-    <ul>
-      <li><strong>GC is per-JVM:</strong> each executor is its own JVM with its own heap, so GC runs independently inside each executor. There is no cluster-wide GC.</li>
-      <li><strong>A pause stalls only that executor — but the stage waits for it.</strong> A stage completes only when its slowest task finishes, so a GC-bound executor becomes a <strong>straggler</strong> that holds up the whole stage.</li>
-      <li><strong>What loads the Old gen:</strong> cached blocks (especially deserialized) and broadcast data are long-lived → more Old-gen pressure → more full GCs. This is the direct link between <strong>caching too much</strong> and <strong>GC pain</strong>.</li>
-    </ul>
-
-    <h3>5 · Seeing GC in the Spark UI (and turning on GC logs)</h3>
-    <ul>
-      <li><strong>Stages tab:</strong> every task row reports <strong>"GC Time"</strong> next to its duration. If GC Time is a large fraction of task time (rule of thumb: &gt;~10% is worth investigating), GC is your bottleneck.</li>
-      <li><strong>Executors tab:</strong> shows a per-executor <strong>Task Time (GC Time)</strong> summary — use it to spot the one executor that's GC-thrashing.</li>
-      <li><strong>Verbose GC logs:</strong> pass JVM flags via <code>spark.executor.extraJavaOptions</code>; the logs land in each worker's <strong>stdout</strong>.</li>
-    </ul>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Four levers, each with its proof</h2>
+    <p>Every technique below is paired with <strong>how to prove it worked</strong> — the Spark-UI <strong>GC Time</strong> signal or the executor's GC log. Apply, then verify; never assume.</p>
     <div class="callout">
-      <span class="lbl">Start-time only</span>
-      <code>spark.executor.extraJavaOptions</code> is read when the executor JVM <strong>starts</strong>, so set it in the cluster's Spark config (or at session creation) — you can't flip the collector or GC flags mid-session. On Databricks, set it under the cluster's <strong>Spark config</strong>.
-    </div>
-  </section>
-
-  <!-- ============ INTERACTIVE 2: memory.fraction SLIDER ============ -->
-  <section>
-    <h2>Tune it — lower <code>spark.memory.fraction</code></h2>
-    <p>The unified region (cache + execution) is <code>spark.memory.fraction</code> × (heap − 300 MiB). Drag it down and watch the cache shrink, the Old-gen pressure ease, and the full-GC pauses get shorter — the docs' "better to cache fewer objects than to slow down task execution" trade-off, made visible.</p>
-    <div class="lab" id="lab-fraction">
-      <div class="lab-head"><span class="lab-title">memory.fraction &rarr; Old-gen pressure</span></div>
-      <p class="lab-sub">A cache-heavy executor. Less heap pinned by cache &rArr; a less-full Old generation &rArr; cheaper full GCs.</p>
-      <div class="controls">
-        <div class="filterbar"><label>spark.memory.fraction <input type="range" id="mf-frac" min="20" max="80" value="60" step="5"><span class="sizeval" id="mf-fracval">0.60</span></label></div>
-      </div>
-      <div class="gc-heap" id="mf-heap">
-        <div class="young" style="flex-basis:30%">Young (Eden + S0/S1)</div>
-        <div class="old" id="mf-old" style="flex-basis:70%">Old gen (cache + long-lived)</div>
-      </div>
-      <div class="legend" style="margin-bottom:6px">
-        <span><i class="sw" style="background:#caa33a"></i> Young gen (cheap minor GC)</span>
-        <span><i class="sw" style="background:#6d28d9"></i> Old gen (cache-loaded &rarr; full GC pressure)</span>
-      </div>
-      <div class="readout">
-        <div class="stat"><div class="big" id="mf-cache">—</div><div class="lbl">cache region (of heap)</div></div>
-        <div class="stat"><div class="big" id="mf-pressure">—</div><div class="lbl">Old-gen pressure</div></div>
-        <div class="stat win"><div class="big" id="mf-pause">—</div><div class="lbl">full-GC pause</div></div>
-      </div>
-      <div class="verdict" id="mf-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: real pause length also depends on object count, heap size, and the collector. Lowering the fraction trades cache capacity (more recompute / spill) for shorter pauses.</p>
-    </div>
-  </section>
-
-  <!-- ============ CODE + VERIFICATION ============ -->
-  <section>
-    <h2>The code you'll write (and how to verify it)</h2>
-    <div class="callout">
-      <span class="lbl">Track rule</span>
-      Every technique is paired with <strong>how to prove it worked</strong> — the Spark-UI <strong>GC Time</strong> signal or the executor's GC log. Apply, then verify. Never assume.
+      <span class="lbl">Simple reading rule</span>
+      When you see a lever, ask one question first: <strong>"Is this reducing the object count (serialized cache, off-heap, fewer/larger objects), or just enlarging the heap to hide GC?"</strong> Fewer objects makes every collection cheaper; a bigger heap only defers a longer full GC.
     </div>
 
-    <h3>Turn on detailed GC logging</h3>
-    <pre><span class="tag">python</span><code><span class="c"># Set at cluster creation / session config — read when the executor JVM STARTS.</span>
+    <h3>Turn on detailed GC logging first</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Read when the executor JVM STARTS — set it in the cluster's Spark config, not mid-session.</span>
 spark.conf.set(
     <span class="s">"spark.executor.extraJavaOptions"</span>,
     <span class="s">"-verbose:gc -XX:+PrintGCDetails -XX:+PrintGCTimeStamps"</span>
 )
-<span class="c"># VERIFY: Spark UI → Executors → stdout. You'll see per-collection lines:</span>
-<span class="c">#   [GC (Allocation Failure) ...]   &lt;- minor GC</span>
-<span class="c">#   [Full GC (Ergonomics) ...]      &lt;- full GC (many of these = Old gen too full)</span></code></pre>
 
-    <h3>Lever 1 · Serialized caching — one byte-array per partition (JVM/Scala-side)</h3>
-    <div class="callout">
+<span class="c"># VERIFY — Spark UI &rarr; Executors &rarr; stdout. You'll see one line per collection:</span>
+<span class="c">#   [GC (Allocation Failure) ...]   &lt;- minor GC (Young)</span>
+<span class="c">#   [Full GC (Ergonomics) ...]      &lt;- full GC; many of these = Old gen too full</span></code></pre>
+
+    <h3>Lever 1 · Serialized caching — a JVM/Scala-side win (not a PySpark switch)</h3>
+    <div class="callout warn">
       <span class="lbl">PySpark honesty check</span>
-      There is <strong>no deserialized-vs-serialized choice from PySpark</strong>. The PySpark <code>StorageLevel</code> enum exposes only <code>MEMORY_ONLY</code> / <code>MEMORY_AND_DISK</code> / <code>DISK_ONLY</code> (+ <code>_2</code> / <code>DISK_ONLY_3</code>) — <strong>no <code>_SER</code> levels</strong> — because the docs say <em>"in Python, stored objects will always be serialized with the Pickle library, so it does not matter whether you choose a serialized level."</em> So <code>cache()</code> <em>is</em> <code>persist(MEMORY_AND_DISK)</code>; running both changes nothing and GC Time won't move. The serialized-cache win is a <strong>JVM/Scala-side</strong> lever — from PySpark, reach for Lever 2 (<code>memory.fraction</code>) or Lever 4 (off-heap) instead.
+      There is <strong>no deserialized-vs-serialized choice from PySpark</strong>. The Python <code>StorageLevel</code> enum exposes only <code>MEMORY_ONLY</code> / <code>MEMORY_AND_DISK</code> / <code>DISK_ONLY</code> (+ <code>_2</code> / <code>DISK_ONLY_3</code>) — <strong>no <code>_SER</code> levels</strong> — because the docs say <em>"in Python, stored objects will always be serialized with the Pickle library, so it does not matter whether you choose a serialized level."</em> So <code>cache()</code> <em>is</em> <code>persist(MEMORY_AND_DISK)</code>; running both changes nothing. From PySpark, reach for Lever 2 or Lever 4 instead.
     </div>
     <pre><span class="tag">scala</span><code><span class="c">// Scala / Java (JVM-side) — where the serialized-cache GC win is real.</span>
 <span class="k">import</span> org.apache.spark.storage.StorageLevel
 
-<span class="c">// ❌ Deserialized JVM cache (MEMORY_AND_DISK): one Java object per field per row →</span>
-<span class="c">//    millions of long-lived objects in the Old gen → heavy full GC.</span>
+<span class="c">// Deserialized JVM cache: one Java object per field per row →</span>
+<span class="c">// millions of long-lived objects in the Old gen → heavy full GC.</span>
 hotDf.persist(StorageLevel.MEMORY_AND_DISK)
 
-<span class="c">// ✅ Serialized JVM cache: docs say it stores "only one object (a byte array) per RDD partition"</span>
-<span class="c">//    → orders of magnitude fewer objects to track.</span>
+<span class="c">// Serialized JVM cache: docs say it stores "only one object (a byte array)</span>
+<span class="c">// per RDD partition" → orders of magnitude fewer objects to track.</span>
 hotDf.persist(StorageLevel.MEMORY_AND_DISK_SER)
-hotDf.count()   <span class="c">// materialize the cache</span></code></pre>
-    <pre><span class="tag">python</span><code><span class="c"># PySpark equivalent — there is NO _SER level to switch to; Python already pickles every cache.</span>
-<span class="k">from</span> pyspark <span class="k">import</span> StorageLevel
+hotDf.count()   <span class="c">// materialize the cache</span>
 
-hot_df.persist(StorageLevel.MEMORY_AND_DISK)  <span class="c"># same as hot_df.cache() — Python caches are pickled</span>
-hot_df.count()                                <span class="c"># materialize the cache</span>
-
-<span class="c"># VERIFY (PySpark): switching StorageLevel here changes nothing → expect NO GC-Time change.</span>
-<span class="c"># The serialized-cache GC drop only appears on JVM/Scala caches; from PySpark, use Lever 2 / Lever 4.</span></code></pre>
+<span class="c">// VERIFY — Stages tab: GC Time drops on JVM caches; fewer "Full GC" lines in stdout.</span></code></pre>
 
     <h3>Lever 2 · Lower <code>spark.memory.fraction</code> when the Old gen is full</h3>
     <pre><span class="tag">python</span><code><span class="c"># Unified region = spark.memory.fraction × (heap − 300 MiB). Default 0.6.</span>
@@ -462,7 +454,7 @@ hot_df.count()                                <span class="c"># materialize the 
 spark.conf.set(<span class="s">"spark.memory.fraction"</span>, <span class="s">"0.4"</span>)   <span class="c"># shrink cache/exec → less Old-gen pressure</span>
 
 <span class="c"># Docs verbatim: "better to cache fewer objects than to slow down task execution."</span>
-<span class="c"># VERIFY: re-run and compare GC Time in the Stages tab before vs after; reset the conf after A/B.</span></code></pre>
+<span class="c"># VERIFY — Stages tab: compare GC Time before vs after; reset the conf after the A/B.</span></code></pre>
 
     <h3>Lever 3 · Use G1GC on large heaps</h3>
     <pre><span class="tag">python</span><code><span class="c"># VERSION NOTE: since Spark 4.0.0 (JDK 17 default), G1GC is ALREADY the default collector.</span>
@@ -471,122 +463,126 @@ spark.conf.set(
     <span class="s">"spark.executor.extraJavaOptions"</span>,
     <span class="s">"-XX:+UseG1GC -XX:G1HeapRegionSize=16m"</span>    <span class="c"># bump region size for very large heaps</span>
 )
-<span class="c"># -Xmn tunes the young-gen size when many short-lived objects churn the Young gen.</span>
-<span class="c"># VERIFY: executor stdout shows "[GC pause (G1 Evacuation Pause) ...]" with shorter durations;</span>
-<span class="c"># GC Time in the Stages tab falls on large-heap, allocation-heavy stages.</span></code></pre>
+<span class="c"># -Xmn tunes the young-gen size when many short-lived objects churn Eden.</span>
+
+<span class="c"># VERIFY — executor stdout shows "[GC pause (G1 Evacuation Pause) ...]" with shorter</span>
+<span class="c"># durations; GC Time in the Stages tab falls on large-heap, allocation-heavy stages.</span></code></pre>
 
     <h3>Lever 4 · Off-heap — keep data out of the GC's reach</h3>
     <pre><span class="tag">python</span><code><span class="c"># Off-heap memory lives OUTSIDE the JVM heap → the collector never scans it → no GC pressure.</span>
 spark.conf.set(<span class="s">"spark.memory.offHeap.enabled"</span>, <span class="s">"true"</span>)
 spark.conf.set(<span class="s">"spark.memory.offHeap.size"</span>, <span class="k">str</span>(<span class="f">2</span> * <span class="f">1024</span> * <span class="f">1024</span> * <span class="f">1024</span>))  <span class="c"># 2 GB, bytes (&gt; 0)</span>
 <span class="c"># Shrink the JVM heap accordingly, or you trade GC for OOM (Lesson 04).</span>
-<span class="c"># VERIFY: the same cache/shuffle workload shows lower GC Time — those bytes left the heap.</span></code></pre>
 
-    <h3>Contrast: default cache vs lower memory.fraction (the real PySpark GC lever)</h3>
-    <pre><span class="tag">python</span><code><span class="c"># ❌ GC-heavy: cache at the default 0.6 fraction → a large cache region pins many long-lived</span>
-<span class="c">#    objects in the Old gen → frequent full GCs.</span>
-big.cache(); big.count()                       <span class="c"># == persist(MEMORY_AND_DISK); Python pickles it</span>
-
-<span class="c"># ✅ GC-friendly: SAME cache, but a smaller unified region so it pins less of the heap → fewer</span>
-<span class="c">#    long-lived objects in the Old gen. (memory.fraction is the lever a PySpark user can turn — the</span>
-<span class="c">#    _SER cache switch is JVM/Scala-side only.)</span>
-big.unpersist(blocking=True)
-spark.conf.set(<span class="s">"spark.memory.fraction"</span>, <span class="s">"0.4"</span>)
-big.persist(StorageLevel.MEMORY_AND_DISK); big.count()
-<span class="c"># Stages tab: with a smaller cache region the second run's GC Time should be a smaller fraction of</span>
-<span class="c"># task time. (The change here is memory.fraction, NOT a serialized-vs-deserialized switch.)</span></code></pre>
+<span class="c"># VERIFY — Stages tab: the same cache/shuffle workload shows lower GC Time —</span>
+<span class="c"># those bytes left the heap the collector walks.</span></code></pre>
   </section>
 
-  <!-- ============ INTERACTIVE 3: TABBED GC COMPARE ============ -->
+  <!-- ============ FIGURE B · GC pause timeline (second, distinct diagram) ============ -->
   <section>
-    <h2>Compare minor vs full GC</h2>
-    <p>Switch between the two collection types to see what each touches, how often it runs, and what it costs you in pause time.</p>
-    <div class="lab" id="lab-compare">
-      <div class="lab-head"><span class="lab-title">Minor GC vs Full GC</span></div>
+    <p class="seclabel">Figure B · the pause on a timeline</p>
+    <h2>Minor blip vs full stall — and the fix</h2>
+    <p>This figure isolates a different thing from Figure A: not the cluster, but <em>the shape of the pause on a single executor's timeline</em>. Four task-thread bars run in parallel. Trigger a <strong>minor GC</strong> (a short blip) or a <strong>full GC</strong> (a long stop-the-world stall) and watch every bar freeze for the pause, then resume together. Then drag <code>spark.memory.fraction</code> <strong>down</strong> to shrink the Old gen — full-GC pressure eases and the next stall gets shorter. <em>Watch the "full-GC pause" readout fall as you lower the slider.</em></p>
+    <div class="lab" id="lab-timeline">
+      <div class="lab-head"><span class="lab-title">stop-the-world pause simulator</span></div>
+      <p class="lab-sub">One executor JVM, four task threads. A collection pauses <strong>all</strong> of them at once.</p>
       <div class="controls">
-        <div class="seg" id="cm-seg" role="group" aria-label="gc type">
-          <button data-g="minor" aria-pressed="true">Minor GC</button>
-          <button data-g="full" aria-pressed="false">Full GC</button>
+        <div class="seg" id="tl-trigger" role="group" aria-label="trigger">
+          <button data-kind="minor">Trigger minor GC</button>
+          <button data-kind="full">Trigger full GC</button>
+          <button data-kind="reset">Reset</button>
         </div>
+        <div class="filterbar"><label>memory.fraction <input type="range" id="tl-frac" min="20" max="80" value="60" step="5"><span class="sizeval" id="tl-fracval">0.60</span></label></div>
       </div>
-      <div class="planbox" id="cm-plan"></div>
-      <div class="verdict" id="cm-note"></div>
+      <div class="gc-heap" id="tl-heap">
+        <div class="young" id="tl-young" style="flex-basis:40%">Young</div>
+        <div class="old" id="tl-old" style="flex-basis:60%">Old gen (cache + long-lived)</div>
+      </div>
+      <div class="gc-lanes" id="tl-lanes">
+        <div class="gc-lane"><span class="name">task 0</span><div class="gc-track"><div class="gc-fill"></div></div></div>
+        <div class="gc-lane"><span class="name">task 1</span><div class="gc-track"><div class="gc-fill"></div></div></div>
+        <div class="gc-lane"><span class="name">task 2</span><div class="gc-track"><div class="gc-fill"></div></div></div>
+        <div class="gc-lane"><span class="name">task 3</span><div class="gc-track"><div class="gc-fill"></div></div></div>
+      </div>
+      <div class="gc-axis"><span>stage start</span><span>wall-clock →</span><span>stage end</span></div>
+      <div class="readout">
+        <div class="stat"><div class="big" id="tl-kind">—</div><div class="lbl">last collection</div></div>
+        <div class="stat win"><div class="big" id="tl-pause">0 ms</div><div class="lbl">full-GC pause</div></div>
+        <div class="stat"><div class="big" id="tl-pct">0%</div><div class="lbl">GC time of stage</div></div>
+      </div>
+      <div class="legend">
+        <span><i class="sw" style="background:linear-gradient(90deg,#2b2bf0,#5b5bff)"></i> task running</span>
+        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#7a5a1a,#7a5a1a 5px,#caa33a 5px,#caa33a 10px)"></i> minor GC pause</span>
+        <span><i class="sw" style="background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 6px,#d64848 6px,#d64848 12px)"></i> full GC (stop-the-world)</span>
+      </div>
+      <div class="verdict" id="tl-verdict">Trigger a collection. Notice the pause band spans <b>every</b> lane — that's stop-the-world. Then slide <code>memory.fraction</code> down and re-trigger the full GC to see the stall shrink.</div>
+      <p class="lab-note">Simplified illustration — real pause length depends on live-object count, heap size, and the collector. Lowering the fraction trades cache capacity (more recompute / spill) for shorter pauses.</p>
     </div>
   </section>
 
-  <!-- ============ COMPARISON TABLE ============ -->
+  <!-- ============ 05 · DECISION TABLE (a decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · Decision table</p>
+    <h2>Which lever, and what it costs</h2>
+    <p>Read this by the lever you're about to reach for — it answers "what will this change, and what does it cost?" at a glance. (The <em>why</em> is §3–04; this is the <em>which</em>.)</p>
     <table class="tbl">
-      <thead><tr><th>Dimension</th><th>Minor GC</th><th>Major / Full GC</th></tr></thead>
+      <thead><tr><th>Lever</th><th>What it changes</th><th>Trade-off</th><th>How to verify</th></tr></thead>
       <tbody>
-        <tr><td><strong>Collects</strong></td><td><strong>Young</strong> gen (Eden + Survivors)</td><td><strong>Old</strong> gen (often the whole heap)</td></tr>
-        <tr><td><strong>Frequency</strong></td><td>Frequent</td><td>Rare</td></tr>
-        <tr><td><strong>Cost / pause</strong></td><td>Short / cheap</td><td>Long / expensive (multi-second stall)</td></tr>
-        <tr><td><strong>Triggered by</strong></td><td>Eden fills with new allocations</td><td>Old gen near-full — heavy caching / promotion</td></tr>
-        <tr><td><strong>Stop-the-world?</strong></td><td>Yes (brief)</td><td>Yes (long)</td></tr>
-      </tbody>
-    </table>
-    <table class="tbl">
-      <thead><tr><th>Lever to reduce GC</th><th>What it changes</th><th>Trade-off</th><th>How to verify</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Serialized caching</strong> <em>(JVM/Scala-side; not a PySpark switch)</em></td><td>One byte array / partition vs one object / field</td><td>Slight (de)serialize CPU on read; PySpark always pickles, so no <code>_SER</code> choice</td><td>GC Time drops on JVM caches; fewer Full GC lines</td></tr>
-        <tr><td><strong>Lower <code>memory.fraction</code></strong> (0.6&rarr;0.4)</td><td>Smaller cache/exec region &rarr; less Old-gen pressure</td><td>Less cache (more recompute/spill)</td><td>GC Time &amp; wall-clock drop</td></tr>
-        <tr><td><strong>Fewer, larger objects</strong></td><td>Primitive arrays / native exprs over boxed / row UDFs</td><td>Rewrite to vectorized form</td><td>Lower GC Time per task</td></tr>
+        <tr><td><strong>Serialized caching</strong> <span class="mono">· JVM/Scala only</span></td><td>One byte array / partition vs one object / field</td><td>Slight (de)serialize CPU; <em>no</em> PySpark <code>_SER</code> switch — Python always pickles</td><td>GC Time drops on JVM caches; fewer full-GC lines</td></tr>
+        <tr><td><strong>Lower <code>memory.fraction</code></strong> (0.6→0.4)</td><td>Smaller cache/exec region → less Old-gen pressure</td><td>Less cache (more recompute / spill)</td><td>GC Time &amp; wall-clock drop</td></tr>
+        <tr><td><strong>Fewer, larger objects</strong></td><td>Primitive arrays / native exprs over boxed objects / row UDFs</td><td>Rewrite to vectorized form</td><td>Lower GC Time per task</td></tr>
         <tr><td><strong>G1GC</strong> (<code>-XX:+UseG1GC</code>)</td><td>Region-based collector for big heaps</td><td>Default since Spark 4.0; opt-in before</td><td>Shorter pauses in GC logs</td></tr>
-        <tr><td><strong>Off-heap</strong></td><td>Data outside the JVM heap &rarr; no GC scan</td><td>Must shrink JVM heap; experimental for cache</td><td>Lower GC Time on cached/shuffle stages</td></tr>
+        <tr><td><strong>Off-heap</strong></td><td>Data outside the JVM heap → no GC scan</td><td>Must shrink JVM heap; experimental for cache</td><td>Lower GC Time on cached / shuffle stages</td></tr>
       </tbody>
     </table>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of the levers:</p>
     <ul>
-      <li><strong>Large-heap, cache-heavy, or allocation-heavy jobs</strong> where the Spark UI shows GC Time as a big fraction of task time — the canonical signal to reach for these levers.</li>
-      <li><strong>"Caching made it slower" diagnosis</strong> — switch to serialized/off-heap cache or lower <code>spark.memory.fraction</code> rather than blindly adding memory.</li>
-      <li><strong>Python-heavy pipelines</strong> — replace row-at-a-time UDFs with native expressions / vectorized (pandas) UDFs to cut per-row object churn.</li>
+      <li><strong>A bigger heap can make full GCs <em>worse</em>.</strong> More Old-gen memory means each full GC walks more live objects → <em>longer</em> pauses. The fix is usually <em>fewer objects</em>, not more heap.</li>
+      <li><strong>Skew amplifies GC.</strong> One huge skewed partition (Lesson 08) allocates far more than its peers on one executor, pushing that JVM into GC thrash. Fix the skew first — the GC pressure often disappears with it.</li>
+      <li><strong>Spill increases GC.</strong> The docs note spilling brings <em>"increased garbage collection"</em> — the spill data structures churn the heap. Curing spill (Lesson 04) often cures the GC symptom too.</li>
     </ul>
-    <h3>Edge cases</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
-      <li><strong>A bigger heap can make full GCs <em>worse</em></strong> — more Old-gen memory means each full GC walks more live objects → <em>longer</em> pauses. Fix is usually <em>fewer objects</em>, not more heap.</li>
-      <li><strong>Skew amplifies GC</strong> — one huge skewed partition (Lesson 08) allocates far more than its peers on one executor, pushing that JVM into GC thrash. Fix the skew first.</li>
-      <li><strong>Spill increases GC</strong> — the docs note spilling brings <strong>"increased garbage collection"</strong>. Curing spill (Lesson 04) often cures the GC symptom too.</li>
-      <li><strong><code>extraJavaOptions</code> is start-time only</strong> — read when the executor JVM boots; you can't flip the collector mid-session.</li>
-    </ul>
-    <h3>Limitations</h3>
-    <ul>
-      <li><strong>You can't eliminate GC</strong> — it's intrinsic to the JVM. You only make pauses <strong>shorter and rarer</strong>; GC tuning is a last-mile lever, not a first resort.</li>
-      <li><strong>GC tuning is workload-specific</strong> — the right <code>memory.fraction</code>, young-gen size, and collector depend on object churn vs cache size; tune empirically from the GC logs.</li>
-      <li><strong>Off-heap is partly experimental</strong> for caching and you must hand-balance JVM heap vs off-heap size — get it wrong and you trade GC for OOM.</li>
-      <li><strong>Version gate:</strong> G1GC is the default only since <strong>Spark 4.0.0 (JDK 17)</strong>; on older Spark/JDK 8 it was an opt-in over ParallelGC. State which runtime you mean.</li>
+      <li><strong>You can't eliminate GC.</strong> It's intrinsic to the JVM; you only make pauses <strong>shorter and rarer</strong>. GC tuning is a last-mile lever, not a first resort.</li>
+      <li><strong><code>extraJavaOptions</code> is start-time only.</strong> It's read when the executor JVM boots — set it in the cluster's Spark config; you can't flip the collector or GC flags mid-session.</li>
+      <li><strong>Off-heap is partly experimental</strong> for caching, and you must hand-balance JVM heap vs off-heap size — get it wrong and you trade GC for OOM.</li>
+      <li><strong>Version gate.</strong> G1GC is the default only since <strong>Spark 4.0.0 (JDK 17)</strong>; on older Spark / JDK 8 it was an opt-in over ParallelGC. State which runtime you mean.</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Throwing more heap at high GC time.</strong> A larger Old gen often means <em>longer</em> full-GC pauses. Reduce the number of objects (serialize the cache, vectorize UDFs) before sizing up.</li>
-      <li><strong>Caching everything "to be safe."</strong> Cached blocks are long-lived and pile into the Old gen → more full GCs. Cache only reused DataFrames (Lesson 06), serialized or off-heap, and <code>unpersist()</code> when done.</li>
-      <li><strong>Confusing GC Time with compute time.</strong> A slow task with high GC Time isn't slow because the work is hard — it's stalled in stop-the-world pauses. Read the GC Time column, don't guess.</li>
-      <li><strong>Setting <code>extraJavaOptions</code> at runtime</strong> and expecting it to take effect — it's applied at executor <strong>startup</strong>. Set it in the cluster's Spark config.</li>
-      <li><strong>Assuming G1GC is always on.</strong> It's the default only from <strong>Spark 4.0 / JDK 17</strong>; older runtimes need <code>-XX:+UseG1GC</code>.</li>
-      <li><strong>Forgetting off-heap shrinks the usable heap.</strong> Off-heap data avoids GC but you must reduce the JVM heap, or the container OOMs (Lesson 04).</li>
-      <li><strong>Ignoring skew/spill as the real cause.</strong> High GC is often a <em>symptom</em> of a skewed partition or execution-memory spill — fix those first.</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Throwing more heap at high GC time</strong></td><td>A bigger Old gen means each full GC walks more live objects → longer pauses.</td><td>Reduce the <em>number of objects</em> (serialize the cache, vectorize UDFs) before sizing up.</td></tr>
+        <tr><td><strong>Caching everything "to be safe"</strong></td><td>Long-lived blocks pile into the Old gen and force frequent full GCs.</td><td>Cache only reused DataFrames (Lesson 06), serialized or off-heap, and <code>unpersist()</code> when done.</td></tr>
+        <tr><td><strong>Confusing GC Time with compute time</strong></td><td>A slow task with high GC Time is stalled in stop-the-world pauses, not doing hard work.</td><td>Read the GC Time column, don't guess.</td></tr>
+        <tr><td><strong>Setting <code>extraJavaOptions</code> at runtime</strong></td><td>It's read only when the executor JVM boots.</td><td>Set it in the cluster's Spark config.</td></tr>
+        <tr><td><strong>Assuming G1GC is always on</strong></td><td>It's the default only from Spark 4.0 / JDK 17; older runtimes ran ParallelGC.</td><td>On older Spark / JDK 8, opt in with <code>-XX:+UseG1GC</code>.</td></tr>
+        <tr><td><strong>Ignoring skew / spill as the real cause</strong></td><td>High GC is often a symptom of a skewed partition or execution-memory spill.</td><td>Fix the skew (Lesson 08) or spill (Lesson 04) first.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/tuning.html">Apache Spark — Tuning Guide (Memory Management &amp; Garbage Collection Tuning)</a>
-      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (memory.fraction, executor.extraJavaOptions, memory.offHeap.*)</a>
-      <a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html">Apache Spark — RDD Programming Guide (storage levels, serialized caching)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/compute/configure">Azure Databricks — Compute configuration (Spark config / JVM options)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/tuning.html">Apache Spark — Tuning guide (Memory Management &amp; Garbage Collection Tuning)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (memory.fraction, executor.extraJavaOptions, memory.offHeap.*)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/rdd-programming-guide.html">Apache Spark — RDD Programming Guide (storage levels, serialized caching)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/compute/configure">Azure Databricks — Compute configuration (Spark config / JVM options)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -594,34 +590,203 @@ big.persist(StorageLevel.MEMORY_AND_DISK); big.count()
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ (e.g. G1GC default since Spark 4.0 / JDK 17).</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · OSS-vs-Databricks defaults noted where they differ · G1GC is the default collector since Spark 4.0 / JDK 17 (ParallelGC before, G1GC opt-in via -XX:+UseG1GC).</p>
   </div>
 </footer>
 
 <script>
-/* ---- Diagram 1: GC pause timeline (stop-the-world simulator) ---- */
+/* ---- Figure A: CLUSTER EXECUTION LAB — a full GC freezes Executor 1, the stage waits ---- */
+(function(){
+  const root = document.getElementById('lab-cluster');
+  if(!root) return;
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const driverNode = root.querySelector('#cl-driver');
+  const exec1 = root.querySelector('#cl-exec1');
+  const exec2 = root.querySelector('#cl-exec2');
+  const exec3 = root.querySelector('#cl-exec3');
+  const eden  = root.querySelector('#cl-eden');
+  const old   = root.querySelector('#cl-old');
+  const wire  = root.querySelector('#cl-wire');
+  const e1core= root.querySelector('#cl-e1-core');
+  const drvNote = root.querySelector('#cl-driver-note');
+  const e2Note  = root.querySelector('#cl-e2-note');
+  const e3Note  = root.querySelector('#cl-e3-note');
+  const e2Parts = root.querySelector('#cl-e2');
+  const e3Parts = root.querySelector('#cl-e3');
+  const narr  = root.querySelector('#cl-narr');
+  const codeEl= root.querySelector('#cl-code');
+  const prevBtn = root.querySelector('#cl-prev');
+  const nextBtn = root.querySelector('#cl-next');
+  const playBtn = root.querySelector('#cl-play');
+  const pfill = root.querySelector('#cl-pfill');
+  const scount= root.querySelector('#cl-scount');
+  const dEden = root.querySelector('#cl-d-eden');
+  const dOld  = root.querySelector('#cl-d-old');
+  const dGc   = root.querySelector('#cl-d-gc');
+  const dTasks= root.querySelector('#cl-d-tasks');
+
+  const CODE = [
+    '<span class="k">df</span> = spark.read.parquet(<span class="s">"/events"</span>)',
+    '<span class="k">df</span>.cache()  <span class="c"># pickled MEMORY_AND_DISK</span>',
+    'hot = <span class="k">df</span>.filter(<span class="s">"amt &gt; 0"</span>) \\',
+    '        .groupBy(<span class="s">"k"</span>).count()',
+    'hot.count()  <span class="c"># action → stage 7</span>'
+  ];
+  function renderCode(hlSet){
+    codeEl.innerHTML = CODE.map(function(ln,i){
+      const hl = hlSet && hlSet.indexOf(i) !== -1 ? ' hl' : '';
+      return '<span class="ln'+hl+'">'+(ln===''?'&nbsp;':ln)+'</span>';
+    }).join('');
+  }
+  function chip(id, kc, cls){
+    const el = document.createElement('span');
+    el.className = 'part ' + kc + (cls && !(cls==='pop'&&reduce) ? ' '+cls : '');
+    el.textContent = id;
+    return el;
+  }
+  function fillEden(n, pop){
+    eden.innerHTML='';
+    if(n===0){ const d=document.createElement('span'); d.className='part dim'; d.textContent='·'; eden.appendChild(d); return; }
+    for(let j=0;j<n;j++){ eden.appendChild(chip('obj','k0', pop ? 'pop' : '')); }
+  }
+  function fillOld(n, frozen){
+    old.innerHTML='';
+    for(let j=0;j<n;j++){ old.appendChild(chip('cache','k1', frozen ? 'frozen' : '')); }
+  }
+  function mark(host, done){
+    host.querySelectorAll('.part').forEach(function(p){
+      const base = p.textContent.replace('✓','');
+      p.textContent = done ? base+'✓' : base;
+    });
+  }
+  function clearAll(){
+    exec1.classList.remove('active','frozen');
+    exec2.classList.remove('active','frozen');
+    exec3.classList.remove('active','frozen');
+    driverNode.classList.remove('active');
+    wire.classList.remove('lit','frozen');
+    drvNote.className='statusline'; e2Note.className='statusline'; e3Note.className='statusline';
+    mark(e2Parts,false); mark(e3Parts,false);
+  }
+
+  const steps = [
+    { code:[0,1],
+      narr:'<b>Executor 1 loads its cache.</b> Reading <code>/events</code> and caching it fills the <b>Old gen</b> with long-lived cache blocks — the pressure that will force a full GC later. Executors 2 and 3 run their tasks.',
+      run:function(){ clearAll();
+        fillEden(0,false); fillOld(4,false);
+        exec1.classList.add('active'); exec2.classList.add('active'); exec3.classList.add('active');
+        driverNode.classList.add('active');
+        e1core.textContent='caching'; e1core.style.color='';
+        dEden.textContent='empty'; dOld.textContent='cache blocks (4)'; dGc.textContent='idle'; dTasks.textContent='running';
+        drvNote.textContent='stage running'; e2Note.textContent='running'; e3Note.textContent='running'; } },
+    { code:[2,3],
+      narr:'<b>Tasks allocate into Eden.</b> The stage\'s work creates short-lived objects — deserialized rows, shuffle buffers — piling into the <b>Young gen</b> (Eden). All three executors are computing.',
+      run:function(){ clearAll();
+        fillEden(5,true); fillOld(4,false);
+        exec1.classList.add('active'); exec2.classList.add('active'); exec3.classList.add('active');
+        e1core.textContent='Eden filling'; e1core.style.color='';
+        dEden.textContent='filling (5)'; dOld.textContent='cache blocks (4)'; dGc.textContent='idle'; dTasks.textContent='running';
+        drvNote.textContent='stage running'; e2Note.textContent='running'; e3Note.textContent='running'; } },
+    { code:[2,3],
+      narr:'<b>Minor GC — a short blip.</b> Eden filled, so a minor GC clears the Young gen; a couple of survivors are promoted toward Old. Cheap and brief — tasks barely notice.',
+      run:function(){ clearAll();
+        fillEden(1,true); fillOld(5,false);
+        exec1.classList.add('active'); exec2.classList.add('active'); exec3.classList.add('active');
+        e1core.textContent='minor GC'; e1core.style.color='var(--accent-2)';
+        dEden.textContent='cleared → 1 survivor'; dOld.textContent='cache + promoted (5)'; dGc.textContent='minor GC (Young) — short'; dTasks.textContent='brief blip, then run';
+        drvNote.textContent='stage running'; e2Note.textContent='running'; e3Note.textContent='running'; } },
+    { code:[1,4],
+      narr:'<b>Old gen near-full → full GC fires.</b> Cache blocks keep the Old gen packed, so the JVM triggers a <b>full GC</b>. It is <b>stop-the-world</b>: every task thread on Executor 1 freezes for the whole collection.',
+      run:function(){ clearAll();
+        fillEden(2,false); fillOld(6,true);
+        exec1.classList.add('frozen'); wire.classList.add('frozen');
+        exec2.classList.add('active'); exec3.classList.add('active');
+        e1core.textContent='FULL GC — frozen'; e1core.style.color='var(--danger)';
+        dEden.textContent='frozen'; dOld.textContent='FULL — collecting'; dGc.textContent='FULL GC (stop-the-world)'; dTasks.textContent='ALL FROZEN';
+        drvNote.textContent='stage running'; e2Note.textContent='running'; e3Note.textContent='running'; } },
+    { code:[4],
+      narr:'<b>The stage waits on the straggler.</b> Executors 2 and 3 finished and now idle at the stage boundary — but the stage can\'t complete until Executor 1\'s frozen tasks resume. One JVM\'s pause is the whole stage\'s wall-clock.',
+      run:function(){ clearAll();
+        fillEden(2,false); fillOld(6,true);
+        exec1.classList.add('frozen'); wire.classList.add('frozen');
+        mark(e2Parts,true); mark(e3Parts,true);
+        e1core.textContent='FULL GC — frozen'; e1core.style.color='var(--danger)';
+        dEden.textContent='frozen'; dOld.textContent='FULL — collecting'; dGc.textContent='FULL GC (stop-the-world)'; dTasks.textContent='ALL FROZEN';
+        drvNote.className='statusline frozen'; drvNote.textContent='WAITING on Exec 1';
+        e2Note.className='statusline done'; e2Note.textContent='done — idle';
+        e3Note.className='statusline done'; e3Note.textContent='done — idle'; } },
+    { code:[1],
+      narr:'<b>The fix: lighten the Old gen.</b> Cache serialized / off-heap, or lower <code>spark.memory.fraction</code> so cache pins less heap → a less-full Old gen → fewer, shorter full GCs. Executor 1 resumes and the stage finishes. Verify with GC Time in the Stages tab.',
+      run:function(){ clearAll();
+        fillEden(2,false); fillOld(3,false);
+        exec1.classList.add('active'); exec2.classList.add('active'); exec3.classList.add('active');
+        driverNode.classList.add('active'); wire.classList.add('lit');
+        e1core.textContent='pauses shorter'; e1core.style.color='var(--ok)';
+        dEden.textContent='running'; dOld.textContent='lighter cache (3)'; dGc.textContent='full GC rare + short'; dTasks.textContent='resumed';
+        drvNote.className='statusline done'; drvNote.textContent='stage complete';
+        e2Note.textContent='running'; e3Note.textContent='running'; } }
+  ];
+
+  let i = 0, timer = null;
+  function goTo(n){
+    i = Math.max(0, Math.min(n, steps.length-1));
+    const s = steps[i];
+    s.run();
+    renderCode(s.code);
+    narr.innerHTML = '<span class="stage">step '+(i+1)+'</span>'+s.narr;
+    pfill.style.width = ((i+1)/steps.length*100) + '%';
+    scount.textContent = 'step '+(i+1)+' / '+steps.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===steps.length-1);
+  }
+  function stopPlay(){ if(timer){ clearInterval(timer); timer=null; playBtn.textContent='▶ Play'; } }
+  function startPlay(){
+    if(i >= steps.length-1) goTo(0);
+    playBtn.textContent='❚❚ Pause';
+    timer = setInterval(function(){ if(i >= steps.length-1){ stopPlay(); return; } goTo(i+1); }, reduce ? 900 : 2000);
+  }
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
+  playBtn.addEventListener('click', function(){ if(timer) stopPlay(); else startPlay(); });
+  goTo(0);
+})();
+
+/* ---- Figure B: GC pause timeline — minor vs full stall + memory.fraction slider ---- */
 (function(){
   const root = document.getElementById('lab-timeline');
   if(!root) return;
-  const fills = Array.prototype.slice.call(root.querySelectorAll('.gc-fill'));
+
+  const fills  = Array.prototype.slice.call(root.querySelectorAll('.gc-fill'));
   const tracks = Array.prototype.slice.call(root.querySelectorAll('.gc-track'));
-  const btnMinor = root.querySelector('#gt-minor');
-  const btnFull  = root.querySelector('#gt-full');
-  const btnReset = root.querySelector('#gt-reset');
-  const elKind   = root.querySelector('#gt-kind');
-  const elPause  = root.querySelector('#gt-pause');
-  const elPct    = root.querySelector('#gt-gcpct');
-  const verdict  = root.querySelector('#gt-verdict');
+  const trigger= root.querySelector('#tl-trigger');
+  const frac   = root.querySelector('#tl-frac');
+  const fracval= root.querySelector('#tl-fracval');
+  const youngEl= root.querySelector('#tl-young');
+  const oldEl  = root.querySelector('#tl-old');
+  const elKind = root.querySelector('#tl-kind');
+  const elPause= root.querySelector('#tl-pause');
+  const elPct  = root.querySelector('#tl-pct');
+  const verdict= root.querySelector('#tl-verdict');
 
-  let progress = 0;          // 0..100 across the stage
-  let paused = false;
-  let pausedMs = 0;          // accumulated GC pause (model units)
-  let elapsedMs = 0;         // total elapsed (model units)
-  let timer = null;
+  let progress = 0, paused = false, pausedMs = 0, elapsedMs = 0, timer = null;
 
-  function widthClear(){
-    root.querySelectorAll('.gc-pause').forEach(function(p){ p.remove(); });
+  // full-GC pause length scales with Old-gen size (driven by memory.fraction)
+  function fracN(){ return parseInt(frac.value,10) / 100; }         // 0.20..0.80
+  function oldPct(){ return Math.round(20 + fracN() * 75); }         // visual Old-gen share
+  function fullPauseMs(){ return Math.round(280 + fracN() * 1350); } // ~550..1360 ms
+  function fullBandWidth(){ return Math.round(10 + fracN() * 34); }  // model % of timeline
+
+  function syncHeap(){
+    const o = oldPct();
+    fracval.textContent = fracN().toFixed(2);
+    oldEl.style.flexBasis = o + '%';
+    youngEl.style.flexBasis = (100 - o) + '%';
+    // keep the readout honest even before the next trigger
+    if(elKind.textContent === 'Full GC'){ elPause.textContent = '~' + fullPauseMs() + ' ms'; }
   }
+  function clearBands(){ root.querySelectorAll('.gc-pause').forEach(function(p){ p.remove(); }); }
   function render(){
     fills.forEach(function(f){ f.style.width = progress + '%'; });
     const pct = elapsedMs > 0 ? Math.round(100 * pausedMs / elapsedMs) : 0;
@@ -634,21 +799,16 @@ big.persist(StorageLevel.MEMORY_AND_DISK); big.count()
     render();
     if(progress >= 100){ stop(); }
   }
-  function start(){
-    if(timer) return;
-    timer = setInterval(tick, 60);
-  }
-  function stop(){
-    if(timer){ clearInterval(timer); timer = null; }
-  }
+  function start(){ if(timer) return; timer = setInterval(tick, 60); }
+  function stop(){ if(timer){ clearInterval(timer); timer = null; } }
+
   function injectPause(kind){
-    // a collection freezes ALL lanes for a band starting at the current progress
-    const dur = kind === 'full' ? 28 : 6;     // model ms of pause (full ≫ minor)
+    const widthPct = kind === 'full' ? Math.min(100 - progress, fullBandWidth()) : Math.min(100 - progress, 6);
     const startPct = progress;
-    const widthPct = Math.min(100 - startPct, dur);
+    if(widthPct <= 0){ return; }
     paused = true;
     elKind.textContent = kind === 'full' ? 'Full GC' : 'Minor GC';
-    elPause.textContent = (kind === 'full' ? '~800' : '~40') + ' ms';
+    if(kind === 'full'){ elPause.textContent = '~' + fullPauseMs() + ' ms'; }
     tracks.forEach(function(t){
       const band = document.createElement('div');
       band.className = 'gc-pause' + (kind === 'minor' ? ' minor' : '');
@@ -657,284 +817,34 @@ big.persist(StorageLevel.MEMORY_AND_DISK); big.count()
       t.appendChild(band);
     });
     verdict.innerHTML = kind === 'full'
-      ? '<b>Full GC — long stop-the-world stall.</b> The Old gen was near-full, so the JVM froze <em>every</em> task thread for a multi-second pause. This is what turns one executor into a stage straggler.'
+      ? '<b>Full GC — a long stop-the-world stall.</b> The Old gen was near-full, so the JVM froze <em>every</em> task thread for ~' + fullPauseMs() + ' ms. This is what turns one executor into a stage straggler. Slide <code>memory.fraction</code> down and re-trigger — a smaller Old gen means a shorter stall.'
       : '<b>Minor GC — a short blip.</b> Only the Young gen was collected; all lanes paused briefly, then resumed. Frequent but cheap — usually not your problem.';
-    // accumulate pause time into the GC% readout, then resume after the band
-    const steps = widthPct;
+    const steps = Math.max(1, widthPct);
     let done = 0;
     const pt = setInterval(function(){
-      done += 2;
-      pausedMs += 40;            // pause weighs heavier per model step
-      elapsedMs += 40;
-      render();
-      if(done >= steps){
-        clearInterval(pt);
-        paused = false;
-        start();
-      }
+      done += 2; pausedMs += 40; elapsedMs += 40; render();
+      if(done >= steps){ clearInterval(pt); paused = false; start(); }
     }, 60);
   }
   function reset(){
-    stop();
+    stop(); clearBands();
     progress = 0; paused = false; pausedMs = 0; elapsedMs = 0;
-    widthClear();
-    elKind.textContent = '—';
-    elPause.textContent = '0 ms';
-    elPct.textContent = '0%';
-    verdict.innerHTML = 'Press a button to inject a collection. Notice the pause band spans <b>every</b> lane — that\'s stop-the-world.';
-    render();
+    elKind.textContent = '—'; elPause.textContent = '0 ms'; elPct.textContent = '0%';
+    fills.forEach(function(f){ f.style.width = '0%'; });
+    verdict.innerHTML = 'Trigger a collection. Notice the pause band spans <b>every</b> lane — that\'s stop-the-world. Then slide <code>memory.fraction</code> down and re-trigger the full GC to see the stall shrink.';
   }
-  btnMinor.addEventListener('click', function(){ if(progress >= 100) reset(); start(); injectPause('minor'); });
-  btnFull.addEventListener('click',  function(){ if(progress >= 100) reset(); start(); injectPause('full'); });
-  btnReset.addEventListener('click', reset);
-  reset();
-  start();
-})();
 
-/* ---- Diagram 2: memory.fraction slider → Old-gen pressure ---- */
-(function(){
-  const root = document.getElementById('lab-fraction');
-  if(!root) return;
-  const frac    = root.querySelector('#mf-frac');
-  const fracval = root.querySelector('#mf-fracval');
-  const oldSeg  = root.querySelector('#mf-old');
-  const elCache = root.querySelector('#mf-cache');
-  const elPress = root.querySelector('#mf-pressure');
-  const elPause = root.querySelector('#mf-pause');
-  const verdict = root.querySelector('#mf-verdict');
-
-  function render(){
-    const f = parseInt(frac.value, 10) / 100;     // spark.memory.fraction
-    fracval.textContent = f.toFixed(2);
-    // Old gen visual basis scales with the cache region; clamp for legibility.
-    const oldBasis = Math.round(30 + f * 60);      // 42%..78% of the bar
-    oldSeg.style.flexBasis = oldBasis + '%';
-    elCache.textContent = Math.round(f * 100) + '%';
-    let press, pause, note;
-    if(f >= 0.65){
-      press = 'high'; pause = '~800 ms';
-      note = '<b>Old gen near-full.</b> A large cache region pins many long-lived objects, so the JVM runs frequent, long full GCs. If GC Time is high in the Stages tab, this is the dial to turn down.';
-      elPress.style.color = '#c2410c';
-    } else if(f >= 0.45){
-      press = 'medium'; pause = '~300 ms';
-      note = '<b>Balanced.</b> The default 0.6 region is fine for most jobs; only lower it when the Spark UI actually shows GC Time dominating task time.';
-      elPress.style.color = '#9a3412';
-    } else {
-      press = 'low'; pause = '~90 ms';
-      note = '<b>Cache shrunk, pauses short.</b> Fewer long-lived objects in the Old gen &rArr; cheaper full GCs. The trade-off: less cache capacity, so more recompute or spill — "better to cache fewer objects than to slow down task execution."';
-      elPress.style.color = '#6d28d9';
-    }
-    elPress.textContent = press;
-    elPause.textContent = pause;
-    verdict.innerHTML = note;
-  }
-  frac.addEventListener('input', render);
-  render();
-})();
-
-/* ---- Diagram 3: tabbed minor-vs-full GC compare ---- */
-(function(){
-  const root = document.getElementById('lab-compare');
-  if(!root) return;
-  const seg  = root.querySelector('#cm-seg');
-  const plan = root.querySelector('#cm-plan');
-  const note = root.querySelector('#cm-note');
-  const data = {
-    minor: {
-      plan: '<span class="dim">== Minor GC ==</span>\n' +
-            'collects: <span class="ok">Young gen</span> (Eden + S0/S1)\n' +
-            'frequency: <span class="ok">frequent</span>\n' +
-            'pause:     <span class="ok">short (a blip)</span>\n' +
-            'trigger:   Eden fills with new allocations\n' +
-            'log line:  [GC (Allocation Failure) ...]',
-      note: '<b>Cheap and routine.</b> Most objects die young, so collecting the small Young gen is fast. All task threads still pause — but only briefly. Rarely the thing to tune.'
-    },
-    full: {
-      plan: '<span class="dim">== Full GC ==</span>\n' +
-            'collects: <span class="bad">Old gen</span> (often the whole heap)\n' +
-            'frequency: <span class="bad">rare</span>\n' +
-            'pause:     <span class="bad">long (stop-the-world stall)</span>\n' +
-            'trigger:   Old gen near-full (heavy caching / promotion)\n' +
-            'log line:  [Full GC (Ergonomics) ...]',
-      note: '<b>Expensive and dangerous.</b> Walks far more live objects, so the stop-the-world pause is long — this is what stalls an executor and makes it a stage straggler. Reduce it: serialized/off-heap cache, lower <code>memory.fraction</code>, G1GC.'
-    }
-  };
-  function show(g){
-    plan.innerHTML = data[g].plan;
-    note.innerHTML = data[g].note;
-    seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.g === g)); });
-  }
-  seg.addEventListener('click', function(e){
+  trigger.addEventListener('click', function(e){
     const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.g);
+    const kind = b.dataset.kind;
+    if(kind === 'reset'){ reset(); return; }
+    if(progress >= 100){ reset(); }
+    start();
+    injectPause(kind);
   });
-  show('minor');
-})();
-
-/* ---- Cluster Execution Lab: GC on one executor's JVM heap (driver + 3 executors) ---- */
-(function(){
-  const root = document.getElementById('lab-cluster');
-  if(!root) return;
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion:reduce)').matches;
-
-  const eden    = root.querySelector('#cl-eden');
-  const oldGen  = root.querySelector('#cl-old');
-  const exec1   = root.querySelector('#cl-exec1');
-  const exec2   = root.querySelector('#cl-exec2');
-  const exec3   = root.querySelector('#cl-exec3');
-  const e2parts = root.querySelector('#cl-e2');
-  const e3parts = root.querySelector('#cl-e3');
-  const e2note  = root.querySelector('#cl-e2-note');
-  const e3note  = root.querySelector('#cl-e3-note');
-  const e1core  = root.querySelector('#cl-e1-core');
-  const drvNote = root.querySelector('#cl-driver-note');
-  const dEden   = root.querySelector('#cl-d-eden');
-  const dOld    = root.querySelector('#cl-d-old');
-  const dGc     = root.querySelector('#cl-d-gc');
-  const dCost   = root.querySelector('#cl-d-cost');
-  const codeLns = Array.prototype.slice.call(root.querySelectorAll('#cl-code .ln'));
-  const narr    = root.querySelector('#cl-narr');
-  const pfill   = root.querySelector('#cl-pfill');
-  const scount  = root.querySelector('#cl-scount');
-  const btnPrev = root.querySelector('#cl-prev');
-  const btnNext = root.querySelector('#cl-next');
-  const btnPlay = root.querySelector('#cl-play');
-
-  function chips(host, items){
-    host.innerHTML = '';
-    items.forEach(function(it){
-      const s = document.createElement('span');
-      s.className = 'part ' + (it.cls || '') + (reduce ? '' : ' pop');
-      s.textContent = it.t;
-      host.appendChild(s);
-    });
-  }
-  function setActive(node, on){ if(node) node.classList.toggle('active', !!on); }
-  function freeze(host, on){
-    host.querySelectorAll('.part').forEach(function(p){ p.classList.toggle('frozen', !!on && !reduce); p.classList.toggle('dim', !!on); });
-  }
-  function hl(idx){
-    codeLns.forEach(function(l){ l.classList.toggle('hl', Number(l.dataset.l) === idx); });
-  }
-
-  const STEPS = [
-    {
-      code:0, stage:'allocate', line:'cost ∝ object count',
-      build:function(){
-        chips(eden, [{t:'obj',cls:'k0'},{t:'obj',cls:'k0'},{t:'obj',cls:'k0'}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'}]);
-        chips(e2parts,[{t:'t4',cls:'k2'},{t:'t5',cls:'k2'}]);
-        chips(e3parts,[{t:'t6',cls:'k3'},{t:'t7',cls:'k3'}]);
-        e1core.textContent='tasks running'; e1core.style.color='';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        freeze(eden,false); freeze(oldGen,false); freeze(e2parts,false); freeze(e3parts,false);
-        e2note.textContent='running'; e3note.textContent='running'; drvNote.textContent='waiting on slowest task';
-        dEden.textContent='filling (3 objs)'; dOld.textContent='cache blocks'; dGc.textContent='idle'; dCost.textContent='low — few objects';
-      },
-      narr:'<span class="stage">step 1 · Eden fills</span>Tasks t1–t3 on <b>Executor 1</b> allocate new objects into <b>Eden</b> (the young gen). Every deserialized row is a heap object — and GC cost scales with the <b>number of objects</b>, not bytes.'
-    },
-    {
-      code:0, stage:'eden full', line:'object count',
-      build:function(){
-        chips(eden, [{t:'obj',cls:'k0'},{t:'obj',cls:'k0'},{t:'obj',cls:'k0'},{t:'obj',cls:'k0'},{t:'obj',cls:'k0'},{t:'obj',cls:'k0'}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'}]);
-        e1core.textContent='Eden full'; e1core.style.color='var(--flame)';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        e2note.textContent='running'; e3note.textContent='running';
-        dEden.textContent='FULL (6 objs)'; dOld.textContent='cache blocks'; dGc.textContent='about to trigger'; dCost.textContent='rising';
-      },
-      narr:'<span class="stage">step 2a · Eden full</span><b>Eden fills up.</b> An allocation failure is imminent — the JVM is about to run a <b>minor GC</b> to make room.'
-    },
-    {
-      code:0, stage:'minor GC', line:'object count',
-      build:function(){
-        // minor GC: Eden cleared, a couple survivors promoted to Old. Executor 1 task chips blink/pause briefly.
-        chips(eden, [{t:'·',cls:''}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'surv',cls:'k0'}]);
-        e1core.textContent='minor GC (brief)'; e1core.style.color='var(--gold)';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        freeze(eden,true);
-        e2note.textContent='running'; e3note.textContent='running'; drvNote.textContent='waiting on slowest task';
-        dEden.textContent='cleared'; dOld.textContent='cache + survivors'; dGc.textContent='MINOR — short pause'; dCost.textContent='cheap (young gen)';
-        setTimeout(function(){ freeze(eden,false); }, reduce?0:900);
-      },
-      narr:'<span class="stage">step 2b · minor GC</span><b>Minor GC — a short blip.</b> Eden is cleared and a few survivors are promoted to the <b>Old gen</b>. Executor 1\'s tasks pause briefly, then resume. Cheap, because the young gen is small.'
-    },
-    {
-      code:1, stage:'Old gen fills', line:'object count',
-      build:function(){
-        chips(eden, [{t:'obj',cls:'k0'},{t:'obj',cls:'k0'}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'surv',cls:'k0'},{t:'surv',cls:'k0'}]);
-        e1core.textContent='Old gen near-full'; e1core.style.color='var(--violet-2)';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        e2note.textContent='running'; e3note.textContent='running';
-        dEden.textContent='small'; dOld.textContent='NEAR-FULL (heavy cache)'; dGc.textContent='full GC imminent'; dCost.textContent='HIGH — many objects';
-      },
-      narr:'<span class="stage">step 3a · Old gen fills</span><b>cache()</b> pins long-lived blocks in the <b>Old gen</b>. With heavy caching it climbs toward full — the trigger for an expensive <b>full GC</b>.'
-    },
-    {
-      code:3, stage:'FULL GC · stop-the-world', line:'object count',
-      build:function(){
-        chips(eden, [{t:'·',cls:''}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'cache',cls:'k1'},{t:'surv',cls:'k0'}]);
-        e1core.textContent='FULL GC — frozen'; e1core.style.color='var(--violet-2)';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        // Executor 1: ALL tasks freeze. Other executors keep running.
-        freeze(eden,true); freeze(oldGen,true);
-        e2note.textContent='still running →'; e3note.textContent='still running →'; drvNote.textContent='stage waits on Exec 1';
-        dEden.textContent='frozen'; dOld.textContent='collecting whole heap'; dGc.textContent='FULL — STOP-THE-WORLD'; dCost.textContent='HIGH — long pause';
-      },
-      narr:'<span class="stage">step 3b · full GC = stop-the-world</span><b>All tasks on this executor paused.</b> A full GC freezes <em>every</em> thread on Executor 1 for a multi-second stall. Executors 2 &amp; 3 keep running — so the <b>whole stage waits on the slowest executor</b>.'
-    },
-    {
-      code:5, stage:'mitigation', line:'fewer objects',
-      build:function(){
-        chips(eden, [{t:'obj',cls:'k0'},{t:'obj',cls:'k0'}]);
-        chips(oldGen, [{t:'cache',cls:'k1'},{t:'cache',cls:'k1'}]);
-        e1core.textContent='pauses shorter'; e1core.style.color='var(--cyan)';
-        setActive(exec1,true); setActive(exec2,false); setActive(exec3,false);
-        freeze(eden,false); freeze(oldGen,false);
-        e2note.textContent='running'; e3note.textContent='running'; drvNote.textContent='stage finishes sooner';
-        dEden.textContent='small'; dOld.textContent='LESS pinned (frac 0.4)'; dGc.textContent='full GC rare + short'; dCost.textContent='lower — fewer objects';
-      },
-      narr:'<span class="stage">step 4 · mitigation</span>Lower <b>spark.memory.fraction</b> (or use a serialized cache) so fewer long-lived objects pin the Old gen → <b>Old-gen pressure drops, full GCs get rarer and shorter</b>, and Executor 1 stops being the straggler.'
-    }
-  ];
-
-  let i = 0, playing = false, timer = null;
-
-  function renderStep(){
-    const s = STEPS[i];
-    s.build();
-    hl(s.code);
-    narr.innerHTML = s.narr;
-    pfill.style.width = ((i+1)/STEPS.length*100) + '%';
-    scount.textContent = 'step ' + (i+1) + ' / ' + STEPS.length;
-    btnPrev.disabled = (i === 0);
-    btnNext.disabled = (i === STEPS.length-1);
-  }
-  function goTo(n){
-    i = Math.max(0, Math.min(STEPS.length-1, n));
-    renderStep();
-  }
-  function stopPlay(){
-    playing = false; btnPlay.textContent = 'Play';
-    if(timer){ clearInterval(timer); timer = null; }
-  }
-  function startPlay(){
-    if(i >= STEPS.length-1) goTo(0);
-    playing = true; btnPlay.textContent = 'Pause';
-    timer = setInterval(function(){
-      if(i >= STEPS.length-1){ stopPlay(); return; }
-      goTo(i+1);
-    }, reduce ? 1400 : 2400);
-  }
-
-  btnPrev.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
-  btnNext.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
-  btnPlay.addEventListener('click', function(){ playing ? stopPlay() : startPlay(); });
-
-  goTo(0);
+  frac.addEventListener('input', syncHeap);
+  syncHeap();
+  render();
 })();
 </script>
 </body>

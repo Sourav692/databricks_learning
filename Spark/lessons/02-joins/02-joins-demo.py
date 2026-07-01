@@ -36,6 +36,12 @@
 # MAGIC
 # MAGIC > Facts (autoBroadcastJoinThreshold = 10 MB, `-1` disables, `preferSortMergeJoin = true`,
 # MAGIC > plan node names) are from the verified fact sheet, section 2 — JOINS.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Use a **classic single-user** cluster for this tutorial. Each action in a cell (`count`,
+# MAGIC `write.format("noop").save`, `display`, `show`) submits a Spark job, so the Spark UI may
+# MAGIC show more than one job if a cell has more than one action. The lesson comments call out
+# MAGIC the action that matters so you can inspect the matching SQL / Jobs / Stages entry directly.
 
 # COMMAND ----------
 
@@ -47,13 +53,20 @@
 
 # COMMAND ----------
 
-catalog = "main"
+catalog = "main"      # existing catalog where you can create a schema/table
 schema  = "pyspark_perf_demo"
 
 # Three-level namespace: catalog.schema.table
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 print(f"Using {catalog}.{schema}")
+
+LESSON_ID = "Lesson 02 - Joins"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -83,6 +96,7 @@ country = spark.createDataFrame(
 )
 
 print("orders partitions:", orders.rdd.getNumPartitions())   # in-memory partition count
+mark_action("count tiny country dimension")
 print("country rows     :", country.count())                  # tiny — the broadcast candidate
 
 # COMMAND ----------
@@ -112,6 +126,7 @@ smj.explain(mode="formatted")
 import time
 
 t0 = time.time()
+mark_action("run forced SortMergeJoin via noop")
 smj.write.format("noop").mode("overwrite").save()
 print(f"SortMergeJoin wall-clock: {time.time() - t0:.2f} s")
 # In the Spark UI > SQL tab: two Exchange nodes feeding the SortMergeJoin, and the Stages
@@ -148,6 +163,7 @@ bhj.explain(mode="formatted")
 # Time the broadcast join — the big side is read once and never shuffled, so this should be
 # noticeably faster than the SortMergeJoin above.
 t0 = time.time()
+mark_action("run BroadcastHashJoin via noop")
 bhj.write.format("noop").mode("overwrite").save()
 print(f"BroadcastHashJoin wall-clock: {time.time() - t0:.2f} s")
 # In the Spark UI > SQL tab: a BroadcastExchange on the country branch and NO Exchange on

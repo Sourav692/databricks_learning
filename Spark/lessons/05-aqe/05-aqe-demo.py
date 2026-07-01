@@ -32,6 +32,13 @@
 # MAGIC   the shuffle node shows the post-shuffle partition count.
 # MAGIC - **Spark UI → Stages tab** — the **task-time distribution** (min / median / max).
 # MAGIC   Skew shows as `max ≫ median`; after a skew split, `max` collapses toward `median`.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Use a **classic single-user** cluster for the cleanest Spark UI. Each action cell below
+# MAGIC creates one or more Spark jobs; that is Spark's action model, not a Databricks shared-cluster
+# MAGIC artifact. The `timed_noop(...)` helper is used so the job runs fully while returning no rows
+# MAGIC to the driver, making the Jobs / SQL / Stages entries easier to compare between before/after
+# MAGIC states.
 
 # COMMAND ----------
 
@@ -47,10 +54,17 @@ dbutils.widgets.text("schema",  "pyspark_perf_demo", "Schema")
 catalog = dbutils.widgets.get("catalog")
 schema  = dbutils.widgets.get("schema")
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog}")          # no-op if it already exists / managed
+# Use an existing catalog; create only the demo schema under it.
 spark.sql(f"CREATE SCHEMA  IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 print(f"Using {catalog}.{schema}")
+
+LESSON_ID = "Lesson 05 - AQE"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -61,6 +75,7 @@ def timed_noop(df, label=""):
     """Run the full job WITHOUT writing real output, and time it.
     The 'noop' sink forces materialization (like a write) but discards the rows —
     the clean way to time a plan without pulling data to the driver (collect() risks driver OOM)."""
+    mark_action(label or "timed noop")
     t0 = time.time()
     df.write.format("noop").mode("overwrite").save()
     dt = time.time() - t0

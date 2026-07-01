@@ -30,6 +30,14 @@
 # MAGIC - **Stages tab** — **task count** (= partition count) and the **task-time distribution**
 # MAGIC   (min/median/max — skew shows as max ≫ median), plus **Shuffle Read/Write** bytes.
 # MAGIC - **Executors tab** — how many executors/cores you actually got, and per-executor GC time.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Run this notebook on a **classic single-user** Databricks cluster attached to one user.
+# MAGIC Databricks still shows one Spark UI job for each **action** (`count`, `show`, `display`,
+# MAGIC `write`, `collect`) in the cell that triggered it. That is expected: cells are just notebook
+# MAGIC commands; Spark jobs are created only by actions. The comments below mark those action
+# MAGIC boundaries so learners can map each cell to the Jobs / SQL / Stages tabs without the
+# MAGIC extra indirection of shared-access or Spark Connect clusters.
 
 # COMMAND ----------
 
@@ -42,11 +50,12 @@
 
 from pyspark.sql.functions import col, when, rand, floor
 
-# Three-level UC namespacing — change these to a catalog/schema you can write to.
+# Three-level UC namespacing — change these to an existing catalog/schema you can write to.
+# Single-user tutorial assumption: the catalog already exists; learners usually have schema/table
+# create rights, not catalog-owner rights.
 catalog = "main"
 schema  = "pyspark_perf_demo"
 
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog}")        # no-op if it already exists / managed
 spark.sql(f"CREATE SCHEMA  IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 
@@ -54,6 +63,13 @@ spark.sql(f"USE {catalog}.{schema}")
 _orig_shuffle_parts = spark.conf.get("spark.sql.shuffle.partitions")
 _orig_aqe           = spark.conf.get("spark.sql.adaptive.enabled")
 print("shuffle.partitions =", _orig_shuffle_parts, "| adaptive.enabled =", _orig_aqe)
+
+LESSON_ID = "Lesson 01 - Spark architecture"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -91,6 +107,7 @@ print("Built a 3-step plan — still zero jobs submitted.")
 
 # ACTION: count() fires exactly ONE job.
 # MEASURE (Spark UI): before running, note the Jobs tab count; after, it increases by 1.
+mark_action("count filtered rows")
 n = f3.count()
 print("rows after filter:", n, "-> check Spark UI > Jobs: exactly one new job for this count().")
 
@@ -149,6 +166,7 @@ print("post-shuffle partitions (=> tasks in the final stage):", wide.rdd.getNumP
 # MEASURE (timing): the `noop` sink runs the FULL job (all stages/tasks) but writes nothing —
 # the clean way to time a plan WITHOUT a driver-OOM-risky collect().
 import time
+mark_action("run wide groupBy with AQE off via noop")
 t0 = time.time()
 wide.write.format("noop").mode("overwrite").save()
 print("wide groupBy wall-clock:", round(time.time() - t0, 2), "s")
@@ -165,6 +183,7 @@ print("AQE reset to:", spark.conf.get("spark.sql.adaptive.enabled"))
 # post-shuffle partitions toward the ~64 MB advisory size (Lesson 05), so the final-stage task
 # count drops. Confirm in the plan (AQEShuffleRead) and in Stages (far fewer tasks).
 wide_aqe = events.groupBy("bucket").count()
+mark_action("run wide groupBy with AQE on via noop")
 wide_aqe.write.format("noop").mode("overwrite").save()
 print("post-shuffle partitions with AQE on:", wide_aqe.rdd.getNumPartitions(),
       "(AQE coalesced — compare to 200 above)")

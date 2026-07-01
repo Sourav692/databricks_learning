@@ -34,6 +34,12 @@
 # MAGIC   are gone.
 # MAGIC - We time each plan with the **`noop`** sink (runs the full job, writes nothing) instead of
 # MAGIC   `collect()` (which would pull data to the driver and risk driver OOM — Lesson 03).
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Run this on a **classic single-user** cluster with Unity Catalog table-create permissions.
+# MAGIC Bucketing evidence is easiest to follow when each action (`saveAsTable`, `count`, `noop`
+# MAGIC write) maps directly to the Spark UI for this one notebook. The comments below separate
+# MAGIC setup writes from the before/after join actions so learners know which SQL DAG to inspect.
 
 # COMMAND ----------
 
@@ -43,12 +49,19 @@
 # COMMAND ----------
 
 # Three-level UC namespacing. Delta is the default table format (no `USING DELTA` needed).
-catalog = "main"
+catalog = "main"      # existing catalog where you can create the demo schema/tables
 schema  = "pyspark_perf_demo"
 N       = 8          # bucket count used for the "matching" demo (small for a demo; use 100s in prod)
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
+
+LESSON_ID = "Lesson 11 - Bucketing"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # Fully-qualified names we will create
 TX_RAW   = f"{catalog}.{schema}.transactions_raw"
@@ -90,9 +103,11 @@ accounts = (spark.range(N_ACCOUNTS)
     .withColumn("region", expr("concat('r', cast(account_id % 12 as string))")))
 
 # Persist both as plain (un-bucketed) tables so the "before" join reads from disk like prod.
+mark_action("write raw unbucketed setup tables")
 transactions.write.mode("overwrite").saveAsTable(TX_RAW)
 accounts.write.mode("overwrite").saveAsTable(ACC_RAW)
 
+mark_action("count raw setup tables")
 print("rows: transactions_raw =", spark.table(TX_RAW).count(),
       "| accounts_raw =", spark.table(ACC_RAW).count())
 
@@ -131,6 +146,7 @@ print("partitions (unbucketed join):", joined_before.rdd.getNumPartitions())
 
 # MEASURE 3: wall-clock via the noop sink (runs the full job, writes nothing -> clean timing).
 import time
+mark_action("unbucketed shuffle join via noop")
 t0 = time.time()
 joined_before.write.format("noop").mode("overwrite").save()
 print(f"unbucketed join wall-clock: {time.time() - t0:.1f}s")
@@ -148,11 +164,13 @@ print(f"unbucketed join wall-clock: {time.time() - t0:.1f}s")
 # COMMAND ----------
 
 # Bucket BOTH tables identically: same key (account_id), same count (N).
+mark_action("write matching bucketed transactions table")
 (spark.table(TX_RAW).write
     .bucketBy(N, "account_id").sortBy("account_id")
     .mode("overwrite")
     .saveAsTable(TX_BKT))
 
+mark_action("write matching bucketed accounts table")
 (spark.table(ACC_RAW).write
     .bucketBy(N, "account_id").sortBy("account_id")     # SAME key, SAME N as above
     .mode("overwrite")
@@ -188,6 +206,7 @@ joined_after.explain(mode="formatted")
 print("partitions (bucketed join):", joined_after.rdd.getNumPartitions())   # == N (the bucket count)
 
 import time
+mark_action("bucketed no-shuffle join via noop")
 t0 = time.time()
 joined_after.write.format("noop").mode("overwrite").save()
 print(f"bucketed join wall-clock: {time.time() - t0:.1f}s")
@@ -206,6 +225,7 @@ print(f"bucketed join wall-clock: {time.time() - t0:.1f}s")
 # COMMAND ----------
 
 # Re-bucket accounts into N/2 buckets (mismatched vs the N-bucket transactions table).
+mark_action("write mismatched bucket-count accounts table")
 (spark.table(ACC_RAW).write
     .bucketBy(N // 2, "account_id").sortBy("account_id")
     .mode("overwrite")
@@ -249,6 +269,7 @@ events = (spark.range(5_000_000)
     .select("user_id", "event_date"))
 
 EVENTS_BPB = f"{catalog}.{schema}.events_bpb"
+mark_action("write partitioned and bucketed events table")
 (events.write
     .partitionBy("event_date")                       # directories -> partition pruning
     .bucketBy(256, "user_id").sortBy("user_id")       # hash files  -> no shuffle on user_id joins

@@ -31,6 +31,13 @@
 # MAGIC - **Executors tab** → **Storage Memory** used/total, **Off Heap Memory**, **Failed Tasks**.
 # MAGIC - We also MEASURE with `df.explain(mode="formatted")`, `df.rdd.getNumPartitions()`, and a
 # MAGIC   `df.write.format("noop")` sink to time/trigger a plan without writing real output.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Attach this notebook to a **classic single-user** cluster. Every action in a cell becomes a
+# MAGIC Spark UI job; this is normal even when the notebook cell is just one command. The tutorial
+# MAGIC keeps long-running actions separated and comments the Spark UI signal to inspect after each
+# MAGIC action. Shared-access / Spark Connect clusters add another execution layer and can obscure
+# MAGIC the executor-memory signals this lesson is trying to isolate.
 
 # COMMAND ----------
 
@@ -46,11 +53,18 @@ dbutils.widgets.text("schema", "pyspark_perf_demo", "Schema")
 catalog = dbutils.widgets.get("catalog")
 schema  = dbutils.widgets.get("schema")
 
-# Create + select the schema (Delta is the default table format on Databricks — no USING DELTA).
-spark.sql(f"CREATE CATALOG IF NOT EXISTS {catalog}")
+# Select an existing catalog and create the tutorial schema under it.
+# Most learners can create schemas/tables but cannot create catalogs.
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
 print(f"Using {catalog}.{schema}")
+
+LESSON_ID = "Lesson 04 - Executor memory"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 # COMMAND ----------
 
@@ -133,6 +147,7 @@ agg.explain(mode="formatted")
 
 # MEASURE 2 — run the job with a noop sink (full job, no real output) and time it.
 t0 = time.time()
+mark_action("wide aggregation with 200 shuffle partitions")
 agg.write.format("noop").mode("overwrite").save()
 print(f"agg (200 partitions): {time.time() - t0:.1f} s")
 
@@ -155,6 +170,7 @@ spark.conf.set("spark.sql.shuffle.partitions", 800)
 
 agg2 = big.groupBy("k").count()
 t0 = time.time()
+mark_action("wide aggregation with 800 shuffle partitions")
 agg2.write.format("noop").mode("overwrite").save()
 print(f"agg (800 partitions): {time.time() - t0:.1f} s")
 
@@ -180,10 +196,12 @@ from pyspark import StorageLevel
 
 # Cache: DataFrame default level is MEMORY_AND_DISK (spills cache to disk under pressure).
 cached = big.select("k", "val").persist(StorageLevel.MEMORY_AND_DISK)
+mark_action("materialize MEMORY_AND_DISK cache")
 cached.count()    # materialize — persist()/cache() are LAZY until the first action
 
 # Now run heavy execution work that competes for M:
 heavy = cached.groupBy("k").agg(F.sum("val").alias("s"))
+mark_action("run heavy aggregation against cached data")
 heavy.write.format("noop").mode("overwrite").save()
 
 # SPARK UI SIGNAL: Storage tab → the cached DataFrame → "Fraction Cached" may be < 100%.
@@ -212,6 +230,7 @@ skew_agg.explain(mode="formatted")
 
 # Run it and inspect the Stages tab.
 t0 = time.time()
+mark_action("run skewed aggregation")
 skew_agg.write.format("noop").mode("overwrite").save()
 print(f"skewed agg: {time.time() - t0:.1f} s")
 
@@ -245,6 +264,7 @@ py.explain(mode="formatted")
 # Look for:  BatchEvalPython [bump(val)]   (or ArrowEvalPython for a Pandas/Arrow UDF)
 
 t0 = time.time()
+mark_action("run Python UDF pass")
 py.write.format("noop").mode("overwrite").save()
 print(f"python UDF pass: {time.time() - t0:.1f} s")
 

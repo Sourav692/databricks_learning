@@ -3,370 +3,484 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Adaptive Query Execution (AQE) · Databricks PySpark Performance</title>
+<title>Adaptive Query Execution (AQE) · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
 
-  /* ---------- header ---------- */
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
 
-  /* ---------- sections ---------- */
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  ul{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
 
-  /* ---------- table ---------- */
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
 
-  /* ---------- code blocks ---------- */
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}
-  pre .k{color:#fbbf77;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
 
-  /* ---------- interactive lab shell ---------- */
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
-  .verdict b{color:var(--flame)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
-  /* partition bars for the coalesce + skew diagrams */
-  .bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin:16px 0 6px;padding:10px;background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;overflow-x:auto}
-  .bar{flex:1 0 7px;min-width:7px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,var(--flame),var(--flame-2));transition:height .4s ease,background .3s,opacity .3s}
-  .bar.tiny{opacity:.55}
-  .bar.coalesced{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
-  .bar.skew{background:repeating-linear-gradient(45deg,#7a2e0c,#7a2e0c 5px,#9a3412 5px,#9a3412 10px)}
-  .bar.split{background:linear-gradient(180deg,var(--violet-2),var(--violet))}
-  .barslabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;font-size:.8rem;color:var(--muted)}
-  .legend span{display:inline-flex;align-items:center;gap:7px}
-  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
-     "how it runs on the Spark nodes / how the shuffle works" animations.
-     ==================================================================== */
+  .heapbar{position:relative;height:46px;border-radius:8px;overflow:hidden;border:1px solid var(--line);margin:20px 0 6px;background:var(--bg)}
+  .heapbar .fill{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,var(--accent),#5b5bff);transition:width .25s ease,background .25s ease;display:flex;align-items:center;justify-content:flex-end;color:#fff;font-family:"JetBrains Mono",monospace;font-size:.68rem;font-weight:600;padding-right:8px}
+  .heapbar.danger .fill{background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 7px,#d64848 7px,#d64848 14px)}
+  .heapbar .limit{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink)}
+  .heapbar .limit::after{content:"maxResultSize 1g";position:absolute;top:-19px;left:6px;font-family:"JetBrains Mono",monospace;font-size:.58rem;color:var(--ink);white-space:nowrap}
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
+
+  /* ---- partition bars (Figure A: coalesce + skew + join step-through) ---- */
+  .bars{display:flex;align-items:flex-end;gap:3px;height:120px;margin:16px 0 6px;padding:10px;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow-x:auto}
+  .bar{flex:1 0 7px;min-width:7px;border-radius:3px 3px 0 0;background:linear-gradient(180deg,#5b5bff,var(--accent));transition:height .4s ease,background .3s,opacity .3s}
+  .bar.tiny{opacity:.5}
+  .bar.coalesced{background:linear-gradient(180deg,var(--accent),var(--accent-2))}
+  .bar.skew{background:repeating-linear-gradient(45deg,#b91c1c,#b91c1c 5px,#d64848 5px,#d64848 10px)}
+  .bar.split{background:linear-gradient(180deg,#3ca06b,var(--ok))}
+  .barslabel{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s}
+  .part.k0{background:rgba(185,28,28,.14);border-color:rgba(185,28,28,.42);color:#b91c1c}
+  .part.k1{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k2{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.k3{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  /* clean static connector between driver/executors and the stepper */
-  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
-  /* stepper controls */
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  /* dummy code + data panes that highlight per step */
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .drvnote{margin-top:9px;font-family:"JetBrains Mono",monospace;font-size:.56rem;letter-spacing:.03em;color:var(--faint);line-height:1.5;border-top:1px dashed var(--line);padding-top:7px;min-height:14px}
+  .drvnote code{font-size:.95em}
+  .exnote{margin-top:7px;font-family:"JetBrains Mono",monospace;font-size:.54rem;color:var(--faint);min-height:12px}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  /* ---------- footer ---------- */
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
+
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.bar,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_05 &nbsp;·&nbsp; Lesson 05 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 05</p>
-    <h1>The plan that<br><span class="drip">rewrites itself.</span></h1>
-    <p class="lede">Adaptive Query Execution waits until a shuffle finishes, reads the <em>real</em> data sizes, and re-optimizes the rest of the plan — coalescing tiny partitions, splitting skewed ones, and flipping a sort-merge join to a broadcast at runtime.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR 7.3+</b></span>
-      <span class="pill">Advisory size <b>64 MB</b></span>
-      <span class="pill">Skew <b>5× &amp; 256 MB</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_05 · Adaptive Query Execution · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Adaptive Query Execution</h1>
+    <p class="subline">The plan that rewrites itself at runtime</p>
+    <p class="lede">Catalyst builds the plan <strong>once</strong>, from stats that a filter or a <code>groupBy</code> quietly makes wrong. <strong>AQE</strong> waits for a shuffle to finish, reads the <em>real</em> partition sizes, and re-optimizes the rest of the plan — coalescing the tiny, splitting the skewed, broadcasting what turned out small. <em>The estimate is replaced by the truth, mid-flight.</em></p>
+    <div class="specs">
+      <span class="spec">default-on since Spark <b>3.2</b></span>
+      <span class="spec">advisory <b>64 MB</b></span>
+      <span class="spec">skew factor <b>5×</b> / <b>256 MB</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
+    <p class="seclabel">01 · What it is</p>
+    <h2>Re-planning at runtime, on real numbers</h2>
     <p><strong>Adaptive Query Execution (AQE)</strong> is Spark re-optimizing the <strong>physical plan at runtime</strong>, using the <em>actual</em> statistics it collects after each shuffle — instead of trusting the static, estimate-based plan Catalyst built before the job ran.</p>
-    <p>A non-adaptive plan is decided <strong>once</strong>, from table stats and file sizes that are often wrong (a filter shrinks a table; a <code>groupBy</code> makes uneven partitions; a join side turns out tiny after a <code>WHERE</code>). AQE waits until a <strong>shuffle stage finishes</strong>, reads the real per-partition sizes, and <strong>rewrites the rest of the plan</strong>. It does three things in open-source Spark (a fourth on Databricks):</p>
-    <ul>
-      <li><strong>Coalesce post-shuffle partitions</strong> — merge hundreds of tiny partitions into a few right-sized (~64 MB) ones.</li>
-      <li><strong>Split skewed partitions</strong> — break a partition far bigger than its peers into balanced sub-partitions.</li>
-      <li><strong>Switch the join strategy</strong> — flip a planned sort-merge join to a broadcast hash join when a side turns out small.</li>
-      <li><em>(Databricks only)</em> <strong>Detect &amp; propagate empty relations</strong> — prune branches fed by a zero-row stage.</li>
-    </ul>
+    <p>A non-adaptive plan is decided <strong>once</strong>, from table stats and file sizes that are routinely wrong: a filter shrinks a table, a <code>groupBy</code> makes uneven partitions, a join side turns out tiny after a <code>WHERE</code>. AQE waits until a <strong>shuffle stage finishes</strong>, reads the real per-partition sizes, then rewrites whatever is left of the plan to match reality.</p>
+    <p><span class="chip analogy">analogy</span> A non-adaptive plan is a route <strong>printed before you leave</strong>; AQE is <strong>live GPS</strong> that reroutes you at every junction once it sees the actual traffic. The deep dive below breaks down exactly what it reroutes; for now just hold the shape:</p>
     <div class="callout">
       <span class="lbl">The one rule to remember</span>
-      AQE needs <strong>real shuffle statistics</strong> to act, so it only re-optimizes at <strong>stage boundaries</strong> (after a shuffle). It is on by default — leave it on, and let it coalesce / split / switch before you hand-tune <code>spark.sql.shuffle.partitions</code>.
+      AQE needs <strong>real shuffle statistics</strong> to act, so it only re-optimizes at <strong>stage boundaries</strong> (after a shuffle). It is <strong>on by default</strong> — leave it on, and let it coalesce / split / switch <em>before</em> you hand-tune <code>spark.sql.shuffle.partitions</code>.
     </div>
-  </section>
-
-  <!-- ============ WHY IT MATTERS ============ -->
-  <section>
-    <h2>Why it matters</h2>
-    <ul>
-      <li><strong>It fixes the two most common shuffle pathologies automatically</strong> — "too many tiny partitions" (200 default partitions → 200 wasteful tasks) and "one giant skewed partition" (a hot key → one straggler task) — with no code changes.</li>
-      <li><strong>Static estimates are routinely wrong.</strong> Catalyst plans from stats gathered <em>before</em> filters run. A 5 GB dimension a <code>WHERE</code> shrinks to 8 MB is still planned as a sort-merge shuffle — until AQE sees the real 8 MB and broadcasts it.</li>
-      <li><strong>It's the modern default answer to "my shuffle is slow."</strong> Before manual <code>repartition</code>, a hand-set <code>shuffle.partitions</code>, or salting, AQE has usually already coalesced, split, and switched for you.</li>
-      <li><strong>It composes with the rest of the track.</strong> AQE's runtime join switch backs Lesson 02's broadcast joins; its skew split is the first defence before Lesson 08's salting; <strong>Photon</strong> runs <em>underneath</em> AQE's adaptive plan — complementary, not alternatives.</li>
-    </ul>
-  </section>
-
-  <!-- ============ INTERACTIVE 1: COALESCE STEP-THROUGH ============ -->
-  <section>
-    <h2>See it work — coalescing 200 tiny partitions</h2>
-    <p>Click each phase. Watch 200 near-empty shuffle partitions get merged into a handful of ~64 MB chunks — the post-shuffle partition count collapses, and so does the number of tasks.</p>
-    <div class="lab" id="lab-coalesce">
-      <div class="lab-head"><span class="lab-title">AQE coalesce, phase by phase</span></div>
-      <p class="lab-sub">A <code>groupBy("store_id").sum()</code> on a few-hundred-MB result — the classic "200 tiny partitions" case.</p>
-      <div class="barslabel" id="co-barslabel">Post-shuffle partitions (200, mostly tiny)</div>
-      <div class="bars" id="co-bars"></div>
-      <div class="readout">
-        <div class="stat"><div class="big" id="co-parts">200</div><div class="lbl">post-shuffle partitions</div></div>
-        <div class="stat"><div class="big" id="co-tasks">200</div><div class="lbl">tasks scheduled</div></div>
-        <div class="stat win"><div class="big" id="co-size">~3 MB</div><div class="lbl">avg partition size</div></div>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">What AQE does</div>
+        <p>Re-optimizes the physical plan at each shuffle boundary using the real per-partition sizes it just measured.</p>
       </div>
-      <div class="step" data-step="0"><div class="head"><span class="ix">01</span> Shuffle writes 200 partitions</div><div class="detail"><code>spark.sql.shuffle.partitions = 200</code> by default, so the shuffle produces 200 partitions — most only a few KB/MB on this modest result. Spark would otherwise schedule 200 tasks, most doing almost nothing.</div></div>
-      <div class="step" data-step="1"><div class="head"><span class="ix">02</span> AQE reads the real partition sizes</div><div class="detail">At the shuffle boundary AQE collects the exact per-partition byte sizes from the map output — the statistics a static plan never had. <code>spark.sql.adaptive.coalescePartitions.enabled = true</code>.</div></div>
-      <div class="step" data-step="2"><div class="head"><span class="ix">03</span> Merge adjacent partitions to ~64 MB</div><div class="detail">AQE greedily merges adjacent partitions until each is near <code>advisoryPartitionSizeInBytes = 64 MB</code> (and never below <code>minPartitionSize = 1 MB</code>). 200 tiny partitions become a handful of full ones.</div></div>
-      <div class="step" data-step="3"><div class="head"><span class="ix">04</span> Run a handful of balanced tasks</div><div class="detail">The post-shuffle stage now runs ~5 tasks instead of 200 — far less scheduling and I/O overhead. The plan shows an <code>AQEShuffleRead coalesced</code> node.</div></div>
-      <div class="verdict" id="co-verdict">Click <b>step 01</b> to begin. AQE sizes partitions from the <b>real</b> data, per query — so you don't hand-set <code>shuffle.partitions</code>.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of <code>AQEShuffleRead coalesced</code>; real coalescing merges by contiguous byte size.</p>
+      <div class="quickcard ok">
+        <div class="qtitle">Let AQE adapt</div>
+        <p>Keep it on and let it coalesce tiny partitions, split skew, and switch joins from the truth at runtime.</p>
+      </div>
+      <div class="quickcard danger">
+        <div class="qtitle">Hand-tuned static plan</div>
+        <p>A global <code>shuffle.partitions</code> or forced <code>broadcast()</code> freezes the plan on stale estimates AQE would have fixed.</p>
+      </div>
     </div>
   </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
-
-    <h3>How AQE re-optimizes: the framework</h3>
-    <p><span class="chip analogy">analogy</span> A non-adaptive plan is a route printed before you leave; AQE is live GPS that reroutes you at every junction once it sees the actual traffic.</p>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>The modern default answer to "my shuffle is slow"</h2>
     <ul>
-      <li><strong>Mechanism:</strong> Spark splits the plan into <strong>query stages</strong> at shuffle (and broadcast) boundaries. It runs the leaf stages, <strong>collects exact map-output statistics</strong> (per-partition byte sizes), then re-optimizes the <em>remaining</em> plan with those real numbers before submitting the next stage — repeating at every boundary.</li>
-      <li><strong>Why it needs a shuffle:</strong> the statistics AQE relies on are the shuffle's per-partition sizes. No shuffle → no runtime stats → nothing to adapt.</li>
-      <li><strong>Trade-off:</strong> a tiny planning cost per boundary in exchange for plans built on truth. On by default since <strong>Spark 3.2.0</strong> — AQE was <em>introduced</em> in 1.6.0 but only <strong>default-<code>true</code></strong> in 3.2.0 (SPARK-33679). Don't conflate the two.</li>
+      <li><strong>It fixes the two most common shuffle pathologies automatically</strong> — "too many tiny partitions" (200 default partitions → 200 wasteful tasks) and "one giant skewed partition" (a hot key → one straggler task) — with <strong>no code changes</strong>.</li>
+      <li><strong>Static estimates are routinely wrong.</strong> Catalyst plans from stats gathered <em>before</em> filters run. A 5 GB dimension a <code>WHERE</code> shrinks to 8 MB is still planned as a two-big-table shuffle — until AQE sees the real 8 MB and broadcasts it.</li>
+      <li><strong>It's what interviewers expect you to reach for first.</strong> Before manual <code>repartition</code>, a hand-set <code>shuffle.partitions</code>, or salting, AQE has usually already coalesced, split, and switched — you only hand-tune what it can't fix.</li>
+      <li><strong>It composes with the rest of the track.</strong> AQE's runtime join switch is the safety net behind Lesson 02's broadcast joins; its skew split is the first defence before Lesson 08's salting. The <em>how</em> is the next section.</li>
     </ul>
+  </section>
 
-    <h3>1 · AQE Coalesce — merge tiny shuffle partitions</h3>
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
+  <section>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>The framework, then the three things it does</h2>
+    <p class="dropcap">Everything AQE does follows one loop: run a stage up to a shuffle, <em>measure</em> what really came out, re-optimize the rest of the plan, submit the next stage — repeat at every boundary. So the useful way to understand it is: (1) that measure-and-replan framework, then (2) the three specific rewrites it applies. Each idea below is explained here <strong>once</strong> — the figures show it, the code verifies it, and later sections cross-reference it, but don't re-explain it.</p>
+
+    <h3>3.1 · The framework — measure, then re-plan</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> Spark splits the plan into <strong>query stages</strong> at shuffle (and broadcast) boundaries. It runs the leaf stages, <strong>collects exact map-output statistics</strong> (per-partition byte sizes), then re-optimizes the <em>remaining</em> plan with those real numbers before submitting the next stage.</li>
+      <li><strong>Why it needs a shuffle.</strong> The statistics AQE relies on <em>are</em> the shuffle's per-partition sizes. No shuffle → no runtime stats → nothing to adapt. It acts at stage boundaries, never mid-stage.</li>
+      <li><strong>Trade-off.</strong> A tiny planning cost per boundary in exchange for plans built on truth instead of estimates — almost always a win.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">The one version fact people get wrong</span>
+      AQE was <strong>introduced in Spark 1.6.0</strong>, but its <code>spark.sql.adaptive.enabled</code> default only flipped to <strong><code>true</code> in Spark 3.2.0</strong> (SPARK-33679). "Since 1.6" is <em>when it existed</em>; "3.2" is <em>when it turned on by itself</em>. On Azure Databricks it's on by default since <strong>DBR 7.3 LTS</strong>. Don't conflate the two.
+    </div>
+
+    <p>The three rewrites at a glance before the detail — each is unpacked in 3.2–3.4 below:</p>
+    <table class="tbl">
+      <thead><tr><th>Feature</th><th>What it changes at runtime</th><th>Config / threshold</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Coalesce</strong></td><td>Merges adjacent tiny post-shuffle partitions into fewer, fuller ones</td><td><code>coalescePartitions.enabled</code>; advisory <strong>64 MB</strong>, floor 1 MB</td></tr>
+        <tr><td><strong>Skew split</strong></td><td>Splits one enormous partition into balanced sub-partitions</td><td><code>skewJoin.enabled</code>; <strong>&gt; 5×</strong> median <strong>AND &gt; 256 MB</strong></td></tr>
+        <tr><td><strong>Join switch</strong></td><td>Flips <code>SortMergeJoin</code> → <code>BroadcastHashJoin</code> once a side proves small</td><td>runtime broadcast switch (OSS 10 MB → DBX <strong>30 MB</strong>)</td></tr>
+      </tbody>
+    </table>
+
+    <h3>3.2 · Rewrite one — <strong>coalesce</strong> tiny shuffle partitions</h3>
     <p><span class="chip analogy">analogy</span> Instead of mailing 200 near-empty envelopes, AQE combines them into a few full ones — fewer trips, same contents.</p>
     <ul>
-      <li><strong>Problem:</strong> <code>spark.sql.shuffle.partitions = 200</code>, so a shuffle on a modest result makes 200 partitions, many a few KB — 200 tasks, most doing nothing.</li>
-      <li><strong>Mechanism:</strong> with <code>coalescePartitions.enabled = true</code>, AQE reads real post-shuffle sizes and <strong>merges adjacent partitions</strong> until each is about <code>advisoryPartitionSizeInBytes</code> (<strong>64 MB</strong>), never below <code>minPartitionSize</code> (<strong>1 MB</strong>).</li>
-      <li><strong>Trade-off:</strong> slightly less parallelism (fewer, bigger tasks) — almost always a win; the 64 MB advisory keeps tasks reasonable even on big results.</li>
+      <li><strong>Problem.</strong> <code>spark.sql.shuffle.partitions = 200</code>, so a shuffle on a modest result makes 200 partitions, many a few KB — 200 tasks, most doing nothing.</li>
+      <li><strong>Mechanism.</strong> With <code>coalescePartitions.enabled = true</code>, AQE reads real post-shuffle sizes and <strong>merges adjacent partitions</strong> until each nears <code>advisoryPartitionSizeInBytes</code> (<strong>64 MB</strong>), never below <code>coalescePartitions.minPartitionSize</code> (<strong>1 MB</strong>).</li>
+      <li><strong>Trade-off.</strong> Slightly less parallelism (fewer, bigger tasks) — the 64 MB advisory keeps tasks reasonable even on big results.</li>
     </ul>
-    <p><span class="chip usecase">use case</span> A daily aggregation outputting a few hundred MB: without AQE it runs 200 tasks / writes 200 tiny files; with coalesce it runs ~5 balanced tasks and writes ~5 files.</p>
+    <p><span class="chip usecase">use case</span> A daily aggregation outputting a few hundred MB: without AQE it runs 200 tasks and writes 200 tiny files; with coalesce it runs ~5 balanced tasks and writes ~5 files.</p>
 
-    <h3>2 · AQE Split Partitions — break up skew</h3>
+    <h3>3.3 · Rewrite two — <strong>split</strong> a skewed partition</h3>
     <p><span class="chip analogy">analogy</span> If one checkout lane has 500 shoppers and the others have 5, AQE opens extra lanes <em>for that one queue</em> so everyone finishes together.</p>
     <ul>
-      <li><strong>Problem (skew):</strong> uneven keys mean a few post-shuffle partitions are enormous. The huge one becomes a <strong>straggler task</strong> — minutes long (maybe spilling/OOM) while every other task finished. The stage waits on it.</li>
-      <li><strong>Mechanism:</strong> with <code>skewJoin.enabled = true</code>, AQE flags a partition <strong>skewed</strong> when it is <strong>both</strong> &gt; <code>skewedPartitionFactor</code> (<strong>5.0</strong>) × the <strong>median</strong> <strong>and</strong> &gt; <code>skewedPartitionThresholdInBytes</code> (<strong>256 MB</strong>). It then <strong>splits</strong> that partition into sub-partitions (replicating the matching side) so the join stays correct and balanced.</li>
-      <li><strong>Why both conditions:</strong> the factor catches <em>relative</em> skew; the 256 MB floor avoids splitting partitions that are merely a bit above a tiny median.</li>
-      <li><strong>Trade-off:</strong> some replication of the matching side, but one multi-minute straggler becomes parallel sub-tasks. Sort-merge joins only; skew it can't tame → <strong>salting</strong> (Lesson 08).</li>
+      <li><strong>Problem (skew).</strong> Uneven keys mean a few post-shuffle partitions are enormous. The huge one becomes a <strong>straggler task</strong> — minutes long (maybe spilling/OOM) while every other task finished. The stage waits on it.</li>
+      <li><strong>Mechanism.</strong> With <code>skewJoin.enabled = true</code>, AQE flags a partition <strong>skewed</strong> only when it is <strong>both</strong> &gt; <code>skewedPartitionFactor</code> (<strong>5.0</strong>) × the <strong>median</strong> <strong>and</strong> &gt; <code>skewedPartitionThresholdInBytes</code> (<strong>256 MB</strong>). It then <strong>splits</strong> that partition into sub-partitions (replicating the matching side) so the join stays correct and balanced.</li>
+      <li><strong>Why both conditions.</strong> The factor catches <em>relative</em> skew; the 256 MB floor avoids splitting partitions merely a bit above a tiny median.</li>
+      <li><strong>Trade-off.</strong> Some replication of the matching side, but one multi-minute straggler becomes parallel sub-tasks. Sort-merge joins only; skew it can't tame → <strong>salting</strong> (Lesson 08).</li>
     </ul>
     <p><span class="chip usecase">use case</span> <code>transactions ⋈ accounts</code> where one "house" account holds 40% of rows — that <code>account_id</code> partition is 5× the median and well over 256 MB, so AQE splits it.</p>
 
-    <h3>3 · AQE Joins Strategy — switch sort-merge → broadcast at runtime</h3>
+    <h3>3.4 · Rewrite three — <strong>switch</strong> sort-merge → broadcast at runtime</h3>
     <p><span class="chip analogy">analogy</span> You packed for a long road trip (sort-merge), then learn the destination is round the corner — so you ditch the heavy plan and walk (broadcast).</p>
     <ul>
-      <li><strong>Problem:</strong> Catalyst chose sort-merge from <em>pre-execution</em> estimates, but an upstream filter shrank one side below the broadcast bar — it's about to shuffle two big tables for nothing.</li>
-      <li><strong>Mechanism:</strong> after the shuffle feeding the join, AQE sees the <strong>actual</strong> size of each side and, if one is now small, <strong>rewrites the join to a Broadcast Hash Join</strong> — using a <strong>runtime</strong> broadcast threshold (distinct from the static <code>autoBroadcastJoinThreshold</code> Catalyst used up front).</li>
-      <li><strong>OSS vs Databricks:</strong> OSS uses the runtime switch tied to the standard threshold logic; <strong>Databricks</strong> exposes a higher dedicated switch <code>spark.databricks.adaptive.autoBroadcastJoinThreshold</code> = <strong>30 MB</strong> (vs the OSS static 10 MB <code>spark.sql.autoBroadcastJoinThreshold</code>).</li>
-      <li><strong>Trade-off:</strong> you swap the double shuffle for a broadcast — fires only when the real size is genuinely small, bounded by the small side fitting in memory.</li>
+      <li><strong>Problem.</strong> Catalyst chose sort-merge from <em>pre-execution</em> estimates, but an upstream filter shrank one side below the broadcast bar — it's about to shuffle two big tables for nothing.</li>
+      <li><strong>Mechanism.</strong> After the shuffle feeding the join, AQE sees the <strong>actual</strong> size of each side and, if one is now small, <strong>rewrites the join to a Broadcast Hash Join</strong> — using a <strong>runtime</strong> broadcast threshold, distinct from the static <code>autoBroadcastJoinThreshold</code> Catalyst used up front.</li>
+      <li><strong>Trade-off.</strong> You swap the double shuffle for a broadcast — it fires only when the real size is genuinely small, bounded by the small side fitting in memory.</li>
     </ul>
     <p><span class="chip usecase">use case</span> <code>events ⋈ dim_country</code> where <code>dim_country</code> is "big" in the catalog but a <code>WHERE active = true</code> reduces it to a few MB — Catalyst plans sort-merge; AQE flips it to broadcast.</p>
 
-    <div class="callout">
-      <span class="lbl">Databricks: the 4th feature + Photon</span>
-      Databricks lists a 4th AQE feature — <strong>detect &amp; propagate empty relations</strong> (a zero-row stage prunes dependent branches). AQE is on by default since <strong>DBR 7.3 LTS</strong>. <strong>Photon ≠ AQE</strong>: Photon is the native <em>execution</em> engine; AQE is the runtime <em>planner</em>. They're complementary — keep both on.
+    <div class="callout warn">
+      <span class="lbl">Photon ≠ AQE</span>
+      Photon is Databricks' native, vectorized <strong>execution</strong> engine (the layer that runs operators); AQE works at the <strong>planning</strong> layer (it rewrites the plan). They are <strong>complementary</strong> — Photon executes whatever plan AQE finalizes. Keep both on; one does not replace the other. This is the single distinction interviewers test most here.
     </div>
+
+    <h3>3.5 · The Databricks fourth feature</h3>
+    <p>Open-source Spark documents <strong>three</strong> AQE features (the three rewrites above). Azure Databricks lists a <strong>fourth: detect &amp; propagate empty relations</strong> — when a stage produces <em>zero rows</em> at runtime, AQE prunes the dependent branches (e.g. an inner join with one empty side becomes empty without doing the rest of the work). Databricks also exposes a dedicated, higher runtime broadcast switch — see §4 and §5. Don't claim empty-relation propagation as an OSS feature.</p>
   </section>
 
-  <!-- ============ INTERACTIVE 2: SKEW SPLIT CHOOSER ============ -->
+  <!-- ============ DIAGRAM A · step-through (coalesce → split → switch) ============ -->
   <section>
-    <h2>See it work — the skew detector</h2>
-    <p>Drag the hot partition's size. AQE only splits it when it crosses <strong>both</strong> bars: <code>&gt; 5×</code> the median <strong>and</strong> <code>&gt; 256 MB</code>. Watch the giant straggler split into balanced sub-partitions the moment both conditions hold.</p>
-    <div class="lab" id="lab-skew">
-      <div class="lab-head"><span class="lab-title">AQE skew-join split detector</span></div>
-      <p class="lab-sub">A sort-merge join where the median partition is <strong>40 MB</strong> (so 5× median = <strong>200 MB</strong>). The 256 MB floor is the higher bar here.</p>
-      <div class="controls">
-        <div class="filterbar"><label>Hot partition size <input type="range" id="sk-size" min="40" max="900" value="120" step="10"><span class="sizeval" id="sk-sizeval">120 MB</span></label></div>
+    <p class="seclabel">Figure A · one shuffle boundary, three rewrites</p>
+    <h2>Step the plan as AQE re-optimizes it</h2>
+    <p>This figure isolates <strong>what happens to the partitions</strong> at a single shuffle boundary. Step through it: 200 tiny partitions <strong>coalesce</strong> toward 64 MB, then a hot partition that clears <em>both</em> bars (&gt; 5× median <strong>and</strong> &gt; 256 MB) <strong>splits</strong>, then the join <strong>flips</strong> sort-merge → broadcast once the real size is small. (Where it lands across the nodes is Figure B.) Use <em>Prev / Play / Next</em>.</p>
+    <div class="lab" id="lab-steps">
+      <div class="lab-head">
+        <span class="lab-title">coalesce → split → switch</span>
       </div>
-      <div class="barslabel">Post-shuffle partitions (one hot key vs the rest)</div>
-      <div class="bars" id="sk-bars"></div>
+      <p class="lab-sub">A <code>groupBy(...).sum()</code> feeding <code>⋈ accounts</code>: median partition ≈ 3 MB, one hot partition ≈ 320 MB, the <code>accounts</code> side ≈ 22 MB after a filter.</p>
+      <div class="barslabel" id="st-barslabel">Post-shuffle partitions (200, mostly tiny)</div>
+      <div class="bars" id="st-bars"></div>
       <div class="readout">
-        <div class="stat"><div class="big" id="sk-factor">3.0×</div><div class="lbl">× median (need &gt; 5×)</div></div>
-        <div class="stat"><div class="big" id="sk-thresh">No</div><div class="lbl">&gt; 256 MB?</div></div>
-        <div class="stat win"><div class="big" id="sk-split">No split</div><div class="lbl">AQE action</div></div>
+        <div class="stat"><div class="big" id="st-parts">200</div><div class="lbl">post-shuffle partitions</div></div>
+        <div class="stat"><div class="big" id="st-tasks">200</div><div class="lbl">tasks scheduled</div></div>
+        <div class="stat win"><div class="big" id="st-action">—</div><div class="lbl">AQE action</div></div>
       </div>
-      <div class="planbox" id="sk-plan"></div>
-      <div class="verdict" id="sk-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration; real splitting also weighs the target sub-partition size and the matching-side replication.</p>
+      <div class="planbox" id="st-plan"></div>
+      <div class="stepper">
+        <button id="st-prev">‹ Prev</button>
+        <button id="st-play" class="play">▶ Play</button>
+        <button id="st-next">Next ›</button>
+        <div class="pbar"><div class="pfill" id="st-pfill"></div></div>
+        <span class="scount" id="st-scount">step 1 / 4</span>
+      </div>
+      <div class="verdict" id="st-verdict"></div>
+      <p class="lab-note">Simplified illustration — 60 bars stand in for 200 partitions; real coalescing merges by contiguous byte size and skew split weighs matching-side replication.</p>
     </div>
   </section>
 
-  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>See it run on the cluster</h2>
-    <p>Step through how AQE re-optimizes across <strong>1 driver + 3 executors</strong> at the shuffle boundary. Watch the post-shuffle partitions arrive tiny and uneven, then get <strong>coalesced</strong> toward 64 MB, the <strong>skewed</strong> one <strong>split</strong> across executors, and finally a sort-merge join <strong>flipped to broadcast</strong> at runtime — with the driver re-planning each step from real stats.</p>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Each config, with its proof in the plan</h2>
+    <p>Every technique below is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal (<code>AQEShuffleRead</code>, coalesced/skewed tags). Apply, then verify; never assume.</p>
+    <div class="callout">
+      <span class="lbl">Simple reading rule</span>
+      For each config, ask one question first: <strong>"Is this enabling AQE (or tuning a threshold it reads), or is it overriding what AQE would decide?"</strong> Enabling and threshold configs let it adapt from real stats; a global <code>shuffle.partitions</code> or a forced <code>broadcast()</code> pins the plan and pre-empts it.
+    </div>
+
+    <h3>Confirm AQE is engaged</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Master switch — on by default since Spark 3.2.0 / DBR 7.3+.</span>
+spark.conf.get(<span class="s">"spark.sql.adaptive.enabled"</span>)   <span class="c"># -> 'true'</span>
+
+<span class="c"># VERIFY — an adaptive plan roots at AdaptiveSparkPlan; after a run it flips to isFinalPlan=true.</span>
+df.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   == Physical Plan ==</span>
+<span class="c">#   AdaptiveSparkPlan isFinalPlan=true        &lt;- AQE is engaged</span>
+<span class="c">#   +- == Final Plan ==  *(...) ... AQEShuffleRead coalesced</span></code></pre>
+
+    <h3>Coalesce — tune the target and the floor</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Defaults shown explicitly (and to tune the target).</span>
+spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="s">"true"</span>)               <span class="c"># default true</span>
+spark.conf.set(<span class="s">"spark.sql.adaptive.advisoryPartitionSizeInBytes"</span>, <span class="f">64</span>*<span class="f">1024</span>*<span class="f">1024</span>)   <span class="c"># 64 MB target</span>
+spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.minPartitionSize"</span>, <span class="f">1</span>*<span class="f">1024</span>*<span class="f">1024</span>)  <span class="c"># 1 MB floor</span>
+
+agg = sales.groupBy(<span class="s">"store_id"</span>).sum(<span class="s">"amount"</span>)   <span class="c"># a shuffle (wide dependency)</span>
+
+<span class="c"># VERIFY — post-shuffle partition count collapses from 200 toward a handful.</span>
+<span class="f">print</span>(agg.rdd.getNumPartitions())   <span class="c"># AQE-coalesced count (e.g. ~5), not 200</span>
+agg.explain(mode=<span class="s">"formatted"</span>)       <span class="c"># look for: AQEShuffleRead coalesced</span></code></pre>
+
+    <h3>Skew join — the lever set (needs BOTH conditions)</h3>
+    <pre><span class="tag">python</span><code>spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="s">"true"</span>)               <span class="c"># default true</span>
+spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.skewedPartitionFactor"</span>, <span class="s">"5.0"</span>)  <span class="c"># &gt; 5x median ...</span>
+spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes"</span>,
+               <span class="f">256</span>*<span class="f">1024</span>*<span class="f">1024</span>)                                    <span class="c"># ... AND &gt; 256 MB</span>
+
+joined = transactions.join(accounts, <span class="s">"account_id"</span>)   <span class="c"># sort-merge join on a skewed key</span>
+
+<span class="c"># VERIFY — the plan shows the skew was detected and split.</span>
+joined.explain(mode=<span class="s">"formatted"</span>)    <span class="c"># look for: AQEShuffleRead ... skewed=true</span>
+<span class="c"># Spark UI (Stages tab): max task time collapses toward the median.</span></code></pre>
+
+    <h3>Join switch — OSS static vs Databricks runtime threshold</h3>
+    <pre><span class="tag">python</span><code><span class="c"># OSS static threshold — used by Catalyst BEFORE runtime:</span>
+spark.conf.get(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>)             <span class="c"># -> '10485760' (10 MB)</span>
+<span class="c"># Databricks AQE RUNTIME switch — a higher, dedicated bar:</span>
+spark.conf.get(<span class="s">"spark.databricks.adaptive.autoBroadcastJoinThreshold"</span>)  <span class="c"># -> 30 MB (Databricks)</span>
+
+joined = events.join(dim_country.where(<span class="s">"active = true"</span>), <span class="s">"country_code"</span>)
+
+<span class="c"># VERIFY — the FINAL (post-run) plan flips SortMergeJoin -> BroadcastHashJoin.</span>
+joined.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   AdaptiveSparkPlan isFinalPlan=true</span>
+<span class="c">#   +- == Final Plan ==   BroadcastHashJoin ...   &lt;- AQE switched it</span>
+<span class="c">#   +- == Initial Plan == SortMergeJoin ...        &lt;- stale-estimate plan</span></code></pre>
+
+    <h3>Same configs from Spark SQL</h3>
+    <pre><span class="tag">sql</span><code><span class="k">SET</span> spark.sql.adaptive.enabled = <span class="k">true</span>;
+<span class="k">SET</span> spark.sql.adaptive.coalescePartitions.enabled = <span class="k">true</span>;
+<span class="k">SET</span> spark.sql.adaptive.skewJoin.enabled = <span class="k">true</span>;
+
+<span class="c">-- VERIFY — read the adaptive plan (AdaptiveSparkPlan root):</span>
+<span class="k">EXPLAIN</span> <span class="k">FORMATTED</span>
+<span class="k">SELECT</span> account_id, count(*) <span class="k">FROM</span> transactions <span class="k">GROUP BY</span> account_id;</code></pre>
+
+    <div class="callout">
+      <span class="lbl">Stop hand-guessing shuffle.partitions</span>
+      A globally small <code>spark.sql.shuffle.partitions</code> (say 8) starves the next big-result query of parallelism; a big one wastes tasks on small results. Leave it as an upper bound (200) and let coalesce size each query from real stats — verify with <code>getNumPartitions()</code>, which now adapts per query.
+    </div>
+  </section>
+
+  <!-- ============ DIAGRAM B · cluster lab (spatial facet) ============ -->
+  <section>
+    <p class="seclabel">Figure B · where it runs</p>
+    <h2>See it re-plan across the cluster</h2>
+    <p>This figure isolates a different thing from Figure A: not what happens to the partitions, but <em>where the driver and executors do the work</em>. Step through the same job on <strong>1 driver + 3 executors</strong> — the driver re-plans at each boundary from the stats the executors report, coalescing the tiny partitions, splitting the hot one across nodes, and flipping the join to a broadcast. Use <em>Prev / Play / Next</em>.</p>
     <div class="lab" id="lab-cluster">
-      <div class="lab-head"><span class="lab-title">AQE on the driver + 3 executors</span></div>
-      <p class="lab-sub">Dummy job: <code>tx.join(accounts, "account_id")</code> after a shuffle on <code>account_id</code>. Chips are post-shuffle partitions (tiny ones + one hot/skewed key).</p>
+      <div class="lab-head">
+        <span class="lab-title">AQE on the driver + 3 executors</span>
+      </div>
+      <p class="lab-sub">Dummy job: <code>tx.groupBy("account_id").sum() ⋈ accounts</code>. Chips are post-shuffle partitions — tiny ones plus one hot/skewed key (red).</p>
 
       <div class="cluster" id="cl-cluster">
         <div class="nodes">
           <div class="node driver" id="cl-driver" style="grid-column:1/-1">
-            <h4>Driver <span class="core">re-plans at each stage boundary</span></h4>
+            <h4>Driver <span class="core">re-plans at each boundary</span></h4>
             <div class="parts" id="cl-driver-parts"></div>
-            <div class="spillzone" id="cl-driver-note">Holds the adaptive plan · reads map-output stats after the shuffle</div>
+            <div class="drvnote" id="cl-driver-note">Holds the adaptive plan · reads map-output stats after the shuffle</div>
           </div>
-          <div class="node" id="cl-ex0">
-            <h4>Executor 1 <span class="core">4 cores</span></h4>
-            <div class="parts" id="cl-ex0-parts"></div>
-            <div class="spillzone" id="cl-ex0-note">&nbsp;</div>
-          </div>
-          <div class="node" id="cl-ex1">
-            <h4>Executor 2 <span class="core">4 cores</span></h4>
-            <div class="parts" id="cl-ex1-parts"></div>
-            <div class="spillzone" id="cl-ex1-note">&nbsp;</div>
-          </div>
-          <div class="node" id="cl-ex2">
-            <h4>Executor 3 <span class="core">4 cores</span></h4>
-            <div class="parts" id="cl-ex2-parts"></div>
-            <div class="spillzone" id="cl-ex2-note">&nbsp;</div>
-          </div>
+          <div class="node" id="cl-ex0"><h4>Executor 1 <span class="core">4 cores</span></h4><div class="parts" id="cl-ex0-parts"></div><div class="exnote" id="cl-ex0-note">&nbsp;</div></div>
+          <div class="node" id="cl-ex1"><h4>Executor 2 <span class="core">4 cores</span></h4><div class="parts" id="cl-ex1-parts"></div><div class="exnote" id="cl-ex1-note">&nbsp;</div></div>
+          <div class="node" id="cl-ex2"><h4>Executor 3 <span class="core">4 cores</span></h4><div class="parts" id="cl-ex2-parts"></div><div class="exnote" id="cl-ex2-note">&nbsp;</div></div>
         </div>
         <div class="wire" id="cl-wire"></div>
       </div>
 
       <div class="stepper">
-        <button id="cl-prev" aria-label="Previous step">‹ Prev</button>
-        <button id="cl-play" class="play" aria-label="Play animation">▶ Play</button>
-        <button id="cl-next" aria-label="Next step">Next ›</button>
+        <button id="cl-prev">‹ Prev</button>
+        <button id="cl-play" class="play">▶ Play</button>
+        <button id="cl-next">Next ›</button>
         <div class="pbar"><div class="pfill" id="cl-pfill"></div></div>
         <span class="scount" id="cl-scount">step 1 / 5</span>
       </div>
@@ -376,188 +490,91 @@
       <div class="panes">
         <div class="pane">
           <div class="ptitle">Dummy PySpark</div>
-          <div class="codepane" id="cl-code"><span class="ln" data-ln="0"><span class="c"># AQE on by default since Spark 3.2.0 / DBR 7.3+</span></span><span class="ln" data-ln="1">spark.conf.set(<span class="s">"spark.sql.adaptive.enabled"</span>, <span class="s">"true"</span>)</span><span class="ln" data-ln="2"><span class="c"># advisory target 64 MB · skew 5x median & &gt; 256 MB</span></span><span class="ln" data-ln="3">agg = tx.groupBy(<span class="s">"account_id"</span>).sum(<span class="s">"amt"</span>)   <span class="c"># shuffle</span></span><span class="ln" data-ln="4">joined = agg.join(accounts, <span class="s">"account_id"</span>)        <span class="c"># SMJ?</span></span><span class="ln" data-ln="5">joined.write.format(<span class="s">"delta"</span>).save(path)</span></div>
+          <div class="codepane" id="cl-code"><span class="ln" data-ln="0"><span class="c"># AQE on by default since Spark 3.2.0 / DBR 7.3+</span></span><span class="ln" data-ln="1">spark.conf.set(<span class="s">"spark.sql.adaptive.enabled"</span>, <span class="s">"true"</span>)</span><span class="ln" data-ln="2"><span class="c"># advisory 64 MB · skew 5x median &amp; &gt; 256 MB</span></span><span class="ln" data-ln="3">agg = tx.groupBy(<span class="s">"account_id"</span>).sum(<span class="s">"amt"</span>)   <span class="c"># shuffle</span></span><span class="ln" data-ln="4">joined = agg.join(accounts, <span class="s">"account_id"</span>)        <span class="c"># SMJ?</span></span><span class="ln" data-ln="5">joined.write.format(<span class="s">"delta"</span>).save(path)</span></div>
         </div>
         <div class="pane">
           <div class="ptitle">Runtime stats AQE reads</div>
           <div class="datapane" id="cl-data">
             <div class="row" data-row="0">post-shuffle partitions = 12</div>
-            <div class="row" data-row="1">median size      ≈ 3 MB</div>
+            <div class="row" data-row="1">median size      &asymp; 3 MB</div>
             <div class="row" data-row="2">advisory target  = 64 MB</div>
-            <div class="row" data-row="3">hot account_id   ≈ 320 MB</div>
+            <div class="row" data-row="3">hot account_id   &asymp; 320 MB</div>
             <div class="row" data-row="4">skew test  320 &gt; 5x median &amp; &gt; 256 MB</div>
-            <div class="row" data-row="5">accounts side    ≈ 22 MB (post-filter)</div>
+            <div class="row" data-row="5">accounts side    &asymp; 22 MB (post-filter)</div>
           </div>
         </div>
       </div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the adaptive plan; real coalescing merges by contiguous byte size and skew split also weighs matching-side replication.</p>
+      <p class="lab-note">Simplified illustration — sizes are illustrative; real coalescing merges by contiguous byte size and skew split weighs matching-side replication.</p>
     </div>
   </section>
 
-  <!-- ============ CODE + VERIFICATION ============ -->
+  <!-- ============ 05 · COMPARISON (decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>The code you'll write (and how to verify it)</h2>
-    <div class="callout">
-      <span class="lbl">Track rule</span>
-      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
-    </div>
-
-    <h3>Confirm AQE is engaged</h3>
-    <pre><span class="tag">python</span><code><span class="c"># AQE master switch — on by default since Spark 3.2.0 / DBR 7.3+.</span>
-spark.conf.get(<span class="s">"spark.sql.adaptive.enabled"</span>)   <span class="c"># -> 'true'</span>
-
-<span class="c"># VERIFY: an adaptive plan shows AdaptiveSparkPlan + AQEShuffleRead, and after a run</span>
-<span class="c"># the header flips to isFinalPlan=true.</span>
-df.explain(mode=<span class="s">"formatted"</span>)
-<span class="c">#   == Physical Plan ==</span>
-<span class="c">#   AdaptiveSparkPlan isFinalPlan=true        &lt;-- AQE is engaged ✅</span>
-<span class="c">#   +- == Final Plan ==</span>
-<span class="c">#      *(...) ... AQEShuffleRead coalesced</span></code></pre>
-
-    <h3>1 · Coalesce — tune the target and floor</h3>
-    <pre><span class="tag">python</span><code><span class="c"># Defaults shown explicitly (and to tune the target).</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="s">"true"</span>)              <span class="c"># default true</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.advisoryPartitionSizeInBytes"</span>, <span class="f">64</span>*<span class="f">1024</span>*<span class="f">1024</span>)  <span class="c"># 64 MB target</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.minPartitionSize"</span>, <span class="f">1</span>*<span class="f">1024</span>*<span class="f">1024</span>)  <span class="c"># 1 MB floor</span>
-
-agg = sales.groupBy(<span class="s">"store_id"</span>).sum(<span class="s">"amount"</span>)   <span class="c"># a shuffle (wide dependency)</span>
-
-<span class="c"># VERIFY: post-shuffle partition count collapses from 200 toward a handful.</span>
-<span class="k">print</span>(agg.rdd.getNumPartitions())   <span class="c"># AQE-coalesced count (e.g. ~5), not 200</span>
-agg.explain(mode=<span class="s">"formatted"</span>)       <span class="c"># look for: AQEShuffleRead coalesced</span></code></pre>
-
-    <h3>2 · Skew join — the lever set</h3>
-    <pre><span class="tag">python</span><code><span class="c"># Defaults shown explicitly.</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.enabled"</span>, <span class="s">"true"</span>)                  <span class="c"># default true</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.skewedPartitionFactor"</span>, <span class="s">"5.0"</span>)     <span class="c"># &gt; 5x median ...</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes"</span>,
-               <span class="f">256</span>*<span class="f">1024</span>*<span class="f">1024</span>)                                       <span class="c"># ... AND &gt; 256 MB</span>
-
-joined = transactions.join(accounts, <span class="s">"account_id"</span>)   <span class="c"># sort-merge join on a skewed key</span>
-
-<span class="c"># VERIFY: the plan shows the skew was detected and split.</span>
-joined.explain(mode=<span class="s">"formatted"</span>)    <span class="c"># look for: AQEShuffleRead ... skewed=true</span></code></pre>
-
-    <h3>3 · Join switch — OSS vs Databricks runtime threshold</h3>
-    <pre><span class="tag">python</span><code><span class="c"># OSS static threshold (used by Catalyst BEFORE runtime):</span>
-spark.conf.get(<span class="s">"spark.sql.autoBroadcastJoinThreshold"</span>)            <span class="c"># -> '10485760' (10 MB)</span>
-<span class="c"># Databricks AQE RUNTIME switch can use a higher bar:</span>
-spark.conf.get(<span class="s">"spark.databricks.adaptive.autoBroadcastJoinThreshold"</span>)  <span class="c"># -> 30 MB (Databricks)</span>
-
-joined = events.join(dim_country.where(<span class="s">"active = true"</span>), <span class="s">"country_code"</span>)
-
-<span class="c"># VERIFY: the FINAL (post-run) plan flips SortMergeJoin -> BroadcastHashJoin.</span>
-joined.explain(mode=<span class="s">"formatted"</span>)
-<span class="c">#   AdaptiveSparkPlan isFinalPlan=true</span>
-<span class="c">#   +- == Final Plan ==  BroadcastHashJoin ...   &lt;-- AQE switched it ✅</span>
-<span class="c">#   +- == Initial Plan == SortMergeJoin ...       &lt;-- stale-estimate plan</span></code></pre>
-
-    <p>AQE configs are session SQL confs — set them in Spark SQL the same way:</p>
-    <pre><span class="tag">sql</span><code><span class="k">SET</span> spark.sql.adaptive.enabled = <span class="k">true</span>;
-<span class="k">SET</span> spark.sql.adaptive.coalescePartitions.enabled = <span class="k">true</span>;
-<span class="k">SET</span> spark.sql.adaptive.skewJoin.enabled = <span class="k">true</span>;
-
-<span class="c">-- Read the adaptive plan (AdaptiveSparkPlan root):</span>
-<span class="k">EXPLAIN</span> <span class="k">FORMATTED</span>
-<span class="k">SELECT</span> account_id, count(*) <span class="k">FROM</span> transactions <span class="k">GROUP BY</span> account_id;</code></pre>
-
-    <h3>Contrast: hand-tuning vs letting AQE decide</h3>
-    <pre><span class="tag">python</span><code><span class="c"># ❌ Old habit: guess a shuffle partition count globally for the whole session.</span>
-spark.conf.set(<span class="s">"spark.sql.shuffle.partitions"</span>, <span class="f">8</span>)   <span class="c"># wrong for the next huge-result query</span>
-
-<span class="c"># ✅ Modern: leave AQE on; it sizes post-shuffle partitions per query from real stats.</span>
-spark.conf.set(<span class="s">"spark.sql.shuffle.partitions"</span>, <span class="f">200</span>)                       <span class="c"># pre-AQE upper bound</span>
-spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</span>, <span class="s">"true"</span>)  <span class="c"># coalesce per query</span>
-<span class="c"># VERIFY: getNumPartitions() adapts to each query's data size — no re-tuning needed.</span></code></pre>
-  </section>
-
-  <!-- ============ INTERACTIVE 3: TABBED RUNTIME JOIN SWITCH ============ -->
-  <section>
-    <h2>Compare the plans — the runtime join switch</h2>
-    <p>Catalyst planned a sort-merge join from stale estimates. Switch between the <strong>initial</strong> plan and the <strong>final</strong> plan AQE produced after seeing the real (post-filter) size.</p>
-    <div class="lab" id="lab-switch">
-      <div class="lab-head"><span class="lab-title"><code>events ⋈ dim_country.where(active)</code></span></div>
-      <p class="lab-sub">The dimension is "big" in the catalog but a filter shrinks it to a few MB at runtime.</p>
-      <div class="controls">
-        <div class="seg" id="sw-seg" role="group" aria-label="plan stage">
-          <button data-s="init" aria-pressed="true">Initial plan (Catalyst)</button>
-          <button data-s="final" aria-pressed="false">Final plan (AQE)</button>
-        </div>
-      </div>
-      <div class="planbox" id="sw-plan"></div>
-      <div class="verdict" id="sw-note"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration; the real plan also shows <code>AdaptiveSparkPlan isFinalPlan</code> and the shuffle-read nodes.</p>
-    </div>
-  </section>
-
-  <!-- ============ COMPARISON TABLE ============ -->
-  <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · The three rewrites at a glance</p>
+    <h2>Which rewrite, and what proves it fired</h2>
+    <p>Read this by the problem you're seeing — it answers "which AQE rewrite is this, and what's the plan/UI signal?" at a glance. (The <em>why</em> is §3; this is the <em>which</em>.)</p>
     <table class="tbl">
-      <thead><tr><th>Dimension</th><th>AQE Coalesce</th><th>AQE Split (skew join)</th><th>AQE Join switch</th></tr></thead>
+      <thead><tr><th>Dimension</th><th>Coalesce</th><th>Split (skew join)</th><th>Join switch</th></tr></thead>
       <tbody>
-        <tr><td><strong>Problem it fixes</strong></td><td>Too many tiny shuffle partitions</td><td>One skewed/straggler partition</td><td>Sort-merge chosen on a stale estimate</td></tr>
-        <tr><td><strong>Lever (default)</strong></td><td><code>coalescePartitions.enabled=true</code></td><td><code>skewJoin.enabled=true</code></td><td>runtime broadcast threshold</td></tr>
+        <tr><td><strong>Problem it fixes</strong></td><td>Too many tiny partitions</td><td>One skewed straggler</td><td>Sort-merge on a stale estimate</td></tr>
+        <tr><td><strong>Lever (default on)</strong></td><td><code>coalescePartitions.enabled</code></td><td><code>skewJoin.enabled</code></td><td>runtime broadcast threshold</td></tr>
         <tr><td><strong>Key number</strong></td><td>advisory <strong>64 MB</strong>, min <strong>1 MB</strong></td><td><strong>&gt; 5×</strong> median <strong>AND &gt; 256 MB</strong></td><td>OSS 10 MB static → DBX <strong>30 MB</strong> runtime</td></tr>
-        <tr><td><strong>What it does</strong></td><td>Merges adjacent partitions to ~64 MB</td><td>Splits the hot partition into sub-partitions</td><td>Flips <code>SortMergeJoin</code> → <code>BroadcastHashJoin</code></td></tr>
-        <tr><td><strong>Needs</strong></td><td>A shuffle's real partition sizes</td><td>A sort-merge join + real sizes</td><td>Real post-shuffle size of a join side</td></tr>
-        <tr><td><strong>Plan / UI signal</strong></td><td><code>AQEShuffleRead coalesced</code>; fewer tasks</td><td><code>AQEShuffleRead skewed</code>; max task ≈ median</td><td>final plan = <code>BroadcastHashJoin</code>, no big-side <code>Exchange</code></td></tr>
-        <tr><td><strong>When it can't help</strong></td><td>Output genuinely needs high parallelism</td><td>Skew too extreme → <strong>salt</strong> (Lesson 08)</td><td>Small side still too big to broadcast</td></tr>
+        <tr><td><strong>What it does</strong></td><td>Merges adjacent to ~64 MB</td><td>Splits the hot partition</td><td>Flips <code>SortMergeJoin</code> → <code>BroadcastHashJoin</code></td></tr>
+        <tr><td><strong>Needs</strong></td><td>A shuffle's real sizes</td><td>Sort-merge join + real sizes</td><td>Real post-shuffle size of a side</td></tr>
+        <tr><td><strong>Plan / UI signal</strong></td><td><code>AQEShuffleRead coalesced</code></td><td><code>AQEShuffleRead skewed</code>; max task ≈ median</td><td>final = <code>BroadcastHashJoin</code>, no big-side <code>Exchange</code></td></tr>
+        <tr><td><strong>When it can't help</strong></td><td>Output truly needs high parallelism</td><td>Skew too extreme → <span class="risk-hi">salt</span> (Lesson 08)</td><td>Small side still too big to broadcast</td></tr>
       </tbody>
     </table>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
-    <ul>
-      <li><strong>Leave AQE on as the default</strong> for every job — coalesce, split, switch with zero code changes; the first answer to a slow shuffle.</li>
-      <li><strong>Stop hand-setting <code>spark.sql.shuffle.partitions</code></strong> — let coalesce size partitions per query; keep the conf only as an upper bound.</li>
-      <li><strong>First line of defence against skew</strong> — enable AQE skew join before manual salting (Lesson 08); salt only what AQE can't tame.</li>
-      <li><strong>Safety net for join estimates</strong> — the runtime sort-merge → broadcast switch covers a filter shrinking a side after planning (the gap Lesson 02 warned about).</li>
-    </ul>
-    <h3>Edge cases</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of the three rewrites:</p>
     <ul>
       <li><strong>No shuffle, no adaptation.</strong> A map-only job (pure <code>select</code>/<code>filter</code>) has no shuffle stats — don't expect coalescing on a shuffle-free plan.</li>
-      <li><strong>Skew that misses a threshold.</strong> A partition 5× the median but only 100 MB (&lt; 256 MB) is <strong>not</strong> split — both conditions must hold. Residual skew → salt.</li>
+      <li><strong>Skew that misses a threshold.</strong> A partition 5× the median but only 100 MB (&lt; 256 MB) is <strong>not</strong> split — both conditions must hold. Residual skew is a salting job (Lesson 08).</li>
       <li><strong>Skew split is sort-merge only.</strong> It doesn't split skew inside a broadcast or shuffle-hash join.</li>
-      <li><strong>Reading the plan too early.</strong> <code>explain()</code> before the run may show <code>isFinalPlan=false</code> / the initial plan. The final adaptive plan is only certain after execution.</li>
       <li><strong>Forcing <code>broadcast()</code> can pre-empt AQE.</strong> A manual hint fixes the strategy up front and removes AQE's runtime choice — prefer letting AQE decide unless you have a known, capped small side.</li>
     </ul>
-    <h3>Limitations</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
       <li><strong>Planning-layer only.</strong> AQE rewrites the plan; it does not change <em>execution</em> (that's Tungsten/Photon). It won't add partition pruning (Lesson 07) or bucketing (Lesson 11) for you.</li>
-      <li><strong>Version gating.</strong> <code>adaptive.enabled</code> defaults to <code>true</code> <strong>only since Spark 3.2.0</strong> (introduced 1.6.0); on Databricks since <strong>DBR 7.3 LTS</strong>. Older runtimes may need it enabled explicitly.</li>
-      <li><strong>OSS lists 3 features; Databricks lists 4.</strong> Empty-relation propagation is the Databricks-documented 4th feature — not an OSS AQE feature.</li>
       <li><strong>It adapts the <em>remaining</em> plan, not the past.</strong> Work in a completed stage isn't redone; AQE only optimizes downstream of the boundary it just observed.</li>
+      <li><strong>Read the plan post-run.</strong> <code>explain()</code> before execution may show <code>isFinalPlan=false</code> / the initial plan. The final adaptive plan is only certain after the run — or in the Spark UI's final DAG.</li>
+      <li><strong>OSS-vs-Databricks caveat.</strong> The three rewrites are OSS-documented; the fourth (empty-relation propagation) and the 30 MB runtime switch are Databricks-specific, stated as such.</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Conflating "AQE since 1.6" with "default-on."</strong> Introduced 1.6.0, but <strong>default-<code>true</code> only in 3.2.0</strong> (SPARK-33679).</li>
-      <li><strong>Disabling AQE to "control" the plan.</strong> You throw away the runtime coalesce/skew-split/join-switch that usually beats hand-tuning. Keep it on; scope a <code>broadcast()</code> hint if one join needs fixing.</li>
-      <li><strong>Hand-setting <code>shuffle.partitions</code> low</strong> then wondering why a big query is slow — a globally small count starves a large query of parallelism.</li>
-      <li><strong>Expecting skew split when only one threshold is met.</strong> A partition must be <strong>&gt; 5× median <em>and</em> &gt; 256 MB</strong>. Many "AQE didn't fix my skew" cases are a hot partition under 256 MB → that's a salting job (Lesson 08).</li>
-      <li><strong>Confusing the OSS 10 MB static threshold with the Databricks 30 MB runtime switch.</strong> <code>spark.sql.autoBroadcastJoinThreshold</code> (10 MB) is up-front; <code>spark.databricks.adaptive.autoBroadcastJoinThreshold</code> (30 MB) is the runtime switch.</li>
-      <li><strong>Thinking Photon replaces AQE (or vice-versa).</strong> Photon is the execution engine; AQE is the runtime planner. Both should be on — different layers.</li>
-      <li><strong>Reading <code>explain()</code> before the run</strong> and assuming the initial plan is final. Look for <code>isFinalPlan=true</code> or the Spark UI's post-run DAG.</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Saying "AQE is default-on since 1.6"</strong></td><td>Conflates when it existed with when it turned itself on.</td><td>Introduced in 1.6.0; default-<code>true</code> only in <strong>3.2.0</strong> (SPARK-33679).</td></tr>
+        <tr><td><strong>Disabling AQE to "control" the plan</strong></td><td>Throws away the coalesce/split/switch that usually beats hand-tuning.</td><td>Leave AQE on; scope a <code>broadcast()</code> hint if one join needs fixing.</td></tr>
+        <tr><td><strong>Expecting a skew split on one threshold</strong></td><td>A partition over the factor but under 256 MB is never split.</td><td>Needs <strong>&gt; 5× median <em>and</em> &gt; 256 MB</strong>; else salt (Lesson 08).</td></tr>
+        <tr><td><strong>Confusing OSS 10 MB with DBX 30 MB switch</strong></td><td>The static up-front bar is not the runtime switch.</td><td><code>autoBroadcastJoinThreshold</code> is up-front; <code>databricks.adaptive.autoBroadcastJoinThreshold</code> is runtime.</td></tr>
+        <tr><td><strong>Thinking Photon replaces AQE</strong></td><td>Treats an execution engine as a planner.</td><td>Photon executes; AQE plans — keep both on, different layers.</td></tr>
+        <tr><td><strong>Trusting <code>explain()</code> before the run</strong></td><td>The initial plan may show <code>isFinalPlan=false</code> / a stale strategy.</td><td>Look for <code>isFinalPlan=true</code> or the Spark UI's post-run DAG.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (AQE: coalesce, skew join, join switch)</a>
-      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.adaptive.*, shuffle.partitions, autoBroadcastJoinThreshold)</a>
-      <a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — SQL join/partitioning hints (REBALANCE &amp; AQE interplay)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (DBR default, 4th feature, 30 MB runtime switch)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/compute/photon">Azure Databricks — Photon (native execution engine, complementary to AQE)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (AQE: coalesce, skew join, join switch)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (spark.sql.adaptive.*, shuffle.partitions, autoBroadcastJoinThreshold)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/sql-ref-syntax-qry-select-hints.html">Apache Spark — SQL join/partitioning hints (REBALANCE &amp; AQE interplay)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution (DBR default, 4th feature, 30 MB runtime switch)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/compute/photon">Azure Databricks — Photon (native execution engine, complementary to AQE)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -565,198 +582,142 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · OSS-vs-Databricks defaults noted where they differ · the three AQE rewrites are OSS-documented; empty-relation propagation and the 30 MB runtime switch are Databricks-specific.</p>
   </div>
 </footer>
 
 <script>
-/* ---- Diagram 1: AQE coalesce step-through (clickable phases drive the bars) ---- */
+/* ---- Figure A: step-through — coalesce -> split -> switch (Prev/Play/Next) ---- */
 (function(){
-  const root = document.getElementById('lab-coalesce');
+  const root = document.getElementById('lab-steps');
   if(!root) return;
-  const barsEl = root.querySelector('#co-bars');
-  const label  = root.querySelector('#co-barslabel');
-  const elParts = root.querySelector('#co-parts');
-  const elTasks = root.querySelector('#co-tasks');
-  const elSize  = root.querySelector('#co-size');
-  const verdict = root.querySelector('#co-verdict');
-  const steps = Array.prototype.slice.call(root.querySelectorAll('[data-step]'));
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const barsEl   = root.querySelector('#st-bars');
+  const label    = root.querySelector('#st-barslabel');
+  const elParts  = root.querySelector('#st-parts');
+  const elTasks  = root.querySelector('#st-tasks');
+  const elAction = root.querySelector('#st-action');
+  const plan     = root.querySelector('#st-plan');
+  const verdict  = root.querySelector('#st-verdict');
+  const prevBtn  = root.querySelector('#st-prev');
+  const nextBtn  = root.querySelector('#st-next');
+  const playBtn  = root.querySelector('#st-play');
+  const pfill    = root.querySelector('#st-pfill');
+  const scount   = root.querySelector('#st-scount');
 
-  // Build 60 representative bars (stand-in for 200 partitions) — mostly tiny.
-  const N = 60;
-  const heights = [];
-  for(let i=0;i<N;i++){ heights.push(8 + Math.round(Math.random()*16)); } // tiny: 8-24%
+  // 60 representative bars stand in for 200 tiny partitions.
+  const N = 60, tinyHeights = [];
+  for(let i=0;i<N;i++){ tinyHeights.push(8 + Math.round(Math.random()*16)); } // 8-24%
 
   function renderTiny(){
     barsEl.innerHTML = '';
-    heights.forEach(function(h){
+    tinyHeights.forEach(function(h){
       const b = document.createElement('div');
-      b.className = 'bar tiny';
-      b.style.height = h + '%';
+      b.className = 'bar tiny'; b.style.height = h + '%';
       barsEl.appendChild(b);
     });
   }
-  function renderCoalesced(){
-    // merge into ~5 full bars
+  function renderCoalesced(withHot){
     barsEl.innerHTML = '';
     for(let i=0;i<5;i++){
       const b = document.createElement('div');
       b.className = 'bar coalesced';
-      b.style.height = (78 + Math.round(Math.random()*16)) + '%'; // near the 64 MB target
+      b.style.height = (74 + Math.round(Math.random()*18)) + '%';   // near the 64 MB target
       b.style.flexGrow = '6';
       barsEl.appendChild(b);
     }
-  }
-  const phase = {
-    0: function(){
-      renderTiny(); label.textContent = 'Post-shuffle partitions (200, mostly tiny)';
-      elParts.textContent='200'; elTasks.textContent='200'; elSize.textContent='~3 MB';
-      verdict.innerHTML = '<b>Step 01 — 200 tiny partitions.</b> The shuffle wrote 200 partitions because <code>spark.sql.shuffle.partitions=200</code>. Spark would schedule 200 near-empty tasks.';
-    },
-    1: function(){
-      renderTiny(); label.textContent = 'AQE reads the real per-partition byte sizes';
-      elParts.textContent='200'; elTasks.textContent='200'; elSize.textContent='~3 MB';
-      verdict.innerHTML = '<b>Step 02 — AQE measures.</b> At the shuffle boundary AQE collects the exact partition sizes — the statistics a static plan never had.';
-    },
-    2: function(){
-      renderCoalesced(); label.textContent = 'Merged toward the 64 MB advisory size';
-      elParts.textContent='5'; elTasks.textContent='5'; elSize.textContent='~62 MB';
-      verdict.innerHTML = '<b>Step 03 — coalesce.</b> Adjacent partitions are merged until each nears <code>advisoryPartitionSizeInBytes = 64 MB</code> (never below the 1 MB floor).';
-    },
-    3: function(){
-      renderCoalesced(); label.textContent = 'A handful of balanced tasks';
-      elParts.textContent='5'; elTasks.textContent='5'; elSize.textContent='~62 MB';
-      verdict.innerHTML = '<b>Step 04 — fewer, fuller tasks.</b> ~5 tasks instead of 200. The plan shows an <code>AQEShuffleRead coalesced</code> node. VERIFY with <code>df.rdd.getNumPartitions()</code>.';
+    if(withHot){
+      const b = document.createElement('div');
+      b.className = 'bar skew'; b.style.height = '100%'; b.style.flexGrow = '9';
+      barsEl.appendChild(b);
     }
-  };
-  steps.forEach(function(s){
-    s.addEventListener('click', function(){
-      steps.forEach(function(x){ x.classList.remove('open'); });
-      s.classList.add('open');
-      phase[parseInt(s.dataset.step,10)]();
-    });
-  });
-  renderTiny();   // initial state
-})();
-
-/* ---- Diagram 2: AQE skew-split detector (slider; needs BOTH conditions) ---- */
-(function(){
-  const root = document.getElementById('lab-skew');
-  if(!root) return;
-  const MEDIAN = 40;        // MB
-  const FACTOR = 5.0;       // > 5x median
-  const THRESH = 256;       // MB floor
-  const size = root.querySelector('#sk-size');
-  const sizeval = root.querySelector('#sk-sizeval');
-  const elFactor = root.querySelector('#sk-factor');
-  const elThresh = root.querySelector('#sk-thresh');
-  const elSplit  = root.querySelector('#sk-split');
-  const barsEl   = root.querySelector('#sk-bars');
-  const plan     = root.querySelector('#sk-plan');
-  const verdict  = root.querySelector('#sk-verdict');
-
-  function renderBars(hot, split){
+  }
+  function renderSplit(){
     barsEl.innerHTML = '';
-    // a few "normal" partitions around the median, then the hot one (or its splits)
-    const norm = [38,42,40,37,41,39,40];
-    norm.forEach(function(v){
-      const b=document.createElement('div'); b.className='bar';
-      b.style.height = Math.min(100, Math.round(v/9)) + '%';
-      barsEl.appendChild(b);
-    });
-    if(split){
-      const pieces = Math.max(2, Math.ceil(hot/THRESH) + 1);
-      const each = hot/pieces;
-      for(let i=0;i<pieces;i++){
-        const b=document.createElement('div'); b.className='bar split';
-        b.style.height = Math.min(100, Math.round(each/9)) + '%';
-        b.style.flexGrow='2';
-        barsEl.appendChild(b);
-      }
-    } else {
-      const b=document.createElement('div'); b.className='bar skew';
-      b.style.height = Math.min(100, Math.round(hot/9)) + '%';
-      b.style.flexGrow='3';
-      barsEl.appendChild(b);
+    for(let i=0;i<5;i++){
+      const b = document.createElement('div');
+      b.className = 'bar coalesced'; b.style.height = (74 + Math.round(Math.random()*18)) + '%';
+      b.style.flexGrow = '6'; barsEl.appendChild(b);
+    }
+    for(let i=0;i<4;i++){   // hot 320 MB -> ~4 balanced sub-parts
+      const b = document.createElement('div');
+      b.className = 'bar split'; b.style.height = (80 + Math.round(Math.random()*10)) + '%';
+      b.style.flexGrow = '7'; barsEl.appendChild(b);
     }
   }
 
-  function render(){
-    const hot = parseInt(size.value,10);
-    sizeval.textContent = hot + ' MB';
-    const ratio = hot / MEDIAN;
-    const overFactor = ratio > FACTOR;
-    const overThresh = hot > THRESH;
-    const willSplit = overFactor && overThresh;
+  const steps = [
+    { stage:'Step 01 · 200 tiny partitions',
+      run:function(){
+        renderTiny();
+        label.textContent = 'Post-shuffle partitions (200, mostly tiny)';
+        elParts.textContent='200'; elTasks.textContent='200'; elAction.textContent='—';
+        plan.innerHTML =
+          '<span class="dim">== after shuffle write ==</span>\n' +
+          '<span class="dim">spark.sql.shuffle.partitions = 200 → 200 partitions, most a few KB</span>';
+        verdict.innerHTML = '<b>The shuffle wrote 200 partitions.</b> A static plan would schedule 200 near-empty tasks. AQE is about to read the real per-partition sizes at this boundary.';
+      } },
+    { stage:'Step 02 · coalesce toward 64 MB',
+      run:function(){
+        renderCoalesced(true);
+        label.textContent = 'Merged toward the 64 MB advisory (one hot partition remains)';
+        elParts.textContent='6'; elTasks.textContent='6'; elAction.textContent='Coalesced';
+        plan.innerHTML =
+          '<span class="dim">== Final Plan ==</span>\n' +
+          '<span class="ok">AQEShuffleRead coalesced</span>  &lt;- 5 tiny → ~62 MB chunks\n' +
+          '<span class="bad">one 320 MB partition still stands out</span>';
+        verdict.innerHTML = '<b>Coalesce.</b> Adjacent tiny partitions merge until each nears <code>advisoryPartitionSizeInBytes = 64 MB</code> (never below the 1 MB floor). ~5 balanced tasks instead of 200 — but the hot 320 MB partition is left for the next step.';
+      } },
+    { stage:'Step 03 · split the skewed partition',
+      run:function(){
+        renderSplit();
+        label.textContent = 'Hot partition split into balanced sub-partitions';
+        elParts.textContent='9'; elTasks.textContent='9'; elAction.textContent='Split ✓';
+        plan.innerHTML =
+          '<span class="dim">== Final Plan ==</span>\n' +
+          'SortMergeJoin [account_id]\n' +
+          ':- <span class="ok">AQEShuffleRead skewed=true</span>  &lt;- 320 MB &gt; 5x median AND &gt; 256 MB → split into ~4\n' +
+          '+- <span class="ok">AQEShuffleRead</span> (matching side replicated)';
+        verdict.innerHTML = '<b>Split.</b> The 320 MB partition clears <em>both</em> bars — &gt; 5× the median <b>and</b> &gt; 256 MB — so AQE splits it into ~4 balanced sub-partitions. The Stages-tab max task time collapses toward the median.';
+      } },
+    { stage:'Step 04 · switch sort-merge → broadcast',
+      run:function(){
+        renderSplit();
+        label.textContent = 'Join flipped to broadcast — no big-side shuffle';
+        elParts.textContent='9'; elTasks.textContent='9'; elAction.textContent='Broadcast ✓';
+        plan.innerHTML =
+          '<span class="dim">== Final Plan == (isFinalPlan=true)</span>\n' +
+          '<span class="ok">BroadcastHashJoin</span> [account_id]\n' +
+          ':- balanced partitions      <span class="ok">&lt;- no Exchange on the big side</span>\n' +
+          '+- <span class="ok">BroadcastExchange</span>  &lt;- accounts side (~22 MB) shipped to executors';
+        verdict.innerHTML = '<b>Switch.</b> The <code>accounts</code> side turned out ~22 MB after its filter — under the runtime broadcast switch (OSS 10 MB; <b>Databricks 30 MB</b>) — so AQE flips the planned sort-merge to a Broadcast Hash Join and the big-side shuffle vanishes.';
+      } }
+  ];
 
-    elFactor.textContent = ratio.toFixed(1) + '×';
-    elThresh.textContent = overThresh ? 'Yes' : 'No';
-    elSplit.textContent  = willSplit ? 'Split ✓' : 'No split';
-
-    renderBars(hot, willSplit);
-
-    if(willSplit){
-      const pieces = Math.max(2, Math.ceil(hot/THRESH) + 1);
-      plan.innerHTML =
-        '<span class="dim">== Final Plan ==</span>\n' +
-        'SortMergeJoin [account_id]\n' +
-        ':- <span class="ok">AQEShuffleRead</span> <span class="ok">skewed=true</span>  &lt;- hot partition split into ' + pieces + ' sub-parts ✅\n' +
-        '+- <span class="ok">AQEShuffleRead</span> (matching side replicated)';
-      verdict.innerHTML = '<b>Both conditions met.</b> ' + ratio.toFixed(1) + '× median (&gt; 5×) <em>and</em> ' + hot + ' MB (&gt; 256 MB) → AQE <b>splits</b> the straggler into ' + pieces + ' balanced sub-partitions. The Stages tab max-task time collapses toward the median.';
-    } else {
-      plan.innerHTML =
-        '<span class="dim">== Final Plan ==</span>\n' +
-        'SortMergeJoin [account_id]\n' +
-        ':- <span class="bad">AQEShuffleRead</span> <span class="bad">skewed=false</span>  &lt;- one giant straggler task ❌\n' +
-        '+- AQEShuffleRead';
-      let why;
-      if(!overFactor && !overThresh){ why = 'neither bar is crossed'; }
-      else if(!overFactor){ why = 'it\'s over 256 MB but only ' + ratio.toFixed(1) + '× the median (need &gt; 5×)'; }
-      else { why = 'it\'s ' + ratio.toFixed(1) + '× the median but only ' + hot + ' MB (need &gt; 256 MB)'; }
-      verdict.innerHTML = '<b>No split — ' + why + '.</b> AQE skew join needs <em>both</em> &gt; 5× median <b>and</b> &gt; 256 MB. Residual skew like this is where <b>salting</b> (Lesson 08) comes in.';
-    }
+  let i = 0, timer = null;
+  function goTo(n){
+    i = Math.max(0, Math.min(n, steps.length-1));
+    const s = steps[i];
+    s.run();
+    pfill.style.width = ((i+1)/steps.length*100) + '%';
+    scount.textContent = 'step ' + (i+1) + ' / ' + steps.length;
+    prevBtn.disabled = (i===0);
+    nextBtn.disabled = (i===steps.length-1);
   }
-  size.addEventListener('input', render);
-  render();
+  function stopPlay(){ if(timer){ clearInterval(timer); timer=null; playBtn.textContent='▶ Play'; } }
+  function startPlay(){
+    if(i >= steps.length-1) goTo(0);
+    playBtn.textContent='❚❚ Pause';
+    timer = setInterval(function(){ if(i >= steps.length-1){ stopPlay(); return; } goTo(i+1); }, reduce ? 800 : 1900);
+  }
+  prevBtn.addEventListener('click', function(){ stopPlay(); goTo(i-1); });
+  nextBtn.addEventListener('click', function(){ stopPlay(); goTo(i+1); });
+  playBtn.addEventListener('click', function(){ if(timer) stopPlay(); else startPlay(); });
+  goTo(0);
 })();
 
-/* ---- Diagram 3: tabbed runtime join switch (initial vs final plan) ---- */
-(function(){
-  const root = document.getElementById('lab-switch');
-  if(!root) return;
-  const seg  = root.querySelector('#sw-seg');
-  const plan = root.querySelector('#sw-plan');
-  const note = root.querySelector('#sw-note');
-  const data = {
-    init: {
-      plan: '<span class="dim">== Initial Plan == (Catalyst, pre-run estimates)</span>\n' +
-            'SortMergeJoin [country_code], Inner\n' +
-            ':- Sort  +- <span class="bad">Exchange</span> hashpartitioning(country_code, 200)  <span class="bad">&lt;- events shuffled ❌</span>\n' +
-            '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning(country_code, 200)  <span class="bad">&lt;- dim shuffled too</span>',
-      note: '<b>Catalyst guessed sort-merge.</b> From catalog stats <code>dim_country</code> looked big, so the planner shuffled <em>both</em> sides — including all of <code>events</code> — before it ever saw the filtered size.'
-    },
-    final: {
-      plan: '<span class="dim">== Final Plan == (AQE, after the filter ran)</span>\n' +
-            '<span class="ok">AdaptiveSparkPlan isFinalPlan=true</span>\n' +
-            '<span class="ok">BroadcastHashJoin</span> [country_code], Inner\n' +
-            ':- FileScan events            <span class="ok">&lt;- no Exchange (events not shuffled) ✅</span>\n' +
-            '+- <span class="ok">BroadcastExchange</span>  &lt;- filtered dim_country (a few MB) shipped to executors',
-      note: '<b>AQE flipped it at runtime.</b> Once the <code>where(active)</code> filter ran, the dim side was a few MB — under the runtime broadcast switch (OSS 10 MB; <b>Databricks 30 MB</b>) — so AQE rewrote it to a Broadcast Hash Join and the big-side shuffle vanished.'
-    }
-  };
-  function show(s){
-    plan.innerHTML = data[s].plan;
-    note.innerHTML = data[s].note;
-    seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.s === s)); });
-  }
-  seg.addEventListener('click', function(e){
-    const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.s);
-  });
-  show('init');
-})();
-
-/* ---- Diagram 4: CLUSTER EXECUTION LAB — AQE across driver + 3 executors ---- */
+/* ---- Figure B: CLUSTER EXECUTION LAB — AQE across 1 driver + 3 executors ---- */
 (function(){
   const root = document.getElementById('lab-cluster');
   if(!root) return;
@@ -790,7 +751,7 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
   const wire = root.querySelector('#cl-wire');
 
   function chip(label, kind, extra){
-    return '<span class="part ' + kind + (extra ? ' ' + extra : '') + '">' + label + '</span>';
+    return '<span class="part ' + kind + (extra && !reduce ? ' ' + extra : '') + '">' + label + '</span>';
   }
   function clearActive(){
     exNode.forEach(function(n){ n.classList.remove('active'); });
@@ -801,9 +762,8 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
   function hlCode(idxs){ codeLns.forEach(function(l){ l.classList.toggle('hl', idxs.indexOf(parseInt(l.dataset.ln,10))>=0); }); }
   function hlData(idxs){ dataRows.forEach(function(r){ r.classList.toggle('hl', idxs.indexOf(parseInt(r.dataset.row,10))>=0); }); }
 
-  // Each step paints the three executor partition-chip rows + driver + notes + narration.
   const steps = [
-    { // 0 — after the shuffle: 12 tiny chips scattered + one skewed hot chip
+    { // 0 — after the shuffle: tiny chips scattered + one hot chip
       stage:'Shuffle finished', code:[3], data:[0,1],
       build:function(){
         lit(false); clearActive();
@@ -827,7 +787,7 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
         narr.innerHTML = '<span class="stage">Re-optimize</span>At the boundary the <b>driver</b> collects the exact per-partition byte sizes from the map output — stats a static plan never had. Median &asymp; <b>3 MB</b>; advisory target = <b>64 MB</b>. AQE is on by <b>default since Spark 3.2.0</b> (DBR 7.3+).';
       }
     },
-    { // 2 — coalesce adjacent tiny chips into ~64MB partitions
+    { // 2 — coalesce adjacent tiny chips
       stage:'AQE coalesce', code:[2,3], data:[0,1,2],
       build:function(){
         lit(false); clearActive(); exNode[0].classList.add('active'); exNode[2].classList.add('active');
@@ -859,10 +819,9 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
         ex[0].innerHTML = chip('c0 ⋈ bcast','k1','pop')+chip('p7a ⋈ bcast','k0');
         ex[1].innerHTML = chip('c1 ⋈ bcast','k2','pop')+chip('p7b ⋈ bcast','k0');
         ex[2].innerHTML = chip('c2 ⋈ bcast','k3','pop')+chip('p7c ⋈ bcast','k0')+chip('p7d ⋈ bcast','k0');
-        driverNode.classList.add('active');
-        driverNote.innerHTML = 'broadcasts the 22 MB <code>accounts</code> side &rarr; <b>BroadcastHashJoin</b>';
+        driverNote.innerHTML = 'broadcasts the ~22 MB <code>accounts</code> side &rarr; <b>BroadcastHashJoin</b>';
         setNotes('joins locally','joins locally','joins locally');
-        narr.innerHTML = '<span class="stage">Switch sort-merge &rarr; broadcast</span>The <code>accounts</code> side turned out to be only <b>~22 MB</b> after filtering — under the runtime broadcast switch (OSS 10 MB; <b>Databricks 30 MB</b>). AQE rewrites the planned sort-merge join to a <b>BroadcastHashJoin</b>: <code>accounts</code> ships to every executor and each balanced partition joins locally. <code>isFinalPlan=true</code>.';
+        narr.innerHTML = '<span class="stage">Switch sort-merge &rarr; broadcast</span>The <code>accounts</code> side turned out only <b>~22 MB</b> after filtering — under the runtime broadcast switch (OSS 10 MB; <b>Databricks 30 MB</b>). AQE rewrites the planned sort-merge join to a <b>BroadcastHashJoin</b>: <code>accounts</code> ships to every executor and each balanced partition joins locally. <code>isFinalPlan=true</code>.';
       }
     }
   ];
@@ -885,7 +844,7 @@ spark.conf.set(<span class="s">"spark.sql.adaptive.coalescePartitions.enabled"</
     timer = setInterval(function(){
       if(i>=steps.length-1){ stop(); return; }
       goTo(i+1);
-    }, reduce ? 700 : 1900);
+    }, reduce ? 800 : 1900);
   }
   prev.addEventListener('click', function(){ stop(); goTo(i-1); });
   next.addEventListener('click', function(){ stop(); goTo(i+1); });

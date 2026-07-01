@@ -3,234 +3,350 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bucketing · Databricks PySpark Performance</title>
+<title>Bucketing — eliminate the shuffle · PySpark Performance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#070a10;          /* page background — matches the hero */
-    --bg-2:#0b1018;
-    --ink:#eaf0f7;         /* primary text */
-    --muted:#94a2b6;
-    --faint:#5d6b7e;
-    --line:rgba(255,255,255,.09);
-    --card:rgba(17,23,33,.6);
-    --flame:#fb923c;       /* PySpark primary accent (ember) */
-    --flame-2:#f97316;
-    --violet:#8b5cf6;      /* secondary accent */
-    --violet-2:#a78bfa;
-    --cyan:#3fa9c9;        /* tertiary accent (drivers / links) */
-    --gold:#f5a524;
-    --shadow:0 1px 0 rgba(0,0,0,.2),0 18px 44px -22px rgba(0,0,0,.8);
-    --radius:14px;
+    --bg:#f4f1e8;        /* warm paper */
+    --panel:#efe9d9;     /* tinted panel (code / diagram output) */
+    --card:#fbfaf5;      /* near-white card surface */
+    --ink:#17140d;       /* near-black, warm */
+    --muted:#6a6252;     /* warm gray body-secondary */
+    --faint:#9c937f;     /* faint labels */
+    --line:rgba(23,20,13,.16);   /* hairline rules */
+    --line-2:rgba(23,20,13,.09);
+    --accent:#2b2bf0;    /* the single accent — electric/lightning blue */
+    --accent-2:#1a1aae;  /* hover / deep */
+    --accent-soft:rgba(43,43,240,.08);
+    --danger:#b91c1c;    /* OOM / abort — red, kept distinct from ember */
+    --danger-soft:rgba(185,28,28,.10);
+    --ok:#2f7d55;        /* healthy */
+    --wrap:748px;
+    --radius:9px;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
   body{
     margin:0;background:var(--bg);color:var(--ink);
-    font-family:"Spline Sans",sans-serif;line-height:1.6;overflow-x:hidden;
+    font-family:"Source Serif 4",Georgia,serif;font-size:1.06rem;line-height:1.72;
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  /* aurora background (fixed) — the "match the hero" layer; no markup needed */
-  body::before{content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
-    background:
-      radial-gradient(45% 40% at 16% 10%,rgba(63,169,201,.16),transparent 70%),
-      radial-gradient(40% 38% at 86% 6%,rgba(139,92,246,.15),transparent 70%),
-      radial-gradient(52% 46% at 72% 90%,rgba(249,115,22,.11),transparent 72%),
-      radial-gradient(45% 45% at 8% 94%,rgba(245,165,36,.08),transparent 72%);
-    animation:drift 28s ease-in-out infinite alternate}
-  body::after{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:radial-gradient(circle at 50% -12%,transparent 56%,rgba(0,0,0,.5))}
-  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(3%,-2%,0) scale(1.05)}}
-  @media(prefers-reduced-motion:reduce){body::before{animation:none}}
-  .wrap{max-width:920px;margin:0 auto;padding:0 24px;position:relative}
-  code,.mono{font-family:"Spline Sans Mono",monospace}
-  code{background:rgba(255,255,255,.07);padding:.08em .35em;border-radius:5px;font-size:.92em;color:#f3d9c2}
-  header{padding:72px 0 40px;position:relative}
-  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--flame);margin:0 0 14px}
-  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
-  h1 .drip{background:linear-gradient(105deg,var(--flame),var(--violet));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;font-style:italic}
-  .lede{font-size:1.18rem;max-width:62ch;color:var(--muted)}
-  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
-  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:var(--muted)}
-  .pill b{color:var(--violet-2);font-weight:600}
-  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
-  .crumb a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  section{padding:30px 0;border-top:1px solid var(--line)}
-  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em;color:var(--ink)}
-  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em;color:var(--ink)}
-  p{margin:.6em 0}
-  ul{padding-left:1.1em}
-  li{margin:.35em 0}
-  strong{font-weight:600;color:#f4f7fb}
-  .callout{background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.06));border:1px solid rgba(139,92,246,.32);border-left:4px solid var(--violet);border-radius:10px;padding:16px 18px;margin:20px 0}
-  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:4px}
-  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin:0 6px 6px 0}
-  .chip.analogy{background:rgba(139,92,246,.16);color:var(--violet-2);border:1px solid rgba(139,92,246,.35)}
-  .chip.usecase{background:rgba(249,115,22,.16);color:#fbbf77;border:1px solid rgba(249,115,22,.35)}
-  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.93rem;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line)}
-  .tbl th{background:rgba(249,115,22,.16);color:#ffe0c2;text-align:left;padding:11px 14px;font-weight:600;font-size:.8rem;letter-spacing:.03em}
-  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top;color:var(--ink)}
-  .tbl tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-  pre{background:#0a0e15;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative;border:1px solid var(--line)}
-  pre code{background:none;padding:0}
-  pre .c{color:#7c8aa0}
-  pre .k{color:#fbbf77;font-weight:500}
-  pre .s{color:#b7e88f}
-  pre .f{color:#c4b5fd}
-  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#6e7d90;text-transform:uppercase}
-  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
-  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
-  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600;color:var(--ink)}
-  .lab-sub{color:var(--muted);font-size:.93rem;margin:0 0 18px}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:8px;align-items:center}
-  .seg{display:inline-flex;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
-  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:var(--muted);padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .wrap{max-width:var(--wrap);margin:0 auto;padding:0 24px;position:relative}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+  code{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.9em;background:var(--accent-soft);color:var(--accent-2);padding:.06em .34em;border-radius:4px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid rgba(43,43,240,.32)}
+  a:hover{border-color:var(--accent)}
+  .reflist{margin:10px 0;padding-left:1.35em;list-style:disc}
+  .reflist li{margin:.55em 0;padding-left:.15em}
+  .reflist li::marker{color:var(--accent)}
+  .reflist a{border-bottom:none}
+  .reflist a:hover{border-bottom:1px solid var(--accent)}
+
+  /* ---- top bar ---- */
+  .topbar{border-bottom:1px solid var(--line);background:rgba(244,241,232,.85);backdrop-filter:blur(6px);position:sticky;top:0;z-index:5}
+  .topbar .row{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:"JetBrains Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+  .topbar .brand{color:var(--ink);border:none;font-weight:700;display:inline-flex;align-items:center;gap:8px}
+  .topbar .brand::before{content:"";width:9px;height:9px;background:var(--accent);display:inline-block}
+  .topbar .brand:hover{color:var(--accent)}
+  .topbar .loc{color:var(--faint);border:none}
+
+  /* ---- hero ---- */
+  header{position:relative;padding:66px 0 34px;border-bottom:1px solid var(--line)}
+  header::before{content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(var(--line-2) 1.1px,transparent 1.1px);background-size:22px 22px;
+    -webkit-mask-image:linear-gradient(180deg,#000,transparent 82%);mask-image:linear-gradient(180deg,#000,transparent 82%)}
+  header .wrap{position:relative;z-index:1}
+  .figstamp{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:26px}
+  h1.display{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800;color:var(--accent);
+    font-size:clamp(2.1rem,5.6vw,3.5rem);line-height:1.07;letter-spacing:-.03em;margin:0 0 12px;text-transform:uppercase;overflow-wrap:anywhere}
+  .subline{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:500;color:var(--muted);
+    font-size:clamp(.8rem,1.7vw,.98rem);line-height:1.35;margin:0 0 22px;text-transform:uppercase;letter-spacing:.2em}
+  .lede{font-size:1.24rem;line-height:1.6;max-width:60ch;color:var(--ink);margin:0}
+  .lede em{font-style:italic;color:var(--muted)}
+  .specs{margin-top:26px;display:flex;flex-wrap:wrap;gap:8px}
+  .spec{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:5px;padding:6px 11px;background:var(--card)}
+  .spec b{color:var(--accent-2);font-weight:600}
+
+  /* ---- sections ---- */
+  main section{padding:40px 0;border-top:1px solid var(--line)}
+  main section:first-child{border-top:none}
+  .seclabel{font-family:"JetBrains Mono",monospace;font-size:.7rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin:0 0 10px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:1px;background:var(--accent);display:inline-block;opacity:.6}
+  h2{font-family:"Source Serif 4",serif;font-weight:600;font-size:clamp(1.5rem,3.2vw,1.95rem);line-height:1.2;margin:.1em 0 .55em;letter-spacing:-.01em}
+  h3{font-family:"Source Serif 4",serif;font-weight:600;font-size:1.18rem;line-height:1.35;margin:1.7em 0 .4em}
+  h3 code{font-size:.86em}
+  p{margin:.7em 0}
+  ul{padding-left:1.15em;margin:.6em 0}
+  li{margin:.42em 0}
+  li strong,p strong{font-weight:600}
+  .dropcap::first-letter{font-family:"Source Serif 4",serif;font-weight:600;float:left;font-size:3.1rem;line-height:.82;padding:.05em .12em 0 0;color:var(--accent)}
+
+  .callout{background:var(--accent-soft);border:1px solid rgba(43,43,240,.22);border-left:3px solid var(--accent);border-radius:8px;padding:15px 18px;margin:22px 0}
+  .callout .lbl{font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:5px}
+  .callout.warn{background:var(--danger-soft);border-color:rgba(193,68,14,.24);border-left-color:var(--danger)}
+  .callout.warn .lbl{color:var(--danger)}
+
+  .chip{display:inline-block;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 8px;border-radius:4px;margin:0 6px 4px 0;vertical-align:middle}
+  .chip.analogy{background:var(--accent-soft);color:var(--accent-2);border:1px solid rgba(43,43,240,.28)}
+  .chip.usecase{background:rgba(47,125,85,.12);color:var(--ok);border:1px solid rgba(47,125,85,.32)}
+
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:10px;margin:18px 0}
+  .quickcard{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:8px;padding:13px 14px}
+  .quickcard.danger{border-top-color:var(--danger)}
+  .quickcard.ok{border-top-color:var(--ok)}
+  .quickcard .qtitle{font-family:"JetBrains Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+  .quickcard p{font-size:.93rem;line-height:1.45;margin:0;color:var(--muted)}
+
+  /* ---- tables ---- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.92rem;font-family:"Source Serif 4",serif;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .tbl th{background:var(--accent-soft);color:var(--accent-2);text-align:left;padding:10px 13px;font-family:"JetBrains Mono",monospace;font-weight:600;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase}
+  .tbl td{padding:10px 13px;border-top:1px solid var(--line-2);vertical-align:top}
+  .tbl td code{font-size:.85em}
+  .risk-hi{color:var(--danger);font-weight:600}
+  .risk-lo{color:var(--ok);font-weight:600}
+
+  /* ---- code ---- */
+  pre{background:var(--panel);color:#2b2620;border:1px solid var(--line);border-radius:9px;padding:16px 18px;overflow-x:auto;font-size:.83rem;line-height:1.7;margin:15px 0;position:relative;font-family:"JetBrains Mono",monospace}
+  pre code{background:none;padding:0;color:inherit;font-size:1em}
+  pre .c{color:#948b76;font-style:italic}
+  pre .k{color:var(--accent);font-weight:500}
+  pre .s{color:#2f7d55}
+  pre .f{color:#9a5b18}
+  .tag{position:absolute;top:9px;right:13px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.1em;color:var(--faint);text-transform:uppercase}
+
+  /* ==================================================================
+     INTERACTIVE LAB — shared light-paper styling
+     ================================================================== */
+  .lab{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:22px;margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:3px}
+  .lab-title{font-family:"JetBrains Mono",monospace;font-size:.82rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .lab-sub{color:var(--muted);font-size:.92rem;margin:0 0 16px}
+  .lab-note{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.04em;color:var(--faint);margin-top:14px;text-transform:uppercase}
+  .controls{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px;align-items:center}
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:3px;gap:3px}
+  .seg button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.74rem;border:none;background:transparent;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;transition:.15s;letter-spacing:.02em}
   .seg button:hover{color:var(--ink)}
-  .seg button[aria-pressed="true"]{background:var(--flame-2);color:#160d06;box-shadow:0 2px 10px -2px rgba(249,115,22,.6)}
-  .filterbar label{font-size:.86rem;color:var(--muted);font-weight:500;display:flex;align-items:center;gap:10px}
-  input[type=range]{accent-color:var(--flame);cursor:pointer;width:230px;vertical-align:middle}
-  .sizeval{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-weight:600}
-  .toggle{display:inline-flex;align-items:center;gap:9px;font-size:.86rem;color:var(--muted);font-weight:500;cursor:pointer;user-select:none}
-  .toggle input{accent-color:var(--flame);width:17px;height:17px;cursor:pointer}
-  .planbox{font-family:"Spline Sans Mono",monospace;font-size:.8rem;background:#0a0e15;color:#e8eef2;border-radius:10px;padding:14px 16px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
-  .planbox .ok{color:#b7e88f}
-  .planbox .bad{color:#fbbf77}
-  .planbox .dim{color:#7c8aa0}
-  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
-  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
-  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.55rem;line-height:1.1;color:var(--flame)}
-  .stat .lbl{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:6px}
-  .stat.win .big{color:var(--violet-2)}
-  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line)}
-  .verdict b{color:var(--flame)}
-  /* bucket diagram */
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fff}
+  .filterbar label{font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:10px}
+  input[type=range]{accent-color:var(--accent);cursor:pointer;width:220px;vertical-align:middle}
+  .sizeval{font-family:"JetBrains Mono",monospace;color:var(--accent-2);font-weight:600}
+  .toggle{display:inline-flex;align-items:center;gap:9px;font-family:"JetBrains Mono",monospace;font-size:.74rem;color:var(--muted);cursor:pointer;user-select:none}
+  .toggle input{accent-color:var(--accent);width:16px;height:16px;cursor:pointer}
+  .toggle code{font-size:.9em}
+
+  .planbox{font-family:"JetBrains Mono",monospace;font-size:.78rem;background:var(--panel);color:#2b2620;border-radius:8px;padding:13px 15px;margin-top:16px;line-height:1.7;white-space:pre-wrap;border:1px solid var(--line)}
+  .planbox .ok{color:var(--ok)}
+  .planbox .bad{color:var(--danger);font-weight:600}
+  .planbox .dim{color:#948b76}
+  .readout{margin-top:18px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+  .stat{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:13px 15px}
+  .stat .big{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:1.35rem;line-height:1.1;color:var(--ink)}
+  .stat .lbl{font-family:"JetBrains Mono",monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:6px}
+  .stat.win .big{color:var(--accent-2)}
+  .verdict{margin-top:15px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line)}
+  .verdict b{color:var(--accent-2)}
+
+  /* ---- bucket-files diagram (shuffle eliminator) ---- */
   .buckets{margin:18px 0 6px}
-  .blabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:14px 0 7px}
+  .blabel{font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:14px 0 7px}
   .brow{display:flex;gap:6px;flex-wrap:wrap}
-  .bk{flex:1 1 0;min-width:30px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.64rem;font-weight:600;border:1px solid var(--line);transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,box-shadow .3s}
-  .bk.a{background:linear-gradient(135deg,var(--flame),var(--flame-2));border-color:#9a3412;color:#160d06}
-  .bk.b{background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(124,58,237,.45));border-color:var(--violet);color:#ece2ff}
-  .bk.match{box-shadow:0 6px 16px -6px rgba(139,92,246,.7);transform:translateY(-3px)}
-  .link{height:18px;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.1em}
-  .link.colocated{color:var(--violet-2)}
-  .link.shuffled{color:var(--flame)}
-  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:var(--muted)}
+  .bk{flex:1 1 0;min-width:30px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:.64rem;font-weight:600;border:1px solid var(--line);transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,box-shadow .3s}
+  .bk.a{background:var(--accent-soft);border-color:rgba(43,43,240,.42);color:var(--accent-2)}
+  .bk.b{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.42);color:var(--ok)}
+  .bk.match{box-shadow:0 5px 14px -6px rgba(43,43,240,.55);transform:translateY(-3px)}
+  .link{height:20px;display:flex;align-items:center;justify-content:center;font-family:"JetBrains Mono",monospace;font-size:.68rem;letter-spacing:.06em}
+  .link.colocated{color:var(--accent-2)}
+  .link.shuffled{color:var(--danger)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-family:"JetBrains Mono",monospace;font-size:.66rem;color:var(--muted)}
   .legend span{display:inline-flex;align-items:center;gap:7px}
   .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
-  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:rgba(255,255,255,.025);transition:.18s;box-shadow:var(--shadow)}
-  .step:hover{border-color:var(--flame)}
-  .step .head{font-weight:600;display:flex;align-items:center;gap:10px;color:var(--ink)}
-  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--flame);font-size:.85rem}
-  .step .detail{display:none;margin-top:10px;color:var(--muted);font-size:.95rem}
-  .step.open{background:linear-gradient(180deg,rgba(251,146,60,.1),transparent);border-color:var(--flame)}
-  .step.open .detail{display:block}
 
-  /* ====================================================================
-     CLUSTER EXECUTION LAB — reusable toolkit for the step-by-step
-     "how it runs on the Spark nodes / how the shuffle works" animations.
-     ==================================================================== */
+  /* ---- cluster execution lab ---- */
   .cluster{margin:18px 0}
-  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:14px 0}
-  .node{border:1px solid var(--line);border-radius:12px;padding:12px 12px 14px;background:rgba(255,255,255,.03);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
-  .node.driver{border-color:rgba(63,169,201,.4)}
-  .node.active{border-color:var(--flame);box-shadow:0 0 0 1px var(--flame),0 14px 34px -18px rgba(249,115,22,.8);transform:translateY(-2px)}
-  .node h4{margin:0 0 9px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
-  .node.driver h4{color:var(--cyan)}
-  .node .core{font-family:"Spline Sans Mono",monospace;font-size:.58rem;color:var(--faint);margin-left:auto}
-  .parts{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
-  .part{font-family:"Spline Sans Mono",monospace;font-size:.66rem;padding:4px 8px;border-radius:7px;background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s,border-color .35s}
-  .part.k0{background:rgba(249,115,22,.22);border-color:rgba(249,115,22,.55);color:#fcd9b6}
-  .part.k1{background:rgba(139,92,246,.22);border-color:rgba(139,92,246,.55);color:#ddd0ff}
-  .part.k2{background:rgba(63,169,201,.22);border-color:rgba(63,169,201,.55);color:#c5ebf5}
-  .part.k3{background:rgba(245,165,36,.22);border-color:rgba(245,165,36,.55);color:#ffe6b0}
-  .part.dim{opacity:.28}
+  .nodes{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:11px;margin:14px 0}
+  .node{border:1px solid var(--line);border-radius:10px;padding:11px 11px 13px;background:var(--bg);position:relative;transition:border-color .3s,box-shadow .3s,transform .3s}
+  .node.driver{border-color:rgba(43,43,240,.4);background:var(--accent-soft)}
+  .node.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);transform:translateY(-2px)}
+  .node h4{margin:0 0 9px;font-family:"JetBrains Mono",monospace;font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .node.driver h4{color:var(--accent-2)}
+  .node .core{font-family:"JetBrains Mono",monospace;font-size:.56rem;color:var(--faint);margin-left:auto}
+  .parts{display:flex;flex-wrap:wrap;gap:5px;min-height:28px}
+  .part{font-family:"JetBrains Mono",monospace;font-size:.64rem;padding:4px 7px;border-radius:5px;background:#ece6d6;border:1px solid var(--line);color:var(--ink);transition:transform .45s cubic-bezier(.2,.9,.3,1.4),background .35s,opacity .35s}
+  .part.k0{background:rgba(37,99,235,.14);border-color:rgba(37,99,235,.42);color:#1d4ed8}
+  .part.k1{background:rgba(13,148,136,.14);border-color:rgba(13,148,136,.42);color:#0f766e}
+  .part.k2{background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.4);color:var(--ok)}
+  .part.k3{background:rgba(120,80,180,.14);border-color:rgba(120,80,180,.4);color:#6b46a8}
+  .part.dim{opacity:.3}
   .part.pop{animation:partpop .5s ease}
   @keyframes partpop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
-  .spillzone{margin-top:8px;border-top:1px dashed rgba(255,255,255,.14);padding-top:7px;font-size:.58rem;color:var(--faint);font-family:"Spline Sans Mono",monospace;min-height:14px}
-  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.16),transparent)}
-  .wire.lit{background:linear-gradient(90deg,transparent,var(--flame),var(--violet),transparent)}
-  .stepper{display:flex;align-items:center;gap:10px;margin-top:16px;flex-wrap:wrap}
-  .stepper button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:1px solid var(--line);background:rgba(255,255,255,.05);color:var(--ink);padding:8px 15px;border-radius:9px;cursor:pointer;transition:.18s}
-  .stepper button:hover{border-color:var(--flame);color:#fff}
-  .stepper button:disabled{opacity:.38;cursor:default;border-color:var(--line)}
-  .stepper .play{background:var(--flame-2);color:#160d06;border-color:var(--flame-2)}
-  .stepper .pbar{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;min-width:90px}
-  .stepper .pfill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--violet),var(--flame));transition:width .35s ease}
-  .stepper .scount{font-family:"Spline Sans Mono",monospace;font-size:.72rem;color:var(--faint);white-space:nowrap}
-  .narr{margin-top:14px;font-size:.95rem;padding:12px 15px;border-radius:10px;background:rgba(255,255,255,.03);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
-  .narr b{color:var(--flame)}
-  .narr .stage{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;color:var(--violet-2);display:block;margin-bottom:3px}
-  .panes{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
-  @media(max-width:620px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
-  .pane{background:#0a0e15;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-  .pane .ptitle{font-family:"Spline Sans Mono",monospace;font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
-  .codepane{font-family:"Spline Sans Mono",monospace;font-size:.78rem;white-space:pre-wrap;color:#e8eef2;line-height:1.7}
-  .codepane .ln{display:block;padding:1px 6px;border-radius:5px;transition:background .3s}
-  .codepane .ln.hl{background:rgba(249,115,22,.2)}
-  .codepane .c{color:#7c8aa0}.codepane .k{color:#fbbf77}.codepane .s{color:#b7e88f}
-  .datapane{font-family:"Spline Sans Mono",monospace;font-size:.74rem;color:var(--muted)}
-  .datapane .row{padding:2px 6px;border-radius:5px;transition:background .3s}
-  .datapane .row.hl{background:rgba(139,92,246,.18);color:var(--ink)}
+  .wire{height:2px;border-radius:2px;margin:6px 0 2px;background:linear-gradient(90deg,transparent,var(--line),transparent)}
+  .wire.lit{background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+  .stepper{display:flex;align-items:center;gap:9px;margin-top:16px;flex-wrap:wrap}
+  .stepper button{font-family:"JetBrains Mono",monospace;font-weight:500;font-size:.76rem;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:8px 14px;border-radius:7px;cursor:pointer;transition:.15s}
+  .stepper button:hover{border-color:var(--accent);color:var(--accent-2)}
+  .stepper button:disabled{opacity:.4;cursor:default;border-color:var(--line)}
+  .stepper .play{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stepper .pbar{flex:1;height:4px;border-radius:3px;background:var(--line-2);overflow:hidden;min-width:80px}
+  .stepper .pfill{height:100%;width:0;background:var(--accent);transition:width .35s ease}
+  .stepper .scount{font-family:"JetBrains Mono",monospace;font-size:.7rem;color:var(--faint);white-space:nowrap}
+  .narr{margin-top:14px;font-size:.96rem;padding:12px 15px;border-radius:8px;background:var(--bg);border:1px dashed var(--line);min-height:1.4em;line-height:1.5}
+  .narr b{color:var(--accent-2)}
+  .narr .stage{font-family:"JetBrains Mono",monospace;font-size:.64rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent-2);display:block;margin-bottom:3px}
+  .panes{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:14px}
+  @media(max-width:600px){.panes{grid-template-columns:1fr}.nodes{grid-template-columns:repeat(2,1fr)}}
+  .pane{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+  .pane .ptitle{font-family:"JetBrains Mono",monospace;font-size:.6rem;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:8px}
+  .codepane{font-family:"JetBrains Mono",monospace;font-size:.76rem;white-space:pre-wrap;color:#2b2620;line-height:1.7}
+  .codepane .ln{display:block;padding:1px 6px;border-radius:4px;transition:background .3s}
+  .codepane .ln.hl{background:rgba(43,43,240,.13)}
+  .codepane .c{color:#948b76}.codepane .k{color:var(--accent)}.codepane .s{color:#2f7d55}
+  .datapane{font-family:"JetBrains Mono",monospace;font-size:.72rem;color:var(--muted)}
+  .datapane .row{padding:2px 6px;border-radius:4px;transition:background .3s}
+  .datapane .row.hl{background:rgba(43,43,240,.13);color:var(--ink)}
 
-  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:var(--faint);font-size:.86rem}
-  footer a{color:var(--flame);text-decoration:none;border-bottom:1px solid rgba(251,146,60,.3)}
-  footer a:hover{border-color:var(--flame)}
-  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
-  @media(max-width:560px){header{padding:48px 0 28px}input[type=range]{width:160px}}
+  footer{padding:38px 0 64px;border-top:1px solid var(--line);color:var(--faint);font-family:"JetBrains Mono",monospace;font-size:.72rem;line-height:1.7;letter-spacing:.02em}
+  footer .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+  footer a{color:var(--accent);border-bottom-color:rgba(43,43,240,.3)}
+  .foot-meta{text-transform:uppercase;letter-spacing:.08em;color:var(--faint);margin-top:20px;font-size:.66rem}
+
+  @media(max-width:560px){header{padding:44px 0 26px}input[type=range]{width:150px}}
+  @media(prefers-reduced-motion:reduce){
+    .part,.node,.bk,.stepper .pfill{transition:none}
+    .part.pop{animation:none}
+  }
 </style>
 </head>
 <body>
 
+<div class="topbar">
+  <div class="row">
+    <a class="brand" href="../../index.html">PySpark / Performance</a>
+    <span class="loc">Fig_11 &nbsp;·&nbsp; Lesson 11 / 14</span>
+  </div>
+</div>
+
 <header>
   <div class="wrap">
-    <p class="crumb"><a href="../../index.html">&larr; PySpark Performance track</a></p>
-    <p class="eyebrow">Databricks · PySpark Performance · Lesson 11</p>
-    <h1>Bucketing to<br>eliminate the <span class="drip">shuffle.</span></h1>
-    <p class="lede">When you can't broadcast and you join two big tables on the same key every day, you re-pay the full double shuffle every run. Bucketing pays it once, on write, and removes the <code>Exchange</code> from every future join.</p>
-    <div class="meta">
-      <span class="pill">Spark <b>3.2+ / DBR LTS</b></span>
-      <span class="pill">bucketing.enabled <b>true (2.0+)</b></span>
-      <span class="pill">coalesceBucketsInJoin <b>false (3.1+)</b></span>
-      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    <div class="figstamp">
+      <span>Fig_11 · Bucketing · v1.0</span>
+      <span>OSS Spark + Azure Databricks</span>
+    </div>
+    <h1 class="display">Bucketing</h1>
+    <p class="subline">Pre-shuffle once on write · no Exchange on read</p>
+    <p class="lede">When you can't broadcast and you join two big tables on the <strong>same key every day</strong>, you re-pay the full double shuffle on every run. Bucketing pays that cost <strong>once, on write</strong> — and removes the <code>Exchange</code> from every future join on that key. <em>Move the shuffle from read time to write time, then reuse it forever.</em></p>
+    <div class="specs">
+      <span class="spec">Spark <b>3.2+</b> / DBR LTS</span>
+      <span class="spec">bucketing.enabled <b>true</b></span>
+      <span class="spec">coalesceBucketsInJoin <b>false (3.1+)</b></span>
+      <span class="spec">verified <b>Jun 2026</b></span>
     </div>
   </div>
 </header>
 
 <main class="wrap">
 
-  <!-- ============ WHAT IT IS ============ -->
+  <!-- ============ 01 · WHAT IT IS (Rung 1 — orientation) ============ -->
   <section>
-    <h2>What it is</h2>
-    <p><strong>Bucketing</strong> physically pre-shuffles a table by a key <strong>once, when you write it</strong>, and stores the result as a fixed number of hash-partitioned files ("buckets"). Later, any join or aggregation on that key can skip the shuffle, because the data already sits where the engine would have moved it:</p>
+    <p class="seclabel">01 · What it is</p>
+    <h2>Pre-shuffle a table by its key, once, on write</h2>
+    <p><strong>Bucketing</strong> physically pre-shuffles a table by a key <strong>once, when you write it</strong>, and stores the result as a fixed number of hash-partitioned files — the "buckets." Any later join or aggregation on that key can then skip the shuffle, because the data already sits <em>exactly where the engine would otherwise have moved it</em>.</p>
+    <p><span class="chip analogy">analogy</span> A shuffle join is two delivery firms each re-sorting <strong>all</strong> their parcels by postcode at the depot, every morning, before they can be matched. Bucketing is pre-sorting the warehouse shelves by postcode <strong>once</strong> — every future match just reads the right shelf.</p>
+    <p>Three moves make a bucketed table, and the rest of this lesson keeps pointing back to them rather than re-listing:</p>
     <ul>
-      <li>You write with <code>df.write.bucketBy(N, "key").sortBy("key").saveAsTable("cat.sch.tbl")</code>.</li>
-      <li>Spark hashes every row's key and sends it to bucket <code>hash(key) % N</code>, and (with <code>sortBy</code>) sorts within each bucket.</li>
-      <li>Two tables bucketed by the <strong>same key into the same N</strong> have matching layouts — corresponding buckets are co-located — so the planner <strong>omits the <code>Exchange</code> (shuffle)</strong> before the join.</li>
+      <li>You write with <code>df.write.bucketBy(n, "key").sortBy("key").saveAsTable("cat.sch.tbl")</code>.</li>
+      <li>Spark sends every row to bucket <code>hash(key) % n</code>, and (with <code>sortBy</code>) sorts within each bucket.</li>
+      <li>Two tables bucketed by the <strong>same key into the same n</strong> have matching layouts — corresponding buckets are co-located — so the planner <strong>omits the <code>Exchange</code></strong> before the join.</li>
     </ul>
     <div class="callout">
       <span class="lbl">The one rule to remember</span>
       The expensive part of a shuffle join is the <code>Exchange</code> that moves both sides across the network. Bucketing pays that cost <strong>once on write</strong> and reuses it on <strong>every</strong> read — but only if both tables share the <strong>same key and the same bucket count</strong>. Mismatch either and the shuffle comes right back.
     </div>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">What bucketing does</div>
+        <p>Pre-shuffles a table by a key <strong>once, on write</strong>, into a fixed number of hash files (<code>hash(key) % n</code>) so later joins can skip the shuffle.</p>
+      </div>
+      <div class="quickcard ok">
+        <div class="qtitle">Same-N buckets → no Exchange</div>
+        <p>Both tables bucketed by the same key into the <strong>same n</strong> → layouts match → the planner drops the pre-join <code>Exchange</code>.</p>
+      </div>
+      <div class="quickcard danger">
+        <div class="qtitle">Mismatched buckets → shuffle</div>
+        <p>Different key or different bucket count → <code>HashPartitioning</code> differs → the shuffle returns on one side.</p>
+      </div>
+    </div>
   </section>
 
-  <!-- ============ WHY IT MATTERS ============ -->
+  <!-- ============ 02 · WHY IT MATTERS (stakes only) ============ -->
   <section>
-    <h2>Why it matters</h2>
+    <p class="seclabel">02 · Why it matters</p>
+    <h2>The one tool for big ⋈ big on a repeated key</h2>
     <ul>
-      <li>A <strong>shuffle</strong> — Spark moving rows across the network so equal keys land together — is the most expensive thing a wide operation does: network I/O + disk spill + serialization + a stage boundary where every executor waits for the slowest.</li>
-      <li>A <strong>broadcast join</strong> (Lesson 02) removes the shuffle only when one side is small. When you join <strong>big ⋈ big</strong> repeatedly on the same key — a daily <code>transactions ⋈ accounts</code> — neither side broadcasts and you re-pay the full double shuffle <strong>every run</strong>. Bucketing fixes that: shuffle once on write, never again.</li>
-      <li>Interviewers love the contrast: <em>"You can't broadcast and the join is the same every day — what do you do?"</em> The senior answer is <strong>"bucket both tables on the join key into matching buckets so the <code>Exchange</code> disappears"</strong> — and you prove it in <code>df.explain()</code>.</li>
+      <li><strong>The shuffle is the most expensive thing a wide operation does</strong> — network I/O + disk spill + serialization + a stage boundary where every executor waits for the slowest. Eliminating it is the point of the whole track.</li>
+      <li><strong>Broadcast (Lesson 02) only helps when one side is small.</strong> When you join <strong>big ⋈ big</strong> repeatedly on the same key — a daily <code>transactions&nbsp;⋈&nbsp;accounts</code> — neither side broadcasts and you re-pay the double shuffle <em>every run</em>. Bucketing is the fix nothing else covers.</li>
+      <li><strong>It's a classic senior probe:</strong> <em>"You can't broadcast and the join is the same every day — what do you do?"</em> The answer is <strong>"bucket both tables on the join key into matching buckets so the <code>Exchange</code> disappears"</strong> — and you prove it in <code>df.explain()</code>. The <em>how</em> is the next section.</li>
     </ul>
   </section>
 
-  <!-- ============ CLUSTER EXECUTION LAB ============ -->
+  <!-- ============ 03 · DEEP DIVE (the canonical home — Rung 2 + 3) ============ -->
   <section>
-    <h2>See it run on the cluster</h2>
-    <p>Step through how a daily <code>transactions&nbsp;&#8904;&nbsp;accounts</code> join on <code>account_id</code> executes across <strong>1 driver + 3 executors</strong>. First the unbucketed shuffle moves <strong>both</strong> tables over the network; then bucketing pre-places matching keys so the buckets are co-located and the join runs locally with <strong>no <code>Exchange</code></strong>; finally see what a bucket-count mismatch brings back.</p>
+    <p class="seclabel">03 · How it works — deep dive</p>
+    <h2>Write once, and every future join inherits the layout</h2>
+    <p class="dropcap">A sort-merge join (Lesson 02) needs matching keys in the same partition on both sides; it gets there by shuffling both sides into <code>spark.sql.shuffle.partitions</code> (200) hash buckets, then sorting and merging. Bucketing performs that <em>exact</em> hash-partitioning ahead of time and stores it. Each idea below is explained here once — later sections show it, verify it, and help you decide, but don't re-explain it.</p>
+
+    <h3>3.1 · Writing a bucketed table (<code>bucketBy</code> + <code>sortBy</code> + <code>saveAsTable</code>)</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> <code>bucketBy(n, "key")</code> hash-partitions the output into exactly n files using <code>HashPartitioning(key)</code>. <code>sortBy("key")</code> sorts each bucket, so a later join does an efficient <strong>sort-merge inside each bucket</strong> with no separate sort stage. <code>saveAsTable(...)</code> records the bucket spec (key + count) in the metastore / Unity Catalog for every future query.</li>
+      <li><strong>Why it works.</strong> When the planner sees a join whose required distribution is <code>HashPartitioning(key, n)</code> and the table already advertises exactly that, it knows the data is <strong>already where it needs to be</strong> and drops the pre-join <code>Exchange</code>.</li>
+      <li><strong>Trade-off.</strong> You pay a full shuffle + sort <strong>at write time</strong>, and re-pay it on every full rewrite. It only pays off when the table is joined on that key <strong>many</strong> times.</li>
+    </ul>
+    <p><span class="chip usecase">use case</span> a 2 TB <code>transactions</code> table joined to a 300 GB <code>accounts</code> table on <code>account_id</code> every day — bucket both by <code>account_id</code> into the same n once; every daily join then runs with no <code>Exchange</code>.</p>
+
+    <h3>3.2 · Matching bucket counts → no <code>Exchange</code> (the core mechanism)</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> For the planner to skip the shuffle, two conditions must hold, straight from the SQL internals: (1) <strong>the number of partitions on both sides must be exactly the same</strong> (same bucket count), and (2) <strong>both join operators must use <code>HashPartitioning</code></strong> on the join key — which is precisely what <code>bucketBy</code> produces.</li>
+      <li><strong>Why it works.</strong> Bucket <code>i</code> of table A and bucket <code>i</code> of table B hold the same set of keys (same hash, same modulus), so they join locally, partition-for-partition, with <strong>no data movement</strong>.</li>
+      <li><strong>Trade-off.</strong> It's brittle — it holds <strong>only</strong> when the key and the count line up on both sides. Bucket into 256 on one and 200 on the other and the planner shuffles one side to reconcile them (§3.4).</li>
+    </ul>
+    <p><span class="chip analogy">analogy</span> two decks of cards already sorted into the same 256 numbered trays — to find matching pairs you compare tray-to-tray; you never re-deal.</p>
+
+    <h3>3.3 · Bucketing vs partitioning</h3>
+    <p>These are the two on-disk layout tools, and they solve <em>different</em> problems — the single distinction people most often blur:</p>
+    <div class="callout warn">
+      <span class="lbl">Bucketing ≠ partitioning</span>
+      <strong>Partitioning</strong> (<code>partitionBy</code>, Lesson 07) → <strong>directories</strong>, one per value; great for <strong>pruning</strong> a <strong>low-cardinality</strong> filter column (date, region). <strong>Bucketing</strong> (<code>bucketBy</code>) → a <strong>fixed number of files by hash</strong>; great for <strong>join/agg keys</strong>, often <strong>high-cardinality</strong> (user id, account id) — exactly the columns you must NOT partition by, or you'd explode into millions of tiny directories.
+    </div>
+    <p>They <strong>stack</strong>, they don't compete: <code>partitionBy("event_date").bucketBy(256, "user_id").sortBy("user_id")</code> prunes by date <em>and</em> removes the shuffle on <code>user_id</code> joins.</p>
+    <p><span class="chip usecase">use case</span> an <code>events</code> table <strong>partitioned by <code>event_date</code></strong> (one directory per day) <strong>and bucketed by <code>user_id</code></strong> (no shuffle on the join to <code>users</code>).</p>
+
+    <h3>3.4 · Mismatched counts &amp; <code>coalesceBucketsInJoin</code> (Rung 3)</h3>
+    <ul>
+      <li><strong>Mechanism.</strong> Different bucket counts → mismatched <code>HashPartitioning</code> → the planner <strong>shuffles one side</strong>. Since 3.1, <code>spark.sql.bucketing.coalesceBucketsInJoin.enabled</code> lets Spark <strong>coalesce the larger side</strong> down to the smaller count <strong>when one count is an exact multiple of the other</strong> (e.g. 256 → 64), avoiding the shuffle.</li>
+      <li><strong>Interview gotcha.</strong> The default is <strong><code>false</code></strong> (since 3.1.0). It's easy to assume it's on — it is not. And it only helps for multiple-of counts; 200 vs 256 still shuffles.</li>
+      <li><strong>Trade-off.</strong> Coalescing reads the larger side as fewer, bigger buckets — convenient, but the best practice is to <strong>pick one bucket count and use it on both tables</strong>.</li>
+    </ul>
+
+    <h3>3.5 · Classic bucketing vs the DataSource-V2 flag (don't confuse them)</h3>
+    <ul>
+      <li><code>spark.sql.sources.bucketing.enabled</code> = <strong>true</strong> (default, since 2.0.0) — the <strong>classic file-source</strong> bucketing this lesson is about.</li>
+      <li><code>spark.sql.sources.v2.bucketing.enabled</code> = <strong>true</strong> (since 3.3.0) — a <strong>different feature</strong>: the DataSource-V2 <strong>storage-partitioned join</strong> for V2 connectors that report their own partitioning. Same word, different machinery — don't cite the V2 flag for classic bucketing.</li>
+    </ul>
+    <div class="callout">
+      <span class="lbl">Bucketing vs AQE vs broadcast</span>
+      AQE (Lesson 05) coalesces <em>post-shuffle</em> partitions — it never retro-fits bucketing, and a one-sided bucketing still shuffles the other side. Broadcast (Lesson 02) removes the shuffle only when a side is small. Bucketing is the tool for <strong>big ⋈ big on the same key, repeatedly</strong>.
+    </div>
+  </section>
+
+  <!-- ============ DIAGRAM A · cluster lab (spatial facet, REQUIRED) ============ -->
+  <section>
+    <p class="seclabel">Figure A · where the rows go</p>
+    <h2>See it run across the cluster</h2>
+    <p>Step a daily <code>transactions&nbsp;⋈&nbsp;accounts</code> join on <code>account_id</code> across <strong>1 driver + 3 executors</strong>. First the unbucketed shuffle moves <strong>both</strong> tables over the network; then bucketing pre-places matching keys so the buckets are <strong>co-located</strong> and the join runs locally with <strong>no <code>Exchange</code></strong>; finally watch what a bucket-count mismatch brings back. Use <em>Prev / Play / Next</em> — the thing to watch is whether the wire between nodes lights up (a shuffle) or stays dark (co-located, local join).</p>
     <div class="lab" id="lab-run">
-      <div class="lab-head"><span class="lab-title">Cluster execution lab — bucketed join</span></div>
-      <p class="lab-sub">Records are chips colored by their key bucket. <span class="mono" style="color:var(--flame)">t</span> = transactions row, <span class="mono" style="color:var(--violet-2)">a</span> = accounts row. Watch where each lands and whether the network <code>Exchange</code> fires.</p>
+      <div class="lab-head"><span class="lab-title">bucketed join across the nodes</span></div>
+      <p class="lab-sub">Chips are records colored by their key bucket. <span class="mono" style="color:#1d4ed8">t</span> = transactions row, <span class="mono" style="color:var(--ok)">a</span> = accounts row. A lit wire = data crossing the network.</p>
 
       <div class="cluster" id="run-cluster">
         <div class="nodes" id="run-nodes">
@@ -246,9 +362,9 @@
       </div>
 
       <div class="stepper">
-        <button id="run-prev" aria-label="Previous step">&larr; Prev</button>
-        <button id="run-play" class="play" aria-label="Play">&#9654; Play</button>
-        <button id="run-next" aria-label="Next step">Next &rarr;</button>
+        <button id="run-prev">&lsaquo; Prev</button>
+        <button id="run-play" class="play">&#9654; Play</button>
+        <button id="run-next">Next &rsaquo;</button>
         <div class="pbar"><div class="pfill" id="run-pfill"></div></div>
         <span class="scount" id="run-scount">step 1 / 7</span>
       </div>
@@ -273,27 +389,99 @@
         <div class="pane">
           <div class="ptitle">Records by key bucket</div>
           <div class="datapane" id="run-data">
-            <div class="row" data-r="0"><span style="color:var(--flame)">t</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
-            <div class="row" data-r="1"><span style="color:var(--flame)">t</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
-            <div class="row" data-r="2"><span style="color:var(--flame)">t</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
-            <div class="row" data-r="3"><span style="color:var(--violet-2)">a</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
-            <div class="row" data-r="4"><span style="color:var(--violet-2)">a</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
-            <div class="row" data-r="5"><span style="color:var(--violet-2)">a</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
+            <div class="row" data-r="0"><span style="color:#1d4ed8">t</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
+            <div class="row" data-r="1"><span style="color:#1d4ed8">t</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
+            <div class="row" data-r="2"><span style="color:#1d4ed8">t</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
+            <div class="row" data-r="3"><span style="color:var(--ok)">a</span>: acct 100 &rarr; hash%3 = <b>0</b></div>
+            <div class="row" data-r="4"><span style="color:var(--ok)">a</span>: acct 211 &rarr; hash%3 = <b>1</b></div>
+            <div class="row" data-r="5"><span style="color:var(--ok)">a</span>: acct 322 &rarr; hash%3 = <b>2</b></div>
           </div>
         </div>
       </div>
 
       <div class="verdict" id="run-verdict"></div>
-      <p class="lab-sub" style="margin-top:14px">Simplified: 3 executors / 3 buckets and a handful of rows stand in for hundreds of buckets and billions of rows. The mechanism is identical.</p>
+      <p class="lab-note">Simplified illustration — 3 executors / 3 buckets and a handful of rows stand in for hundreds of buckets and billions of rows. The mechanism is identical.</p>
     </div>
   </section>
 
-  <!-- ============ INTERACTIVE 1: SHUFFLE-ELIMINATOR ============ -->
+  <!-- ============ 04 · CODE + VERIFY ============ -->
   <section>
-    <h2>See it work — the shuffle eliminator</h2>
-    <p>Two big tables joined on <code>account_id</code>. Toggle "bucket both by the key" and watch the <code>Exchange</code> vanish from the plan. Then mismatch the bucket counts — the shuffle returns — and flip <code>coalesceBucketsInJoin</code> to rescue the multiple-of case.</p>
+    <p class="seclabel">04 · The code — and how to verify it</p>
+    <h2>Four moves, each with its proof</h2>
+    <p>Every technique below is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. The proof for bucketing is always the <strong>absence of <code>Exchange</code></strong> under the join. Apply, then verify; never assume.</p>
+    <div class="callout">
+      <span class="lbl">Simple reading rule</span>
+      Before you trust any bucketed join, ask one question: <strong>"Are both sides bucketed by the join key into the same number of buckets?"</strong> If yes, the plan should show a <code>SortMergeJoin</code> with <strong>no <code>Exchange</code></strong>. If either the key or the count differs, the shuffle is still there.
+    </div>
+
+    <h3>Write two tables bucketed by the same key into the same N</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Bucket BOTH tables by the join key (account_id) into the SAME number of buckets.</span>
+<span class="c"># bucketBy(n, key) -> HashPartitioning(account_id) into n files (the pre-shuffle)</span>
+<span class="c"># sortBy(key)      -> sort within each bucket so the read-side join skips its Sort too</span>
+<span class="c"># saveAsTable(...) -> REQUIRED: bucketing only works through a metastore/UC table</span>
+N = <span class="f">256</span>
+
+(transactions.write
+    .bucketBy(N, <span class="s">"account_id"</span>).sortBy(<span class="s">"account_id"</span>)
+    .mode(<span class="s">"overwrite"</span>)
+    .saveAsTable(<span class="s">"main.pyspark_perf.transactions_bucketed"</span>))
+
+(accounts.write
+    .bucketBy(N, <span class="s">"account_id"</span>).sortBy(<span class="s">"account_id"</span>)   <span class="c"># SAME key, SAME N</span>
+    .mode(<span class="s">"overwrite"</span>)
+    .saveAsTable(<span class="s">"main.pyspark_perf.accounts_bucketed"</span>))
+
+<span class="c"># VERIFY the stored bucket spec:</span>
+spark.sql(<span class="s">"DESCRIBE EXTENDED main.pyspark_perf.transactions_bucketed"</span>).show(<span class="f">50</span>, <span class="k">False</span>)
+<span class="c">#   -> Num Buckets: 256   Bucket Columns: [account_id]   Sort Columns: [account_id]</span></code></pre>
+    <p><code>spark.sql.sources.bucketing.enabled</code> is <code>true</code> by default — you don't set it to use bucketing; you'd only set it to <code>false</code> to prove the before-state.</p>
+
+    <h3>Join the bucketed tables and confirm the <code>Exchange</code> is gone</h3>
+    <pre><span class="tag">python</span><code>t = spark.table(<span class="s">"main.pyspark_perf.transactions_bucketed"</span>)
+a = spark.table(<span class="s">"main.pyspark_perf.accounts_bucketed"</span>)
+
+joined = t.join(a, <span class="s">"account_id"</span>)        <span class="c"># same key both tables are bucketed on</span>
+
+<span class="c"># VERIFY: a SortMergeJoin with NO Exchange under either side = shuffle eliminated.</span>
+joined.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   == Physical Plan ==</span>
+<span class="c">#   * SortMergeJoin [account_id], Inner</span>
+<span class="c">#   :- * FileScan ... transactions_bucketed   &lt;- no Exchange</span>
+<span class="c">#   +- * FileScan ... accounts_bucketed        &lt;- no Exchange</span></code></pre>
+
+    <h3>Contrast: the unbucketed join (the shuffle you're removing)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Unbucketed big-vs-big join: both sides shuffled (two Exchange nodes).</span>
+slow = transactions.join(accounts, <span class="s">"account_id"</span>)
+slow.explain(mode=<span class="s">"formatted"</span>)
+<span class="c">#   * SortMergeJoin [account_id], Inner</span>
+<span class="c">#   :- * Sort  +- Exchange hashpartitioning(account_id, 200)  &lt;- 2 TB shuffled</span>
+<span class="c">#   +- * Sort  +- Exchange hashpartitioning(account_id, 200)  &lt;- 300 GB shuffled</span>
+<span class="c"># VERIFY: Spark UI SQL tab — `slow` has two Exchange nodes; the bucketed join has none.</span></code></pre>
+
+    <h3>Stack partitioning (prune) with bucketing (no shuffle)</h3>
+    <pre><span class="tag">python</span><code><span class="c"># Prune by a low-cardinality filter column AND remove the shuffle on the join key.</span>
+(events.write
+    .partitionBy(<span class="s">"event_date"</span>)                     <span class="c"># directories -> partition pruning (L07)</span>
+    .bucketBy(<span class="f">256</span>, <span class="s">"user_id"</span>).sortBy(<span class="s">"user_id"</span>)     <span class="c"># hash files  -> no shuffle on user_id</span>
+    .mode(<span class="s">"overwrite"</span>)
+    .saveAsTable(<span class="s">"main.pyspark_perf.events_bpb"</span>))
+
+<span class="c"># VERIFY: the plan shows PartitionFilters on event_date AND no Exchange on the user_id join.</span></code></pre>
+
+    <p>Equivalent Spark SQL — bucketing declared in DDL:</p>
+    <pre><span class="tag">sql</span><code><span class="c">-- CLUSTERED BY ... INTO n BUCKETS is the SQL form of bucketBy/sortBy.</span>
+<span class="k">CREATE TABLE</span> main.pyspark_perf.accounts_bucketed
+<span class="k">CLUSTERED BY</span> (account_id) <span class="k">SORTED BY</span> (account_id) <span class="k">INTO</span> <span class="f">256</span> <span class="k">BUCKETS</span>
+<span class="k">AS SELECT</span> * <span class="k">FROM</span> main.pyspark_perf.accounts_raw;</code></pre>
+  </section>
+
+  <!-- ============ DIAGRAM B · shuffle-eliminator toggle (plan facet) ============ -->
+  <section>
+    <p class="seclabel">Figure B · the shuffle eliminator</p>
+    <h2>Watch the Exchange disappear</h2>
+    <p>This figure isolates a different thing from Figure A: not where the rows land, but <em>what the plan does</em>. Toggle "bucket both by the key" and watch the <code>Exchange</code> vanish from the join plan. Then mismatch the bucket counts — the shuffle returns — and flip <code>coalesceBucketsInJoin</code> to rescue the multiple-of case. Watch the "Exchange before join?" readout and the plan box.</p>
     <div class="lab" id="lab-bucket">
-      <div class="lab-head"><span class="lab-title">Bucketed-join shuffle eliminator</span></div>
+      <div class="lab-head"><span class="lab-title">bucket both, same N → no Exchange</span></div>
       <p class="lab-sub">A 2 TB <code>transactions</code> table joined to a 300 GB <code>accounts</code> table on <code>account_id</code> — too big to broadcast.</p>
       <div class="controls">
         <label class="toggle"><input type="checkbox" id="bx-on"> Bucket both tables by <code>account_id</code></label>
@@ -315,177 +503,18 @@
       <div class="planbox" id="bx-plan"></div>
       <div class="verdict" id="bx-verdict"></div>
       <div class="legend">
-        <span><i class="sw" style="background:linear-gradient(135deg,var(--flame),var(--flame-2))"></i> transactions bucket</span>
-        <span><i class="sw" style="background:linear-gradient(135deg,rgba(139,92,246,.5),rgba(124,58,237,.45))"></i> accounts bucket</span>
+        <span><i class="sw" style="background:var(--accent-soft);border-color:rgba(43,43,240,.42)"></i> transactions bucket</span>
+        <span><i class="sw" style="background:rgba(47,125,85,.14);border-color:rgba(47,125,85,.42)"></i> accounts bucket</span>
       </div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration: bucket files are drawn small; real tables use hundreds of buckets. Co-located = same key set in the same-numbered bucket on both sides.</p>
+      <p class="lab-note">Simplified illustration — bucket files drawn small; real tables use hundreds of buckets. Co-located = same key set in the same-numbered bucket on both sides.</p>
     </div>
   </section>
 
-  <!-- ============ HOW IT WORKS ============ -->
+  <!-- ============ 05 · DECISION TABLE (a decision at a glance, not a re-list) ============ -->
   <section>
-    <h2>How it works — deep dive</h2>
-
-    <h3>Quick recap: why a shuffle join is expensive</h3>
-    <p><span class="chip analogy">analogy</span> A shuffle join is like two delivery companies each re-sorting <strong>all</strong> their parcels by postcode at the depot, every morning, before they can be matched. Bucketing is pre-sorting the warehouse shelves by postcode <strong>once</strong> so the parcels are already grouped — every future match just reads the right shelf. A sort-merge join (Lesson 02) reaches "matching keys in the same partition" by shuffling both sides into <code>spark.sql.shuffle.partitions</code> (200) hash buckets. Bucketing performs that exact hash-partitioning <strong>ahead of time and stores it</strong>.</p>
-
-    <h3>1 · Writing a bucketed table (<code>bucketBy</code> + <code>sortBy</code> + <code>saveAsTable</code>)</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> <code>bucketBy(N, "key")</code> hash-partitions the output into exactly N files using <code>HashPartitioning(key)</code>. <code>sortBy("key")</code> sorts each bucket, so a later join does an efficient <strong>sort-merge inside each bucket</strong> with no separate sort stage. <code>saveAsTable(...)</code> stores the bucket spec (key + count) in the metastore / Unity Catalog for every future query.</li>
-      <li><strong>Why it works:</strong> when the planner sees a join whose required distribution is <code>HashPartitioning(key, n)</code> and the table already advertises exactly that, it knows the data is <strong>already where it needs to be</strong> and drops the pre-join <code>Exchange</code>.</li>
-      <li><strong>Trade-off:</strong> you pay a full shuffle + sort <strong>at write time</strong> (and re-pay it on every full rewrite). It only pays off when the table is joined on that key <strong>many</strong> times.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> a 2 TB <code>transactions</code> table joined to a 300 GB <code>accounts</code> table on <code>account_id</code> every day — bucket both by <code>account_id</code> into the same N once; every daily join then runs with no <code>Exchange</code>.</p>
-
-    <h3>2 · Two matching buckets → no <code>Exchange</code> (the core mechanism)</h3>
-    <ul>
-      <li><strong>Mechanism:</strong> for the planner to skip the shuffle, two conditions must hold: (1) <strong>the number of partitions on both sides must be exactly the same</strong> (same bucket count), and (2) <strong>both join operators must use <code>HashPartitioning</code></strong> on the join key — which is exactly what <code>bucketBy</code> produces.</li>
-      <li><strong>Why it works:</strong> bucket <code>i</code> of table A and bucket <code>i</code> of table B contain the same set of keys (same hash, same modulus), so they join locally, partition-for-partition, with <strong>no data movement</strong>.</li>
-      <li><strong>Trade-off:</strong> brittle — it holds <strong>only</strong> when the key and count line up on both sides. Bucket into 256 on one and 200 on the other and the planner shuffles one side to reconcile them.</li>
-    </ul>
-    <p><span class="chip analogy">analogy</span> two decks of cards already sorted into the same 256 numbered trays — to find matching pairs you compare tray-to-tray; you never re-deal.</p>
-
-    <h3>3 · Bucketing vs partitioning (complementary, not rivals)</h3>
-    <ul>
-      <li><strong>Partitioning</strong> (<code>partitionBy</code>, Lesson 07) → <strong>directories</strong>, one per value. Great for <strong>pruning</strong> a <strong>low-cardinality</strong> filter column (date, region).</li>
-      <li><strong>Bucketing</strong> (<code>bucketBy</code>) → a <strong>fixed number of files by hash</strong>. Great for <strong>join/agg keys</strong>, often <strong>high-cardinality</strong> (user id, account id) — exactly the columns you must NOT partition by, or you'd explode into millions of tiny directories.</li>
-      <li><strong>They stack:</strong> <code>partitionBy("event_date").bucketBy(256, "user_id").sortBy("user_id")</code> prunes by date <em>and</em> removes the shuffle on <code>user_id</code> joins.</li>
-    </ul>
-    <p><span class="chip usecase">use case</span> an <code>events</code> table <strong>partitioned by <code>event_date</code></strong> (one directory per day) <strong>and bucketed by <code>user_id</code></strong> (no shuffle on the join to <code>users</code>).</p>
-
-    <h3>4 · Mismatched bucket counts &amp; <code>coalesceBucketsInJoin</code></h3>
-    <ul>
-      <li><strong>Mechanism:</strong> different bucket counts → mismatched <code>HashPartitioning</code> → the planner <strong>shuffles one side</strong>. Since 3.1, <code>spark.sql.bucketing.coalesceBucketsInJoin.enabled</code> lets Spark <strong>coalesce the larger side</strong> to the smaller count <strong>when one count is an exact multiple of the other</strong> (e.g. 256 → 64), avoiding the shuffle.</li>
-      <li><strong>Interview gotcha:</strong> the default is <strong><code>false</code></strong> (since 3.1.0). It is easy to assume it's on — it is not. And it only helps for multiple-of counts; 200 vs 256 still shuffles.</li>
-      <li><strong>Trade-off:</strong> coalescing reads the larger side as fewer, bigger buckets — convenient, but the best practice is to <strong>pick one bucket count and use it on both tables</strong>.</li>
-    </ul>
-
-    <h3>5 · The classic flag vs the DataSource-V2 flag (don't confuse them)</h3>
-    <ul>
-      <li><code>spark.sql.sources.bucketing.enabled</code> = <strong>true</strong> (default, since 2.0.0) — the <strong>classic file-source</strong> bucketing this lesson is about.</li>
-      <li><code>spark.sql.sources.v2.bucketing.enabled</code> = <strong>true</strong> (since 3.3.0) — a <strong>different feature</strong>: the DataSource-V2 <strong>storage-partitioned join</strong> for V2 connectors that report their own partitioning. Same word, different machinery — don't cite the V2 flag for classic bucketing.</li>
-    </ul>
-    <div class="callout">
-      <span class="lbl">Bucketing vs AQE vs broadcast</span>
-      AQE (Lesson 05) coalesces <em>post-shuffle</em> partitions — it never retro-fits bucketing, and a one-sided bucketing still shuffles the other side. Broadcast (Lesson 02) removes the shuffle only when a side is small. Bucketing is the tool for <strong>big ⋈ big on the same key, repeatedly</strong>.
-    </div>
-  </section>
-
-  <!-- ============ INTERACTIVE 2: WRITE-PATH STEP-THROUGH ============ -->
-  <section>
-    <h2>Walk the write path, phase by phase</h2>
-    <p>Click each phase to see what <code>bucketBy(...).sortBy(...).saveAsTable(...)</code> actually does — and why the cost moves from read time to write time.</p>
-    <div class="lab" id="lab-write">
-      <div class="lab-head"><span class="lab-title">What bucketing does on write</span></div>
-      <p class="lab-sub">Writing <code>transactions</code> bucketed by <code>account_id</code> into N buckets.</p>
-      <div class="step" data-step><div class="head"><span class="ix">01</span> Hash-partition by the key into N buckets</div><div class="detail">Every row is sent to bucket <code>hash(account_id) % N</code> — a one-time shuffle at write time, the same hash-partitioning a sort-merge join would do at read time. This is the cost you're moving from "every read" to "once on write".</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">02</span> Sort each bucket by the key (<code>sortBy</code>)</div><div class="detail">Within each bucket the rows are sorted by <code>account_id</code>. A later sort-merge join can then merge bucket-for-bucket with <strong>no separate Sort stage</strong> — the data is already ordered on disk.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">03</span> Register the bucket spec in the metastore (<code>saveAsTable</code>)</div><div class="detail">The key and bucket count are stored as table metadata in Unity Catalog. <strong>This step is mandatory</strong> — bucketing is not supported for <code>save</code>, <code>insertInto</code>, or <code>jdbc</code>; only a registered table carries the spec the planner reads.</div></div>
-      <div class="step" data-step><div class="head"><span class="ix">04</span> Every future join inherits the layout — no <code>Exchange</code></div><div class="detail">When you join two such tables on <code>account_id</code> with the same N, the planner sees both already satisfy <code>HashPartitioning(account_id, N)</code> and drops the pre-join shuffle. The write-time cost is amortized across all future reads.</div></div>
-      <div class="verdict">The whole point: <b>move the shuffle from read time to write time</b>, then reuse it. Worth it when the table is joined on that key many times — not for a one-off read.</div>
-      <p class="lab-sub" style="margin-top:14px">Simplified illustration of the physical steps behind a bucketed write.</p>
-    </div>
-  </section>
-
-  <!-- ============ CODE + VERIFICATION ============ -->
-  <section>
-    <h2>The code you'll write (and how to verify it)</h2>
-    <div class="callout">
-      <span class="lbl">Track rule</span>
-      Every technique is paired with <strong>how to prove it worked</strong> — the <code>.explain()</code> plan node or the Spark-UI signal. Apply, then verify. Never assume.
-    </div>
-
-    <h3>Write two tables bucketed by the same key into the same N</h3>
-    <pre><span class="tag">python</span><code><span class="c"># Bucket BOTH tables by the join key (account_id) into the SAME number of buckets.</span>
-<span class="c"># bucketBy(n, key) -> HashPartitioning(account_id) into n files (the pre-shuffle)</span>
-<span class="c"># sortBy(key)      -> sort within each bucket so the read-side join skips its Sort too</span>
-<span class="c"># saveAsTable(...) -> REQUIRED: bucketing only works through a metastore/UC table</span>
-N = <span class="f">256</span>
-
-(transactions.write
-    .bucketBy(N, <span class="s">"account_id"</span>).sortBy(<span class="s">"account_id"</span>)
-    .mode(<span class="s">"overwrite"</span>)
-    .saveAsTable(<span class="s">"main.pyspark_perf_demo.transactions_bucketed"</span>))
-
-(accounts.write
-    .bucketBy(N, <span class="s">"account_id"</span>).sortBy(<span class="s">"account_id"</span>)   <span class="c"># SAME key, SAME N</span>
-    .mode(<span class="s">"overwrite"</span>)
-    .saveAsTable(<span class="s">"main.pyspark_perf_demo.accounts_bucketed"</span>))
-
-<span class="c"># VERIFY the stored bucket spec:</span>
-spark.sql(<span class="s">"DESCRIBE EXTENDED main.pyspark_perf_demo.transactions_bucketed"</span>).show(<span class="f">50</span>, <span class="k">False</span>)
-<span class="c">#   -> Num Buckets: 256   Bucket Columns: [account_id]   Sort Columns: [account_id]</span></code></pre>
-    <p><code>spark.sql.sources.bucketing.enabled</code> is <code>true</code> by default — you don't set it to use bucketing; you'd only set it to <code>false</code> to prove the before-state.</p>
-
-    <h3>Join the bucketed tables and confirm the <code>Exchange</code> is gone</h3>
-    <pre><span class="tag">python</span><code>t = spark.table(<span class="s">"main.pyspark_perf_demo.transactions_bucketed"</span>)
-a = spark.table(<span class="s">"main.pyspark_perf_demo.accounts_bucketed"</span>)
-
-joined = t.join(a, <span class="s">"account_id"</span>)        <span class="c"># same key both tables are bucketed on</span>
-
-<span class="c"># VERIFY: a SortMergeJoin with NO Exchange under either side = shuffle eliminated.</span>
-joined.explain(mode=<span class="s">"formatted"</span>)
-<span class="c">#   == Physical Plan ==</span>
-<span class="c">#   * SortMergeJoin [account_id], Inner</span>
-<span class="c">#   :- * FileScan ... transactions_bucketed   &lt;- no Exchange  ✅</span>
-<span class="c">#   +- * FileScan ... accounts_bucketed        &lt;- no Exchange  ✅</span></code></pre>
-
-    <h3>Contrast: unbucketed join (the shuffle you're removing)</h3>
-    <pre><span class="tag">python</span><code><span class="c"># ❌ Unbucketed big-vs-big join: both sides shuffled (two Exchange nodes).</span>
-slow = transactions.join(accounts, <span class="s">"account_id"</span>)
-slow.explain(mode=<span class="s">"formatted"</span>)
-<span class="c">#   * SortMergeJoin [account_id], Inner</span>
-<span class="c">#   :- * Sort  +- Exchange hashpartitioning(account_id, 200)  &lt;- 2 TB shuffled  ❌</span>
-<span class="c">#   +- * Sort  +- Exchange hashpartitioning(account_id, 200)  &lt;- 300 GB shuffled ❌</span>
-<span class="c"># Spark UI SQL tab: `slow` has two Exchange nodes; the bucketed join has none.</span></code></pre>
-
-    <h3>Combine partitioning (prune) with bucketing (no shuffle)</h3>
-    <pre><span class="tag">python</span><code><span class="c"># Prune by a low-cardinality filter column AND remove the shuffle on the join key.</span>
-(events.write
-    .partitionBy(<span class="s">"event_date"</span>)                     <span class="c"># directories -> partition pruning (L07)</span>
-    .bucketBy(<span class="f">256</span>, <span class="s">"user_id"</span>).sortBy(<span class="s">"user_id"</span>)     <span class="c"># hash files  -> no shuffle on user_id</span>
-    .mode(<span class="s">"overwrite"</span>)
-    .saveAsTable(<span class="s">"main.pyspark_perf_demo.events_bpb"</span>))
-
-<span class="c"># VERIFY: the plan shows PartitionFilters on event_date AND no Exchange on the user_id join.</span></code></pre>
-
-    <h3>Handle mismatched bucket counts (only when one is a multiple of the other)</h3>
-    <pre><span class="tag">python</span><code><span class="c"># If two tables are bucketed 256 and 64 on the same key, the counts don't match ->
-# by default Spark shuffles one side. Opt in to coalesce the larger side to 64.</span>
-spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enabled"</span>, <span class="k">True</span>)  <span class="c"># default False (3.1+)</span>
-
-<span class="c"># VERIFY: re-run .explain(); the 256-bucket side now reads as 64 buckets, Exchange gone.</span>
-<span class="c"># Best practice is still to pick ONE bucket count for both tables.</span></code></pre>
-
-    <p>Equivalent Spark SQL — bucketing declared in DDL:</p>
-    <pre><span class="tag">sql</span><code><span class="c">-- CLUSTERED BY ... INTO n BUCKETS is the SQL form of bucketBy/sortBy.</span>
-<span class="k">CREATE TABLE</span> main.pyspark_perf_demo.accounts_bucketed
-<span class="k">CLUSTERED BY</span> (account_id) <span class="k">SORTED BY</span> (account_id) <span class="k">INTO</span> <span class="f">256</span> <span class="k">BUCKETS</span>
-<span class="k">AS SELECT</span> * <span class="k">FROM</span> main.pyspark_perf_demo.accounts_raw;</code></pre>
-  </section>
-
-  <!-- ============ INTERACTIVE 3: TABBED PLAN COMPARE ============ -->
-  <section>
-    <h2>Compare the plans</h2>
-    <p>Switch scenarios to see the physical plan and which operators each one adds (or removes).</p>
-    <div class="lab" id="lab-plans">
-      <div class="lab-head"><span class="lab-title">Physical plan by scenario</span></div>
-      <div class="controls">
-        <div class="seg" id="pl-seg" role="group" aria-label="scenario">
-          <button data-s="none" aria-pressed="true">Unbucketed</button>
-          <button data-s="both" aria-pressed="false">Both bucketed, same N</button>
-          <button data-s="mis" aria-pressed="false">Mismatched N</button>
-          <button data-s="coal" aria-pressed="false">Mismatched + coalesce</button>
-        </div>
-      </div>
-      <div class="planbox" id="pl-plan"></div>
-      <div class="verdict" id="pl-note"></div>
-    </div>
-  </section>
-
-  <!-- ============ COMPARISON TABLE ============ -->
-  <section>
-    <h2>Comparison table</h2>
+    <p class="seclabel">05 · Decision table</p>
+    <h2>Bucketing vs the layouts it sits beside</h2>
+    <p>Read this by the problem you're solving — it answers "which tool removes which cost?" at a glance. (The <em>why</em> is §3; this is the <em>which</em>.)</p>
     <table class="tbl">
       <thead><tr><th>Dimension</th><th>Bucketing (<code>bucketBy</code>)</th><th>Partitioning (<code>partitionBy</code>)</th><th>Broadcast join (L02)</th></tr></thead>
       <tbody>
@@ -493,63 +522,59 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
         <tr><td><strong>Best column type</strong></td><td><strong>Join / agg key</strong> (often high-cardinality)</td><td><strong>Low-cardinality filter</strong> (date, region)</td><td>n/a (about table size)</td></tr>
         <tr><td><strong>What it removes</strong></td><td>The join/agg <strong><code>Exchange</code> (shuffle)</strong></td><td>Files you don't scan (<strong>pruning</strong>)</td><td>The big-side shuffle</td></tr>
         <tr><td><strong>Cost paid</strong></td><td>Full shuffle + sort <strong>once on write</strong></td><td>Many dirs; explosion if high-cardinality</td><td>Driver/executor memory for small side</td></tr>
-        <tr><td><strong>Best when</strong></td><td><strong>Big ⋈ big</strong> on a key, <strong>repeatedly</strong></td><td>You filter on that column often</td><td>One side ≤ ~10 MB</td></tr>
+        <tr><td><strong>Best when</strong></td><td class="risk-lo">Big ⋈ big on a key, repeatedly</td><td>You filter on that column often</td><td>One side ≤ ~10 MB</td></tr>
         <tr><td><strong>Requirement</strong></td><td><code>saveAsTable()</code>; <strong>same key + same N</strong></td><td><code>partitionBy</code> on write</td><td>Small side fits memory</td></tr>
-        <tr><td><strong>Verify in plan</strong></td><td><code>SortMergeJoin</code> with <strong>no <code>Exchange</code></strong></td><td><code>PartitionFilters: [...]</code></td><td><code>BroadcastHashJoin</code> + <code>BroadcastExchange</code></td></tr>
+        <tr><td><strong>Verify in plan</strong></td><td><code>SortMergeJoin</code>, <strong>no <code>Exchange</code></strong></td><td><code>PartitionFilters: [...]</code></td><td><code>BroadcastHashJoin</code> + <code>BroadcastExchange</code></td></tr>
       </tbody>
     </table>
   </section>
 
-  <!-- ============ USES / EDGE / LIMITS ============ -->
+  <!-- ============ 06 · EDGE CASES & LIMITS (Rung 3 — new nuance only) ============ -->
   <section>
-    <h2>Uses, edge cases &amp; limitations</h2>
-    <h3>Uses</h3>
+    <p class="seclabel">06 · Edge cases &amp; limitations</p>
+    <h2>Where it gets subtle</h2>
+    <p>New nuance an interviewer probes — not a re-run of §3:</p>
     <ul>
-      <li><strong>Big ⋈ big on the same key, run repeatedly</strong> — the canonical case bucketing exists for. Shuffle once on write, skip it on every read.</li>
-      <li><strong>Repeated aggregations on the same key</strong> — a <code>groupBy(key)</code> on a table bucketed by <code>key</code> also avoids the shuffle.</li>
-      <li><strong>Partition + bucket together</strong> — partition by a low-cardinality filter column to prune, bucket by the high-cardinality join key to skip the shuffle.</li>
+      <li><strong>Bucketing only one side.</strong> Both tables must share the <strong>same key and the same N</strong> — bucketing one alone doesn't help; the other side still shuffles to match, and you've paid a write-time shuffle for nothing.</li>
+      <li><strong>Bucketing a column you never join on.</strong> Bucketing on <code>customer_id</code> does nothing for a join on <code>account_id</code>. The bucket key must be the key you actually join / aggregate by, repeatedly.</li>
+      <li><strong>AQE doesn't retro-fit bucketing.</strong> AQE coalesces <em>post-shuffle</em> partitions; if only one side is bucketed, the other still shuffles. Bucketing acts at the layout layer, before any shuffle exists to coalesce.</li>
+      <li><strong>Over- or under-bucketing.</strong> Bucket count drives file size — too many → tiny files, too few → giant, skew-prone buckets. Size N to the table's size and key cardinality.</li>
     </ul>
-    <h3>Edge cases</h3>
+    <p><strong>Hard limits worth stating plainly:</strong></p>
     <ul>
-      <li><strong>Mismatched bucket counts</strong> — different N means the layouts don't match, so a shuffle returns. <code>coalesceBucketsInJoin</code> (off by default) only saves you when one count is an exact <strong>multiple</strong> of the other; 200 vs 256 still shuffles.</li>
-      <li><strong>Different bucket key than the join key</strong> — bucketing on <code>customer_id</code> does nothing for a join on <code>account_id</code>.</li>
-      <li><strong>AQE doesn't retro-fit bucketing</strong> — AQE coalesces post-shuffle partitions; if only one side is bucketed, the other still shuffles.</li>
-      <li><strong>Tiny tables</strong> — if one side broadcasts, broadcast it; bucketing is for the big-vs-big case.</li>
-      <li><strong>Over-bucketing</strong> — too many buckets → many tiny files; too few → giant, skew-prone buckets. Size N to the data.</li>
-    </ul>
-    <h3>Limitations</h3>
-    <ul>
-      <li><strong><code>saveAsTable()</code> only.</strong> Bucketing is <strong>not supported</strong> for <code>DataFrameWriter.save</code>, <code>.insertInto</code>, or <code>.jdbc</code> — you must write a metastore / UC-registered table, not plain files.</li>
-      <li><strong>Both sides must be bucketed</strong> the same way to skip the shuffle. One alone doesn't help — the other still shuffles to match.</li>
-      <li><strong>Re-bucketing cost.</strong> Changing the key or count means rewriting (re-shuffling) the whole table.</li>
+      <li><strong><code>saveAsTable()</code> only.</strong> Bucketing is <strong>not supported</strong> for <code>DataFrameWriter.save</code>, <code>.insertInto</code>, or <code>.jdbc</code> — you must write a metastore / UC-registered table, not plain files in a path.</li>
+      <li><strong>Re-bucketing is a full rewrite.</strong> Changing the key or count means re-shuffling the whole table — a real, recurring cost on every full rewrite.</li>
       <li><strong>Classic ≠ DataSource-V2.</strong> <code>spark.sql.sources.bucketing.enabled</code> (this lesson) is not <code>spark.sql.sources.v2.bucketing.enabled</code> (since 3.3.0, the storage-partitioned-join flag).</li>
     </ul>
   </section>
 
-  <!-- ============ GOTCHAS ============ -->
+  <!-- ============ 07 · GOTCHAS (mistake → one-line fix) ============ -->
   <section>
-    <h2>Common mistakes &amp; gotchas</h2>
-    <ul>
-      <li><strong>Using <code>save()</code>/<code>insertInto()</code>/<code>jdbc()</code> with <code>bucketBy</code>.</strong> Bucketing requires a registered table — it's a no-op (or errors) outside <code>saveAsTable()</code>.</li>
-      <li><strong>Bucketing only one side of the join.</strong> Both tables must share the <strong>same key and the same N</strong>, or the unbucketed side shuffles and you've gained nothing.</li>
-      <li><strong>Assuming <code>coalesceBucketsInJoin</code> is on.</strong> It defaults to <strong><code>false</code></strong> (since 3.1.0), and even on it only works when one count is a multiple of the other.</li>
-      <li><strong>Mismatched counts.</strong> 200 vs 256 buckets on the same key still triggers a shuffle. Pick one number and standardize it.</li>
-      <li><strong>Over- or under-bucketing.</strong> Bucket count drives file size — too many → tiny files, too few → giant buckets. Choose N from the table's size and key cardinality.</li>
-      <li><strong>Bucketing a column you never join on.</strong> It costs a write-time shuffle for nothing unless the bucket key is the key you actually join / aggregate by, repeatedly.</li>
-      <li><strong>Confusing the classic flag with the V2 flag.</strong> <code>spark.sql.sources.bucketing.enabled</code> vs <code>spark.sql.sources.v2.bucketing.enabled</code> are different features.</li>
-    </ul>
+    <p class="seclabel">07 · Common mistakes</p>
+    <h2>Gotchas — the mistake and its one-line fix</h2>
+    <table class="tbl">
+      <thead><tr><th>Mistake</th><th>Why it hurts</th><th>Better move</th></tr></thead>
+      <tbody>
+        <tr><td><strong><code>save()</code> / <code>insertInto()</code> / <code>jdbc()</code> with <code>bucketBy</code></strong></td><td>Bucketing is silently ignored — it needs a registered table.</td><td>Use <code>saveAsTable()</code>.</td></tr>
+        <tr><td><strong>Bucketing only one side of the join</strong></td><td>The other side still shuffles to match, so you paid a write-time shuffle for nothing.</td><td>Bucket both, same key and same N.</td></tr>
+        <tr><td><strong>Assuming <code>coalesceBucketsInJoin</code> is on</strong></td><td>It defaults to <code>false</code> (since 3.1.0) and only helps for multiple-of counts.</td><td>Opt in explicitly, or just use the same N.</td></tr>
+        <tr><td><strong>Mismatched counts (200 vs 256)</strong></td><td>The <code>HashPartitioning</code> differs, so the shuffle returns on one side.</td><td>Pick one number (a power of two is common) and standardize it.</td></tr>
+        <tr><td><strong>Confusing the classic flag with the V2 flag</strong></td><td>They are different features — citing the wrong one misleads.</td><td><code>sources.bucketing.enabled</code> ≠ <code>sources.v2.bucketing.enabled</code>.</td></tr>
+      </tbody>
+    </table>
   </section>
 
-  <!-- ============ REFERENCES ============ -->
+  <!-- ============ 08 · REFERENCES ============ -->
   <section>
-    <h2>References</h2>
-    <div class="doclinks">
-      <a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (bucketing, join strategies, AQE)</a>
-      <a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (bucketing.enabled, coalesceBucketsInJoin, v2.bucketing.enabled, shuffle.partitions)</a>
-      <a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.bucketBy.html">Apache Spark — DataFrameWriter.bucketBy / sortBy / saveAsTable (Python API)</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution</a>
-      <a href="https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/">Azure Databricks — Unity Catalog (saveAsTable, three-level names)</a>
-    </div>
+    <p class="seclabel">08 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://spark.apache.org/docs/latest/sql-performance-tuning.html">Apache Spark — SQL Performance Tuning (bucketing, join strategies, AQE)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/configuration.html">Apache Spark — Configuration (bucketing.enabled, coalesceBucketsInJoin, v2.bucketing.enabled, shuffle.partitions)</a></li>
+      <li><a href="https://spark.apache.org/docs/latest/api/python/reference/pyspark.sql/api/pyspark.sql.DataFrameWriter.bucketBy.html">Apache Spark — DataFrameWriter.bucketBy / sortBy / saveAsTable (Python API)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/aqe">Azure Databricks — Adaptive Query Execution</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/data-governance/unity-catalog/">Azure Databricks — Unity Catalog (saveAsTable, three-level names)</a></li>
+    </ul>
   </section>
 
 </main>
@@ -557,12 +582,13 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
 <footer>
   <div class="wrap">
     <p><strong>Sources — official Apache Spark + Azure Databricks documentation.</strong></p>
-    <p style="margin-top:18px">Content verified against Apache Spark &amp; Azure Databricks docs, June 2026. Part of the Databricks PySpark Performance learning path. OSS-Spark vs Databricks defaults are noted where they differ.</p>
+    <div class="doclinks"><a href="../../index.html">← Back to the PySpark Performance track</a></div>
+    <p class="foot-meta">Verified against Apache Spark &amp; Azure Databricks docs · Jun 2026 · OSS-vs-Databricks defaults noted where they differ · bucketing.enabled, coalesceBucketsInJoin default, and the saveAsTable-only limitation are doc-grounded.</p>
   </div>
 </footer>
 
 <script>
-/* ---- Cluster Execution Lab: how a bucketed join runs across driver + 3 executors ---- */
+/* ---- Figure A: CLUSTER EXECUTION LAB — how a bucketed join runs across 1 driver + 3 executors ---- */
 (function(){
   const root = document.getElementById('lab-run');
   if(!root) return;
@@ -626,7 +652,6 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       narr:'<b>Without bucketing.</b> Rows are scanned in arbitrary partitions — matching <code>account_id</code>s are scattered across executors, so the join can\'t run locally yet.',
       data:[],
       render:function(){
-        // scatter rows arbitrarily (not by key) across the 3 executors
         place(exParts[0], [recs[0],recs[4]], false);
         place(exParts[1], [recs[2],recs[3]], false);
         place(exParts[2], [recs[1],recs[5]], false);
@@ -637,7 +662,6 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       data:[0,1,2,3,4,5],
       flow:true,
       render:function(){
-        // after shuffle: rows land by key bucket -> co-located, but it cost a full exchange
         place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
         place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
         place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
@@ -648,7 +672,6 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       narr:'<b>Bucket both tables by the key into the SAME N on write.</b> <code>bucketBy(3,"account_id").saveAsTable(...)</code> pre-shuffles <b>once</b> — <code>saveAsTable</code> is required so the bucket spec is stored.',
       data:[0,1,2,3,4,5],
       render:function(){
-        // records pre-placed by key bucket on write -> matching buckets co-located
         place(exParts[0], recs.filter(function(r){return r.bk===0;}), false);
         place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
         place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
@@ -662,14 +685,13 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
         place(exParts[1], recs.filter(function(r){return r.bk===1;}), false);
         place(exParts[2], recs.filter(function(r){return r.bk===2;}), false);
         exNodes.forEach(function(n){ n.classList.add('active'); });
-        verdict.innerHTML='No arrows. The plan is a <code>SortMergeJoin</code> with <b>no <code>Exchange</code></b> under either side — the daily shuffle is gone for good.';
+        verdict.innerHTML='No lit wire. The plan is a <code>SortMergeJoin</code> with <b>no <code>Exchange</code></b> under either side — the daily shuffle is gone for good.';
       }},
     { stage:'Mismatched bucket counts', code:[8],
       narr:'<b>Mismatch the bucket counts</b> (e.g. 3 vs 2) and the layouts no longer line up — the <code>HashPartitioning</code> differs, so the <b>shuffle returns</b> on one side.',
       data:[],
       flow:true,
       render:function(){
-        // accounts side re-shuffled to reconcile counts
         place(exParts[0], [recs[0],recs[3]], false);
         place(exParts[1], [recs[1]], false);
         place(exParts[2], [recs[2]], false);
@@ -720,7 +742,7 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
   go(0);
 })();
 
-/* ---- Diagram 1: bucketed-join shuffle eliminator ---- */
+/* ---- Figure B: bucketed-join shuffle eliminator (toggle Exchange in/out of the plan) ---- */
 (function(){
   const root = document.getElementById('lab-bucket');
   if(!root) return;
@@ -769,8 +791,8 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       plan.innerHTML =
         '<span class="dim">== Physical Plan ==</span>\n' +
         'SortMergeJoin [account_id], Inner\n' +
-        ':- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)  <span class="bad">&lt;- 2 TB shuffled ❌</span>\n' +
-        '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)  <span class="bad">&lt;- 300 GB shuffled ❌</span>';
+        ':- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)  <span class="bad">&lt;- 2 TB shuffled</span>\n' +
+        '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)  <span class="bad">&lt;- 300 GB shuffled</span>';
       verdict.innerHTML = '<b>No bucketing.</b> Both big tables are hash-shuffled into 200 partitions on every run — two <code>Exchange</code> nodes, the full double shuffle.';
       return;
     }
@@ -786,8 +808,8 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       plan.innerHTML =
         '<span class="dim">== Physical Plan ==</span>\n' +
         '<span class="ok">SortMergeJoin</span> [account_id], Inner\n' +
-        ':- FileScan transactions_bucketed   <span class="ok">&lt;- no Exchange ✅</span>\n' +
-        '+- FileScan accounts_bucketed        <span class="ok">&lt;- no Exchange ✅</span>';
+        ':- FileScan transactions_bucketed   <span class="ok">&lt;- no Exchange</span>\n' +
+        '+- FileScan accounts_bucketed        <span class="ok">&lt;- no Exchange</span>';
       verdict.innerHTML = '<b>Both bucketed by <code>account_id</code> into the same 8.</b> Layouts match → corresponding buckets are co-located → the planner drops the <code>Exchange</code>. The shuffle is gone.';
       return;
     }
@@ -805,8 +827,8 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
       plan.innerHTML =
         '<span class="dim">== Physical Plan ==</span>\n' +
         '<span class="ok">SortMergeJoin</span> [account_id], Inner\n' +
-        ':- FileScan transactions_bucketed <span class="dim">(8 → coalesced to 4 buckets)</span>  <span class="ok">&lt;- no Exchange ✅</span>\n' +
-        '+- FileScan accounts_bucketed <span class="dim">(4 buckets)</span>                <span class="ok">&lt;- no Exchange ✅</span>';
+        ':- FileScan transactions_bucketed <span class="dim">(8 → coalesced to 4)</span>  <span class="ok">&lt;- no Exchange</span>\n' +
+        '+- FileScan accounts_bucketed <span class="dim">(4 buckets)</span>            <span class="ok">&lt;- no Exchange</span>';
       verdict.innerHTML = '<b>coalesceBucketsInJoin saved it.</b> 8 is an exact multiple of 4, so Spark reads the larger side as 4 coalesced buckets — counts match, no shuffle. (Default is <code>false</code>; you opted in.)';
     } else {
       flagMatch(false);
@@ -819,7 +841,7 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
         '<span class="dim">== Physical Plan ==</span>\n' +
         'SortMergeJoin [account_id], Inner\n' +
         ':- FileScan transactions_bucketed (8 buckets)\n' +
-        '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 8)  <span class="bad">&lt;- 4→8 re-shuffle ❌</span>';
+        '+- Sort  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 8)  <span class="bad">&lt;- 4→8 re-shuffle</span>';
       verdict.innerHTML = '<b>Counts don\'t match (8 vs 4).</b> The <code>HashPartitioning</code> differs, so Spark shuffles one side to reconcile — the benefit is lost. Turn on <code>coalesceBucketsInJoin</code> (8 is a multiple of 4), or just use the same N everywhere.';
     }
   }
@@ -828,67 +850,6 @@ spark.conf.set(<span class="s">"spark.sql.bucketing.coalesceBucketsInJoin.enable
   misBox.addEventListener('change', render);
   coalBox.addEventListener('change', render);
   render();
-})();
-
-/* ---- Diagram 2: write-path step accordion ---- */
-(function(){
-  const root = document.getElementById('lab-write');
-  if(!root) return;
-  root.querySelectorAll('[data-step]').forEach(function(step){
-    step.addEventListener('click', function(){ step.classList.toggle('open'); });
-  });
-})();
-
-/* ---- Diagram 3: tabbed plan compare ---- */
-(function(){
-  const root = document.getElementById('lab-plans');
-  if(!root) return;
-  const seg  = root.querySelector('#pl-seg');
-  const plan = root.querySelector('#pl-plan');
-  const note = root.querySelector('#pl-note');
-  const data = {
-    none: {
-      plan: '<span class="dim">== Physical Plan ==</span>\n' +
-            'SortMergeJoin [account_id], Inner\n' +
-            ':- Sort [account_id ASC]\n' +
-            ':  +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)\n' +
-            '+- Sort [account_id ASC]\n' +
-            '   +- <span class="bad">Exchange</span> hashpartitioning(account_id, 200)',
-      note: '<b>Two exchanges + two sorts.</b> The unbucketed big-vs-big default — the full double shuffle re-paid on every run.'
-    },
-    both: {
-      plan: '<span class="dim">== Physical Plan ==</span>\n' +
-            '<span class="ok">SortMergeJoin</span> [account_id], Inner\n' +
-            ':- FileScan transactions_bucketed   <span class="ok">&lt;- no Exchange ✅</span>\n' +
-            '+- FileScan accounts_bucketed        <span class="ok">&lt;- no Exchange ✅</span>',
-      note: '<b>No Exchange, no Sort.</b> Same key, same N on both sides — bucket files are co-located and pre-sorted, so the shuffle and the sort both disappear. This is the win.'
-    },
-    mis: {
-      plan: '<span class="dim">== Physical Plan ==</span>\n' +
-            'SortMergeJoin [account_id], Inner\n' +
-            ':- FileScan transactions_bucketed (256 buckets)\n' +
-            '+- Sort [account_id ASC]\n' +
-            '   +- <span class="bad">Exchange</span> hashpartitioning(account_id, 256)  <span class="bad">&lt;- 64→256 re-shuffle ❌</span>',
-      note: '<b>The shuffle returns.</b> 256 vs 64 buckets means the partitionings differ, so Spark re-shuffles one side. Mismatched counts kill the benefit unless coalesce applies.'
-    },
-    coal: {
-      plan: '<span class="dim">== Physical Plan ==</span>\n' +
-            '<span class="ok">SortMergeJoin</span> [account_id], Inner\n' +
-            ':- FileScan transactions_bucketed <span class="dim">(256 → coalesced to 64)</span>  <span class="ok">&lt;- no Exchange ✅</span>\n' +
-            '+- FileScan accounts_bucketed <span class="dim">(64 buckets)</span>            <span class="ok">&lt;- no Exchange ✅</span>',
-      note: '<b>coalesceBucketsInJoin = true.</b> 256 is an exact multiple of 64, so the larger side is read as 64 coalesced buckets — counts match, shuffle avoided. Off by default (since 3.1).'
-    }
-  };
-  function show(s){
-    plan.innerHTML = data[s].plan;
-    note.innerHTML = data[s].note;
-    seg.querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', String(b.dataset.s === s)); });
-  }
-  seg.addEventListener('click', function(e){
-    const b = e.target.closest('button'); if(!b) return;
-    show(b.dataset.s);
-  });
-  show('none');
 })();
 </script>
 </body>

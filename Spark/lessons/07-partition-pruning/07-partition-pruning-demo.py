@@ -28,6 +28,12 @@
 # MAGIC   number much smaller than the table's total.
 # MAGIC - **Timing** — we trigger jobs with a `df.write.format("noop")` sink (runs the full plan,
 # MAGIC   writes nothing) so wall-clock reflects work done, not output I/O.
+# MAGIC
+# MAGIC ## Databricks single-user execution note
+# MAGIC Attach to a **classic single-user** cluster. The notebook creates Delta tables in Unity
+# MAGIC Catalog and then runs separate actions to show file pruning. Each action appears as a Spark UI
+# MAGIC job; focus on the SQL / DataFrame tab for the corresponding cell and inspect the scan node's
+# MAGIC partition/file-read metrics.
 
 # COMMAND ----------
 
@@ -37,11 +43,18 @@
 
 # COMMAND ----------
 
-catalog = "main"
+catalog = "main"      # existing catalog where you can create the demo schema/tables
 schema  = "pyspark_perf_demo"
 
 spark.sql(f"CREATE SCHEMA IF NOT EXISTS {catalog}.{schema}")
 spark.sql(f"USE {catalog}.{schema}")
+
+LESSON_ID = "Lesson 07 - Partition pruning"
+
+def mark_action(label):
+    """Label the next Spark action in the Spark UI for tutorial walkthroughs."""
+    spark.sparkContext.setJobGroup(f"{LESSON_ID}: {label}", f"{LESSON_ID}: {label}", True)
+    print(f"\nACTION -> {label}")
 
 fact_tbl = f"{catalog}.{schema}.sales"        # partitioned fact
 dim_tbl  = f"{catalog}.{schema}.date_dim"     # small dimension (broadcastable)
@@ -73,16 +86,20 @@ sales = (spark.range(0, 8_000_000)                       # 8M rows
               .withColumn("order_quarter", qcol.getItem((F.col("id") % F.lit(8)).cast("int")))
               .withColumnRenamed("id", "order_id"))
 
+mark_action("write partitioned fact setup table")
 (sales.write
       .mode("overwrite")
       .partitionBy("order_quarter")                      # ← creates /order_quarter=.../ directories
+      # ACTION: writes the partitioned fact table; inspect this only as setup, not pruning evidence.
       .saveAsTable(fact_tbl))                            # Delta is the default — no USING DELTA
 
 # A small dimension keyed on the same quarter values (broadcastable → DPP-eligible).
 date_dim = (spark.createDataFrame([(q, q.split("-")[0], q.split("-")[1]) for q in quarters],
                                   ["d_quarter", "q_label", "year"]))
+mark_action("write date dimension setup table")
 date_dim.write.mode("overwrite").saveAsTable(dim_tbl)
 
+mark_action("count setup tables")
 print("Rows in fact:", spark.table(fact_tbl).count())
 print("Rows in dim :", spark.table(dim_tbl).count())
 
@@ -124,9 +141,11 @@ import time
 
 # MEASURE 2 — timing via the noop sink (runs the full scan, writes nothing).
 # Compare a single-quarter pruned read vs the full-table read.
+mark_action("static pruning read: one quarter")
 t0 = time.time(); one_quarter.write.format("noop").mode("overwrite").save()
 print("pruned (1 quarter):", round(time.time() - t0, 2), "s")
 
+mark_action("baseline full-table scan")
 t0 = time.time(); spark.table(fact_tbl).write.format("noop").mode("overwrite").save()
 print("full scan (8 quarters):", round(time.time() - t0, 2), "s")
 
@@ -193,6 +212,7 @@ dpp_off = (spark.table(fact_tbl).join(spark.table(dim_tbl),
                                       spark.table(fact_tbl).order_quarter == spark.table(dim_tbl).d_quarter)
                 .where(col("d_quarter") == "Q4-2025"))
 dpp_off.explain(mode="formatted")     # PartitionFilters: []  → full fact scan ❌
+mark_action("DPP off before-state")
 t0 = time.time(); dpp_off.write.format("noop").mode("overwrite").save()
 print("DPP OFF:", round(time.time() - t0, 2), "s")
 
@@ -203,6 +223,7 @@ print("DPP reset to:", spark.conf.get("spark.sql.optimizer.dynamicPartitionPruni
 # COMMAND ----------
 
 # Now time it WITH DPP on — should read ~1/8 of the fact and run faster.
+mark_action("DPP on after-state")
 t0 = time.time(); dpp_query.write.format("noop").mode("overwrite").save()
 print("DPP ON :", round(time.time() - t0, 2), "s")
 
