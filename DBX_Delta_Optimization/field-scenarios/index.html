@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Field scenarios · Databricks Delta Optimization</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Spline+Sans+Mono:wght@400;500;600&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0c1116;
+    --paper:#f4efe6;
+    --paper-2:#ebe3d5;
+    --frost:#1f6f8b;       /* deep teal */
+    --frost-2:#3fa9c9;     /* bright cyan */
+    --ice:#9fe3f0;
+    --amber:#e07a2f;
+    --line:#d6cbb6;
+    --skip:#c9bfa9;
+    --hit:#1f6f8b;
+    --shadow:0 1px 0 rgba(0,0,0,.04),0 8px 28px -12px rgba(20,40,50,.35);
+    --radius:14px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Spline Sans",sans-serif;line-height:1.6;
+    background-image:radial-gradient(circle at 12% -10%,rgba(63,169,201,.12),transparent 40%),radial-gradient(circle at 100% 0,rgba(224,122,47,.08),transparent 35%);
+    background-attachment:fixed;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:0 24px}
+  code,.mono{font-family:"Spline Sans Mono",monospace}
+  code{background:var(--paper-2);padding:.08em .35em;border-radius:5px;font-size:.92em}
+
+  /* ---------- header ---------- */
+  header{padding:72px 0 40px;position:relative;overflow:hidden}
+  .eyebrow{font-family:"Spline Sans Mono",monospace;font-size:.78rem;letter-spacing:.22em;text-transform:uppercase;color:var(--frost);margin:0 0 14px}
+  h1{font-family:"Fraunces",serif;font-weight:900;font-size:clamp(2.6rem,7vw,4.6rem);line-height:.98;margin:0 0 18px;letter-spacing:-.02em}
+  h1 .drip{color:var(--frost-2);font-style:italic}
+  .lede{font-size:1.18rem;max-width:60ch;color:#33414b}
+  .meta{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+  .pill{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.05em;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;padding:6px 13px;color:#46535d}
+  .pill b{color:var(--amber);font-weight:600}
+  /* breadcrumb back-link to track index */
+  .crumb{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;margin:0 0 26px}
+  .crumb a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+
+  /* ---------- sections ---------- */
+  section{padding:30px 0;border-top:1px solid var(--line)}
+  h2{font-family:"Fraunces",serif;font-weight:600;font-size:clamp(1.6rem,3.5vw,2.2rem);margin:.2em 0 .5em;letter-spacing:-.01em}
+  h3{font-family:"Spline Sans",sans-serif;font-weight:700;font-size:1.08rem;margin:1.6em 0 .4em}
+  p{margin:.6em 0}
+  .num{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem;margin-right:.5em}
+  ul{padding-left:1.1em}
+  li{margin:.35em 0}
+  strong{font-weight:600}
+  .callout{background:linear-gradient(180deg,#fff8ec,#fdf1dd);border:1px solid #ecd9b6;border-left:4px solid var(--amber);border-radius:10px;padding:16px 18px;margin:20px 0}
+  .callout .lbl{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);display:block;margin-bottom:4px}
+  /* analogy + use-case chips */
+  .chip{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-bottom:6px}
+  .chip.analogy{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+  .chip.usecase{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+
+  /* ---------- table ---------- */
+  .tbl{width:100%;border-collapse:collapse;margin:18px 0;font-size:.95rem;background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--shadow)}
+  .tbl th{background:var(--frost);color:#eafaff;text-align:left;padding:11px 14px;font-weight:600;font-size:.82rem;letter-spacing:.03em}
+  .tbl td{padding:11px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .tbl tr:nth-child(even) td{background:var(--paper)}
+
+  /* ---------- code blocks ---------- */
+  pre{background:#0c1116;color:#e8eef2;border-radius:12px;padding:18px 20px;overflow-x:auto;font-size:.86rem;line-height:1.7;box-shadow:var(--shadow);margin:16px 0;position:relative}
+  pre code{background:none;padding:0}
+  pre .c{color:#7d8b96}      /* comment */
+  pre .k{color:#5fd0e8;font-weight:500} /* keyword */
+  pre .s{color:#e3a87a}      /* string */
+  pre .f{color:#b7e88f}      /* function/identifier accent (optional) */
+  .tag{position:absolute;top:10px;right:14px;font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.1em;color:#5a6a74;text-transform:uppercase}
+
+  /* ---------- interactive lab shell ---------- */
+  .lab{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow);margin:22px 0}
+  .lab-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:4px}
+  .lab-title{font-family:"Fraunces",serif;font-size:1.3rem;font-weight:600}
+  .lab-sub{color:#56636d;font-size:.93rem;margin:0 0 18px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+  .seg{display:inline-flex;background:var(--paper-2);border:1px solid var(--line);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:"Spline Sans",sans-serif;font-weight:600;font-size:.84rem;border:none;background:transparent;color:#56636d;padding:7px 14px;border-radius:7px;cursor:pointer;transition:.18s}
+  .seg button:hover{color:var(--ink)}
+  .seg button[aria-pressed="true"]{background:var(--frost);color:#fff;box-shadow:0 2px 8px -2px rgba(31,111,139,.5)}
+  .filterbar{display:flex;align-items:center;gap:12px;margin:14px 0 6px;flex-wrap:wrap}
+  .filterbar label{font-size:.86rem;color:#46535d;font-weight:500}
+  .filterbar select{font-family:"Spline Sans Mono",monospace;font-size:.84rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);cursor:pointer}
+  .qstr{font-family:"Spline Sans Mono",monospace;font-size:.82rem;background:var(--ink);color:#9fe3f0;padding:8px 12px;border-radius:8px;display:inline-block;margin-top:4px}
+  /* file grid (data-skipping style) */
+  .gridwrap{margin:20px 0 6px}
+  .glabel{font-family:"Spline Sans Mono",monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#6a7780;margin-bottom:8px}
+  .grid{display:grid;grid-template-columns:repeat(8,1fr);gap:7px}
+  .file{aspect-ratio:1;border-radius:7px;background:var(--paper-2);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;font-family:"Spline Sans Mono",monospace;font-size:.6rem;color:#8a7f6b;transition:transform .35s cubic-bezier(.2,.9,.3,1.4),background .3s,opacity .3s,box-shadow .3s;overflow:hidden}
+  .file .v{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:600}
+  .file.clustered{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e}
+  .file.hit{background:linear-gradient(135deg,var(--frost-2),var(--frost));border-color:#15596f;color:#eafaff;box-shadow:0 6px 16px -6px rgba(31,111,139,.7);transform:translateY(-3px) scale(1.04);z-index:2}
+  .file.skip{opacity:.32;filter:grayscale(.4)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:16px;font-size:.8rem;color:#56636d}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .sw{width:14px;height:14px;border-radius:4px;display:inline-block;border:1px solid var(--line)}
+  .readout{margin-top:20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .stat{background:var(--paper);border:1px solid var(--line);border-radius:11px;padding:14px 16px}
+  .stat .big{font-family:"Fraunces",serif;font-weight:900;font-size:1.9rem;line-height:1;color:var(--frost)}
+  .stat .lbl{font-size:.74rem;text-transform:uppercase;letter-spacing:.08em;color:#7a868f;margin-top:6px}
+  .stat.win .big{color:var(--amber)}
+  .verdict{margin-top:16px;font-size:.95rem;padding:12px 16px;border-radius:10px;background:var(--paper);border:1px dashed var(--line);min-height:1px}
+  .verdict b{color:var(--frost)}
+  /* clickable step / accordion (for lifecycle diagrams) */
+  .step{cursor:pointer;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:8px 0;background:#fff;transition:.18s;box-shadow:var(--shadow)}
+  .step:hover{border-color:var(--frost-2)}
+  .step .head{font-weight:600;display:flex;align-items:center;gap:10px}
+  .step .head .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-size:.85rem}
+  .step .detail{display:none;margin-top:10px;color:#3c4a53;font-size:.95rem}
+  .step.open{background:linear-gradient(180deg,#fff,#f0f7f9);border-color:var(--frost-2)}
+  .step.open .detail{display:block}
+
+  /* ---------- footer ---------- */
+  footer{padding:42px 0 70px;border-top:1px solid var(--line);color:#6a7780;font-size:.86rem}
+  footer a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  footer a:hover{border-color:var(--frost)}
+  .doclinks{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(6,1fr)}
+    header{padding:48px 0 28px}
+  }
+
+  /* ---------- lesson-04 specific (reuses palette) ---------- */
+  .seg button:disabled{opacity:.45;cursor:not-allowed}
+  /* big "after" file cells for the bin-packing simulator */
+  .grid.packed{grid-template-columns:repeat(4,1fr);gap:12px}
+  .grid.packed .file{aspect-ratio:2.1/1;font-size:.7rem}
+  .file.big{background:linear-gradient(135deg,#bfeaf3,#8fd6e8);border-color:#6fc3da;color:#0d4d5e;font-weight:600}
+  .file.merging{opacity:.15;transform:scale(.55)}
+  /* idempotency run-log */
+  .runlog{margin-top:8px;display:flex;flex-direction:column;gap:8px}
+  .runrow{display:flex;align-items:center;gap:12px;font-size:.9rem;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#fff;box-shadow:var(--shadow)}
+  .runrow .ix{font-family:"Spline Sans Mono",monospace;color:var(--frost);font-weight:600}
+  .runrow .badge{font-family:"Spline Sans Mono",monospace;font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:999px;margin-left:auto}
+  .runrow .badge.work{background:#fdeede;color:#b5641f;border:1px solid #f0d2a8}
+  .runrow .badge.noop{background:#e7f4f7;color:#1f6f8b;border:1px solid #bfe3ec}
+
+  /* ---------- field-scenarios page (reuses palette) ---------- */
+  .seclabel{font-family:"Spline Sans Mono",monospace;font-size:.74rem;letter-spacing:.16em;text-transform:uppercase;color:var(--frost);margin:0 0 6px;display:flex;align-items:center;gap:10px}
+  .seclabel::before{content:"";width:22px;height:2px;background:var(--amber);display:inline-block;border-radius:2px}
+  .quickgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:20px 0}
+  .quickcard{background:#fff;border:1px solid var(--line);border-top:3px solid var(--frost);border-radius:11px;padding:14px 16px;box-shadow:var(--shadow)}
+  .quickcard.amber{border-top-color:var(--amber)}
+  .quickcard .qtitle{font-family:"Spline Sans Mono",monospace;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--frost);margin-bottom:5px}
+  .quickcard.amber .qtitle{color:var(--amber)}
+  .quickcard p{font-size:.92rem;line-height:1.45;margin:0;color:#46535d}
+  .tbl td a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.35)}
+  .tbl td a:hover{border-color:var(--frost)}
+  .reflist{margin:10px 0;padding-left:1.2em}
+  .reflist li{margin:.5em 0}
+  .reflist a{color:var(--frost);text-decoration:none;border-bottom:1px solid rgba(31,111,139,.3)}
+  .reflist a:hover{border-color:var(--frost)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <p class="crumb"><a href="../index.html">&larr; Delta Optimization track</a> &nbsp;·&nbsp; Field guide</p>
+    <p class="eyebrow">Databricks · Delta · Field guide · v1.0</p>
+    <h1>Field <span class="drip">scenarios.</span></h1>
+    <p class="lede">These are the recurring layout and maintenance calls an FDE makes on real customer Delta tables — a table drowning in small files, a partition explosion, a filter that scans everything, a maintenance job that never keeps up. <strong>Each row is a decision, not a recipe:</strong> find where the read (or write) is actually paying, then reach for the smallest layout lever that fits.</p>
+    <div class="meta">
+      <span class="pill">Delta <b>default format</b></span>
+      <span class="pill">Unity Catalog <b>managed</b></span>
+      <span class="pill">Liquid clustering</span>
+      <span class="pill">Predictive optimization</span>
+      <span class="pill">Verified <b>Jun 2026 docs</b></span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO · the reflex ============ -->
+  <section>
+    <p class="seclabel">00 · How to read this guide</p>
+    <h2>Diagnose the layout, then pick the smallest lever</h2>
+    <div class="callout">
+      <span class="lbl">The FDE reflex</span>
+      Before changing a table's layout, <strong>find where the cost actually is</strong>. Ask which one it is: <strong>too many small files</strong> (slow listing, metadata bloat — <code>DESCRIBE DETAIL</code> shows a huge <code>numFiles</code> at a tiny average size), <strong>no data skipping</strong> (queries scan far more files than they return — the predicate isn't on a clustered/partition column), <strong>write-path fragmentation</strong> (streaming / MERGE-heavy churn adding tiny files faster than maintenance clears them), or <strong>maintenance not keeping up</strong> (OPTIMIZE / VACUUM run by hand, or not at all). Then apply the smallest lever — and for any <strong>new</strong> UC managed table the default answer is <em>liquid clustering + predictive optimization</em>, not partitioning or hand-tuned Z-order. Confirm every change with <code>DESCRIBE DETAIL</code>, <code>DESCRIBE HISTORY</code>, and the query profile; never assume.
+    </div>
+    <p>The four lever families below map to the four sections. Most day-to-day calls are really about choosing <em>which</em> family the symptom belongs to — the wrong lever (over-partitioning a small table, hand-scheduling OPTIMIZE forever, Z-ordering a liquid-clustered table) wastes compute and leaves the real cost in place.</p>
+    <div class="quickgrid">
+      <div class="quickcard">
+        <div class="qtitle">01 · File sizing &amp; small files</div>
+        <p>Compaction and target file size. <code>OPTIMIZE</code>, optimized writes, auto compaction, autotuning — fix fragmentation.</p>
+      </div>
+      <div class="quickcard">
+        <div class="qtitle">02 · Clustering &amp; data skipping</div>
+        <p>Colocate rows so the engine reads fewer files: liquid clustering (new), Z-order (legacy), stats columns, partitioning.</p>
+      </div>
+      <div class="quickcard amber">
+        <div class="qtitle">03 · Write path &amp; maintenance</div>
+        <p>Where files are created: MERGE/streaming churn, deletion vectors, OPTIMIZE / VACUUM cadence, time travel.</p>
+      </div>
+      <div class="quickcard amber">
+        <div class="qtitle">04 · Platform &amp; managed layout</div>
+        <p>Let the platform decide: UC managed + predictive optimization, CLUSTER BY AUTO, ingestion-time clustering.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 · FILE SIZING & SMALL FILES ============ -->
+  <section>
+    <p class="seclabel">01 · File sizing &amp; the small-file problem</p>
+    <h2>When the cost is thousands of tiny files</h2>
+    <p>The most common Delta performance call: reads are slow because the table is fragmented. The lever is compaction and right-sizing — but which one depends on whether the fragmentation is being created faster than you can fix it.</p>
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>What's really happening</th><th>The call (fix)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>A streaming <code>events</code> table has 40,000 files averaging 2&nbsp;MB by noon; morning dashboards crawl.</td>
+          <td>Every micro-batch writes its own tiny Parquet files; fixed per-file overhead (list, open, footer, task) now dominates every scan.</td>
+          <td>Run <code>OPTIMIZE</code> to bin-pack into fewer right-sized files (idempotent, safe on a live table via snapshot isolation) — schedule daily, or on a UC managed table let predictive optimization run it (<a href="../lessons/04-optimize-compaction/index.html">Lesson 04</a>, <a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>Someone added <code>df.coalesce(1)</code> / <code>repartition(200)</code> before a write "to control file count," and it's brittle.</td>
+          <td>Hand-guessing partition count fights the engine; with optimized writes enabled it actively hurts, and it breaks when data volume changes.</td>
+          <td>Remove the manual <code>coalesce</code>/<code>repartition</code> before the write and enable optimized writes (shuffles to ~128&nbsp;MB files at write time) (<a href="../lessons/05-optimized-writes/index.html">Lesson 05</a>).</td>
+        </tr>
+        <tr>
+          <td>A MERGE-heavy CDC table keeps fragmenting even though a nightly <code>OPTIMIZE</code> runs.</td>
+          <td>MERGE/UPDATE/DELETE create small files after each commit; a once-a-day compaction can't keep pace with intra-day churn.</td>
+          <td>Rely on auto compaction (always on for MERGE/UPDATE/DELETE) to combine files within partitions post-commit, and keep OPTIMIZE for the deeper consolidation (<a href="../lessons/06-auto-compaction/index.html">Lesson 06</a>).</td>
+        </tr>
+        <tr>
+          <td>A 20&nbsp;TB table still has small files even though autotuning is "on."</td>
+          <td>Autotuning grows the target size with table size (up to 1&nbsp;GB &gt; 10&nbsp;TB) but does NOT re-optimize existing files — old small files persist.</td>
+          <td>Set an explicit <code>delta.targetFileSize</code> and run <code>OPTIMIZE</code> to rewrite; autotuning only governs future writes (<a href="../lessons/07-auto-optimize/index.html">Lesson 07</a>).</td>
+        </tr>
+        <tr>
+          <td>You set <code>delta.autoOptimize.autoCompact = true</code> but files still aren't the size you expected.</td>
+          <td><code>true</code> uses a fixed 128&nbsp;MB target with no dynamic sizing; <code>auto</code> autotunes the target to the table.</td>
+          <td>Use <code>auto</code> (recommended) so the target adapts to table size, rather than the fixed-128&nbsp;MB <code>true</code>/<code>legacy</code> value (<a href="../lessons/06-auto-compaction/index.html">Lesson 06</a>, <a href="../lessons/07-auto-optimize/index.html">Lesson 07</a>).</td>
+        </tr>
+        <tr>
+          <td>A batch job writes one giant file per partition and downstream parallelism suffers.</td>
+          <td>Too few, too-large files under-parallelize reads just as many tiny files over-cost them — the target size is the balance.</td>
+          <td>Let optimized writes / autotuning pick the target (128&nbsp;MB–1&nbsp;GB by table size), or cap rows with <code>spark.sql.files.maxRecordsPerFile</code> only for a specific need (<a href="../lessons/05-optimized-writes/index.html">Lesson 05</a>, <a href="../lessons/07-auto-optimize/index.html">Lesson 07</a>).</td>
+        </tr>
+        <tr>
+          <td>An external (non-UC-managed) table has no maintenance and grows small files unchecked.</td>
+          <td>Predictive optimization only runs on UC managed tables, so external tables get no automatic OPTIMIZE/VACUUM.</td>
+          <td>Schedule OPTIMIZE (and VACUUM) as a job for the external table, or migrate it to a UC managed table to get predictive optimization (<a href="../lessons/04-optimize-compaction/index.html">Lesson 04</a>, <a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 02 · CLUSTERING & DATA SKIPPING ============ -->
+  <section>
+    <p class="seclabel">02 · Clustering &amp; data skipping</p>
+    <h2>When the cost is scanning files you didn't need</h2>
+    <p>Right-sized files still lose if the engine can't skip them. These calls are about colocating rows on the columns queries filter — and choosing liquid clustering over the legacy partitioning / Z-order it replaces.</p>
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>What's really happening</th><th>The call (fix)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>A table is partitioned on a high-cardinality column (<code>customer_id</code> / timestamp) and it's a small-files disaster.</td>
+          <td>One directory per value on a high-cardinality column creates a partition explosion — thousands of tiny partitions, each with tiny files.</td>
+          <td>Migrate to liquid clustering (<code>CLUSTER BY</code> the query keys — no directory explosion, keys redefinable without rewrite); reserve partitioning for low-cardinality columns on tables &gt; 1&nbsp;TB (<a href="../lessons/02-partitioning/index.html">Lesson 02</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>Someone wants to partition a 200&nbsp;GB table "for performance."</td>
+          <td>Databricks says do NOT partition tables under 1&nbsp;TB; partitions below ~1&nbsp;GB each just fragment the table.</td>
+          <td>Don't partition — leave it unpartitioned (ingestion-time clustering gives date-like benefits free) or use liquid clustering on the real filter keys (<a href="../lessons/02-partitioning/index.html">Lesson 02</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>A query filters on a column that isn't the partition column and does a full scan of a 5&nbsp;TB table.</td>
+          <td>Data skipping only works when the predicate column has stats and rows are colocated; an unclustered filter column can't skip files.</td>
+          <td>Cluster (liquid) or Z-order the table on the common filter columns so per-file min/max stats prune files; confirm files-pruned in the query profile (<a href="../lessons/03-data-skipping-and-zorder/index.html">Lesson 03</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>A filter column sits past column 32 and gets no data skipping.</td>
+          <td>Stats are collected on the first 32 columns by default (UC external); a column beyond that has no min/max to skip on.</td>
+          <td>Reorder so predicate columns lead, or set <code>delta.dataSkippingStatsColumns</code> (DBR 13.3+) then <code>ANALYZE TABLE t COMPUTE DELTA STATISTICS</code>; UC managed tables use predictive optimization for stats with no 32-col limit (<a href="../lessons/03-data-skipping-and-zorder/index.html">Lesson 03</a>).</td>
+        </tr>
+        <tr>
+          <td>Someone runs <code>OPTIMIZE … ZORDER BY</code> on a liquid-clustering table.</td>
+          <td>Z-order is incompatible with liquid clustering — LC already colocates by its keys; mixing them is unsupported.</td>
+          <td>Drop the ZORDER; on an LC table plain <code>OPTIMIZE</code> groups by the clustering keys automatically (<a href="../lessons/03-data-skipping-and-zorder/index.html">Lesson 03</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>A team defines 8 clustering keys hoping to cover every query.</td>
+          <td>Liquid clustering allows up to 4 keys; too many keys weaken single-column filters, especially on tables &lt; 10&nbsp;TB.</td>
+          <td>Pick ≤ 4 keys from the highest-value predicates (or use <code>CLUSTER BY AUTO</code> to let PO choose); more keys is not more skipping (<a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>Clustering keys were changed, but existing data still filters slowly.</td>
+          <td>Changing keys does not rewrite existing data (the LC benefit); only new writes and incremental OPTIMIZE re-lay-out data.</td>
+          <td>Run <code>OPTIMIZE t FULL</code> (DBR 16.0/16.4 LTS+) once after changing keys to recluster all existing data; plain incremental OPTIMIZE won't (<a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>, <a href="../lessons/04-optimize-compaction/index.html">Lesson 04</a>).</td>
+        </tr>
+        <tr>
+          <td>A legacy job Z-orders on the partition column and it does nothing.</td>
+          <td>You cannot Z-order a partition column, and Z-order only colocates within a partition — it can't cross partition boundaries.</td>
+          <td>Z-order on a non-partition high-cardinality predicate column, or migrate off partitioning to liquid clustering entirely (<a href="../lessons/03-data-skipping-and-zorder/index.html">Lesson 03</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 03 · WRITE PATH & MAINTENANCE ============ -->
+  <section>
+    <p class="seclabel">03 · Write path, deletion vectors &amp; maintenance</p>
+    <h2>When the cost is on the write side — or in never cleaning up</h2>
+    <p>Some scenarios aren't about read layout at all: they're about how modifications create files, and whether maintenance (compaction, VACUUM) and history retention are set up correctly.</p>
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>What's really happening</th><th>The call (fix)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>A GDPR delete of a few rows rewrites entire multi-GB Parquet files and takes forever.</td>
+          <td>Default copy-on-write rewrites the whole file that holds a deleted row — expensive for scattered row-level deletes.</td>
+          <td>Enable deletion vectors (<code>delta.enableDeletionVectors = true</code>) so DELETE/UPDATE/MERGE soft-delete rows (merge-on-read) without rewriting files; Photon uses them for predictive I/O (<a href="../lessons/09-deletion-vectors/index.html">Lesson 09</a>).</td>
+        </tr>
+        <tr>
+          <td>Deletion vectors are on, but the deleted rows must be physically purged for compliance.</td>
+          <td>DVs mark rows as removed but leave the data in the Parquet files until something rewrites them.</td>
+          <td>Run <code>REORG TABLE t APPLY (PURGE)</code> to physically apply soft-deletes, then <code>VACUUM</code> after the retention window to remove the old files (<a href="../lessons/09-deletion-vectors/index.html">Lesson 09</a>, <a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+        <tr>
+          <td>Storage cost keeps climbing on a high-churn table even after deletes.</td>
+          <td>Old, unreferenced data files aren't removed until VACUUM runs past the retention threshold; the log still points readers away from them but they occupy storage.</td>
+          <td>Schedule <code>VACUUM</code> (default 7-day retention); on big tables use <code>VACUUM t LITE</code> (DBR 16.4 LTS+) to skip full file listing, or let predictive optimization VACUUM UC managed tables (<a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>, <a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>A too-aggressive <code>VACUUM RETAIN 1 HOURS</code> is proposed to save storage fast.</td>
+          <td>RETAIN under 7 days is blocked by a safety check because it can delete files still needed by long-running jobs or recent time travel.</td>
+          <td>Keep the default (or a deliberate longer) retention; only lower it with a clear reason, never by disabling <code>retentionDurationCheck</code> casually (<a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+        <tr>
+          <td>An analyst needs to query the table "as of last month" but the data is gone.</td>
+          <td>Time travel needs BOTH the log and the underlying data files; VACUUM's 7-day data-file retention caps how far back you can go, regardless of log retention.</td>
+          <td>Raise both <code>delta.deletedFileRetentionDuration</code> and <code>delta.logRetentionDuration</code> BEFORE you need the window (e.g. 30 days); time travel is not a long-term backup (<a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+        <tr>
+          <td>An accidental bad MERGE corrupted a production table.</td>
+          <td>Every modification is a new version; the prior good state is still queryable if its files haven't been vacuumed.</td>
+          <td>Inspect <code>DESCRIBE HISTORY</code>, then <code>RESTORE TABLE t TO VERSION AS OF &lt;v&gt;</code> (needs MODIFY; downstream streams may reprocess) (<a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+        <tr>
+          <td>Enabling deletion vectors broke an older external reader that can't open the table.</td>
+          <td>DVs upgrade the table protocol (writer v7 / reader v3); clients without DV support can no longer read it.</td>
+          <td>Confirm all readers support DVs before enabling; if you must roll back, <code>ALTER TABLE t DROP FEATURE deletionVectors</code> (DBR 14.1+) to downgrade (<a href="../lessons/09-deletion-vectors/index.html">Lesson 09</a>).</td>
+        </tr>
+        <tr>
+          <td>A big <code>VACUUM</code> is slow and the driver is pegged.</td>
+          <td>VACUUM phase 1 lists files in parallel on workers, but phase 2 deletes from the single driver node — a large delete bottlenecks there.</td>
+          <td>Size the driver up for large VACUUM deletes, or use <code>VACUUM t LITE</code> (DBR 16.4 LTS+) to avoid listing every file (<a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ 04 · PLATFORM & MANAGED LAYOUT ============ -->
+  <section>
+    <p class="seclabel">04 · Platform &amp; managed layout</p>
+    <h2>When the right answer is to let the platform decide</h2>
+    <p>The most modern set of calls: on Unity Catalog managed tables, layout and maintenance are increasingly the platform's job. These scenarios are about knowing when to stop hand-tuning.</p>
+    <table class="tbl">
+      <thead><tr><th>Scenario</th><th>What's really happening</th><th>The call (fix)</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>You're designing a brand-new UC managed table and reaching for <code>PARTITIONED BY</code> out of habit.</td>
+          <td>Partitioning is legacy layout; Databricks recommends liquid clustering for all new Delta (and managed Iceberg) tables.</td>
+          <td>Use <code>CLUSTER BY</code> (or <code>CLUSTER BY AUTO</code>) instead of partitioning, and let predictive optimization run OPTIMIZE/VACUUM/ANALYZE (<a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>, <a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>You don't know which clustering keys a new table will actually be queried on.</td>
+          <td>Guessing keys up front often mis-targets real query patterns, and manual key changes need FULL reclustering.</td>
+          <td>Use <code>CLUSTER BY AUTO</code> (DBR 15.4 LTS+, UC managed, requires predictive optimization) — it analyzes query history and picks/changes keys cost-aware (<a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>, <a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>A team hand-schedules OPTIMIZE + VACUUM jobs across hundreds of tables and it's a maintenance burden.</td>
+          <td>Manual maintenance doesn't scale and often runs on the wrong cadence per table.</td>
+          <td>Enable predictive optimization (on by default for accounts since Nov 11 2024; PREMIUM plan, UC managed) — it runs OPTIMIZE, VACUUM, ANALYZE automatically on serverless (<a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>Predictive optimization is enabled but a Z-ordered table isn't being reclustered.</td>
+          <td>PO's OPTIMIZE does NOT run ZORDER (it ignores Z-ordered files); it drives liquid-clustering key selection instead.</td>
+          <td>Migrate the table to liquid clustering so PO can manage its layout; Z-order is the legacy path PO won't maintain (<a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>An unpartitioned append-only table is queried mostly by recent date, and nobody set up any layout.</td>
+          <td>Unpartitioned tables get ingestion-time clustering (DBR 11.3 LTS+) automatically — data lands roughly in ingestion order.</td>
+          <td>Often do nothing: ingestion-time clustering gives date-partition-like skipping for free; add liquid clustering only if queries filter on something other than recency (<a href="../lessons/02-partitioning/index.html">Lesson 02</a>, <a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+        <tr>
+          <td>Predictive optimization was expected to run but the table is skipped.</td>
+          <td>PO runs only on UC MANAGED tables on PREMIUM/supported regions — it does not run on EXTERNAL or OpenSharing recipient tables.</td>
+          <td>Verify with <code>DESCRIBE TABLE EXTENDED</code> (Predictive Optimization field); migrate external tables to managed, or schedule maintenance manually (<a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>).</td>
+        </tr>
+        <tr>
+          <td>You want longer time travel but you're about to enable predictive optimization (which VACUUMs).</td>
+          <td>Once PO runs VACUUM at the default 7-day retention, older versions become unqueryable — the data files are gone.</td>
+          <td>Raise <code>delta.deletedFileRetentionDuration</code> (and log retention) BEFORE enabling PO if you need a longer time-travel window (<a href="../lessons/11-predictive-optimization/index.html">Lesson 11</a>, <a href="../lessons/10-vacuum-time-travel/index.html">Lesson 10</a>).</td>
+        </tr>
+        <tr>
+          <td>A migration to liquid clustering is blocked by old Delta clients that can't read the table.</td>
+          <td>Liquid clustering uses writer v7 / reader v3 (DVs, row tracking, checkpoint V2) — old clients can't read it and you can't downgrade the protocol.</td>
+          <td>Upgrade the reading clients (or DBR) first; confirm compatibility before enabling LC, since the protocol bump is one-way (<a href="../lessons/08-liquid-clustering/index.html">Lesson 08</a>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ============ REFERENCES ============ -->
+  <section>
+    <p class="seclabel">05 · References</p>
+    <h2>Sources</h2>
+    <ul class="reflist">
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/tables/clustering" target="_blank" rel="noopener">Azure Databricks — Use liquid clustering for tables</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/tables/data-skipping" target="_blank" rel="noopener">Azure Databricks — Data skipping &amp; Z-ordering for Delta Lake</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/tables/operations/optimize" target="_blank" rel="noopener">Azure Databricks — Optimize data file layout (OPTIMIZE / compaction)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/tables/tune-file-size" target="_blank" rel="noopener">Azure Databricks — Control the data file size (optimized writes, auto compaction, autotuning)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/tables/partitions" target="_blank" rel="noopener">Azure Databricks — When to partition tables</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/optimizations/predictive-optimization" target="_blank" rel="noopener">Azure Databricks — Predictive optimization for UC managed tables</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/delta/best-practices" target="_blank" rel="noopener">Azure Databricks — Best practices for Delta Lake</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/delta/deletion-vectors" target="_blank" rel="noopener">Azure Databricks — Deletion vectors (merge-on-read)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/delta/vacuum" target="_blank" rel="noopener">Azure Databricks — Remove unused data files with VACUUM</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/azure/databricks/delta/history" target="_blank" rel="noopener">Azure Databricks — Work with Delta Lake table history &amp; time travel</a></li>
+    </ul>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Sources — official Azure Databricks documentation.</strong></p>
+    <div class="doclinks">
+      <a href="../index.html">&larr; Back to the Delta Optimization track</a>
+    </div>
+    <p style="margin-top:18px">Content verified against Azure Databricks docs, June 2026. Scenarios are established field practice; every API, flag, default, and version is doc-grounded. Part of the Databricks Delta Optimization learning path. Naming reflects the 2025 Lakeflow rebrand.</p>
+  </div>
+</footer>
+
+</body>
+</html>
